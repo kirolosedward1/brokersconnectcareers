@@ -75,6 +75,8 @@ export const CONSOLE_MESSAGES = [
   'jobForm',
   'language',
   'nav',
+  // The note under a saved listing on /dashboard/saved; the app reads the same words.
+  'savedNotes',
 ] as const;
 
 /**

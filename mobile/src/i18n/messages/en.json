@@ -367,20 +367,6 @@
       "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
       "back": "Back to Saved"
     },
-    "notes": {
-      "title": "Your note",
-      "prefix": "Your note:",
-      "add": "Add a note",
-      "edit": "Edits the note",
-      "forListing": "Add a note to yourself about this listing",
-      "private": "Kept on this phone only. Nobody else sees it.",
-      "placeholder": "e.g. Spoke to them; interview on Sunday morning",
-      "count": "{count}/{max}",
-      "countSpoken": "{count} of {max} characters",
-      "saved": "Note saved",
-      "deleted": "Note deleted",
-      "delete": "Delete"
-    },
     "remind": {
       "set": "Remind me",
       "setSpoken": "Remind me the day before it closes",

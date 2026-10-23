@@ -260,6 +260,15 @@ export type MobileActions = {
 
   // Jobs, saved jobs, searches and follows
   toggleSavedJob: { input: { jobId: string }; output: ActionResult<{ saved: boolean }> };
+  /**
+   * The candidate's own line about a saved listing (migration 353): trimmed,
+   * at most 300 characters; empty or null takes it away. `not_saved` when the
+   * listing is not bookmarked (the note lives with the bookmark).
+   */
+  setSavedJobNote: {
+    input: { jobId: string; note: string | null };
+    output: ActionResult<{ note: string | null }>;
+  };
   recordJobView: { input: { slug: string }; output: ActionResult };
   reportTarget: { input: ReportInput; output: ActionResult };
   saveSearch: { input: { label: string; query: string }; output: ActionResult<{ id: string }> };

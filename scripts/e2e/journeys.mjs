@@ -178,6 +178,22 @@ check('and the saved list says so', (savedAfter.json ?? []).length > 0 === !wasS
 const toggleBack = await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
 check('and toggles back', ok(toggleBack), describe(toggleBack));
 
+// A note on a saved listing lives with the bookmark (migration 353), on both sides.
+{
+  // Not saved first (the toggles above left it as it was found), then saved, then as it was found.
+  if (wasSaved) await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
+  const unsavedNote = await action(candidate.token, 'setSavedJobNote', { jobId: savable.id, note: 'اسأل عن العمولة' });
+  check('a note on a listing not saved is refused as not_saved', !ok(unsavedNote) && unsavedNote.json?.error === 'not_saved', describe(unsavedNote));
+  await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
+  const noted = await action(candidate.token, 'setSavedJobNote', { jobId: savable.id, note: '  اسأل عن العمولة  ' });
+  check('a note is kept with the bookmark, trimmed', ok(noted) && noted.json?.data?.note === 'اسأل عن العمولة', describe(noted));
+  const read = await rest(candidate.token, `saved_jobs?select=note&job_id=eq.${savable.id}`);
+  check('and read back under the candidate\'s own session', read.json?.[0]?.note === 'اسأل عن العمولة', describe(read));
+  const cleared = await action(candidate.token, 'setSavedJobNote', { jobId: savable.id, note: '   ' });
+  check('an emptied note is no note', ok(cleared) && cleared.json?.data?.note === null, describe(cleared));
+  if (!wasSaved) await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
+}
+
 const follow = await action(candidate.token, 'followCompany', { slug: firstCompany.slug, label: firstCompany.name_ar });
 check('following a company', ok(follow), describe(follow));
 const unfollow = await action(candidate.token, 'unfollowCompany', { slug: firstCompany.slug });

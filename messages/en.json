@@ -355,6 +355,20 @@
       "why": "This step keeps the link safe from email scanners that open it before you do."
     }
   },
+  "savedNotes": {
+    "title": "Your note",
+    "prefix": "Your note:",
+    "add": "Add a note",
+    "edit": "Edits the note",
+    "forListing": "Add a note to yourself about this listing",
+    "private": "Only you see it, here and in the app.",
+    "placeholder": "e.g. Spoke to them; interview on Sunday morning",
+    "count": "{count}/{max}",
+    "countSpoken": "{count} of {max} characters",
+    "saved": "Note saved",
+    "deleted": "Note deleted",
+    "delete": "Delete"
+  },
   "onboarding": {
     "title": "Finish your profile",
     "subtitle": "One step before you start.",

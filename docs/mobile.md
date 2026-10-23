@@ -314,7 +314,13 @@ compare with (a new branch), it compares with the previous commit.
   directory, which a candidate's tab bar has no tab for.
 - **Saved.** Bookmarks, saved searches and follows are the website's rows and
   actions (`toggleSavedJob`, `saveSearch`, `setSearchAlerts`,
-  `deleteSavedSearch`, `followCompany` / `unfollowCompany`): offered to a
+  `deleteSavedSearch`, `followCompany` / `unfollowCompany`), and so is the
+  note a candidate keeps on a saved listing (`saved_jobs.note`, migration
+  353, `setSavedJobNote`): written in the app's note sheet or on the
+  website's saved page, shown on both, gone with the bookmark (held in memory
+  for Undo), the words from one `savedNotes` catalogue. Notes a phone kept
+  before (`bc.saved-notes.v1`) are carried over once the saved list is read
+  (`carryDeviceNotes`), then let go: offered to a
   candidate and, as a way into an account, to somebody signed out; shown at
   once and put back if the server refuses. A follow is a saved search with
   one filter, so the ten-row cap and the weekly email are shared.
