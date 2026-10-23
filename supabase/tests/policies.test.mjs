@@ -1789,6 +1789,25 @@ report.section('a retried payment webhook cannot sell the same pack twice');
   report.check('a declined payment settles as failed', failed === 'failed', `got ${failed}`);
   report.check('and grants no credits', afterFailed === afterSecond, `${afterSecond} -> ${afterFailed}`);
 
+  // A second declined attempt changes nothing.
+  const failedAgain = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', false) as r`)).rows[0].r;
+  report.check('a second decline is a no-op', failedAgain === 'already_failed', `got ${failedAgain}`);
+
+  // A success for another Paymob order cannot settle the failed one.
+  const wrongRetry = (await db.query(`select public.settle_order('${failedId}', 'pm_test_other', true) as r`)).rows[0].r;
+  report.check('a success for another payment cannot settle a failed order', wrongRetry === 'already_failed', `got ${wrongRetry}`);
+
+  // The buyer retries on the same payment key and the card goes through: the
+  // same signed Paymob order now succeeds, and the pack is theirs.
+  const retried = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', true, 100000, 'EGP') as r`)).rows[0].r;
+  const afterRetry = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
+  report.check('a declined card then a paid one settles as paid', retried === 'paid', `got ${retried}`);
+  report.check('and grants the credits once', afterRetry === afterFailed + 1, `${afterFailed} -> ${afterRetry}`);
+  const retriedAgain = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', true) as r`)).rows[0].r;
+  report.check('and a resend of that success grants nothing', retriedAgain === 'already_paid', `got ${retriedAgain}`);
+  const lateDecline = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', false) as r`)).rows[0].r;
+  report.check('nor does a late decline undo it', lateDecline === 'already_paid', `got ${lateDecline}`);
+
   // And no signed-in user can reach it.
   const byUser = await as(employerUnverified, `select public.settle_order('${failedId}', 'pm_x', true)`);
   report.check('an employer cannot settle their own order', !byUser.ok, byUser.ok ? 'call was allowed' : byUser.error);

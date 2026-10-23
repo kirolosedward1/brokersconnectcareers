@@ -290,7 +290,7 @@ function ApplyForm({
 
   const submit = () => {
     const local: Errors = {};
-    if (!fullName.trim()) local.fullName = t('validation.required');
+    if (fullName.trim().length < 2) local.fullName = t('validation.required');
     if (!isValidPhone(normalisePhone(whatsapp))) local.whatsapp = t('validation.invalidPhone');
     if (!band) local.experienceBand = t('validation.required');
     if (Object.keys(local).length) {

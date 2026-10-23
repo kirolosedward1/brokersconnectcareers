@@ -144,7 +144,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
       ]}
       onAccessibilityAction={(event) => {
         const action = event.nativeEvent.actionName;
-        if (action === 'save') save.toggle();
+        if (action === 'save' && !save.pending) save.toggle();
         if (action === 'share') share();
         if (action === 'hide') hideThis();
       }}

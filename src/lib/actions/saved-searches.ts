@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { parseJobFilters } from '@/lib/queries/jobs';
 import { followQuery, queryParams, toCanonicalQuery } from '@/lib/saved-search';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { refused } from '@/lib/observe';
 
 const saveSchema = z.object({
   label: z.string().trim().min(1).max(80),
@@ -45,7 +46,7 @@ export async function saveSearch(input: unknown): Promise<ActionResult<{ id: str
     // Saving the same filters twice is not a failure worth showing as one.
     if (error.code === '23505') return { ok: false, error: 'already_saved' };
     if (error.message.includes('saved_search_cap')) return { ok: false, error: 'cap' };
-    return { ok: false, error: error.message };
+    return refused('saved-search', error);
   }
 
   revalidatePath('/dashboard/saved');
@@ -69,7 +70,7 @@ export async function deleteSavedSearch(id: string): Promise<ActionResult> {
     .eq('id', id)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('saved-search', error);
   if (!removed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/dashboard/saved');
@@ -94,7 +95,7 @@ export async function setSearchAlerts(input: unknown): Promise<ActionResult> {
     .eq('id', parsed.data.id)
     .select('id');
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('saved-search', error);
   if (!changed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/dashboard/saved');
@@ -160,7 +161,7 @@ export async function followCompany(input: unknown): Promise<ActionResult<{ id: 
       if (existing) return { ok: true, data: { id: existing.id } };
     }
     if (error.message.includes('saved_search_cap')) return { ok: false, error: 'cap' };
-    return { ok: false, error: error.message };
+    return refused('saved-search', error);
   }
 
   revalidatePath('/dashboard/saved');
@@ -191,7 +192,7 @@ export async function unfollowCompany(slug: unknown): Promise<ActionResult> {
     .delete()
     .eq('query', followQuery(parsed.data));
 
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('saved-search', error);
 
   revalidatePath('/dashboard/saved');
   return { ok: true };

@@ -244,13 +244,20 @@ console.log('\n— what the runtime version is a fingerprint of');
   // published over the air could not have changed. fingerprint.config.js.
   const { createFingerprintAsync } = createRequire(join(appRoot, 'package.json'))('expo/fingerprint');
   const saved = process.env;
-  process.env = { ...saved, ...eas.build.base.env, EAS_BUILD_PROFILE: 'production' };
-  try {
-    const fingerprint = await createFingerprintAsync(appRoot, {
+  const fingerprintAt = async (commit) => {
+    process.env = { ...saved, ...eas.build.base.env, EAS_BUILD_PROFILE: 'production', EAS_BUILD_GIT_COMMIT_HASH: commit };
+    return createFingerprintAsync(appRoot, {
       platforms: ['ios'],
       ignorePaths: ['android/**/*', 'ios/**/*'],
       silent: true,
     });
+  };
+  try {
+    const fingerprint = await fingerprintAt('aaaaaaa1111111');
+    // The commit shown on Account (extra.commit) changes with every publish;
+    // counted, no update published after a build would ever reach it.
+    const later = await fingerprintAt('bbbbbbb2222222');
+    is('the commit a bundle is published from does not change it', later.hash, fingerprint.hash);
     const counted = fingerprint.sources.map((source) => source.id ?? source.filePath);
     is('package.json scripts are not counted (a new check script changed every fingerprint)', counted.includes('packageJson:scripts'), false);
     is('nor .gitignore', counted.includes('.gitignore'), false);

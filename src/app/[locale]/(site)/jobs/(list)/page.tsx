@@ -404,7 +404,7 @@ export default async function JobsPage({
                 {/* The honest answer to "there is nothing yet": tell me when
                     there is. Offered to the same readers as in the header. */}
                 {activeCount > 0 && offerSavedSearch ? (
-                  <SaveSearch signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
+                  <SaveSearch key={toCanonicalQuery(filters)} signedIn={Boolean(viewer)} defaultLabel={defaultSearchLabel} />
                 ) : null}
               </div>
               {activeCount > 0 && offerSavedSearch ? (

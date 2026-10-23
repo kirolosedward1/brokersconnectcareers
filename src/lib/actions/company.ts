@@ -15,6 +15,7 @@ import { DOCUMENT_KINDS, MAX_BYTES, isOwnedPath, verifyStoredObject } from '@/li
 import { recordSecurityEvent } from '@/lib/security/events';
 import { clean, cleanText, safeHttpUrl } from '@/lib/security/sanitize';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
+import { refused } from '@/lib/observe';
 
 const schema = z.object({
   nameAr: z.string().trim().min(2).max(160),
@@ -315,7 +316,7 @@ export async function claimMonthlyFreePost(): Promise<ActionResult<{ claimed: bo
   if (!user) return { ok: false, error: 'unauthenticated' };
 
   const { data, error } = await supabase.rpc('claim_monthly_free_post');
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('company', error);
 
   revalidatePath('/employer/billing');
   return { ok: true, data: { claimed: Boolean(data) } };
