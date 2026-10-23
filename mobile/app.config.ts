@@ -1,4 +1,9 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
+// The curtain and the native splash share this width. The module is JS
+// because Expo evaluates this file without compiling a TypeScript import.
+// A static import, not `require`: scripts/publish-update.test.mjs loads this
+// file as ESM, where `require` is not defined.
+import { LAUNCH_MARK_WIDTH } from './src/components/brand/launch-size.js';
 
 /** The commit this bundle is published from, shown on Account so a phone can be matched to it. */
 function commitSha(): string | undefined {
@@ -233,7 +238,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         // launch screen on a dark phone flashed into the light app.
         backgroundColor: '#F6F4F0',
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        // The curtain draws this same width (src/components/brand/launch-size.ts).
+        imageWidth: LAUNCH_MARK_WIDTH,
       },
     ],
     // The session key sits in the keychain without a biometric gate. The Face

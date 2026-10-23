@@ -25,9 +25,9 @@ const NO_RETURN_KEY = new Set<TextInputProps['keyboardType']>(['number-pad', 'ph
  * or a link: typed and read left to right, from the left edge, whatever the
  * language around it.
  *
- * A field's alignment is the physical edge, unlike Text's: React Native
- * mirrors 'left' and 'right' for text it lays out itself, not for what is
- * typed into a field, which drew Arabic from the left edge.
+ * A field's alignment is the physical edge. React Native does not mirror what
+ * is typed into a field, so Arabic is aligned to the right explicitly, and an
+ * email or a password stays on the left. Labels use I18nManager's own flip.
  *
  * The keyboard is always a press away from going: a line's return key says
  * "done" unless the form gives it another word ("next", "search"), and the
@@ -90,6 +90,9 @@ export const TextField = forwardRef<
         style={[
           {
             flex: 1,
+            // The web's default min width is the text's own width, so a long
+            // field pushes the eye past the screen (the input wider than the row).
+            minWidth: 0,
             minHeight: hitTarget,
             fontFamily: font.regular,
             fontSize: scale.body.fontSize,
