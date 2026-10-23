@@ -51,6 +51,7 @@ export const PUBLIC_MESSAGES = [
   'report',
   'reportHint',
   'reportReason',
+  'savedNote',
   'savedSearch',
   'theme',
   'track',
