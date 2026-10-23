@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl, ScrollView, type ScrollViewInstance } from 'react-native';
 import { Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -38,7 +38,7 @@ export default function CompanyScreen() {
   const pull = usePullRefresh(() => Promise.all([page.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
   const company = viewer?.company ?? null;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
 
   let body: React.ReactNode;
   if (!session) body = <SignedOut next="/employer/company" />;

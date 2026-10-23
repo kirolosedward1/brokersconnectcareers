@@ -1238,7 +1238,7 @@ report.section('a bookmark is a candidate\'s');
   report.check('and only for themselves', !forSomebodyElse.ok);
 }
 
-report.section('a note on a saved listing is the candidate\'s own (353)');
+report.section('a note on a saved listing is the candidate\'s own (356)');
 {
   // The bookmark first, as the service (RLS aside); the checks below run as people.
   await db.exec(`insert into saved_jobs (candidate_id, job_id) values ('${candidate}', '${liveJob}') on conflict do nothing`);
@@ -3488,6 +3488,79 @@ report.section('a listing that is not live takes no applications');
     !again.ok && /duplicate key|unique/.test(again.error ?? ''), again.ok ? 'insert was allowed' : again.error);
 
   await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${who}'`);
+}
+
+
+report.section('a CV line or a note pressed twice is written once');
+{
+  /*
+    Migration 350, for the four creates migration 55 left out: a job, school
+    or certificate on a CV, and an applicant note. Each form sends one key
+    for every attempt; the second insert meets the first one's row on the
+    unique index and the server action answers with that row
+    (src/lib/actions/idempotency.ts). Keys are per owner, so one person's key
+    is nothing to another's.
+  */
+  const KEY = 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff';
+  const mine = (await db.query(`select id from agent_profiles where user_id = '${publicAgent}'`)).rows[0].id;
+  const theirs = (await db.query(`select id from agent_profiles where user_id = '${hiddenAgent}'`)).rows[0].id;
+
+  const sections = [
+    ['agent_experience', `(agent_id, company_name, title, started, idempotency_key)`,
+      (agent) => `('${agent}', 'شركة', 'استشاري', '2022-01-01', '${KEY}')`],
+    ['agent_education', `(agent_id, institution, idempotency_key)`,
+      (agent) => `('${agent}', 'جامعة القاهرة', '${KEY}')`],
+    ['agent_certifications', `(agent_id, name, idempotency_key)`,
+      (agent) => `('${agent}', 'شهادة وسيط عقاري', '${KEY}')`],
+  ];
+
+  for (const [table, columns, values] of sections) {
+    // Committed: the runner rolls each call back, and a retry has to meet a
+    // row that is really there.
+    await db.exec(`insert into ${table} ${columns} values ${values(mine)}`);
+
+    const retry = await as(publicAgent, `insert into ${table} ${columns} values ${values(mine)} returning id`);
+    report.check(`${table}: the retry is refused on the key, not written twice`,
+      !retry.ok && new RegExp(`${table}_idempotency_key_idx`).test(retry.error ?? ''),
+      retry.ok ? 'insert was allowed' : retry.error);
+
+    const found = await as(publicAgent, `select id from ${table} where agent_id = '${mine}' and idempotency_key = '${KEY}'`);
+    report.check(`${table}: and its owner finds the first one by it`, found.ok && found.rows.length === 1,
+      found.error ?? JSON.stringify(found.rows));
+
+    const elsewhere = await as(hiddenAgent, `insert into ${table} ${columns} values ${values(theirs)} returning id`);
+    report.check(`${table}: another consultant may use the same key`, elsewhere.ok && elsewhere.rows.length === 1,
+      elsewhere.error);
+
+    const unkeyed = await as(publicAgent, `
+      insert into ${table} ${columns.replace(', idempotency_key', '')}
+      values ${values(mine).replace(`, '${KEY}'`, '')}, ${values(mine).replace(`, '${KEY}'`, '')} returning id`);
+    report.check(`${table}: rows with no key never collide`, unkeyed.ok && unkeyed.rows.length === 2, unkeyed.error);
+
+    await db.exec(`delete from ${table} where idempotency_key = '${KEY}'`);
+  }
+
+  const app = (
+    await db.query(`
+      select a.id from applications a
+        join jobs j on j.id = a.job_id
+        join company_members m on m.company_id = j.company_id
+       where m.user_id = '${employerVerified}' limit 1`)
+  ).rows[0];
+  const note = `insert into application_notes (application_id, author_id, body, idempotency_key)
+                values ('${app.id}', '${employerVerified}', 'كلّمته', '${KEY}') returning id`;
+  await db.exec(note.replace(' returning id', ''));
+
+  const retry = await as(employerVerified, note);
+  report.check('application_notes: the retry is refused on the key',
+    !retry.ok && /application_notes_idempotency_key_idx/.test(retry.error ?? ''),
+    retry.ok ? 'insert was allowed' : retry.error);
+
+  const found = await as(employerVerified, `select id from application_notes where application_id = '${app.id}' and idempotency_key = '${KEY}'`);
+  report.check('application_notes: and its author finds the first one by it', found.ok && found.rows.length === 1,
+    found.error ?? JSON.stringify(found.rows));
+
+  await db.exec(`delete from application_notes where idempotency_key = '${KEY}'`);
 }
 
 process.exit(report.finish() ? 0 : 1);

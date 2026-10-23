@@ -64,7 +64,7 @@ export default async function SavedJobsPage({
 
   const rows = (data ?? []) as unknown as { note: string | null; job: JobListItem }[];
   const jobs = rows.map((row) => row.job).filter(Boolean);
-  // The reader's own line under each card (migration 353), the app's too.
+  // The reader's own line under each card (migration 356), the app's too.
   const notes = new Map(rows.filter((row) => row.job).map((row) => [row.job.id, row.note]));
 
   /**

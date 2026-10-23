@@ -13,7 +13,7 @@ import { ThemeProvider } from '~/theme/provider';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { useReduceTransparency } from '~/theme/reduce-transparency';
 import TabsLayout from '../src/app/(tabs)/_layout';
-import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import { mobileConfig } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -41,7 +41,7 @@ jest.mock('~/theme/reduce-transparency', () => ({ useReduceTransparency: jest.fn
 
 const ar = catalogues.ar;
 const server = fakeServer();
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
 let client: QueryClient;
 let spring: jest.SpyInstance;
 let tick: jest.SpyInstance;
@@ -134,7 +134,7 @@ function toBar(event: 'onLayout' | 'onResponderGrant' | 'onResponderMove' | 'onR
 }
 
 async function launch() {
-  renderRouter(app, { initialUrl: '/' });
+  await renderRouter(app, { initialUrl: '/' });
   expect(await screen.findByText('home')).toBeTruthy();
   toBar('onLayout', { nativeEvent: { layout: { x: BAR.x, y: 0, width: BAR.width, height: 56 } } });
   for (const [tab, x] of Object.entries(PLACES)) layout(screen.getByRole('tab', { name: tabNames[tab] }), x, TAB_WIDTH);

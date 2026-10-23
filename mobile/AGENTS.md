@@ -6,7 +6,7 @@ shares code and a database with the Next.js website one directory up. Read
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
 
-1. Read the major version of the `expo` package in `package.json` (57).
+1. Read the major version of the `expo` package in `package.json` (58).
 2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
 3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
 
@@ -51,7 +51,7 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
 - Each tab is a route group with its own stack; listings, company pages, the companies directory and the
-  bell's feed live in the shared group `(home,jobs,companies,applications,saved,account,listings,applicants,consultants)` so they open inside
+  bell's feed live in the shared group `(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)` so they open inside
   whichever tab the reader is in. Which tabs a person has is `src/lib/tabs.ts`; a hidden tab's screens do not
   exist for them, so open signed-in pages with `routeInside` / `openWhenReady`, never a bare path.
 - Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.

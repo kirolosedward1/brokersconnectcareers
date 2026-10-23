@@ -10,7 +10,7 @@ import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { useSheet } from '~/lib/use-sheet';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as WelcomeScreen from '../src/app/welcome';
 import { authSession, authUser, mobileConfig, profile } from './auth-fixtures';
 import { board, browse, cairo, newCairo } from './fixtures';
@@ -47,7 +47,7 @@ jest.mock('~/lib/session-storage', () => ({
 }));
 
 const ar = catalogues.ar;
-const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 const server = fakeServer();
 const hide = jest.mocked(SplashScreen.hideAsync);
 
@@ -103,8 +103,8 @@ function HomeWithSheet() {
   );
 }
 
-function launch(initialUrl = '/', home: () => React.JSX.Element = () => <Text>home-screen</Text>) {
-  renderRouter(
+async function launch(initialUrl = '/', home: () => React.JSX.Element = () => <Text>home-screen</Text>) {
+  await renderRouter(
     {
       _layout: RootLayout,
       '(tabs)/_layout': TabsLayout,
@@ -140,7 +140,7 @@ async function drawn() {
 }
 
 it('opens a signed-out launch on the welcome, over the launch curtain, which lifts once it is drawn', async () => {
-  launch();
+  await launch();
   const skip = await screen.findByRole('button', { name: ar.app.welcome.skip });
   // Skip says where it leads.
   expect(skip.props.accessibilityHint).toBe(ar.app.welcome.skipHint);
@@ -164,7 +164,7 @@ it('opens a signed-out launch on the welcome, over the launch curtain, which lif
 });
 
 it('never scrolls, and sets the words smaller when they do not fit', async () => {
-  launch();
+  await launch();
   await drawn();
   expect(screen.UNSAFE_queryAllByType(ScrollView)).toHaveLength(0);
   const headline = () => screen.getByText(ar.landingPage.hero.title);
@@ -191,7 +191,7 @@ it('never scrolls, and sets the words smaller when they do not fit', async () =>
 });
 
 it('closes onto Home when the reader skips it, until the app is next started', async () => {
-  launch();
+  await launch();
   await drawn();
   fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.skip }));
   await act(async () => {});
@@ -203,12 +203,12 @@ it('closes onto Home when the reader skips it, until the app is next started', a
   // The next launch, still signed out, opens on it again.
   screen.unmount();
   resetWelcomeForTests();
-  launch();
+  await launch();
   expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
 });
 
 it('leaves a launch by a link where the link leads', async () => {
-  launch('/jobs');
+  await launch('/jobs');
   expect(await screen.findByText('board-screen')).toBeTruthy();
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
@@ -216,7 +216,7 @@ it('leaves a launch by a link where the link leads', async () => {
 
 it('never shows to somebody signed in, and opens when they sign out', async () => {
   signedIn();
-  launch();
+  await launch();
   expect(await screen.findByText('home-screen')).toBeTruthy();
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
@@ -230,7 +230,7 @@ it('never shows to somebody signed in, and opens when they sign out', async () =
 
 it('opens after a session ends only once a sheet still showing has gone, which iOS would otherwise take down unawares', async () => {
   signedIn();
-  launch('/', HomeWithSheet);
+  await launch('/', HomeWithSheet);
   const open = await screen.findByRole('button', { name: 'open-sheet' });
   await act(async () => {});
   fireEvent.press(open);
@@ -246,7 +246,7 @@ it('opens after a session ends only once a sheet still showing has gone, which i
 
 it('waits for the screen somebody signed out from to close, and opens over the tabs', async () => {
   signedIn();
-  launch();
+  await launch();
   expect(await screen.findByText('home-screen')).toBeTruthy();
   await act(async () => {
     router.push('/mfa');
@@ -266,7 +266,7 @@ it('is not opened by signing out when signing in again came first', async () => 
   const user = authUser();
   signedIn();
   server.on('POST /auth/v1/token', () => authSession(user));
-  launch();
+  await launch();
   expect(await screen.findByText('home-screen')).toBeTruthy();
   await act(async () => {
     router.push('/mfa');
@@ -291,7 +291,7 @@ it('is not opened a second time after signing out of a screen that sat over it',
   server.on('GET /auth/v1/user', user);
   server.on('/rest/v1/profiles', [profile]);
   server.on('/rest/v1/rpc/my_company_id', () => null);
-  launch();
+  await launch();
   await drawn();
   expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
 

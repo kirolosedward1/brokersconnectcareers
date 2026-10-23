@@ -94,6 +94,8 @@ export const APP_PATHS: Record<string, string> = {
   '/dashboard/profile': '/account/profile',
   '/employer': '/',
   '/licenses': '/account/licenses',
+  // The website's "get the app" page: whoever opens it here already has it.
+  '/app': '/',
 };
 
 /**
@@ -104,12 +106,21 @@ export const APP_PATHS: Record<string, string> = {
  */
 const AUDIENCE_DOOR = /^\/(sign-in|sign-up)\/(candidate|employer)$/;
 
+/**
+ * The admin console's pages the app has (its queues, a listing's review, an account's file);
+ * the rest of the website's console — the audit log, taxonomy, one account's
+ * file — opens the app's overview, which links to the website for them.
+ */
+// Case-insensitive, as the screens read their id: an uppercase uuid in a link still lands on the file.
+const ADMIN_SCREENS = /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users(?:\/[0-9a-f-]{36})?|companies))?$/i;
+
 /** A website path (already through webPathToAppPath) as the app opens it; the query is kept. */
 export function appPathFor(path: string): string {
   const pathname = pathnameOf(path);
   const query = path.slice(pathname.length);
   const door = AUDIENCE_DOOR.exec(pathname);
   if (door) return `/${door[1]}?role=${door[2]}${query.startsWith('?') ? `&${query.slice(1)}` : query}`;
+  if (pathname.startsWith('/admin/') && !ADMIN_SCREENS.test(pathname)) return '/admin';
   const mapped = APP_PATHS[pathname];
   return mapped === undefined ? path : `${mapped}${query}`;
 }
@@ -135,10 +146,13 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],
   ['/employer/billing', ['account']],
-  // The directory is the Consultants tab's own screen; a consultant's page opens in any tab.
-  ['/agents', ['consultants'], 'exact'],
-  ['/agents', ['consultants', 'home']],
-  ['/employer/talent', ['consultants']],
+  // The directory is the Consultants tab's own screen — and the Admin tab's,
+  // for an admin who runs a company, whose bar has no room for both; a
+  // consultant's page opens in any tab.
+  ['/agents', ['consultants', 'admin'], 'exact'],
+  ['/agents', ['consultants', 'admin', 'home']],
+  ['/employer/talent', ['consultants', 'admin']],
+  ['/admin', ['admin']],
 ];
 
 function ownersOf(path: string): readonly TabName[] | null {

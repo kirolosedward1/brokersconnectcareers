@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { adminMfaRequired } from '@/lib/auth';
 import { enabledProviders } from '@/lib/auth-providers';
 import { BILLING_ENABLED, configuredValue, env } from '@/lib/env';
 import { OPERATOR } from '@/lib/business';
@@ -34,6 +35,10 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *                     app's publish can wait for the website to carry the
  *                     same push, and a phone can be matched to it (Account).
  *                     Not a secret: the repository is public.
+ *   adminMfaRequired  whether an admin needs an authenticator before the
+ *                     console opens (ADMIN_MFA_REQUIRED) — the app's console
+ *                     asks what the website's does, and the server refuses
+ *                     its levers otherwise (mobile-api/admin-door.ts).
  */
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +59,7 @@ export async function GET() {
       playStoreUrl: storeUrl(process.env.MOBILE_PLAY_STORE_URL, 'play.google.com'),
       policies: currentPolicyVersions(),
       commit: configuredValue(process.env.VERCEL_GIT_COMMIT_SHA) ?? null,
+      adminMfaRequired: adminMfaRequired(),
     } satisfies MobileConfig,
     { headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' } },
   );

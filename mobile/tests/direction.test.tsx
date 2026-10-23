@@ -9,7 +9,7 @@ import { appDirection } from '~/lib/direction';
 import { ThemeProvider } from '~/theme/provider';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import { mobileConfig } from './auth-fixtures';
 import { board, browse, cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -40,7 +40,7 @@ jest.mock('~/lib/session-storage', () => ({
   encryptedSessionStorage: { getItem: async () => null, setItem: async () => {}, removeItem: async () => {} },
 }));
 
-const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+const STACK = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 const server = fakeServer();
 
 beforeAll(() => {
@@ -68,7 +68,7 @@ it('is right to left while the app is Arabic only, whatever React Native says', 
 });
 
 it('lays every view out right to left, tells the headers and the tab bar, and never starts the app again', async () => {
-  renderRouter(
+  await renderRouter(
     {
       _layout: RootLayout,
       '(tabs)/_layout': TabsLayout,

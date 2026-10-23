@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { AccessibilityInfo, ActionSheetIOS, Alert, Platform, Pressable, Share, Text, type AlertButton } from 'react-native';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
-import { router, Stack, Tabs } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -18,11 +18,13 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AuthLayout from '../src/app/(auth)/_layout';
 import * as SignInScreen from '../src/app/(auth)/sign-in/index';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
-import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/jobs/[slug]';
-import * as ApplyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/jobs/[slug]/apply';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
+import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]';
+import * as ApplyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]/apply';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { board, cairo, jobPage, listing, newCairo } from './fixtures';
+import { watchFocus } from './focus';
 import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
 
@@ -140,7 +142,7 @@ const SHARED = '(tabs)/(jobs,applications)';
 
 const app = {
   _layout: { default: Root, unstable_settings: { anchor: '(tabs)' } },
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   [`${SHARED}/_layout`]: TabStack,
   [`${SHARED}/jobs/[slug]`]: JobScreen,
   [`${SHARED}/jobs/[slug]/apply`]: ApplyScreen,
@@ -161,7 +163,7 @@ const uploads = () => server.requests.filter((request) => request.method === 'PO
 describe('the form', () => {
   it("sends the CV already on the profile, and says what was sent where", async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
@@ -191,7 +193,7 @@ describe('the form', () => {
   it('is one card and one tap when the profile already says it all: the experience from its years', async () => {
     server.on('GET /rest/v1/agent_profiles', [{ cv_path: PROFILE_CV, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 7 }]);
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
 
     // Who, where to write, the experience and the CV, as they would go.
     expect(await screen.findByText(ar.app.apply.quickTitle)).toBeTruthy();
@@ -218,7 +220,7 @@ describe('the form', () => {
   it('sends the website\'s own default experience when the profile never gave its years (stored as 0)', async () => {
     server.on('GET /rest/v1/agent_profiles', [{ cv_path: PROFILE_CV, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 0 }]);
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     expect(await screen.findByText(ar.experienceBand.junior_1_3)).toBeTruthy();
     // Held until the profile's years are read, so what is shown is what goes.
     await waitFor(() => expect(screen.getByRole('button', { name: ar.app.apply.quickSend }).props.accessibilityState.busy).toBe(false));
@@ -228,7 +230,7 @@ describe('the form', () => {
 
   it('asks who sees the application above the button, the answer a tap away', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
 
     const question = await screen.findByRole('button', { name: ar.apply.privacyTitle });
     expect(ar.apply.privacyTitle.endsWith('؟')).toBe(true);
@@ -249,7 +251,7 @@ describe('the form', () => {
 
   it("follows the profile's CV as it is now: one replaced in another tab while the form was open is sent in its place", async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
     expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
 
@@ -271,7 +273,7 @@ describe('the form', () => {
 
   it('sends no CV when the one on the profile was taken off while the form was open', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
     expect(await screen.findByText(ar.app.apply.profileCv)).toBeTruthy();
 
@@ -290,7 +292,7 @@ describe('the form', () => {
     server.on('POST /api/mobile/v1/actions/applyToJob', { ok: false, error: 'already_applied' });
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
@@ -317,7 +319,7 @@ describe('the form', () => {
     });
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
@@ -333,7 +335,7 @@ describe('the form', () => {
     server.on('GET /rest/v1/agent_profiles', []);
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
@@ -357,7 +359,7 @@ describe('the form', () => {
     server.on('POST /api/mobile/v1/actions/applyToJob', { status: 413, body: { error: 'too_large' } });
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
@@ -375,7 +377,7 @@ describe('the form', () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
       await signedIn();
-      const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+      const result = await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
       fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
       await waitFor(() => expect(result.getPathname()).toBe(APPLY));
       await openForm();
@@ -405,7 +407,7 @@ describe('the form', () => {
   it('refuses a file that is too big, or is not a CV, before anything is sent', async () => {
     server.on('GET /rest/v1/agent_profiles', []);
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValueOnce(picked({ size: 11 * 1024 * 1024 }));
@@ -422,7 +424,7 @@ describe('the form', () => {
     server.on('GET /rest/v1/agent_profiles', []);
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked({ name: 'سيرة.docx', mimeType: 'application/octet-stream' }));
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
@@ -437,7 +439,7 @@ describe('the form', () => {
     announce.mockClear();
     const layout = placeViewsAt(260);
     try {
-      renderRouter(app, { initialUrl: APPLY });
+      await renderRouter(app, { initialUrl: APPLY });
       await openForm();
       fireEvent.changeText(await screen.findByLabelText(ar.apply.whatsapp), '123');
       fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
@@ -450,10 +452,27 @@ describe('the form', () => {
     }
   });
 
+  it('moves from the name to the number with the return key, and puts the phone pad away with its Done', async () => {
+    await signedIn();
+    const focus = watchFocus();
+    try {
+      await renderRouter(app, { initialUrl: APPLY });
+      await openForm();
+      const name = await screen.findByLabelText(ar.apply.fullName);
+      expect(name.props.returnKeyType).toBe('next');
+      fireEvent(name, 'submitEditing');
+      expect(focus.focused).toEqual([ar.apply.whatsapp]);
+      // The phone pad has no return key: a Done rides above it.
+      expect(screen.getByLabelText(ar.apply.whatsapp).props.inputAccessoryViewID).toEqual(expect.any(String));
+    } finally {
+      focus.undo();
+    }
+  });
+
   it("says the website's words when it has had enough applications for today", async () => {
     server.on('POST /api/mobile/v1/actions/applyToJob', { ok: false, error: 'rate_limit' });
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     await openForm();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.apply.submit }));
@@ -465,7 +484,7 @@ describe('who gets the form', () => {
   it('tells a candidate who has applied already, instead of a second form', async () => {
     server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
     await signedIn();
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     expect(await screen.findByText(ar.apply.alreadyApplied)).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.apply.viewApplications })).toBeTruthy();
   });
@@ -480,7 +499,7 @@ describe('who gets the form', () => {
     withWithdrawal = true;
     try {
       await signedIn();
-      renderRouter(app, { initialUrl: APPLY });
+      await renderRouter(app, { initialUrl: APPLY });
       expect(await screen.findByText(ar.apply.alreadyApplied)).toBeTruthy();
 
       fireEvent.press(screen.getByRole('button', { name: 'withdraw elsewhere' }));
@@ -496,7 +515,7 @@ describe('who gets the form', () => {
   it('leads to the listing from its title when opened from a link, not to what the tab had underneath', async () => {
     server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
     await signedIn();
-    const result = renderRouter(app, { initialUrl: APPLY });
+    const result = await renderRouter(app, { initialUrl: APPLY });
     fireEvent.press(await screen.findByRole('button', { name: listing.title_ar }));
     await waitFor(() => expect(result.getPathname()).toBe(`/jobs/${listing.slug}`));
   });
@@ -504,7 +523,7 @@ describe('who gets the form', () => {
   it('goes back down to the board it came from after applying, rather than a second board on top', async () => {
     server.on('GET /rest/v1/agent_profiles', [{ cv_path: PROFILE_CV, tracks: ['primary'], district_ids: [newCairo.id], years_experience: 7 }]);
     await signedIn();
-    const result = renderRouter(app, { initialUrl: '/jobs' });
+    const result = await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText('the board')).toBeTruthy();
     act(() => router.push(`/jobs/${listing.slug}`));
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
@@ -523,7 +542,7 @@ describe('who gets the form', () => {
   it('goes back to the listing it was opened from', async () => {
     server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
     await signedIn();
-    const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    const result = await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
     await waitFor(() => expect(result.getPathname()).toBe(APPLY));
     fireEvent.press(await screen.findByRole('button', { name: listing.title_ar }));
@@ -536,13 +555,13 @@ describe('who gets the form', () => {
   it('tells a candidate the database would refuse why, before they type anything', async () => {
     server.on('/rest/v1/profiles', [{ ...profile, approval_status: 'pending' }]);
     await signedIn({ ...candidate, profile: { role: 'candidate', approval_status: 'pending' } });
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     expect(await screen.findByText(ar.apply.suspendedTitle)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.apply.submit })).toBeNull();
   });
 
   it('asks somebody signed out to sign in, and to come back to the form', async () => {
-    const result = renderRouter(app, { initialUrl: APPLY });
+    const result = await renderRouter(app, { initialUrl: APPLY });
     fireEvent.press(await screen.findByRole('button', { name: ar.nav.signIn }));
     await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
     expect(result.getSearchParams()).toEqual({ next: APPLY });
@@ -550,7 +569,7 @@ describe('who gets the form', () => {
 
   it("opens from the listing's Apply button", async () => {
     await signedIn();
-    const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    const result = await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
     await waitFor(() => expect(result.getPathname()).toBe(APPLY));
   });
@@ -561,9 +580,9 @@ describe('sharing a listing', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('asks link or picture, and hands iOS the link as a link', async () => {
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction, activityType: undefined });
     const sheet = jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation((_, pick) => pick(0));
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
     expect(sheet.mock.calls[0][0].options).toEqual([ar.app.share.asLink, ar.app.share.asImage, ar.common.cancel]);
     expect(share).toHaveBeenCalledWith({ message: listing.title_ar, url });
@@ -571,7 +590,7 @@ describe('sharing a listing', () => {
 
   it('shows the listing as a picture first, then hands the picture to the share sheet', async () => {
     jest.spyOn(ActionSheetIOS, 'showActionSheetWithOptions').mockImplementation((_, pick) => pick(1));
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
     expect(await screen.findByText(ar.app.share.hiring)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.app.share.send }));
@@ -582,16 +601,16 @@ describe('sharing a listing', () => {
   });
 
   it("keeps its word in the bar to the bar's size at the largest text sizes, as the bell does", async () => {
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     const button = await screen.findByRole('button', { name: ar.jobs.share });
     expect(within(button).getByText(ar.jobs.share).props.maxFontSizeMultiplier).toBe(1.4);
   });
 
   it('puts the link inside the message on Android, which shares the message alone', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
-    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction });
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: Share.sharedAction, activityType: undefined });
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.share }));
     act(() => (alert.mock.calls[0][2] as AlertButton[])[0].onPress?.());
     expect(share).toHaveBeenCalledWith({ message: `${listing.title_ar}\n${url}` });

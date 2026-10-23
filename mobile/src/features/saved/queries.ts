@@ -69,7 +69,7 @@ export function useSavedJobs({ active = true }: { active?: boolean } = {}) {
       if (error) throw error;
       const rows = (data ?? []) as unknown as { note: string | null; job: JobListItem | null }[];
       const jobs = rows.map((row) => row.job).filter((job): job is JobListItem => Boolean(job));
-      // The notes come with the bookmarks (migration 353); the phone's own from
+      // The notes come with the bookmarks (migration 356); the phone's own from
       // before are carried to the server once, then let go.
       const notes = rows.filter((row) => row.job).map((row) => ({ job_id: (row.job as JobListItem).id, note: row.note }));
       rememberNotes(queryClient, candidateId, notes);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { Modal, Pressable, ScrollView, View, type ScrollViewInstance } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { X } from '~/components/ui/lucide';
 import type {
@@ -134,7 +134,7 @@ function EntryForm({
   const [expires, setExpires] = useState(monthOf(certification?.expires));
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Save is below every field: an error above it is brought into view and said.
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, [
     'companyName',
     'title',

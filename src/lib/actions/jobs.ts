@@ -69,7 +69,7 @@ const noteSchema = z.object({
 });
 
 /**
- * The candidate's own line about a saved listing (migration 353): kept with
+ * The candidate's own line about a saved listing (migration 356): kept with
  * the bookmark, shown on the website's saved page and in the app alike, and
  * gone with the bookmark. Empty or null takes it away. The listing has to be
  * saved — the note is the bookmark's — so an unsaved one answers `not_saved`

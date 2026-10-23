@@ -8,7 +8,7 @@ import { useCandidateId } from './candidate';
 /**
  * A line a candidate keeps about a saved listing — "spoke to Mona, interview
  * Sunday", "asked for 12k" — for themselves only. It lives with the bookmark
- * (saved_jobs.note, migration 353): written through the website's own action
+ * (saved_jobs.note, migration 356): written through the website's own action
  * (setSavedJobNote), read under row-level security, and shown under the
  * saved card and on the listing while it is saved — on the website's saved
  * page too, which is where it was missing while the phone kept it alone.

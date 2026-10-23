@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
+// By name: ESLint's namespace check cannot see the enums SDK 58's build re-exports.
+import { AndroidImportance, IosAuthorizationStatus } from 'expo-notifications';
 import { useQuery } from '@tanstack/react-query';
 import { forgetOnboardingIntent } from '~/features/auth/kept-intent';
 import { callAction } from '~/lib/api';
@@ -63,7 +65,7 @@ Notifications.setNotificationHandler({
 if (Platform.OS === 'android') {
   Notifications.setNotificationChannelAsync('default', {
     name: 'Brokers Connect',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
   }).catch(() => {});
 }
 
@@ -90,8 +92,8 @@ export async function readPermission(): Promise<PushPermission> {
   const ios = answer.ios?.status;
   if (
     answer.granted ||
-    ios === Notifications.IosAuthorizationStatus.PROVISIONAL ||
-    ios === Notifications.IosAuthorizationStatus.EPHEMERAL
+    ios === IosAuthorizationStatus.PROVISIONAL ||
+    ios === IosAuthorizationStatus.EPHEMERAL
   ) {
     return 'granted';
   }

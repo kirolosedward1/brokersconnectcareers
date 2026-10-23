@@ -14,6 +14,7 @@ import {
   saveExperience,
 } from '@/lib/actions/cv';
 import { reach } from '@/lib/reach';
+import { useRetryKey } from '@/lib/retry-key';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import type {
   AgentCertificationRow,
@@ -123,6 +124,11 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
 
   const [open, setOpen] = useState<'experience' | 'education' | 'certification' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // A save pressed again after a lost answer finds the entry it already
+  // added rather than adding the same job, school or certificate twice.
+  const experienceKey = useRetryKey();
+  const educationKey = useRetryKey();
+  const certificationKey = useRetryKey();
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
 
@@ -151,7 +157,7 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
     const track = String(form.get('track') ?? '');
 
     startTransition(async () => {
-      const result = await reach(saveExperience({
+      const entry = {
         agentId,
         companyName: String(form.get('companyName') ?? ''),
         title: String(form.get('title') ?? ''),
@@ -159,7 +165,8 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
         started: String(form.get('started') ?? ''),
         ended: String(form.get('ended') ?? '') || null,
         highlights: String(form.get('highlights') ?? '') || null,
-      }));
+      };
+      const result = await reach(saveExperience({ ...entry, idempotencyKey: experienceKey.for(entry) }));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
@@ -176,13 +183,14 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
     const year = String(form.get('graduated') ?? '');
 
     startTransition(async () => {
-      const result = await reach(saveEducation({
+      const entry = {
         agentId,
         institution: String(form.get('institution') ?? ''),
         degree: String(form.get('degree') ?? '') || null,
         field: String(form.get('field') ?? '') || null,
         graduated: year ? Number(year) : null,
-      }));
+      };
+      const result = await reach(saveEducation({ ...entry, idempotencyKey: educationKey.for(entry) }));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));
@@ -198,13 +206,14 @@ export function CvEditor({ agentId, experience, education, certifications }: Pro
     const form = new FormData(event.currentTarget);
 
     startTransition(async () => {
-      const result = await reach(saveCertification({
+      const entry = {
         agentId,
         name: String(form.get('name') ?? ''),
         issuer: String(form.get('issuer') ?? '') || null,
         issued: String(form.get('issued') ?? '') || null,
         expires: String(form.get('expires') ?? '') || null,
-      }));
+      };
+      const result = await reach(saveCertification({ ...entry, idempotencyKey: certificationKey.for(entry) }));
       if (recoverSession(result)) return;
       if (!result.ok) {
         setError(result.error === 'cap' ? t('capReached') : tCommon('errorBody'));

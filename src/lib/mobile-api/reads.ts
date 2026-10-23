@@ -47,6 +47,13 @@ export type MobileConfig = {
    * beside the app's own build marker. Absent from a server older than this.
    */
   commit?: string | null;
+  /**
+   * Whether an admin needs an authenticator before the console opens
+   * (ADMIN_MFA_REQUIRED, on by default in production): the app's console asks
+   * what the website's does. Absent from a server older than the app's
+   * console, where it is taken as required.
+   */
+  adminMfaRequired?: boolean;
 };
 
 /** GET /jobs */

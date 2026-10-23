@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
+import { forgetDrafts } from '@/lib/form-draft';
 
 export function UserMenu({
   name,
@@ -57,6 +58,9 @@ export function UserMenu({
       const { createClient } = await import('@/lib/supabase/client');
       // This browser only: the phone's session, and any other, stays signed in.
       await createClient().auth.signOut({ scope: 'local' });
+      // And what this browser kept of half-typed forms (lib/form-draft.ts):
+      // the next person at a shared computer should find none of it.
+      forgetDrafts();
       /*
         A document navigation, not a router push. Signing out changes who the
         server thinks you are, and a client push races the refresh that was

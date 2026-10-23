@@ -36,6 +36,8 @@ export const PUBLIC_MESSAGES = [
   'common',
   'companies',
   'companyType',
+  // The notice over a form that was filled from a draft (lib/form-draft.ts).
+  'drafts',
   'employmentType',
   'experienceBand',
   'filters',

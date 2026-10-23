@@ -16,13 +16,12 @@ import {
   MailCheck,
   Receipt,
   Scale,
-  ShieldAlert,
   ShieldCheck,
   UserRound,
   UserRoundPlus,
 } from '~/components/ui/lucide';
 import { OPERATOR } from '@/lib/business';
-import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
+import { canAccessAdminArea, canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { CompletenessRing } from '~/components/profile/completeness-ring';
@@ -57,7 +56,7 @@ import { dialog } from '~/lib/dialog';
  * register a company. Signed in, who this is and their photo, the app's
  * appearance, the settings the website keeps on /dashboard/account (signing in
  * and security, the emails, a copy of the data), the way to the website
- * (where the admin console stays), signing out of this phone, and deleting the
+ * (where the rest of the admin console stays), signing out of this phone, and deleting the
  * account — which an app that creates accounts must offer in the app itself.
  *
  * Signing out here is this phone only (`scope: 'local'`): leaving the app
@@ -164,14 +163,6 @@ export default function AccountScreen() {
                 {viewer.company.name_ar}
               </Text>
             ) : null}
-            {role === 'admin' ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], marginTop: space[2] }}>
-                <ShieldAlert size={16} color={colors.warning} />
-                <Text variant="small" tone="mutedForeground" style={{ flexShrink: 1 }}>
-                  {t('app.account.adminOnWeb')}
-                </Text>
-              </View>
-            ) : null}
             {/* The one thing here other people see. */}
             {viewer?.profile ? (
               <View style={{ marginTop: space[3] }}>
@@ -215,6 +206,14 @@ export default function AccountScreen() {
         </View>
 
         <Group>
+          {/* The admin console has a tab of its own; this is the way to it from the account, as the website's menu has. */}
+          {canAccessAdminArea(actor) ? (
+            <Row
+              icon={<ShieldCheck size={18} color={colors.primary} />}
+              label={t('app.admin.adminConsole')}
+              onPress={() => router.navigate('/admin')}
+            />
+          ) : null}
           {/* A candidate's directory profile: the website keeps it in the console, the app here. */}
           {canAccessCandidateArea(actor) ? (
             <Row

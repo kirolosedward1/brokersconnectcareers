@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ScrollView, type TextInput } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -239,14 +239,16 @@ function OnboardingForm({
 
   // The button is at the bottom of each step, below its questions: an error
   // above them is brought into view and said.
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, FIELD_ORDER);
   const refuse = (next: Record<string, string>) => {
     setErrors(next);
     inView.show(next);
   };
-  // The return key moves from the name to the number (the phone pad has none of its own).
-  const whatsappField = useRef<TextInput>(null);
+  // The return key moves from the name to the number (the phone pad has none
+  // of its own), and from a company's name to its website.
+  const whatsappField = useRef<TextInputInstance>(null);
+  const websiteField = useRef<TextInputInstance>(null);
 
   function goTo(next: number) {
     Keyboard.dismiss();
@@ -520,6 +522,9 @@ function OnboardingForm({
                         autoComplete="organization"
                         textContentType="organizationName"
                         maxLength={160}
+                        returnKeyType="next"
+                        submitBehavior="submit"
+                        onSubmitEditing={() => websiteField.current?.focus()}
                       />
                     </Field>
                     <Field
@@ -529,6 +534,7 @@ function OnboardingForm({
                       error={errors.companyWebsite}
                     >
                       <TextField
+                        ref={websiteField}
                         value={companyWebsite}
                         onChangeText={setCompanyWebsite}
                         accessibilityLabel={t('onboarding.companyWebsite')}

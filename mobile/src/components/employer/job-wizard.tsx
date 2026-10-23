@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View, type ScrollViewInstance } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Scale, TriangleAlert } from '~/components/ui/lucide';
@@ -86,7 +86,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const developers = useDevelopers().data ?? [];
   const save = useSaveJob();
   const { actor } = useSession();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, FIELD_ORDER);
 
   const [idempotencyKey] = useState(() => uuid());

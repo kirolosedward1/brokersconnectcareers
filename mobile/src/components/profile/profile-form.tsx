@@ -1,5 +1,5 @@
-import { useState, type RefObject } from 'react';
-import { Pressable, View, type ScrollView } from 'react-native';
+import { useRef, useState, type RefObject } from 'react';
+import { Pressable, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -55,7 +55,7 @@ export function ProfileForm({
   agent: AgentProfileRow | null;
   developerIds: number[];
   /** The page's scroll view: Save is far below the fields, and an error is brought into view. */
-  scroll: RefObject<ScrollView | null>;
+  scroll: RefObject<ScrollViewInstance | null>;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -82,6 +82,8 @@ export function ProfileForm({
   const [cv, setCv] = useState<CvChange>({ kind: 'keep' });
   const [errors, setErrors] = useState<Errors>({});
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'yearsExperience', 'cv']);
+  // The return key moves on from the name to the number.
+  const whatsappField = useRef<TextInputInstance>(null);
   const refuse = (next: Errors) => {
     setErrors(next);
     inView.show(next);
@@ -171,11 +173,15 @@ export function ProfileForm({
           autoComplete="name"
           textContentType="name"
           maxLength={120}
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => whatsappField.current?.focus()}
         />
       </Field>
 
       <Field ref={inView.place('whatsapp')} label={t('onboarding.whatsapp')} error={errors.whatsapp}>
         <TextField
+          ref={whatsappField}
           value={whatsapp}
           onChangeText={(value) => form.set({ whatsapp: value })}
           accessibilityLabel={t('onboarding.whatsapp')}

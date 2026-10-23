@@ -12,9 +12,9 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import TabsLayout from '../src/app/(tabs)/_layout';
-import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as InboxScreen from '../src/app/(tabs)/(applicants)/employer/applicants/index';
-import * as DirectoryScreen from '../src/app/(tabs)/(consultants)/agents/index';
+import * as DirectoryScreen from '../src/app/(tabs)/(consultants,admin)/agents/index';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
@@ -133,7 +133,7 @@ function WizardStandIn() {
   return <Text>{draft}</Text>;
 }
 
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
 
 const app = {
   _layout: { default: Root, unstable_settings: { anchor: '(tabs)' } },
@@ -147,13 +147,13 @@ const app = {
   '(tabs)/(listings)/employer/jobs/index': standIn('listings'),
   '(tabs)/(listings)/employer/jobs/new': WizardStandIn,
   '(tabs)/(applicants)/employer/applicants/index': InboxScreen,
-  '(tabs)/(consultants)/agents/index': DirectoryScreen,
+  '(tabs)/(consultants,admin)/agents/index': DirectoryScreen,
   '(tabs)/(account)/account/index': standIn('account'),
 };
 
 describe('a tab nobody has opened', () => {
   it("neither reads the inbox nor tells candidates their application was opened, until the employer opens it", async () => {
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
     await screen.findByText('home-screen');
     await waitFor(() => expect(server.asked('/rest/v1/companies').length).toBeGreaterThan(0));
     await act(async () => {
@@ -181,7 +181,7 @@ describe('an approval that arrives while the app is open', () => {
       company: { id: ownedCompany.id, verification_status: ownedCompany.verification_status },
     });
     wizardMounts = 0;
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     expect(await screen.findByText('draft-1')).toBeTruthy();
 
     act(() => router.navigate('/agents'));

@@ -131,6 +131,9 @@ describe('appPathFor', () => {
     ['/dashboard/profile?notice=directory', '/account/profile?notice=directory'],
     // The licence notices are the Account tab's too.
     ['/licenses', '/account/licenses'],
+    // The "get the app" page, opened in the app, is Home.
+    ['/app', '/'],
+    ['/app?src=whatsapp', '/?src=whatsapp'],
     // The website's door for one side of the marketplace is the app's one sheet, told the role.
     ['/sign-in/employer', '/sign-in?role=employer'],
     ['/sign-up/candidate', '/sign-up?role=candidate'],

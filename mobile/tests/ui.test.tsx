@@ -6,7 +6,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { router, Stack } from 'expo-router';
 import { HeaderHeightContext } from 'expo-router/react-navigation';
 import { renderRouter } from 'expo-router/testing-library';
-import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import { AuthScroll } from '~/components/auth/auth-scroll';
 import { CompanyLogo } from '~/components/companies/company-logo';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
@@ -500,7 +500,7 @@ describe("a stack page's bar", () => {
   };
 
   it('is drawn inside the page, so it slides with it, its items once, and Back goes back', async () => {
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText('الوظائف')).toBeTruthy();
     // Once: not again in iOS's own bar, hidden under it.
     expect(screen.getAllByText('bell')).toHaveLength(1);
@@ -534,10 +534,10 @@ describe('where the keyboard is given room', () => {
 
   afterEach(() => jest.useRealTimers());
 
-  it('on Android, once for a tab, above its tab bar: the keyboard covers the bar rather than lifting it', () => {
+  it('on Android, once for a tab, above its tab bar: the keyboard covers the bar rather than lifting it', async () => {
     const os = jest.replaceProperty(Platform, 'OS', 'android');
     try {
-      renderRouter(app, { initialUrl: '/jobs' });
+      await renderRouter(app, { initialUrl: '/jobs' });
       expect(screen.getByText('the board')).toBeTruthy();
       expect(rooms()).toBe(1);
     } finally {
@@ -545,10 +545,10 @@ describe('where the keyboard is given room', () => {
     }
   });
 
-  it('on Android, once for a sheet of the root stack', () => {
+  it('on Android, once for a sheet of the root stack', async () => {
     const os = jest.replaceProperty(Platform, 'OS', 'android');
     try {
-      renderRouter(app, { initialUrl: '/sign-in' });
+      await renderRouter(app, { initialUrl: '/sign-in' });
       expect(screen.getByText('sign in')).toBeTruthy();
       expect(rooms()).toBe(1);
     } finally {
@@ -556,8 +556,8 @@ describe('where the keyboard is given room', () => {
     }
   });
 
-  it('nowhere on iOS', () => {
-    renderRouter(app, { initialUrl: '/jobs' });
+  it('nowhere on iOS', async () => {
+    await renderRouter(app, { initialUrl: '/jobs' });
     expect(screen.getByText('the board')).toBeTruthy();
     expect(rooms()).toBe(0);
   });

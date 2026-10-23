@@ -4,7 +4,7 @@ import { act, renderRouter } from 'expo-router/testing-library';
 import type { Actor } from '@/lib/permissions';
 import { routeFromOutside } from '~/lib/links';
 import { tabsFor } from '~/lib/tabs';
-import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
+import { unstable_settings } from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 
 /*
   The app's route tree, file for file, with stand-in screens: the real tree's
@@ -55,7 +55,7 @@ function TabBar() {
   );
 }
 
-const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)';
+const SHARED = '(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)';
 
 const tree = {
   _layout: { default: () => <Stack screenOptions={{ headerShown: false }} />, unstable_settings: { anchor: '(tabs)' } },
@@ -74,8 +74,8 @@ const tree = {
   '(tabs)/(listings)/employer/jobs/index': screen('listings'),
   '(tabs)/(listings,applicants)/employer/jobs/[id]/applicants': screen('pipeline'),
   '(tabs)/(applicants)/employer/applicants/index': screen('inbox'),
-  '(tabs)/(consultants)/agents/index': screen('consultants'),
-  '(tabs)/(consultants)/employer/talent': screen('shortlist'),
+  '(tabs)/(consultants,admin)/agents/index': screen('consultants'),
+  '(tabs)/(consultants,admin)/employer/talent': screen('shortlist'),
   '(tabs)/(account)/account/index': screen('account'),
   '(tabs)/(account)/account/delete': screen('delete'),
   '(tabs)/(account)/account/profile': screen('profile'),
@@ -115,32 +115,32 @@ describe('links from the website', () => {
     ['https://www.brokersconnect.net/companies', ['(tabs)', '(companies)', 'companies']],
     ['https://www.brokersconnect.net/en/companies/nile', ['(tabs)', '(companies)', 'companies', '[slug]']],
     ['https://www.brokersconnect.net/blog/how-commission-works', ['+not-found']],
-  ])('%s opens %j', (url, segments) => {
-    expect(open(url).getSegments()).toEqual(segments);
+  ])('%s opens %j', async (url, segments) => {
+    expect((await open(url)).getSegments()).toEqual(segments);
   });
 
-  it('keeps the board filters', () => {
-    const result = open('https://www.brokersconnect.net/jobs?track=primary&district=new-cairo');
+  it('keeps the board filters', async () => {
+    const result = await open('https://www.brokersconnect.net/jobs?track=primary&district=new-cairo');
     expect(result.getSearchParams()).toEqual({ track: 'primary', district: 'new-cairo' });
   });
 
-  it('puts the board under a listing opened from a link', () => {
-    const result = open('https://www.brokersconnect.net/jobs/sales-a1b2');
+  it('puts the board under a listing opened from a link', async () => {
+    const result = await open('https://www.brokersconnect.net/jobs/sales-a1b2');
     act(() => router.back());
     expect(result.getPathname()).toBe('/jobs');
     expect(result.getSegments()).toEqual(['(tabs)', '(jobs)', 'jobs']);
   });
 
-  it('puts the directory under a company opened from a link', () => {
-    const result = open('https://www.brokersconnect.net/companies/nile');
+  it('puts the directory under a company opened from a link', async () => {
+    const result = await open('https://www.brokersconnect.net/companies/nile');
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(companies)', 'companies']);
   });
 });
 
 describe('links to signed-in pages', () => {
-  it('asks somebody signed out to sign in, and remembers where they were going', () => {
-    const result = open('https://www.brokersconnect.net/dashboard/applications');
+  it('asks somebody signed out to sign in, and remembers where they were going', async () => {
+    const result = await open('https://www.brokersconnect.net/dashboard/applications');
     expect(result.getSegments()).toEqual(['(auth)', 'sign-in']);
     expect(result.getSearchParams()).toEqual({ next: '/dashboard/applications' });
   });
@@ -152,17 +152,17 @@ describe('links to signed-in pages', () => {
     ['https://www.brokersconnect.net/dashboard/account', ['(tabs)', '(account)', 'account']],
     ['https://www.brokersconnect.net/dashboard/profile', ['(tabs)', '(account)', 'account', 'profile']],
     ['https://www.brokersconnect.net/notifications', ['(tabs)', '(home)', 'notifications']],
-  ])("opens %s in a candidate's own tab", (url, segments) => {
+  ])("opens %s in a candidate's own tab", async (url, segments) => {
     actor = candidate;
-    expect(open(url).getSegments()).toEqual(segments);
+    expect((await open(url)).getSegments()).toEqual(segments);
   });
 
-  it("sends an employer who follows a candidate's link home, as the website does", () => {
+  it("sends an employer who follows a candidate's link home, as the website does", async () => {
     actor = employer;
-    expect(open('https://www.brokersconnect.net/dashboard/applications').getSegments()).toEqual(['(tabs)', '(home)']);
+    expect((await open('https://www.brokersconnect.net/dashboard/applications')).getSegments()).toEqual(['(tabs)', '(home)']);
   });
 
-  it('never opens a tab the person does not have', () => {
+  it('never opens a tab the person does not have', async () => {
     actor = employer;
     // An employer has no applications tab; the address is refused before it is opened.
     expect(routeFromOutside('/dashboard/applications', employer)).toBe('/');
@@ -170,23 +170,23 @@ describe('links to signed-in pages', () => {
 });
 
 describe("a candidate's tab bar", () => {
-  it('opens a company from a link in Home, since a candidate has no Companies tab', () => {
+  it('opens a company from a link in Home, since a candidate has no Companies tab', async () => {
     actor = candidate;
-    const result = open('https://www.brokersconnect.net/companies/nile');
+    const result = await open('https://www.brokersconnect.net/companies/nile');
     expect(result.getSegments()).toEqual(['(tabs)', '(home)', 'companies', '[slug]']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(home)']);
   });
 
-  it('opens the directory from Home, in Home', () => {
+  it('opens the directory from Home, in Home', async () => {
     actor = candidate;
-    const result = open('https://www.brokersconnect.net/companies');
+    const result = await open('https://www.brokersconnect.net/companies');
     expect(result.getSegments()).toEqual(['(tabs)', '(home)', 'companies']);
   });
 
-  it('opens a bookmarked listing in Saved, with Saved under it', () => {
+  it('opens a bookmarked listing in Saved, with Saved under it', async () => {
     actor = candidate;
-    const result = open('/dashboard/saved');
+    const result = await open('/dashboard/saved');
     act(() => router.push('/jobs/sales-a1b2'));
     expect(result.getSegments()).toEqual(['(tabs)', '(saved)', 'jobs', '[slug]']);
     act(() => router.back());
@@ -211,54 +211,54 @@ describe("an employer's tab bar", () => {
     ['https://www.brokersconnect.net/jobs/sales-a1b2', ['(tabs)', '(home)', 'jobs', '[slug]']],
     ['https://www.brokersconnect.net/jobs?track=primary', ['(tabs)', '(home)']],
     ['https://www.brokersconnect.net/notifications', ['(tabs)', '(home)', 'notifications']],
-  ])("opens %s in the employer's own tab", (url, segments) => {
+  ])("opens %s in the employer's own tab", async (url, segments) => {
     actor = employer;
-    expect(open(url).getSegments()).toEqual(segments);
+    expect((await open(url)).getSegments()).toEqual(segments);
   });
 
-  it('opens a listing from the console in Listings, with the console under it', () => {
+  it('opens a listing from the console in Listings, with the console under it', async () => {
     actor = employer;
-    const result = open('/employer/jobs');
+    const result = await open('/employer/jobs');
     act(() => router.push('/jobs/sales-a1b2'));
     expect(result.getSegments()).toEqual(['(tabs)', '(listings)', 'jobs', '[slug]']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(listings)', 'employer', 'jobs']);
   });
 
-  it("opens a listing's applicants from the inbox inside Applicants, with the inbox under it", () => {
+  it("opens a listing's applicants from the inbox inside Applicants, with the inbox under it", async () => {
     actor = employer;
-    const result = open('/employer/applicants');
+    const result = await open('/employer/applicants');
     act(() => router.push('/employer/jobs/5b0c7d1e-0000-4000-8000-000000000301/applicants'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'employer', 'jobs', '[id]', 'applicants']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'employer', 'applicants']);
   });
 
-  it("sends a candidate who follows an employer's link home", () => {
+  it("sends a candidate who follows an employer's link home", async () => {
     actor = candidate;
-    expect(open('https://www.brokersconnect.net/employer/jobs').getSegments()).toEqual(['(tabs)', '(home)']);
+    expect((await open('https://www.brokersconnect.net/employer/jobs')).getSegments()).toEqual(['(tabs)', '(home)']);
   });
 });
 
 describe('the consultant directory', () => {
-  it('opens the directory from a link in Consultants, filters and all', () => {
+  it('opens the directory from a link in Consultants, filters and all', async () => {
     actor = employer;
-    const result = open('https://www.brokersconnect.net/agents?track=resale');
+    const result = await open('https://www.brokersconnect.net/agents?track=resale');
     expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents']);
     expect(result.getSearchParams()).toEqual({ track: 'resale' });
   });
 
-  it('puts the directory under a profile opened from a link', () => {
+  it('puts the directory under a profile opened from a link', async () => {
     actor = employer;
-    const result = open('https://www.brokersconnect.net/agents/mona-ali');
+    const result = await open('https://www.brokersconnect.net/agents/mona-ali');
     expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents', '[slug]']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents']);
   });
 
-  it('opens the shortlist over the directory, and a profile from it', () => {
+  it('opens the shortlist over the directory, and a profile from it', async () => {
     actor = employer;
-    const result = open('/agents');
+    const result = await open('/agents');
     act(() => router.push('/employer/talent'));
     expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'employer', 'talent']);
     act(() => router.push('/agents/mona-ali'));
@@ -268,27 +268,27 @@ describe('the consultant directory', () => {
     expect(result.getSegments()).toEqual(['(tabs)', '(consultants)', 'agents']);
   });
 
-  it("opens an applicant's profile inside Applicants, with the inbox under it", () => {
+  it("opens an applicant's profile inside Applicants, with the inbox under it", async () => {
     actor = employer;
-    const result = open('/employer/applicants');
+    const result = await open('/employer/applicants');
     act(() => router.push('/agents/mona-ali'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'agents', '[slug]']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(applicants)', 'employer', 'applicants']);
   });
 
-  it('sends an employer still waiting for approval home from a link to the directory, as the website does', () => {
+  it('sends an employer still waiting for approval home from a link to the directory, as the website does', async () => {
     actor = {
       userId: '55555555-5555-4555-8555-555555555555',
       profile: { role: 'employer', approval_status: 'pending' },
       company: null,
     };
-    expect(open('https://www.brokersconnect.net/agents').getSegments()).toEqual(['(tabs)', '(home)']);
+    expect((await open('https://www.brokersconnect.net/agents')).getSegments()).toEqual(['(tabs)', '(home)']);
   });
 
-  it("sends a candidate to their own profile, from where their card's preview opens in Account", () => {
+  it("sends a candidate to their own profile, from where their card's preview opens in Account", async () => {
     actor = candidate;
-    const result = open('https://www.brokersconnect.net/agents/mona-ali');
+    const result = await open('https://www.brokersconnect.net/agents/mona-ali');
     expect(result.getSegments()).toEqual(['(tabs)', '(account)', 'account', 'profile']);
     expect(result.getSearchParams()).toEqual({ notice: 'directory' });
     act(() => router.push('/account/profile/preview'));
@@ -297,8 +297,8 @@ describe('the consultant directory', () => {
 });
 
 describe('moving around inside a tab', () => {
-  it('opens a listing from home in the home tab, and Back returns home', () => {
-    const result = open('/');
+  it('opens a listing from home in the home tab, and Back returns home', async () => {
+    const result = await open('/');
     act(() => router.push('/jobs/sales-a1b2'));
     expect(result.getSegments()).toEqual(['(tabs)', '(home)', 'jobs', '[slug]']);
 
@@ -310,23 +310,23 @@ describe('moving around inside a tab', () => {
     expect(result.getSegments()).toEqual(['(tabs)', '(home)']);
   });
 
-  it('opens a company from the board in the board tab', () => {
-    const result = open('/jobs');
+  it('opens a company from the board in the board tab', async () => {
+    const result = await open('/jobs');
     act(() => router.push('/jobs/sales-a1b2'));
     act(() => router.push('/companies/nile'));
     expect(result.getSegments()).toEqual(['(tabs)', '(jobs)', 'companies', '[slug]']);
   });
 
-  it('takes "browse by district" on the home screen to the board, filtered', () => {
-    const result = open('/');
+  it('takes "browse by district" on the home screen to the board, filtered', async () => {
+    const result = await open('/');
     act(() => router.navigate({ pathname: '/jobs', params: { district: 'new-cairo' } }));
     expect(result.getSegments()).toEqual(['(tabs)', '(jobs)', 'jobs']);
     expect(result.getSearchParams()).toEqual({ district: 'new-cairo' });
   });
 
-  it("opens the bell's feed in the tab it was rung from, and a listing from an application there too", () => {
+  it("opens the bell's feed in the tab it was rung from, and a listing from an application there too", async () => {
     actor = candidate;
-    const result = open('/dashboard/applications');
+    const result = await open('/dashboard/applications');
     act(() => router.push('/notifications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'notifications']);
 
@@ -337,9 +337,9 @@ describe('moving around inside a tab', () => {
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
   });
 
-  it("switches to the applications tab when a notification points there", () => {
+  it("switches to the applications tab when a notification points there", async () => {
     actor = candidate;
-    const result = open('/');
+    const result = await open('/');
     act(() => router.push('/notifications'));
     act(() => router.navigate('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);

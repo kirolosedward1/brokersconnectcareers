@@ -62,7 +62,7 @@ describe('the gate', () => {
   it('asks for an update below the version the website still serves, with the way to the App Store', async () => {
     const url = 'https://apps.apple.com/app/brokers-connect/id000000000';
     server.on('GET /api/mobile/v1/config', mobileConfig({ minAppVersion: '1.2.0', appStoreUrl: url }));
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     gate();
 
     expect(await screen.findByText(ar.app.update.title)).toBeTruthy();
@@ -161,7 +161,7 @@ describe('the gate', () => {
         playStoreUrl: play,
       }),
     );
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     try {
       gate();
       expect(await screen.findByText(ar.app.update.title)).toBeTruthy();

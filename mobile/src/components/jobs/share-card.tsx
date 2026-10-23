@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
@@ -157,7 +157,7 @@ export function ShareCardSheet({
   const locale = useLocale();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const card = useRef<View>(null);
+  const card = useRef<ViewInstance>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 

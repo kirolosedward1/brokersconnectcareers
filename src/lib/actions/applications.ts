@@ -20,6 +20,8 @@ import type {
 } from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
 import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { insertOnce } from '@/lib/actions/idempotency';
+import { jobIsLive } from '@/lib/job-state';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -116,6 +118,27 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     }
 
     /*
+      A refusal by policy (42501) is almost always the listing: it closed,
+      was paused, or ran past its end date while the form was open. "Try
+      again" can never work then, so it is asked once and named — 'not_open'
+      — and the person is told the listing stopped taking applications. The
+      raw database text stays here rather than travelling to the browser.
+
+      Only when the listing was actually read. A lookup that failed says
+      nothing about the listing, and 'not_open' makes the form throw away
+      what was typed — so a passing database error falls through to the
+      ordinary, retryable 'failed' below.
+    */
+    if (error.code === '42501') {
+      const { data: listing, error: listingError } = await supabase
+        .from('jobs')
+        .select('status, expires_at')
+        .eq('id', parsed.data.jobId)
+        .maybeSingle();
+      if (!listingError && (!listing || !jobIsLive(listing))) return { ok: false, error: 'not_open' };
+    }
+
+    /*
       The one mutation this product exists for, and until now it failed in
       silence: the applicant saw "something went wrong" and the server kept no
       record of what. A refusal that is neither a duplicate nor a rate limit is
@@ -130,7 +153,7 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
       candidate: user.id,
       code: error.code,
     });
-    return { ok: false, error: error.message };
+    return { ok: false, error: 'failed' };
   }
 
   /*
@@ -372,6 +395,9 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
 const noteSchema = z.object({
   applicationId: z.string().uuid(),
   body: z.string().trim().min(1).max(2000),
+  // Made once when the composer opens, so a retry after a lost answer finds
+  // the note the first attempt wrote rather than writing it twice.
+  idempotencyKey: z.string().uuid().optional(),
 });
 
 /**
@@ -408,21 +434,35 @@ export async function addApplicationNote(
     and wrong under any comparison. So the row it wrote is the row it answers
     with, and nothing is fabricated.
   */
-  const { data, error } = await supabase
-    .from('application_notes')
-    .insert({
-      application_id: parsed.data.applicationId,
-      author_id: user.id,
-      body: clean(parsed.data.body, true),
-    })
-    .select('*')
-    .single();
+  const key = parsed.data.idempotencyKey;
+  const note = {
+    application_id: parsed.data.applicationId,
+    author_id: user.id,
+    body: clean(parsed.data.body, true),
+  };
+  const { data, error } = await insertOnce(
+    key,
+    (withKey) =>
+      supabase
+        .from('application_notes')
+        .insert({ ...note, ...(withKey ? { idempotency_key: key } : {}) })
+        .select('*')
+        .single(),
+    () =>
+      supabase
+        .from('application_notes')
+        .select('*')
+        .eq('application_id', parsed.data.applicationId)
+        .eq('author_id', user.id)
+        .eq('idempotency_key', key!)
+        .maybeSingle(),
+  );
 
-  if (error) {
+  if (error || !data) {
     logFailure('pipeline', 'note refused', {
       application: parsed.data.applicationId,
       by: user.id,
-      code: error.code,
+      code: error?.code,
     });
     return { ok: false, error: 'forbidden' };
   }

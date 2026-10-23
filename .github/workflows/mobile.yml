@@ -225,7 +225,7 @@ jobs:
     # and Objective-C all compile. Not on pull requests (it takes a while and
     # needs a macOS runner); on main, and on demand.
     #
-    # Xcode 26, as EAS builds SDK 57 with. On macos-15 (Xcode 16.4, Swift 6.1)
+    # Xcode 26, as EAS builds SDK 58 with. On macos-15 (Xcode 16.4, Swift 6.1)
     # the build failed in ExpoModulesJSI's "Build xcframework" phase: its Swift
     # package says swift-tools-version 6.2, which only Xcode 26 reads. @expo/ui,
     # which expo-router depends on, also calls iOS 26 SwiftUI API
@@ -257,7 +257,7 @@ jobs:
         run: |
           xcodebuild -version
           if ! xcodebuild -version | grep -qE '^Xcode (2[6-9]|[3-9][0-9])\.'; then
-            echo "::error::Expo SDK 57 needs Xcode 26 or later"
+            echo "::error::Expo SDK 58 needs Xcode 26 or later"
             exit 1
           fi
 

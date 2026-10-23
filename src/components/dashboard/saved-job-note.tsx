@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * The candidate's own line under a saved listing — "spoke to Mona, interview
- * Sunday" — kept with the bookmark (migration 353) and shown here and in the
+ * Sunday" — kept with the bookmark (migration 356) and shown here and in the
  * app alike, in the same words (the `savedNotes` catalogue). A row to read
  * and press; pressed, a small form in its place: the field, counted as they
  * type, Save, Cancel, and Delete once there is a note to delete. Only the
