@@ -65,12 +65,20 @@ function formatLine(area: string, event: string, detail: Detail): string {
 }
 
 /**
- * A refused database write, answered to the caller as `failed`.
+ * A refused database call, answered to the caller as `failed`.
  *
- * The database's own sentence names tables, columns and constraints; it goes
- * to the log with its code, never back to the person who pressed the button.
+ * The database's own sentence names tables, columns, constraints and policies,
+ * and can quote the value that broke them ("invalid input syntax for type
+ * uuid: …"). It goes nowhere: not back to the person who pressed the button,
+ * and not into the log either, which keeps this file's rule. The Postgres code
+ * says what kind of refusal it was; `detail` carries the identifiers that find
+ * the row.
  */
-export function refused(area: string, error: { code?: string | null; message: string }): { ok: false; error: 'failed' } {
-  logFailure(area, 'write refused', { code: error.code ?? undefined, reason: withoutAddresses(error.message).slice(0, 200) });
+export function refused(
+  area: string,
+  error: { code?: string | null },
+  detail: Detail = {},
+): { ok: false; error: 'failed' } {
+  logFailure(area, 'write refused', { ...detail, code: error.code ?? undefined });
   return { ok: false, error: 'failed' };
 }

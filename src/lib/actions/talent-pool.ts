@@ -64,7 +64,7 @@ export async function toggleSavedAgent(
       .eq('agent_id', parsed.data)
       .select('agent_id');
 
-    if (error) return refused('talent', error);
+    if (error) return refused('talent', error, { company: companyId, agent: parsed.data });
     if (!removed?.length) return { ok: false, error: 'forbidden' };
 
     revalidatePath('/employer/talent');
@@ -83,7 +83,7 @@ export async function toggleSavedAgent(
     if (error.message.includes('saved_agent_cap')) return { ok: false, error: 'cap' };
     // Two colleagues pressing at once. The list is the outcome either way.
     if (error.code === '23505') return { ok: true, data: { saved: true } };
-    return refused('talent', error);
+    return refused('talent', error, { company: companyId, agent: parsed.data });
   }
 
   revalidatePath('/employer/talent');
