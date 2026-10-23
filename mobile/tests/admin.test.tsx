@@ -20,7 +20,7 @@ import { rememberActor } from '~/lib/last-actor';
 import { routeFromOutside, routeInside } from '~/lib/links';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
-import { tabsFor } from '~/lib/tabs';
+import { startPath, tabsFor } from '~/lib/tabs';
 import { ThemeProvider } from '~/theme/provider';
 import TabsLayout from '../src/app/(tabs)/_layout';
 import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
@@ -30,6 +30,7 @@ import * as ListingScreen from '../src/app/(tabs)/(admin)/admin/jobs/[id]';
 import * as ReportsScreen from '../src/app/(tabs)/(admin)/admin/reports/index';
 import * as AccountsScreen from '../src/app/(tabs)/(admin)/admin/users/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(admin)/admin/companies/index';
+import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID } from './auth-fixtures';
 import { company } from './fixtures';
 import { fakeServer } from './server';
@@ -349,12 +350,34 @@ const tabbed = {
 };
 
 describe('the tab bar', () => {
-  it('gives an admin the Admin tab, wearing what waits on a decision', async () => {
+  it('opens an admin on the console, with only that tab and the account', async () => {
     await signIn();
-    renderRouter(tabbed, { initialUrl: '/' });
-    await screen.findByText('home');
+    const result = renderRouter(tabbed, { initialUrl: '/' });
+
+    expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
+    await waitFor(() => expect(result.getPathname()).toBe('/admin'));
+    const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
+    expect(labels).toHaveLength(2);
+    expect(labels.some((label) => label.startsWith(ar.admin.title))).toBe(true);
+    expect(labels.some((label) => label.startsWith(ar.app.tabs.account))).toBe(true);
+    expect(labels.some((label) => label.startsWith(ar.app.tabs.home))).toBe(false);
+  });
+
+  it('sends an admin who followed a missing link back to the console', async () => {
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/admin/jobs/not-a-uuid' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.tabs.home }));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin'));
+  });
+
+  it('wears what waits on a decision on the console tab, once another tab is open', async () => {
+    await signIn();
+    renderRouter(tabbed, { initialUrl: '/account' });
+    await screen.findByText('account');
 
     // 3 listings + 2 report cases + 2 companies + 4 accounts, said with the tab's name.
+    // The open tab wears no badge, so the count is read from Account.
     await waitFor(() => {
       const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
       expect(labels.some((label) => label.startsWith(ar.admin.title) && /11/.test(label))).toBe(true);
@@ -373,20 +396,78 @@ describe('the tab bar', () => {
   });
 });
 
+describe('an admin who also runs a company', () => {
+  function suspendedCompany() {
+    server.on('POST /rest/v1/rpc/my_company_id', () => company.id);
+    server.on('POST /rest/v1/rpc/my_company_private', () => ({
+      owner_id: USER_ID,
+      post_credits: 1,
+      suspended_at: '2026-09-20T10:00:00Z',
+    }));
+  }
+
+  it('is told on the console that the company is suspended', async () => {
+    suspendedCompany();
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.standing.companySuspendedTitle)).toBeTruthy();
+    expect(await screen.findByText(ar.standing.companySuspendedBody)).toBeTruthy();
+  });
+
+  it('says that, and not that their own account is on hold', async () => {
+    me = { ...me, approval_status: 'pending' };
+    suspendedCompany();
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.standing.companySuspendedTitle)).toBeTruthy();
+    expect(screen.queryByText(ar.standing.heldTitle)).toBeNull();
+    expect(screen.queryByText(ar.standing.suspendedTitle)).toBeNull();
+  });
+
+  it('is told the same on Account', async () => {
+    suspendedCompany();
+    await signIn();
+    renderRouter(
+      {
+        ...app,
+        '(tabs)/(account)/account/index': AccountScreen,
+      },
+      { initialUrl: '/account' },
+    );
+
+    expect(await screen.findByText(ar.standing.companySuspendedTitle)).toBeTruthy();
+  });
+});
+
 describe('who has the Admin tab', () => {
-  it('is an admin: beside the public tabs, or beside the console of a company they run', () => {
-    expect(tabsFor(admin())).toEqual(['home', 'jobs', 'companies', 'admin', 'account']);
-    expect(tabsFor(admin(company))).toEqual(['home', 'listings', 'applicants', 'admin', 'account']);
+  it('is an admin, and only the console and the account — a company they run does not add tabs', () => {
+    expect(tabsFor(admin())).toEqual(['admin', 'account']);
+    expect(tabsFor(admin(company))).toEqual(['admin', 'account']);
+    expect(startPath(admin())).toBe('/admin');
+    expect(startPath(admin(company))).toBe('/admin');
+    expect(startPath(null)).toBe('/');
     for (const role of ['candidate', 'employer'] as const) {
       const actor = { userId: USER_ID, profile: { role, approval_status: 'approved' as const }, company: null };
       expect(tabsFor(actor)).not.toContain('admin');
+      expect(startPath(actor)).toBe('/');
     }
     expect(tabsFor(null)).not.toContain('admin');
   });
 
-  it("opens the console's links in that tab, and nobody else's", () => {
+  it("opens the console's links in that tab, and a listing or a company inside it", () => {
+    expect(routeFromOutside('https://www.brokersconnect.net/', admin())).toBe('/admin');
     expect(routeFromOutside('https://www.brokersconnect.net/admin/reports', admin())).toBe('/(admin)/admin/reports');
+    expect(routeFromOutside('https://www.brokersconnect.net/jobs/sales-a1b2', admin())).toBe('/(admin)/jobs/sales-a1b2');
+    expect(routeFromOutside('https://www.brokersconnect.net/companies/nile', admin())).toBe('/(admin)/companies/nile');
     expect(routeInside(`/admin/jobs/${JOB_ID}`, admin())).toBe(`/admin/jobs/${JOB_ID}`);
+    expect(routeInside('/jobs/sales-a1b2', admin())).toBe('/jobs/sales-a1b2');
+    expect(routeInside('/', admin())).toBe('/admin');
+    // The board itself is the Jobs tab's screen, which an admin does not have.
+    expect(routeInside('/jobs', admin())).toBe('/admin');
+    expect(routeInside('/employer/jobs', admin(company))).toBe('/admin');
+    expect(routeInside('/employer/company', admin(company))).toBe('/employer/company');
     // A page of the console the app does not have opens the app's overview.
     expect(routeInside('/admin/audit', admin())).toBe('/admin');
     const candidate = { userId: USER_ID, profile: { role: 'candidate' as const, approval_status: 'approved' as const }, company: null };
@@ -395,11 +476,12 @@ describe('who has the Admin tab', () => {
   });
 
   it('keeps the consultant directory for an admin who runs a company, inside the Admin tab', () => {
-    // Their bar has the company's console where the Consultants tab would be;
-    // the directory and the shortlist open in the Admin tab's stack instead.
+    // Their bar is the console and the account; the directory and the shortlist
+    // open in the Admin tab's stack.
     expect(routeFromOutside('https://www.brokersconnect.net/agents', admin(company))).toBe('/(admin)/agents');
     expect(routeInside('/employer/talent', admin(company))).toBe('/employer/talent');
     expect(routeFromOutside('https://www.brokersconnect.net/agents', admin())).toBe('/(admin)/agents');
+    expect(routeFromOutside('https://www.brokersconnect.net/employer/company', admin(company))).toBe('/(account)/employer/company');
   });
 });
 

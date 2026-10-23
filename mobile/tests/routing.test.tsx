@@ -27,8 +27,10 @@ let actor: Actor = null;
 function TabBar() {
   const tabs = tabsFor(actor);
   return (
-    <Tabs>
-      <Tabs.Screen name="(home)" />
+    <Tabs initialRouteName={tabs[0] === 'admin' ? '(admin)' : '(home)'}>
+      <Tabs.Protected guard={tabs.includes('home')}>
+        <Tabs.Screen name="(home)" />
+      </Tabs.Protected>
       <Tabs.Protected guard={tabs.includes('jobs')}>
         <Tabs.Screen name="(jobs)" />
       </Tabs.Protected>
@@ -49,6 +51,9 @@ function TabBar() {
       </Tabs.Protected>
       <Tabs.Protected guard={tabs.includes('consultants')}>
         <Tabs.Screen name="(consultants)" />
+      </Tabs.Protected>
+      <Tabs.Protected guard={tabs.includes('admin')}>
+        <Tabs.Screen name="(admin)" />
       </Tabs.Protected>
       <Tabs.Screen name="(account)" />
     </Tabs>
@@ -76,6 +81,7 @@ const tree = {
   '(tabs)/(applicants)/employer/applicants/index': screen('inbox'),
   '(tabs)/(consultants,admin)/agents/index': screen('consultants'),
   '(tabs)/(consultants,admin)/employer/talent': screen('shortlist'),
+  '(tabs)/(admin)/admin/index': screen('console'),
   '(tabs)/(account)/account/index': screen('account'),
   '(tabs)/(account)/account/delete': screen('delete'),
   '(tabs)/(account)/account/profile': screen('profile'),
@@ -293,6 +299,72 @@ describe('the consultant directory', () => {
     expect(result.getSearchParams()).toEqual({ notice: 'directory' });
     act(() => router.push('/account/profile/preview'));
     expect(result.getSegments()).toEqual(['(tabs)', '(account)', 'account', 'profile', 'preview']);
+  });
+});
+
+const admin: Actor = {
+  userId: '77777777-7777-4777-8777-777777777777',
+  profile: { role: 'admin', approval_status: 'approved' },
+  company: null,
+};
+
+const adminWithCompany: Actor = {
+  ...admin,
+  company: { id: '88888888-8888-4888-8888-888888888888', verification_status: 'verified' },
+};
+
+describe("an admin's tab bar", () => {
+  it('opens the app on the console', () => {
+    actor = admin;
+    expect(open('https://www.brokersconnect.net/').getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+  });
+
+  it('opens a listing from a link in the Admin tab, with the console under it', () => {
+    actor = admin;
+    const result = open('https://www.brokersconnect.net/jobs/sales-a1b2');
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'jobs', '[slug]']);
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+  });
+
+  it('opens a company from a link in the Admin tab, with the console under it', () => {
+    actor = admin;
+    const result = open('https://www.brokersconnect.net/companies/nile');
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'companies', '[slug]']);
+    // The Admin tab's first screen is the console, so that is what Back returns to.
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+  });
+
+  it('opens the directory and the bell inside the Admin tab', () => {
+    actor = admin;
+    const result = open('https://www.brokersconnect.net/companies');
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'companies']);
+    const bell = open('/notifications');
+    expect(bell.getSegments()).toEqual(['(tabs)', '(admin)', 'notifications']);
+  });
+
+  it('opens a listing pushed from the console in that tab, and Back returns to it', () => {
+    actor = admin;
+    const result = open('/admin');
+    act(() => router.push('/jobs/sales-a1b2'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'jobs', '[slug]']);
+    act(() => router.push('/companies/nile'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'companies', '[slug]']);
+    act(() => router.push('/notifications'));
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'notifications']);
+    act(() => router.back());
+    act(() => router.back());
+    act(() => router.back());
+    expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+  });
+
+  it('sends the board and an employer console link to the console, and keeps the company page in Account', () => {
+    actor = adminWithCompany;
+    expect(open('https://www.brokersconnect.net/jobs').getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+    expect(open('https://www.brokersconnect.net/employer/jobs').getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+    expect(open('https://www.brokersconnect.net/employer/company').getSegments()).toEqual(['(tabs)', '(account)', 'employer', 'company']);
+    expect(open('https://www.brokersconnect.net/agents/mona-ali').getSegments()).toEqual(['(tabs)', '(admin)', 'agents', '[slug]']);
   });
 });
 

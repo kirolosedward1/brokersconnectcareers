@@ -1,4 +1,9 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
+// The curtain and the native splash share this width. The module is JS
+// because Expo evaluates this file without compiling a TypeScript import.
+// A static import, not `require`: scripts/publish-update.test.mjs loads this
+// file as ESM, where `require` is not defined.
+import { LAUNCH_MARK_WIDTH } from './src/components/brand/launch-size.js';
 
 /** The commit this bundle is published from, shown on Account so a phone can be matched to it. */
 function commitSha(): string | undefined {
@@ -26,6 +31,14 @@ function commitSha(): string | undefined {
  * Arabic only, right to left, like the website while ENGLISH_ENABLED is false.
  * The day English is published, `forcesRTL` goes and the language switch
  * decides the direction at run time.
+ *
+ * The blue gear floating over the header is the Expo dev menu
+ * (expo-dev-menu's floating button), not a control in this app. That menu is
+ * compiled into debug builds only (`apple.debugOnly` on the module). The
+ * `development` and `development-simulator` profiles in eas.json set
+ * `developmentClient: true`, which builds that debug client. `preview` and
+ * `production` set it to false, so those builds are standalone releases and
+ * do not include the menu.
  */
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? 'https://www.brokersconnect.net';
 const SITE_HOST = new URL(SITE_URL).host;
@@ -225,7 +238,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         // launch screen on a dark phone flashed into the light app.
         backgroundColor: '#F6F4F0',
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        // The curtain draws this same width (src/components/brand/launch-size.ts).
+        imageWidth: LAUNCH_MARK_WIDTH,
       },
     ],
     // The session key sits in the keychain without a biometric gate. The Face

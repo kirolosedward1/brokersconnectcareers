@@ -874,6 +874,11 @@ label, the guidelines that apply, review notes — is in `docs/app-store.md`.
 Builds are made with EAS (`eas.json`): `development` (a development client for
 a registered iPhone), `development-simulator`, `preview` (internal
 distribution) and `production` (App Store, build number incremented remotely).
+`development` and `development-simulator` set `developmentClient: true`, so
+they include the Expo dev menu — the blue gear that floats over the header.
+That menu is `expo-dev-menu`, compiled into debug builds only. `preview` and
+`production` set `developmentClient: false`: they are standalone releases and
+do not include it.
 Before the first build:
 
 - an Apple Developer Program membership (an organisation needs a D-U-N-S number).
@@ -943,20 +948,23 @@ well.
 
 ## The admin console in the app
 
-An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`):
-the website's `/admin` overview and its queues — listings waiting for review
-(`/admin/jobs`, and one listing's review at `/admin/jobs/<id>`), open reports
-in their two queues, new and under review (`/admin/reports`), the accounts
-(`/admin/users`: every account by standing or role, searched as the website
-searches them, and one account's file at `/admin/users/<id>` with every lever
-the website's page has — approval, role, sign-in block, sessions, reporting,
-contact revealed for a reason, notes) and companies whose papers wait
-(`/admin/companies`). Links to those paths open there; any other `/admin/…`
-page opens the overview, which links to the full console on the website
-(search, the audit log, taxonomy, applications, email, appeals). An admin who
-runs a company has the company's console in the bar instead of the public
-tabs, and the consultant directory opens inside the Admin tab
-(`(consultants,admin)` in the routes).
+An account whose role is `admin` has two tabs (`src/lib/tabs.ts`): the
+**Admin** console first, so the app opens on it, then the account. They do
+not get Home, the board, the companies directory, or — even when they also
+run a company — the employer console. The company's page and its billing
+stay in the account. The console is the website's `/admin` overview and its
+queues — listings waiting for review (`/admin/jobs`, and one listing's review
+at `/admin/jobs/<id>`), open reports in their two queues, new and under review
+(`/admin/reports`), the accounts (`/admin/users`: every account by standing
+or role, searched as the website searches them, and one account's file at
+`/admin/users/<id>` with every lever the website's page has — approval, role,
+sign-in block, sessions, reporting, contact revealed for a reason, notes) and
+companies whose papers wait (`/admin/companies`). Links to those paths open
+there; any other `/admin/…` page opens the overview, which links to the full
+console on the website (search, the audit log, taxonomy, applications, email,
+appeals). A public listing or company opened from the console (or from a
+link) opens inside the Admin tab, with the console under it. The consultant
+directory and the shortlist do too (`(consultants,admin)` in the routes).
 
 - **Reads** go straight to Supabase under the admin's session — the same
   tables and `admin_*` functions the website's pages read

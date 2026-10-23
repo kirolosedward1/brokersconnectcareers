@@ -11,6 +11,7 @@ import type {
 } from '@/lib/supabase/database.types';
 import { buildJobQuery, searchText } from '@/lib/search/arabic';
 import { JOBS_PER_PAGE, type JobFilters } from '@/lib/job-filters';
+import { COMPANY_PUBLIC_COLUMNS } from '@/lib/company-member';
 import { LIST_SELECT, type JobDetail, type JobListItem } from '@/lib/job-list';
 import { logFailure } from '@/lib/observe';
 
@@ -354,7 +355,7 @@ export async function getJobBySlug(slug: string): Promise<JobDetail | null> {
     .select(
       `
       *,
-      company:companies!inner (*, district:districts (id, governorate_id, name_ar, name_en, slug)),
+      company:companies!inner (${COMPANY_PUBLIC_COLUMNS}, district:districts (id, governorate_id, name_ar, name_en, slug)),
       district:districts!inner (id, governorate_id, name_ar, name_en, slug),
       job_developers (developer:developers (id, name_ar, name_en, slug))
     `,

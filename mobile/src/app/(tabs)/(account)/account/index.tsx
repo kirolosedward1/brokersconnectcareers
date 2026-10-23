@@ -23,6 +23,7 @@ import {
 import { OPERATOR } from '@/lib/business';
 import { canAccessAdminArea, canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
+import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { CompletenessRing } from '~/components/profile/completeness-ring';
 import { useCandidateSummary } from '~/features/profile/queries';
@@ -120,6 +121,9 @@ export default function AccountScreen() {
         refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
+        {viewer?.profile?.role === 'admin' ? (
+          <StandingNotice profile={viewer.profile} company={viewer.company} companyOnly />
+        ) : null}
         {session ? (
           <Card style={{ gap: space[1] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>

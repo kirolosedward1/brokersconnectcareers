@@ -6,14 +6,14 @@ import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { launchElapsed, useLaunchHeld, useLaunchReady } from '~/features/launch';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { motion, palette, space } from '~/theme/tokens';
+import { LAUNCH_MARK_WIDTH, LAUNCH_WORDMARK_HEIGHT } from './launch-size';
 
-/** The launch screen's own picture and size (app.config.ts, expo-splash-screen). */
+/** The launch screen's own picture (app.config.ts, expo-splash-screen), at LAUNCH_MARK_WIDTH. */
 const MARK = require('../../../assets/images/splash-icon.png');
-const MARK_SIZE = 76;
 /** The logo's Arabic wordmark (src/components/brand/brand-logo.tsx), at the foot of the page. */
 const WORDMARK = require('../../../assets/brand/logo-wordmark-ar.png');
-const WORDMARK_HEIGHT = 20;
-const WORDMARK_WIDTH = (1375 / 286) * WORDMARK_HEIGHT;
+/** The artwork's own ratio (brand-logo.tsx LOCKUP): 1375 wide, 286 tall. */
+const WORDMARK_WIDTH = (1375 / 286) * LAUNCH_WORDMARK_HEIGHT;
 
 /** How long the curtain takes to lift. */
 const LIFT_MS = 420;
@@ -31,8 +31,8 @@ const SPLASH_FALLBACK_MS = 1500;
  * lifts: the mark grows a little as the page fades through to the app (only
  * the fade, with Reduce Motion on).
  *
- * The phone's own launch screen draws the same mark at the same size in the
- * same place on the same colour (app.config.ts, expo-splash-screen), and is
+ * The phone's own launch screen draws the same mark at the same width in the
+ * same place on the same colour (launch-size.ts, app.config.ts), and is
  * taken down as soon as this is laid out over it, so one gives way to the
  * other without a change; only the wordmark arrives. In Expo Go, whose own
  * loading screen the app takes down the same way, this is what shows while
@@ -138,10 +138,20 @@ export function LaunchCurtain() {
       {/* Dark letters on the light page, before the app's own bar is drawn (a phone in dark mode would make them light). */}
       <StatusBar style="dark" />
       <Animated.View testID="launch-mark" style={{ opacity: markShows, transform: markMoves }}>
-        <Image source={MARK} style={{ width: MARK_SIZE, height: MARK_SIZE }} resizeMode="contain" />
+        <Image
+          testID="launch-mark-image"
+          source={MARK}
+          style={{ width: LAUNCH_MARK_WIDTH, height: LAUNCH_MARK_WIDTH }}
+          resizeMode="contain"
+        />
       </Animated.View>
       <Animated.View style={[styles.foot, { opacity: Animated.multiply(footer, markShows) }]}>
-        <Image source={WORDMARK} style={{ width: WORDMARK_WIDTH, height: WORDMARK_HEIGHT }} resizeMode="contain" />
+        <Image
+          testID="launch-wordmark"
+          source={WORDMARK}
+          style={{ width: WORDMARK_WIDTH, height: LAUNCH_WORDMARK_HEIGHT }}
+          resizeMode="contain"
+        />
       </Animated.View>
     </Animated.View>
   );

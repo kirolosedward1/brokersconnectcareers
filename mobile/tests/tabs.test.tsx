@@ -15,7 +15,7 @@ import TabsLayout from '../src/app/(tabs)/_layout';
 import * as SharedLayout from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
 import * as InboxScreen from '../src/app/(tabs)/(applicants)/employer/applicants/index';
 import * as DirectoryScreen from '../src/app/(tabs)/(consultants,admin)/agents/index';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { fakeServer } from './server';
 
 /*
@@ -75,6 +75,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', () => [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => ownedCompany.id);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(ownedCompany));
   server.on('GET /rest/v1/companies', [ownedCompany]);
   server.on('HEAD /rest/v1/notifications', { body: null, headers: { 'content-range': '*/0' } });
   server.on('GET /rest/v1/applications', (url: URL) => {

@@ -10,6 +10,8 @@ import { lifts, palette, shadows, type Colors, type Scheme, type Shadows } from 
  *
  * The choice is also given to iOS (Appearance.setColorScheme), so the parts
  * the app does not draw itself — the tab bar, alerts, the keyboard — match.
+ * react-native-web's Appearance has no setColorScheme; calling it crashes
+ * the Expo web build, so it is skipped there.
  */
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -41,6 +43,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (typeof Appearance.setColorScheme !== 'function') return;
     Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
   }, [preference]);
 

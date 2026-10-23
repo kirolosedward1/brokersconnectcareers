@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { router, Stack, useLocalSearchParams, type Href } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatEgp, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
@@ -16,6 +16,9 @@ import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states'
 import { Text } from '~/components/ui/text';
 import { useAdminListing, type AdminListing } from '~/features/admin/queries';
 import { markupTags } from '~/i18n/rich';
+import { inOwnTab } from '~/lib/links';
+import { useSession } from '~/lib/session';
+import { tabsFor } from '~/lib/tabs';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -58,8 +61,10 @@ function Review({ id }: { id: string | undefined }) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const actor = useSession().actor;
   const listing = useAdminListing(id);
   const pull = usePullRefresh(() => listing.refetch());
+  const openHere = (path: string) => router.push(inOwnTab(path, tabsFor(actor)) as Href);
 
   if (!id) return <NotFoundState />;
   if (listing.isPending) return <LoadingState />;
@@ -104,7 +109,13 @@ function Review({ id }: { id: string | undefined }) {
           <Badge variant={STATUS_VARIANT[shown]} label={t(`jobStatus.${shown}`)} />
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-          <Text tone="mutedForeground">{localized(locale, job.company.name_ar, job.company.name_en)}</Text>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={localized(locale, job.company.name_ar, job.company.name_en)}
+            onPress={() => openHere(`/companies/${job.company.slug}`)}
+          >
+            <Text tone="primary">{localized(locale, job.company.name_ar, job.company.name_en)}</Text>
+          </Pressable>
           {job.company.suspended_at ? <Badge variant="destructive" label={t('admin.suspended')} /> : null}
           <Badge
             variant={job.company.verification_status === 'verified' ? 'success' : 'outline'}
@@ -169,7 +180,7 @@ function Review({ id }: { id: string | undefined }) {
             variant="outline"
             size="sm"
             icon={<ExternalLink size={16} color={colors.foreground} />}
-            onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
+            onPress={() => openHere(`/jobs/${job.slug}`)}
           />
         ) : null}
       </Card>

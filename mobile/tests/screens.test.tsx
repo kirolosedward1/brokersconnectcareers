@@ -360,6 +360,15 @@ describe('the board', () => {
 });
 
 describe('a listing', () => {
+  it('does not ask the landing route for a listing whose title starts with a track', async () => {
+    const slug = 'resale-consultant-new-cairo-482913';
+    server.on(`/api/mobile/v1/jobs/${slug}`, jobPage);
+    renderRouter(app, { initialUrl: `/(jobs)/jobs/${slug}` });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    expect(server.asked(`/api/mobile/v1/landing/${slug}`)).toHaveLength(0);
+    expect(server.asked(`/api/mobile/v1/jobs/${slug}`)).toHaveLength(1);
+  });
+
   it('reads like the website page and counts the view once', async () => {
     renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();

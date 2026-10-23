@@ -8,12 +8,14 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useLocale, useTranslations } from 'use-intl';
 import { SocialCircles } from '~/components/auth/social-sign-in';
 import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
+import { welcomeTile, welcomeWordmarkHeight } from '~/components/brand/launch-size';
 import { toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
 import { Button, GLASS } from '~/components/ui/button';
 import { ForwardChevron, SignInMark } from '~/components/ui/icons';
 import { CircleAlert, UserRoundPlus } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
+import { InlineLink } from '~/components/ui/inline-link';
 import { Text } from '~/components/ui/text';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { intentFromParams } from '~/features/auth/intent';
@@ -192,19 +194,25 @@ export default function WelcomeScreen() {
           />
           <SocialCircles size={compact ? 48 : 56} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
         </View>
-        <Text variant="small" style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
-          {`${t('app.welcome.employer')} `}
-          <Text
-            variant="small"
-            weight="semibold"
-            accessibilityRole="link"
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingTop: space[1],
+          }}
+        >
+          <Text variant="small" style={{ color: colors.onHeroMuted, maxWidth: '100%', textAlign: 'center' }}>
+            {`${t('app.welcome.employer')} `}
+          </Text>
+          <InlineLink
+            color={colors.champagne}
             onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
-            suppressHighlighting
-            style={{ color: colors.champagne }}
           >
             {t('app.auth.forCompanies')}
-          </Text>
-        </Text>
+          </InlineLink>
+        </View>
       </Appear>
     </View>
   );
@@ -325,7 +333,8 @@ function Backdrop({ height, screen, play }: { height: number; screen: number; pl
 function Brand({ compact, locale }: { compact: boolean; locale: string }) {
   const t = useTranslations();
   const { colors } = useTheme();
-  const tile = compact ? 44 : 52;
+  const tile = welcomeTile(compact);
+  const mark = tile * 0.68;
   return (
     <View
       accessible
@@ -344,10 +353,16 @@ function Brand({ compact, locale }: { compact: boolean; locale: string }) {
           boxShadow: '0px 10px 28px rgba(5, 10, 25, 0.4)',
         }}
       >
-        <Image source={LOGO_MARK} contentFit="contain" style={{ width: tile * 0.68, height: tile * 0.68 }} accessible={false} />
+        <Image
+          testID="welcome-mark"
+          source={LOGO_MARK}
+          contentFit="contain"
+          style={{ width: mark, height: mark }}
+          accessible={false}
+        />
       </View>
       {locale === 'ar' ? (
-        <Wordmark height={compact ? 22 : 26} tint={colors.onHero} />
+        <Wordmark testID="welcome-wordmark" height={welcomeWordmarkHeight(compact)} tint={colors.onHero} />
       ) : (
         <Text variant="headline" weight="bold" style={{ color: colors.onHero }} accessible={false}>
           {t('meta.siteName')}
