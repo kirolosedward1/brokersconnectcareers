@@ -77,6 +77,21 @@ describe('webPathToAppPath', () => {
   ])('sends %s home', (_name, input) => {
     expect(webPathToAppPath(input)).toBe('/');
   });
+
+  // The URL parser resolves dot segments after the host was checked, and a
+  // path left starting with `//` is an outside address to expo-router, which
+  // opens it in Safari.
+  it.each([
+    'https://www.brokersconnect.net/jobs/..//evil.example/x',
+    'https://www.brokersconnect.net/en//evil.example/x',
+    'https://www.brokersconnect.net//evil.example/x',
+    'brokersconnect://jobs/..\\/evil.example/x',
+    'exp://172.20.10.2:8081/--//evil.example/x',
+  ])('never leaves %s as an outside address', (input) => {
+    expect(webPathToAppPath(input)).not.toMatch(/^\/\//);
+    expect(routeFromOutside(input, null)).not.toMatch(/^([\w+.-]+:)?\/\//);
+    expect(routeInside(input, null)).not.toMatch(/^([\w+.-]+:)?\/\//);
+  });
 });
 
 describe('inOwnTab', () => {

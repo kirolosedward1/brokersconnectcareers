@@ -69,7 +69,10 @@ export function webPathToAppPath(input: string): string {
     return '/';
   }
 
-  const pathname = url.pathname.replace(LOCALE_PREFIX, '').replace(/\/+$/, '') || '/';
+  // Repeated slashes collapse before anything else reads the path: the URL
+  // parser resolves `/jobs/..//evil.com` to `//evil.com`, which expo-router
+  // treats as an outside address and opens in Safari.
+  const pathname = url.pathname.replace(/\/{2,}/g, '/').replace(LOCALE_PREFIX, '').replace(/\/+$/, '') || '/';
   for (const name of DROPPED_PARAMS) url.searchParams.delete(name);
   const search = url.searchParams.toString();
 
