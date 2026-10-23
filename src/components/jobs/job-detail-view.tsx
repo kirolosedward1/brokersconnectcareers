@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, ShieldCheck, Users } from 'lucide-react';
+import { BadgeCheck, Building2, CalendarClock, Eye, MapPin, SendHorizontal, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -276,6 +276,7 @@ export async function JobDetailView({
                  text, where it stays in view for the whole read. Two primary
                  buttons a few hundred pixels apart is one too many. */
               <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="lg:hidden">
+                <SendHorizontal className="rtl-flip" aria-hidden />
                 {t('apply')}
               </ApplyLink>
             )}
@@ -395,6 +396,7 @@ export async function JobDetailView({
                 <AppliedNotice full />
               ) : (
                 <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="w-full">
+                  <SendHorizontal className="rtl-flip" aria-hidden />
                   {t('apply')}
                 </ApplyLink>
               )}
@@ -449,7 +451,10 @@ export async function JobDetailView({
                 {/* This company's page, so it says so. It used to carry the
                     directory's own title, "Real estate companies", which is
                     the label of the header link to the list of all of them. */}
-                <Link href={`/companies/${job.company.slug}`}>{t('companyPage')}</Link>
+                <Link href={`/companies/${job.company.slug}`}>
+                  <Building2 aria-hidden />
+                  {t('companyPage')}
+                </Link>
               </Button>
             </CardContent>
           </Card>

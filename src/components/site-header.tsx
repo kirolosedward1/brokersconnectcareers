@@ -87,7 +87,8 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             360px phone, and this market is overwhelmingly mobile. */}
         <nav className="ms-2 hidden items-center gap-1 text-sm md:flex">
           {nav.map((link) => (
-            <NavLink key={link.href} href={link.href}>
+            // The bar is full at `md`; the app's link joins it from `lg` and is in the phone menu below that.
+            <NavLink key={link.href} href={link.href} className={link.href === '/app' ? 'hidden lg:inline-flex' : undefined}>
               {t(link.key)}
             </NavLink>
           ))}

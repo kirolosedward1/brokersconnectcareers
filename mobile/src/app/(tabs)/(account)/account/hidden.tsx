@@ -85,7 +85,7 @@ export default function HiddenScreen() {
   );
 }
 
-/** The kinds seen fewer of, each named as the menu found it: «بيع أول · التجمع الخامس». */
+/** The kinds seen fewer of, each named as the menu found it: «بيع أوف بلان · التجمع الخامس». */
 function useFewerEntries(owner: string): HiddenEntry[] {
   const t = useTranslations();
   const locale = useLocale();

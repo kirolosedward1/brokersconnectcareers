@@ -23,7 +23,8 @@
     "expandMenu": "Expand the menu",
     "closeMenu": "Close the menu",
     "browseJobs": "Browse jobs",
-    "searchJobs": "Search open jobs"
+    "searchJobs": "Search open jobs",
+    "app": "Get the mobile app"
   },
   "home": {
     "searchPlaceholder": "Search a role, company or district",
@@ -144,9 +145,9 @@
     "primary": "Off-plan",
     "resale": "Resale",
     "rental": "Rentals",
-    "commercial": "Commercial",
+    "commercial": "Commercial & administrative",
     "property_management": "Property management",
-    "back_office": "Back office"
+    "back_office": "Admin roles"
   },
   "employmentType": {
     "full_time": "Full time",
@@ -1376,8 +1377,7 @@
     "doorEmployerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
     "byTrack": "By specialisation",
     "byArea": "By area",
-    "contact": "Contact us",
-    "getApp": "Get the app"
+    "contact": "Contact us"
   },
   "validation": {
     "required": "This field is required",
@@ -1991,8 +1991,8 @@
     "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
   },
   "drafts": {
-    "restored": "We kept what you typed here on <time>{when}</time> and put it back.",
-    "offered": "You have unsaved changes from <time>{when}</time>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
+    "restored": "We kept what you typed here on <v>{when}</v> and put it back.",
+    "offered": "You have unsaved changes from <v>{when}</v>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
     "restore": "Restore my changes",
     "discard": "Discard them",
     "startOver": "Start over"
