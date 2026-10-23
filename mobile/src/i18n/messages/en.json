@@ -460,6 +460,13 @@
     },
     "search": {
       "resultHint": "Opens it in the console"
+    },
+    "overview": {
+      "closeDeletionBody": "Only the request is closed, and nobody is told. Nothing is deleted: agree what happens to the company and the account first, from their files."
+    },
+    "ops": {
+      "mailUnknown": "We couldn't check whether email sending is on.",
+      "retryBody": "The message goes back in the queue for one more attempt on the next sweep, within a few minutes. Nothing is sent right now."
     }
   },
   "keyboard": {
