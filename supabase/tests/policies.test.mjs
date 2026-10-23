@@ -1238,6 +1238,34 @@ report.section('a bookmark is a candidate\'s');
   report.check('and only for themselves', !forSomebodyElse.ok);
 }
 
+report.section('a note on a saved listing is the candidate\'s own (356)');
+{
+  // The bookmark first, as the service (RLS aside); the checks below run as people.
+  await db.exec(`insert into saved_jobs (candidate_id, job_id) values ('${candidate}', '${liveJob}') on conflict do nothing`);
+
+  const own = await as(candidate, `
+    update saved_jobs set note = 'اتكلمت مع منى، المقابلة الحد'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('a candidate writes a note on their own bookmark', own.ok && own.rows.length === 1, own.error);
+
+  const theirs = await as(OUTSIDER, `
+    update saved_jobs set note = 'ليست لك'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('and nobody else reaches it (zero rows, not an error)', theirs.ok && theirs.rows.length === 0, theirs.error);
+
+  const tooLong = await as(candidate, `
+    update saved_jobs set note = repeat('x', 301)
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('301 characters are refused by the table itself', !tooLong.ok && /saved_jobs_note_length/.test(tooLong.error ?? ''), tooLong.error);
+
+  const empty = await as(candidate, `
+    update saved_jobs set note = ''
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('and so is an empty one: no note is null', !empty.ok && /saved_jobs_note_length/.test(empty.error ?? ''), empty.error);
+
+  await db.exec(`delete from saved_jobs where candidate_id = '${candidate}' and job_id = '${liveJob}'`);
+}
+
 report.section('a photo is the account\'s own photo');
 {
   const own = await as(candidate, `

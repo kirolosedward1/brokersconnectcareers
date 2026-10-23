@@ -429,7 +429,7 @@ report.section('the agent directory searches only what the card shows');
   report.check('a keyword is data, not SQL', injected.ok && injected.rows.length === 0, injected.error);
 }
 
-report.section('a database seeded before the aliases gets them from migration 342');
+report.section('a database seeded before the aliases gets them from migrations 342 and 358');
 {
   // Production's taxonomy was seeded before migration 68 and seed.sql did not
   // run there again: no aliases at all. 342 carries the seed's rows to it.
@@ -448,15 +448,18 @@ report.section('a database seeded before the aliases gets them from migration 34
   report.check('without them, القاهرة الجديدة finds nothing', !(await matches(job, 'القاهرة الجديدة')));
   report.check('nor does ريسيل', !(await matches(job, 'ريسيل')));
 
-  const migration = readFileSync(
-    new URL('../migrations/20260101000342_the_names_people_search_by.sql', import.meta.url),
-    'utf8',
-  );
+  // 358 adds the first-sale track's new wording, which the seed gained after 342.
+  const migration = [
+    '20260101000342_the_names_people_search_by.sql',
+    '20260101000358_the_first_sale_track_by_its_new_name.sql',
+  ]
+    .map((name) => readFileSync(new URL(`../migrations/${name}`, import.meta.url), 'utf8'))
+    .join('\n');
   await db.exec(migration);
   const restored = await aliasSet();
   report.check(
-    `342 puts back the seed's ${seeded.length} aliases, and only those`,
-    seeded.length === 25 && JSON.stringify(restored) === JSON.stringify(seeded),
+    `342 and 358 put back the seed's ${seeded.length} aliases, and only those`,
+    seeded.length === 28 && JSON.stringify(restored) === JSON.stringify(seeded),
     JSON.stringify({
       missing: seeded.filter((row) => !restored.includes(row)),
       extra: restored.filter((row) => !seeded.includes(row)),

@@ -28,7 +28,12 @@ import {
   type SearchParams,
 } from '@/lib/queries/jobs';
 import { formatNumber } from '@/lib/utils';
-import { activeFilterList, type ActiveFilter as SharedActiveFilter } from '@/lib/job-filters';
+import {
+  activeFilterLabel,
+  activeFilterList,
+  type ActiveFilter as SharedActiveFilter,
+} from '@/lib/job-filters';
+import type { Translate } from '@/lib/notifications/title';
 
 export async function generateMetadata({
   params,
@@ -154,12 +159,6 @@ export default async function JobsPage({
 
   const t = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
-  const tLeads = await getTranslations('leadsSource');
-  const tExp = await getTranslations('experienceBand');
-  const tType = await getTranslations('employmentType');
-  const tFilters = await getTranslations('filters');
-  const tCompanyType = await getTranslations('companyType');
-  const tCommission = await getTranslations('commissionType');
 
   // A name the reader would recognise in a list a month from now. Their own
   // search words if they typed any, otherwise the filters that narrowed it.
@@ -194,45 +193,13 @@ export default async function JobsPage({
     company is left out because the banner above already names it and carries
     its own way back.
   */
-  const districtLabel = (slug: string) => {
-    const district = districts.find((item) => item.slug === slug);
-    return district ? localized(locale, district.name_ar, district.name_en) : slug;
-  };
-  const governorate = governorates.find((item) => item.slug === filters.governorateSlug);
-
   type ActiveFilter = { key: string; label: string; href: string; without: Partial<typeof filters> };
 
-  // The list and its order are shared with the mobile app (activeFilterList);
-  // only the words are the page's.
-  const labelFor = (filter: SharedActiveFilter): string => {
-    const value = String(filter.value);
-    switch (filter.kind) {
-      case 'q':
-        return `«${value}»`;
-      case 'track':
-        return tTrack(value as never);
-      case 'district':
-        return districtLabel(value);
-      case 'gov':
-        return governorate ? localized(locale, governorate.name_ar, governorate.name_en) : value;
-      case 'ctype':
-        return tCompanyType(value as never);
-      case 'leads':
-        return tLeads(`${value}_short` as never);
-      case 'salary':
-        return tFilters(filter.value ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo');
-      case 'pay':
-        return tFilters('minSalaryAtLeast', { amount: formatNumber(Number(filter.value), locale) });
-      case 'comm':
-        return tCommission(value as never);
-      case 'posted':
-        return tFilters('postedWithin', { days: Number(filter.value) });
-      case 'exp':
-        return tExp(value as never);
-      case 'type':
-        return tType(value as never);
-    }
-  };
+  // The list, its order and its words are shared with the mobile app
+  // (activeFilterList, activeFilterLabel).
+  const tRoot = await getTranslations();
+  const labelFor = (filter: SharedActiveFilter) =>
+    activeFilterLabel(filter, { t: tRoot as unknown as Translate, locale, districts, governorates });
 
   const activeFilters: ActiveFilter[] = activeFilterList(filters).map((filter) => ({
     key: filter.key,

@@ -1,5 +1,5 @@
 -- =============================================================================
--- 357 — A declined card then a paid one
+-- 359 — A declined card then a paid one
 --
 -- settle_order() (migration 312) treated `failed` as final: the first
 -- unsuccessful callback for an order moved it to `failed`, and every callback

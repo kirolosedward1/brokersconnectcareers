@@ -17,6 +17,7 @@ import {
 import { CommissionPicture } from '@/components/jobs/commission-picture';
 import { commissionPicture, type CommissionPicture as CommissionPictureData } from '@/lib/earnings';
 import { JobCard } from '@/components/jobs/job-card';
+import { ApplyLink } from '@/components/jobs/apply-link';
 import { SaveJobButton } from '@/components/jobs/save-job-button';
 import { ReportJobDialog } from '@/components/jobs/report-job-dialog';
 import { AppliedNotice } from '@/components/jobs/applied-notice';
@@ -90,6 +91,8 @@ export async function JobDetailView({
    */
   const role = viewer?.profile?.role;
   const canApply = !role || role === 'candidate';
+  // The listing named in the sign-in dialog a visitor meets on Apply.
+  const intent = { job: title, company: companyName };
 
   // Has this candidate already applied? Cheap, and it changes the primary CTA.
   let alreadyApplied = false;
@@ -272,9 +275,9 @@ export async function JobDetailView({
               /* From `lg` the apply action lives in the summary beside the
                  text, where it stays in view for the whole read. Two primary
                  buttons a few hundred pixels apart is one too many. */
-              <Button asChild size="lg" className="lg:hidden">
-                <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
-              </Button>
+              <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="lg:hidden">
+                {t('apply')}
+              </ApplyLink>
             )}
             {/* A bookmark is a candidate's: the only page that lists them turns
                 employers away, and since migration 202 the insert policy does
@@ -391,9 +394,9 @@ export async function JobDetailView({
               ) : !canApply ? null : alreadyApplied ? (
                 <AppliedNotice full />
               ) : (
-                <Button asChild size="lg" className="w-full">
-                  <Link href={`/jobs/${job.slug}/apply`}>{t('apply')}</Link>
-                </Button>
+                <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="w-full">
+                  {t('apply')}
+                </ApplyLink>
               )}
             </div>
 
@@ -466,9 +469,9 @@ export async function JobDetailView({
             {alreadyApplied ? (
               <AppliedNotice full />
             ) : (
-              <Button asChild className="w-full" size="lg">
-                <Link href={`/jobs/${job.slug}/apply`}>{tApply('submit')}</Link>
-              </Button>
+              <ApplyLink href={`/jobs/${job.slug}/apply`} signedIn={Boolean(viewer?.profile)} intent={intent} size="lg" className="w-full">
+                {tApply('submit')}
+              </ApplyLink>
             )}
           </div>
           ) : null}

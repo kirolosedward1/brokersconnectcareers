@@ -15,7 +15,6 @@ import { EMPTY_FILTERS, queryJobs, type JobListItem } from '@/lib/queries/jobs';
 import { optional, raise } from '@/lib/queries/error';
 import { rankJobs } from '@/lib/match';
 
-import { formatDate } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 
 type Params = { locale: string; slug: string };
@@ -181,32 +180,12 @@ export default async function ApplyPage({
             <p className="mt-1.5 text-sm text-muted-foreground">{t('successBody')}</p>
           </div>
 
-          <dl className="mt-6 divide-y divide-border rounded-xl border border-border">
-            <div className="flex items-start justify-between gap-4 p-4">
-              <dt className="text-sm text-muted-foreground">{t('labelJob')}</dt>
-              <dd className="text-end text-sm font-medium">{title}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-4 p-4">
-              <dt className="text-sm text-muted-foreground">{t('labelCompany')}</dt>
-              <dd className="text-end text-sm font-medium">{company}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-4 p-4">
-              <dt className="text-sm text-muted-foreground">{t('labelDate')}</dt>
-              {/* No .numeral here. formatDate returns "12 مارس 2026" — Arabic
-                  words next to digits — and forcing that run left-to-right is
-                  the bug the class exists to prevent, not a use of it. The
-                  bidi algorithm already reads it correctly. */}
-              <dd className="text-end text-sm font-medium">
-                {formatDate(existing.created_at, locale)}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Button asChild>
+          {/* Two buttons of one size, side by side: the two ways on are equals. */}
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <Button asChild className="w-full">
               <Link href="/dashboard/applications">{t('viewApplications')}</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="w-full">
               <Link href="/jobs">{tJobs('title')}</Link>
             </Button>
           </div>
@@ -229,7 +208,8 @@ export default async function ApplyPage({
               <h2 id="next-roles" className="text-lg font-semibold">
                 {personalised ? t('nextRolesMatched') : t('nextRoles')}
               </h2>
-              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+              {/* One under another, full width: two cards side by side broke every line of each. */}
+              <ul className="mt-3 space-y-3">
                 {nextRoles.map(({ job: role }) => (
                   <li key={role.id}>
                     <JobCard job={role} locale={locale} />

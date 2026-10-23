@@ -218,7 +218,7 @@ export function directoryDeniedRedirect(actor: Actor): string {
 // Navigation
 // ---------------------------------------------------------------------------
 
-export type SiteNavItem = { href: '/jobs' | '/companies' | '/agents' | '/blog'; key: 'jobs' | 'companies' | 'agents' | 'blog' };
+export type SiteNavItem = { href: '/jobs' | '/companies' | '/agents' | '/blog'; key: 'searchJobs' | 'companies' | 'agents' | 'blog' };
 
 /**
  * The public site's main navigation, by audience.
@@ -229,7 +229,8 @@ export type SiteNavItem = { href: '/jobs' | '/companies' | '/agents' | '/blog'; 
  */
 export function siteNavFor(actor: Actor): SiteNavItem[] {
   const items: SiteNavItem[] = [
-    { href: '/jobs', key: 'jobs' },
+    // The board, named for what the reader does there (nav.searchJobs); nav.jobs stays the app tab's short name.
+    { href: '/jobs', key: 'searchJobs' },
     { href: '/companies', key: 'companies' },
   ];
   if (canBrowseAgentDirectory(actor)) items.push({ href: '/agents', key: 'agents' });
