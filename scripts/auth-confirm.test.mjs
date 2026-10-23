@@ -168,7 +168,8 @@ console.log('\n— the generated mail');
       legal: [{ label: 'الخصوصية', href: `${SITE}/privacy` }],
     },
   });
-  is('product mail stays light, one language, with the footer it had', /light dark|bc-card|bc-copy|#5B6475|#E3E7EF/.test(product), false);
+  is('product mail stays light and one language', /light dark|bc-card|bc-copy|#E3E7EF/.test(product), false);
+  is('product mail footer matches the auth footer', product.includes('color:#5B6475') && !product.includes('color:#9ca3af'), true);
 }
 
 console.log('\n— the route: a GET never spends a link, a POST from elsewhere is refused');

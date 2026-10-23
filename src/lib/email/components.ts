@@ -324,9 +324,8 @@ export function renderEmail({
   blocks: Block[];
   footer: EmailFooter;
   /**
-   * Auth mail only. Product mail stays as it was: one language, light, the
-   * footer it has always had. Auth mail adds the English section, dark mode,
-   * and the footer colour the auth templates were given.
+   * Product mail stays one language and light. Auth mail adds the English
+   * section and dark mode. Both use the same footer colour.
    */
   appearance?: 'default' | 'auth';
   /** English, under a divider. Auth mail only; ignored otherwise. */
@@ -334,7 +333,12 @@ export function renderEmail({
 }): string {
   const align = dir === 'rtl' ? 'right' : 'left';
   const auth = appearance === 'auth';
-  const footerColor = auth ? '#5B6475' : FAINT;
+  // One footer colour for auth mail and the Resend messages. #5B6475 on the
+  // white card (#ffffff) is 5.96:1; the previous #9ca3af was 2.54:1. Dark mode
+  // (auth only) repaints the footer to #E5E7EB on #111827, which is 14.3:1 —
+  // #5B6475 on that card would be 2.98:1, so the site name must not set its
+  // own colour or it would keep the light grey in the dark card.
+  const footerColor = '#5B6475';
   const linkSize = auth ? 'font-size:13px;' : '';
 
   const legal = footer.legal
@@ -432,7 +436,7 @@ ${headingRow(dir, align, heading, '28px 28px 6px')}
 
         <tr>
           <td dir="${dir}" align="${align}" class="gutter${auth ? ' bc-footer' : ''}" style="padding:24px 28px 26px;border-top:1px solid ${LINE};font-size:12px;line-height:1.9;color:${footerColor};">
-            <div style="font-weight:600;color:${auth ? footerColor : SOFT};">${escape(siteName)}</div>
+            <div style="font-weight:600;">${escape(siteName)}</div>
             <div>${escape(footer.reason)}</div>
             <div>${escape(footer.automated)}</div>
             ${legal ? `<div style="padding-top:6px;">${legal}</div>` : ''}
