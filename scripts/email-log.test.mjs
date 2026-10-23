@@ -6,8 +6,8 @@
  *
  * The database and the provider are fakes. persistFailedSend is the write
  * deliver() uses when claim_email failed or the failure could not be recorded;
- * sweepOutbox is the retry job. The hook resolves the extensionless import
- * newEmailLogId uses for its id.
+ * sweepOutbox is the retry job. The hook resolves extensionless imports in
+ * the modules under test.
  */
 
 import { register } from 'node:module';
