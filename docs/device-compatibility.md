@@ -1,6 +1,6 @@
 # Device compatibility and accessibility (work 11)
 
-Status on **2026-10-22**, `main` at a81a13f plus this branch. The website's
+Status on **2026-10-23**, `main` at 97566e1 plus this branch. The website's
 full three-engine pass is `docs/cross-browser-qa.md` (September); this round
 is mostly about the app, with the website re-checked where it could be.
 
@@ -30,7 +30,7 @@ or a person can fill are marked so.
 
 | Check | How | Result |
 | --- | --- | --- |
-| The app's whole suite (`pnpm check`): typecheck, lint, shared-code guard, update-publishing check, licences, Jest | Node 22, jest-expo 57.0.5, React Native 0.86.3 test renderer | 71 suites, 1,142 tests, all pass (this branch's head; 70 suites, 1,137 before the QA review's fixes at be9130d). `tests/auth.test.tsx` has two tests that now and then time out at 5 s under full parallel load and pass when the suite runs alone; they predate this branch |
+| The app's whole suite (`pnpm check`): typecheck, lint, shared-code guard, update-publishing check, licences, Jest | Node 22, jest-expo 57.0.5, React Native 0.86.3 test renderer | 74 suites, 1,204 tests, all pass (this branch with `main` at 97566e1; 70 suites, 1,137 before the QA review's fixes at be9130d). `tests/auth.test.tsx` has two tests that now and then time out at 5 s under full parallel load and pass when the suite runs alone; they predate this branch |
 | Text cut short at the accessibility sizes | A static audit of every `numberOfLines` in `src/` | **37 places fixed** (17, then 20 more that arrived from `main` while this was open), plus the select field. Now a test, `tests/large-text.test.tsx` |
 | The welcome screen on small phones at large text | Line wrapping measured with the app's own font (IBM Plex Sans Arabic via HarfBuzz/raqm), the welcome's real strings and its type scale, at 375 × 667, 375 × 812 and 440 × 956, font scales 1–3.571 | **Fixed**: see below |
 | VoiceOver/TalkBack labels | Static audit of every `Pressable`, `PressableScale`, `Switch`, `TextInput`, `TextField` and `Image` | Every control has a role; all 50 text fields carry their label; errors are announced (`useErrorsInView`). Nothing to fix |
@@ -72,6 +72,7 @@ drew their empty or unavailable states, not real listing cards.
 | Arabic font loaded | 240 of 240; every page `dir="rtl"`, `lang="ar"` |
 | Page errors | none |
 | axe-core 4.10 (WCAG 2.0/2.1 A and AA) | at 390 and 1280 px, 32 loads: **two violations, both on `/app`** (fixed, below); after the fix, 0. axe was checked against a page with four planted violations, and found all four |
+| After merging `main` at 97566e1 | Every page again at 320, 390 and 1280 px (48 loads): no overflow, no page errors, the font every time; axe on 32 loads: 0 violations once `/app`'s screen tour was fixed (below) |
 | Keyboard on `/app` | Tab through the page at 390 and 1280 px | Every stop draws a focus ring; the row of screens takes focus and the arrow keys scroll it; Enter on a step makes it the current one |
 
 Not repeated this round: WebKit and Firefox (not installed here; September's
@@ -136,14 +137,15 @@ where the footer still fitted, which is why it never showed.
 measured line breaks and the app's line heights, not a screenshot: confirm
 them on an SE simulator.
 
-**The app page's walkthrough (website).** `/app`, new from `main` while this
-was open, failed two of axe's AA checks. On a phone the row of screens
+**The app page's screen tour (website).** `/app`, new from `main` while this
+was open, failed two of axe's AA checks, and failed them again once `main`
+rebuilt the page around a new screen tour. On a phone the row of screens
 scrolls sideways but could not take focus, so somebody on a keyboard could
 not scroll it (`scrollable-region-focusable`); it takes focus now, its ring
-drawn inside it since it runs edge to edge. On a desktop the steps not in
+drawn inside it since it runs edge to edge. On a desktop the screens not in
 view were dimmed to 70% as a whole, which took their small step numbers, in
 the primary colour, below 4.5:1 (`color-contrast`); only the title and
-description are dimmed now. `src/components/get-app/walkthrough.tsx`.
+description are dimmed now. `src/components/get-app/screen-tour.tsx`.
 
 ## Checked and left alone
 
