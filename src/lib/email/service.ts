@@ -1,5 +1,6 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { uuid } from '@/lib/utils';
 import { logFailure } from '@/lib/observe';
 import { retryDbResult } from '@/lib/jobs/db';
 import { currentRetryContext } from '@/lib/jobs/retry-context';
@@ -7,7 +8,6 @@ import { sendEmail, type SendOutcome } from './send';
 import { TEMPLATES, isEssential, type TemplateName } from './templates';
 import {
   claimInsert,
-  newEmailLogId,
   persistFailedSend,
   reportUnloggedSend,
   scrubEmailError,
@@ -237,7 +237,7 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
   // with itself instead of minting a second row. A sweeper retry already has
   // its row; claim_email hands that one back, and a new id would be a second
   // message.
-  const attemptId = retry ? null : newEmailLogId();
+  const attemptId = retry ? null : uuid();
   const { data: claimed, error: claimError } = await retryDbResult(() =>
     retry
       ? admin.rpc('claim_email', {
