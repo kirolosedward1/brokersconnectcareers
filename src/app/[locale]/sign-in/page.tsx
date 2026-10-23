@@ -43,12 +43,12 @@ export default async function SignInPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; confirmed?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  const { next, error } = await searchParams;
+  const { next, error, confirmed } = await searchParams;
   // Validated once here for the two links that carry it onward; ReturnIntent
   // and the form validate their own copies.
   const intended = safeNext(next) ?? undefined;
@@ -74,6 +74,13 @@ export default async function SignInPage({
   */
   const sessionExpired = error === 'session_expired';
 
+  /*
+    A confirmation opened on another device. The address is confirmed and
+    there is no session here, so this is a success, not one of the failures
+    above. #1A7F37 on #F0FDF4 is 4.85:1.
+  */
+  const emailConfirmed = confirmed === '1';
+
   const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
 
@@ -95,7 +102,14 @@ export default async function SignInPage({
           </Link>
         </p>
 
-        {linkFailed || sessionExpired ? (
+        {emailConfirmed ? (
+          <p
+            role="status"
+            className="mt-6 rounded-xl border border-[#1A7F37]/25 bg-[#F0FDF4] p-4 text-sm text-[#1A7F37]"
+          >
+            {t('emailConfirmed')}
+          </p>
+        ) : linkFailed || sessionExpired ? (
           <p role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
             {sessionExpired ? t('sessionExpired') : t('linkExpired')}
           </p>

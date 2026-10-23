@@ -323,6 +323,14 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   report.ok(!/window\.location\.(assign|href\s*=)/.test(rescue), 'the rescue navigates through the router, to literal paths only');
   const signIn = read(j(ROOT, 'src/app/[locale]/sign-in/page.tsx'), 'utf8');
   report.ok(/link_expired/.test(signIn) && /missing_code/.test(signIn) && /exchange_failed/.test(signIn), 'the sign-in page explains all three link failures');
+  report.ok(
+    /confirmed === '1'/.test(signIn) &&
+      /role="status"/.test(signIn) &&
+      /text-\[#1A7F37\]/.test(signIn) &&
+      /bg-\[#F0FDF4\]/.test(signIn) &&
+      /t\('emailConfirmed'\)/.test(signIn),
+    'a confirmed address is a green status, not another error',
+  );
 }
 
 /*
