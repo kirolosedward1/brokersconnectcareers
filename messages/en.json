@@ -331,6 +331,7 @@
     "passwordUpdated": "Your password has been changed.",
     "backToSignIn": "Back to sign in",
     "linkExpired": "That link has expired or has already been used. Ask for a new one.",
+    "emailConfirmed": "Your email is confirmed. Sign in to continue.",
     "sessionExpired": "Your session ended. Sign in again and we will take you back to the same page.",
     "checkEmailTitle": "We sent you a confirmation email",
     "checkEmailSpam": "If it has not arrived within a minute, check your spam folder.",
