@@ -162,21 +162,21 @@ describe('a password', () => {
     expect(StyleSheet.flatten(password().props.style).writingDirection).toBe('ltr');
   });
 
-  it('keeps the eye inside the field, at the end of a left-to-right row', () => {
+  it('keeps the eye inside the field, and does not pin the row left to right on the phone', () => {
     render(<PasswordField accessibilityLabel={ar.auth.password} />, { wrapper: Providers });
     const eye = screen.getByRole('button', { name: ar.app.auth.showPassword });
     const style = StyleSheet.flatten(typeof eye.props.style === 'function' ? eye.props.style({ pressed: false }) : eye.props.style);
     expect(style.width).toBe(hitTarget);
     expect(style.height).toBe(hitTarget);
     expect(style.marginEnd).toBeUndefined();
+    // This run is the phone. The row is not pinned left to right: I18nManager
+    // mirrors it. Only the web pins the row, where nothing else swaps the end.
     let node: typeof eye | null = eye;
-    let direction: unknown;
     while (node) {
       const parentStyle = StyleSheet.flatten(node.props.style);
-      if (parentStyle?.direction) direction = parentStyle.direction;
+      expect(parentStyle?.direction).not.toBe('ltr');
       node = node.parent;
     }
-    expect(direction).toBe('ltr');
   });
 
   it('is shown and hidden again with the eye at its end, which says what it will do', () => {

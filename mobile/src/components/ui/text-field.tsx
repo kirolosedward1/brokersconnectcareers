@@ -58,10 +58,11 @@ export const TextField = forwardRef<
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[2],
-        // An email or a password is read left to right, so the row is too:
-        // the eye at its end stays on the right, on the web and on the phone,
-        // instead of being mirrored to the left edge and pushed off it.
-        direction: ltr ? 'ltr' : undefined,
+        // On the web nothing swaps left and right, so an email or a password
+        // pins its row left to right and the eye stays at the right end. On
+        // the phone I18nManager already mirrors `row`; pinning `ltr` as well
+        // puts the eye on the wrong side.
+        direction: ltr && Platform.OS === 'web' ? 'ltr' : undefined,
         paddingStart: space[4] - 2,
         // A trailing control (the password's eye) is 44 points and sits flush
         // with the end border. A negative end margin used to pull that box

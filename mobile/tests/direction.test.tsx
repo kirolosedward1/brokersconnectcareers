@@ -118,20 +118,18 @@ describe('a field', () => {
 });
 
 describe('a label', () => {
-  it('starts at the right edge on the phone, and at start on the web', () => {
-    // The phone does not mirror `left`, and this run says left to right
-    // (I18nManager.isRTL is false). Arabic still starts on the right.
-    expect(I18nManager.isRTL).toBe(false);
-    expect(textAlignStart('ios', 'rtl')).toBe('right');
-    expect(textAlignStart('android', 'rtl')).toBe('right');
-    expect(textAlignStart('ios', 'ltr')).toBe('left');
-    expect(textAlignStart('web', 'rtl')).toBe('start');
+  it('stays left on the phone so I18nManager mirrors it once, and uses start only on the web', () => {
+    // A native `right` is swapped again while the phone is right to left, which
+    // put Arabic back on the left. The web has no such swap, so it uses start.
+    expect(textAlignStart('ios')).toBe('left');
+    expect(textAlignStart('android')).toBe('left');
+    expect(textAlignStart('web')).toBe('start');
 
     render(
       <ThemeProvider>
         <AppText testID="label">مرحبا</AppText>
       </ThemeProvider>,
     );
-    expect(StyleSheet.flatten(screen.getByTestId('label').props.style).textAlign).toBe('right');
+    expect(StyleSheet.flatten(screen.getByTestId('label').props.style).textAlign).toBe('left');
   });
 });
