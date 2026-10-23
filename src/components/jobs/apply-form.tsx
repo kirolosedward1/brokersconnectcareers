@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { CheckCircle2, Paperclip, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Paperclip, ShieldCheck } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
@@ -324,15 +324,23 @@ export function ApplyForm({
         action writes the name and phone back to the profile, and the delete
         policy is what makes withdrawing real.
       */}
-      <div className="flex gap-3 rounded-xl border border-border bg-muted/40 p-4">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-semibold">{t('privacyTitle')}</p>
+      {/* Folded to its question until pressed, as the app's is: three
+          paragraphs stood between the fields and the button, and the one
+          question most people have is answered by the heading alone. A
+          native <details>: open and read before any script arrives. */}
+      <details className="group rounded-xl border border-border bg-muted/40">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 p-4 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+          <ShieldCheck className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="flex-1">{t('privacyTitle')}</span>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+        </summary>
+        {/* Under the question, where its words start: past the shield. */}
+        <div className="space-y-1 pb-4 pe-4 ps-12">
           <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyBody')}</p>
           <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyProfile')}</p>
           <p className="text-sm leading-relaxed text-muted-foreground">{t('privacyNote')}</p>
         </div>
-      </div>
+      </details>
 
       {errors.form ? (
         <p role="alert" className="text-sm text-destructive">

@@ -128,12 +128,6 @@
     "fewerNote": "بتيجي في آخر الوظائف المقترحة عليك في الرئيسية، وبتفضل تظهر عادي في الوظائف."
   },
   "applications": {
-    "withdrawTitle": "تسحب طلبك على «{title}»؟",
-    "withdrawBody": "الطلب هيتشال من عند الشركة، ومفيش رجوع في الخطوة دي.",
-    "timeline": "حالة طلبك",
-    "stepSent": "اتبعت",
-    "stepSeen": "الشركة شافته",
-    "stepDecision": "القرار",
     "activeHeading": "طلبات لسه شغّالة",
     "decidedHeading": "طلبات اتحسمت"
   },

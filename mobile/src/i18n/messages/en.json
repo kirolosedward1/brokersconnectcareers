@@ -128,12 +128,6 @@
     "fewerNote": "They come last among the roles suggested to you on Home, and still show on the board."
   },
   "applications": {
-    "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will no longer see it. This cannot be undone.",
-    "timeline": "Where it stands",
-    "stepSent": "Sent",
-    "stepSeen": "Seen",
-    "stepDecision": "Decision",
     "activeHeading": "Still in progress",
     "decidedHeading": "Decided"
   },

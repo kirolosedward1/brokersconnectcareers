@@ -527,9 +527,6 @@
     "viewApplications": "Track your applications",
     "employerCannotApply": "You're signed in as a company. Applying is for consultants only.",
     "rateLimit": "You have applied to a lot of jobs in a short time. Wait a little and try again — or tomorrow, if you have reached today's limit.",
-    "labelJob": "Role",
-    "labelCompany": "Company",
-    "labelDate": "Applied on",
     "nextRoles": "Other open roles",
     "nextRolesMatched": "Other roles that fit you",
     "privacyTitle": "Who sees your details?",
@@ -1803,5 +1800,13 @@
     "textsBody": "Each licence appears here once, as one of the packages under it ships it.",
     "textFrom": "As shipped with <v>{source}</v>",
     "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
+  },
+  "myApplications": {
+    "timeline": "Where it stands",
+    "stepSent": "Sent",
+    "stepSeen": "Seen",
+    "stepDecision": "Decision",
+    "withdrawTitle": "Withdraw your application to “{title}”?",
+    "withdrawBody": "The company will no longer see it. This cannot be undone."
   }
 }

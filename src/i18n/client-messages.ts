@@ -74,6 +74,8 @@ export const CONSOLE_MESSAGES = [
   'employer',
   'jobForm',
   'language',
+  // The confirmation before withdrawing an application, as the app asks it.
+  'myApplications',
   'nav',
   // The note under a saved listing on /dashboard/saved; the app reads the same words.
   'savedNotes',
