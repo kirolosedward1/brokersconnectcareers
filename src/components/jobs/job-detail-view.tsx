@@ -105,13 +105,16 @@ export async function JobDetailView({
   let picture: CommissionPictureData | null = null;
   if (viewer?.profile?.role === 'candidate') {
     const supabase = await createClient();
-    const [{ data: application }, { data: saved }, { data: record }] = await Promise.all([
+    const [{ data: applications }, { data: saved }, { data: record }] = await Promise.all([
+      // Every row, not maybeSingle: a withdrawal leaves the old one, and a
+      // later application is a second row. A withdrawn row is not "already
+      // applied". Status is read and filtered here so the label is not sent
+      // to a database that does not have it yet.
       supabase
         .from('applications')
-        .select('id')
+        .select('id, status')
         .eq('job_id', job.id)
-        .eq('candidate_id', viewer.userId)
-        .maybeSingle(),
+        .eq('candidate_id', viewer.userId),
       supabase
         .from('saved_jobs')
         .select('job_id')
@@ -131,7 +134,7 @@ export async function JobDetailView({
         .eq('user_id', viewer.profile.id)
         .maybeSingle(),
     ]);
-    alreadyApplied = Boolean(application);
+    alreadyApplied = (applications ?? []).some((row) => row.status !== 'withdrawn');
     alreadySaved = Boolean(saved);
     picture = commissionPicture(job, {
       unitsClosed: record?.units_closed ?? null,

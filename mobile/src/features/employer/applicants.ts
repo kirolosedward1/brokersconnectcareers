@@ -12,7 +12,7 @@ import type {
   JobStatus,
   JobTrack,
 } from '@/lib/supabase/database.types';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { APPLICATION_STAGES, PIPELINE_STAGES, withWithdrawnLast } from '@/lib/application-stages';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import { looseArabicNeedle } from '@/lib/search/needle';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
@@ -111,7 +111,7 @@ export function useListingApplicants(jobId: string) {
         .order('created_at', { ascending: false })
         .limit(APPLICANTS_CAP);
       if (error) throw error;
-      const applicants = normalise(data ?? []);
+      const applicants = withWithdrawnLast(normalise(data ?? []));
       return { job: job as ListingPipeline['job'], applicants, total: count ?? applicants.length };
     },
   });
@@ -195,8 +195,13 @@ export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: 
       if (stages.error) throw stages.error;
 
       const counts = Object.fromEntries(APPLICATION_STAGES.map((stage) => [stage, 0])) as Record<ApplicationStatus, number>;
-      for (const row of (stages.data ?? []) as { status: ApplicationStatus }[]) counts[row.status] += 1;
-      return { rows: normalise(rows.data ?? []), counts, any: (stages.data ?? []).length };
+      let any = 0;
+      for (const row of (stages.data ?? []) as { status: ApplicationStatus }[]) {
+        if (row.status === 'withdrawn') continue;
+        counts[row.status] += 1;
+        any += 1;
+      }
+      return { rows: withWithdrawnLast(normalise(rows.data ?? [])), counts, any };
     },
   });
 }

@@ -3,7 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-n
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Layers, Search, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';
@@ -194,7 +194,7 @@ export default function InboxScreen() {
             selected={!filters.stage}
             onPress={() => setFilter({ stage: undefined })}
           />
-          {APPLICATION_STAGES.map((stage) => (
+          {PIPELINE_STAGES.map((stage) => (
             <Chip
               key={stage}
               radio

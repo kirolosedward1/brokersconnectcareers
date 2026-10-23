@@ -18,7 +18,7 @@ export type ExperienceBand = 'fresh_0_1' | 'junior_1_3' | 'mid_3_5' | 'senior_5_
 export type LeadsSource = 'company_provided' | 'self_generated' | 'hybrid';
 export type CommissionType = 'percentage' | 'split' | 'undisclosed' | 'none';
 export type JobStatus = 'draft' | 'pending_review' | 'active' | 'expired' | 'closed' | 'rejected';
-export type ApplicationStatus = 'new' | 'shortlisted' | 'interview' | 'hired' | 'rejected';
+export type ApplicationStatus = 'new' | 'shortlisted' | 'interview' | 'hired' | 'rejected' | 'withdrawn';
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 export type AgentVisibility = 'public' | 'verified_employers_only' | 'hidden';
 export type AgentAvailability = 'open_to_offers' | 'employed_not_looking' | 'actively_searching';
@@ -228,6 +228,8 @@ export type ApplicationRow = Timestamped & {
   employer_viewed_at: string | null;
   /** The employer's reason for the current status. The candidate sees it. */
   decision_note: string | null;
+  /** Set when the candidate withdraws. Null on a standing application. */
+  withdrawn_at: string | null;
 };
 
 export type CandidateSummary = {
@@ -1545,6 +1547,15 @@ export type Database = {
        */
       candidate_summary: { Args: Empty; Returns: CandidateSummary };
       employer_summary: { Args: Empty; Returns: EmployerSummary };
+      /**
+       * The candidate withdraws their own open application. Empty when it is
+       * not theirs or the outcome is no longer open. previous_cv_path is the
+       * file the row was holding; the row itself keeps cv_path null.
+       */
+      withdraw_application: {
+        Args: { p_id: string };
+        Returns: { application_id: string; previous_cv_path: string | null }[];
+      };
       admin_summary: { Args: Empty; Returns: AdminSummary };
       employer_trend: { Args: Empty; Returns: EmployerTrend };
       admin_trend: { Args: Empty; Returns: AdminTrend };

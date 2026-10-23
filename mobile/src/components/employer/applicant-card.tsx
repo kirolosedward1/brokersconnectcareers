@@ -7,7 +7,7 @@ import { formatDate, formatEgp, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
-import { APPLICATION_STAGES, STAGE_TONE } from '@/lib/application-stages';
+import { PIPELINE_STAGES, STAGE_TONE, WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
@@ -73,7 +73,7 @@ export function ApplicantCard({
 }) {
   const t = useTranslations();
   const locale = useLocale();
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   const { actor } = useSession();
   const move = useSetApplicationStatus();
 
@@ -83,6 +83,8 @@ export function ApplicantCard({
   // colleague), and every move from the card was then refused as a colleague's.
   const [pending, setPending] = useState<{ status: ApplicationStatus; reason: string } | null>(null);
   const status = pending?.status ?? applicant.status;
+  const withdrawn = status === 'withdrawn';
+  const withdrawnText = scheme === 'dark' ? WITHDRAWN_TEXT_DARK : WITHDRAWN_BADGE.color;
   const storedReason = applicant.decision_note ?? '';
   const savedReason = pending?.reason ?? storedReason;
   // The reason being typed follows the stored one for as long as nobody has typed in it.
@@ -162,7 +164,7 @@ export function ApplicantCard({
   // Swiped aside: shortlist a new applicant (dragged left), or turn one down
   // (dragged right, asked first) — the stage picker's own moves.
   const shortlist: SwipeAction | undefined =
-    status === 'new'
+    !withdrawn && status === 'new'
       ? {
           label: t('applicationStatus.shortlisted'),
           icon: <UserRoundCheck size={20} color="#FFFFFF" />,
@@ -171,7 +173,7 @@ export function ApplicantCard({
         }
       : undefined;
   const turnDown: SwipeAction | undefined =
-    status !== 'rejected' && status !== 'hired'
+    !withdrawn && status !== 'rejected' && status !== 'hired'
       ? {
           label: t('applicationStatus.rejected'),
           icon: <UserRoundX size={20} color="#FFFFFF" />,
@@ -215,14 +217,29 @@ export function ApplicantCard({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
         <Avatar name={name} src={candidate?.avatar_url} seed={profile?.slug ?? name} size="md" />
         <View style={{ flex: 1, gap: 2 }}>
-          <Text weight="semibold" accessibilityRole="header">
+          <Text weight="semibold" accessibilityRole="header" style={withdrawn ? { color: withdrawnText } : undefined}>
             {name}
           </Text>
-          <Text variant="small" tone="mutedForeground">
+          <Text variant="small" tone="mutedForeground" style={withdrawn ? { color: withdrawnText } : undefined}>
             {facts.join(' · ')}
           </Text>
         </View>
-        <Badge variant={STAGE_TONE[status]} label={t(`applicationStatus.${status}`)} />
+        {withdrawn ? (
+          <View
+            style={{
+              backgroundColor: WITHDRAWN_BADGE.background,
+              borderRadius: WITHDRAWN_BADGE.radius,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+            }}
+          >
+            <Text style={{ color: WITHDRAWN_BADGE.color, fontSize: WITHDRAWN_BADGE.fontSize }} weight="medium">
+              {t('applicationStatus.withdrawn')}
+            </Text>
+          </View>
+        ) : (
+          <Badge variant={STAGE_TONE[status]} label={t(`applicationStatus.${status}`)} />
+        )}
       </View>
 
       {profile ? (
@@ -346,13 +363,15 @@ export function ApplicantCard({
         </Text>
       ) : null}
 
+      {withdrawn ? null : (
+      <>
       <Field label={t('employer.moveTo')}>
         <Select
           label={`${t('employer.moveTo')} (${name})`}
           value={status}
           placeholder={t(`applicationStatus.${status}`)}
           required
-          options={APPLICATION_STAGES.map((value) => ({ value, label: t(`applicationStatus.${value}`) }))}
+          options={PIPELINE_STAGES.map((value) => ({ value, label: t(`applicationStatus.${value}`) }))}
           // A reason belongs to the decision it was written for: a move carries
           // one only when it was typed for it — words in the box that are not
           // the saved ones. The saved reason stays with its stage (sent along,
@@ -401,6 +420,8 @@ export function ApplicantCard({
           </View>
         </View>
       ) : null}
+      </>
+      )}
 
       <ApplicantNotes applicationId={applicant.id} notes={notes} authors={authors} viewerId={viewerId} />
     </Card>

@@ -110,14 +110,17 @@ export default async function ApplyPage({
     covering note, rather than the receipt the reader had already earned. The
     unique index still saves them; this makes the page stop guessing.
   */
-  const { data: existing, error: existingError } = await supabase
+  const { data: prior, error: existingError } = await supabase
     .from('applications')
-    .select('id, created_at')
+    .select('id, status, created_at')
     .eq('job_id', job.id)
-    .eq('candidate_id', viewer!.userId)
-    .maybeSingle();
+    .eq('candidate_id', viewer!.userId);
 
   if (existingError) raise(existingError, 'checking whether you have already applied');
+
+  // A withdrawn application is not "already applied": the person may send
+  // another. More than one row is possible then, so this is not maybeSingle.
+  const existing = (prior ?? []).find((row) => row.status !== 'withdrawn') ?? null;
 
   /*
     What to show after the confirmation, fetched only when there is going to be
@@ -138,10 +141,10 @@ export default async function ApplyPage({
         .maybeSingle(),
       // Scoped explicitly, as the dashboard's copy of this read is: left to the
       // policies it scanned every application on the platform.
-      supabase.from('applications').select('job_id').eq('candidate_id', viewer!.userId),
+      supabase.from('applications').select('job_id, status').eq('candidate_id', viewer!.userId),
     ]);
 
-    const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+    const appliedTo = new Set((mine ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id));
     const ranked = rankJobs(
       openRoles.jobs.filter((role) => role.id !== job.id && !appliedTo.has(role.id)),
       {

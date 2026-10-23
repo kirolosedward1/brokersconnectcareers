@@ -106,7 +106,8 @@ report.section('a withdrawal is still a withdrawal');
   await db.exec(`insert into applications (job_id, candidate_id, status) values ('${job}', '${CAND3}', 'new')`);
   await db.exec(`update applications set status = 'shortlisted' where job_id = '${job}' and candidate_id = '${CAND3}'`);
   const before = Number((await one(`select count(*) as n from notifications where kind = 'application_withdrawn'`)).n);
-  await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${CAND3}'`);
+  await db.exec(`update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+                  where job_id = '${job}' and candidate_id = '${CAND3}' and status = 'shortlisted'`);
   const after = Number((await one(`select count(*) as n from notifications where kind = 'application_withdrawn'`)).n);
   report.check('a shortlisted candidate leaving still tells the company', after > before, `${before} → ${after}`);
 }

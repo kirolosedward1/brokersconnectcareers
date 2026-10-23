@@ -60,8 +60,8 @@ export function useMyApplications() {
 
 /**
  * Take an application back — the website's withdrawApplication, which says
- * truthfully whether it happened. It cannot be undone: the listing will not
- * take a second application from the same person.
+ * truthfully whether it happened. The row stays, marked withdrawn. While the
+ * listing is open, the same person can apply again; that is a new row.
  */
 export function useWithdrawApplication() {
   const queryClient = useQueryClient();
@@ -80,7 +80,7 @@ export function useWithdrawApplication() {
       // The board's "applied" badges and the dashboard's counts.
       queryClient.invalidateQueries({ queryKey: ['jobs', 'applied'] });
       queryClient.invalidateQueries({ queryKey: ['candidate'] });
-      // The listing's apply page: the row is gone, and so is "applied already".
+      // The listing's apply page: a withdrawn application is not "applied already".
       queryClient.invalidateQueries({ queryKey: ['apply'] });
     },
   });

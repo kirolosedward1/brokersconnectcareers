@@ -177,10 +177,10 @@ export const emailCopy = {
 
     applicationWithdrawn: {
       subject: (job: string) => `سحبت طلبك على ${job}`,
-      preheader: 'الطلب اتشال من عند الشركة.',
+      preheader: 'الشركة هتشوف إن الطلب اتسحب.',
       heading: 'اتسحب طلبك',
       body: (job: string) =>
-        `شِلنا طلبك على وظيفة «${job}»، والشركة مابقتش شايفاه. تقدر تقدّم تاني في أي وقت طول ما الإعلان شغال.`,
+        `طلبك على وظيفة «${job}» اتسحب، والشركة هتشوف كده. تقدر تقدّم تاني في أي وقت طول ما الإعلان شغال.`,
       cta: 'اتصفح الوظائف',
       labelJob: 'الوظيفة',
     },
@@ -362,6 +362,7 @@ export const emailCopy = {
       interview: 'مقابلة',
       hired: 'اتقبل',
       rejected: 'مش مناسب',
+      withdrawn: 'انسحب المتقدم',
     } satisfies Record<ApplicationStatus, string>,
   },
 
@@ -492,10 +493,10 @@ export const emailCopy = {
 
     applicationWithdrawn: {
       subject: (job: string) => `You withdrew your application for ${job}`,
-      preheader: 'The company no longer sees it.',
+      preheader: 'The company can see that you withdrew.',
       heading: 'Application withdrawn',
       body: (job: string) =>
-        `Your application for "${job}" has been withdrawn and the company can no longer see it. You can apply again at any time while the listing is open.`,
+        `Your application for "${job}" has been withdrawn, and the company can see that. You can apply again at any time while the listing is open.`,
       cta: 'Browse roles',
       labelJob: 'Role',
     },
@@ -660,6 +661,7 @@ export const emailCopy = {
       interview: 'Interview',
       hired: 'Hired',
       rejected: 'Not selected',
+      withdrawn: 'Withdrawn',
     } satisfies Record<ApplicationStatus, string>,
   },
 } as const;

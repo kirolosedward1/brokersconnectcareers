@@ -15,7 +15,9 @@ import { useMyApplications } from '~/features/applications/queries';
 export function useAppliedJobIds(jobIds: string[]): Set<string> {
   const { data } = useMyApplications();
   return useMemo(() => {
-    const mine = new Set((data ?? []).map((application) => application.job_id));
+    const mine = new Set(
+      (data ?? []).filter((application) => application.status !== 'withdrawn').map((application) => application.job_id),
+    );
     return new Set(jobIds.filter((id) => mine.has(id)));
   }, [data, jobIds]);
 }

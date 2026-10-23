@@ -16,7 +16,7 @@ import { raise } from '@/lib/queries/error';
 import { listingNotes, noteFor } from '@/lib/listing-notes';
 import { UUID_RE } from '@/lib/admin/params';
 import { jobIsLive } from '@/lib/job-state';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
 import type {
   AdminAuditRow,
@@ -95,7 +95,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
   if (moderation.error) raise(moderation.error, "loading the listing's note");
   const rejectionNote = noteFor(moderation.notes, job);
 
-  const stageCounts = APPLICATION_STAGES.map((stage) =>
+  const stageCounts = PIPELINE_STAGES.map((stage) =>
     supabase.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', id).eq('status', stage),
   );
 
@@ -116,7 +116,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
   const trail = must(audit, 'loading the record').data as AdminAuditRow[];
   const noteRows = must(notes, 'loading notes').data as ModerationNoteRow[];
   const review = (must(signals, 'loading review signals').data ?? [])[0];
-  const counts = stages.map((result, index) => ({ stage: APPLICATION_STAGES[index], count: must(result, 'counting applications').count }));
+  const counts = stages.map((result, index) => ({ stage: PIPELINE_STAGES[index], count: must(result, 'counting applications').count }));
   const totalApplications = counts.reduce((sum, c) => sum + c.count, 0);
 
   const t = await getTranslations('admin');

@@ -98,9 +98,11 @@ export default async function DashboardOverviewPage({
       .eq('candidate_id', viewer.userId)
       .order('created_at', { ascending: false })
       .limit(3),
-    // Every job this candidate has applied to, ids only, to keep them out of
-    // the suggestions below.
-    supabase.from('applications').select('job_id').eq('candidate_id', viewer.userId),
+    // Every job this candidate still has an application in for, to keep them
+    // out of the suggestions below. A withdrawn one is not standing: they can
+    // apply again, and the role may be suggested. Status is filtered here, not
+    // in the query, so a database that has not grown the label yet still answers.
+    supabase.from('applications').select('job_id, status').eq('candidate_id', viewer.userId),
     /*
       Every live role, ordered below rather than filtered here.
 
@@ -155,7 +157,7 @@ export default async function DashboardOverviewPage({
    * appears in both is not a suggestion, it is a rendering mistake somebody
    * has to reason about.
    */
-  const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+  const appliedTo = new Set((mine ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id));
   const unapplied = openRoles.jobs.filter((job) => !appliedTo.has(job.id));
 
   /*

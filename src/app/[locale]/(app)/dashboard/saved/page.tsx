@@ -104,9 +104,9 @@ export default async function SavedJobsPage({
   // when they open it.
   const { data: mine } = await supabase
     .from('applications')
-    .select('job_id')
+    .select('job_id, status')
     .eq('candidate_id', viewer.userId);
-  const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+  const appliedTo = new Set((mine ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id));
 
   const t = await getTranslations('dashboard');
   const tJobs = await getTranslations('jobs');

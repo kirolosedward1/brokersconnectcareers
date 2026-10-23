@@ -811,8 +811,8 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
 /**
  * Candidate: they withdrew.
  *
- * Takes the details rather than the id, because withdrawing deletes the row —
- * by the time this runs there is nothing left to read.
+ * Takes the details rather than the id. The row stays, marked withdrawn; the
+ * action already read the titles, and this mail announces that moment.
  */
 export async function notifyApplicationWithdrawn(args: {
   userId: string;

@@ -11,7 +11,7 @@ import { ApplicantsSuspended } from '@/components/employer/applicants-suspended'
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { APPLICATION_STAGES, PIPELINE_STAGES, withWithdrawnLast } from '@/lib/application-stages';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional, raise } from '@/lib/queries/error';
 import { looseArabicNeedle } from '@/lib/search/needle';
@@ -243,7 +243,7 @@ export default async function AllApplicantsPage({
   const { data, error } = await query;
   if (error) raise(error, 'loading the applicant inbox');
 
-  const rows = (data ?? []) as unknown as Row[];
+  const rows = withWithdrawnLast((data ?? []) as unknown as Row[]);
 
   // Seen, because they are on the screen — see the note in applicants-seen.ts.
   await markApplicantsSeen(rows.filter((row) => !row.employer_viewed_at).map((row) => row.id));
@@ -333,10 +333,12 @@ export default async function AllApplicantsPage({
   if (countError) raise(countError, 'counting the applicant stages');
 
   const stageCount = new Map<string, number>();
+  let totalCount = 0;
   for (const item of (statuses ?? []) as { status: string }[]) {
+    if (item.status === 'withdrawn') continue;
     stageCount.set(item.status, (stageCount.get(item.status) ?? 0) + 1);
+    totalCount += 1;
   }
-  const totalCount = (statuses ?? []).length;
 
   const districts = await optional(getDistricts(), []);
   const districtName = new Map(
@@ -408,7 +410,7 @@ export default async function AllApplicantsPage({
    * paints its own ground, so this holds in both themes without a dark variant
    * and without a token that only exists inside a media query.
    */
-  const STAGE_COLOUR: Record<ApplicationStatus, string> = {
+  const STAGE_COLOUR: Record<(typeof PIPELINE_STAGES)[number], string> = {
     new: 'oklch(0.55 0.16 266)',
     shortlisted: 'oklch(0.55 0.16 300)',
     interview: 'oklch(0.52 0.13 70)',
@@ -574,7 +576,7 @@ export default async function AllApplicantsPage({
           </span>
         </Link>
 
-        {APPLICATION_STAGES.map((value) => {
+        {PIPELINE_STAGES.map((value) => {
           const active = stage === value;
           const count = stageCount.get(value) ?? 0;
           return (

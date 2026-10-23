@@ -70,7 +70,7 @@ export type BusinessEvent =
   /** A candidate applied. Also NEW_APPLICANT, from the company's side. */
   | { type: 'APPLICATION_CREATED'; applicationId: string }
   | { type: 'APPLICATION_STATUS_CHANGED'; applicationId: string }
-  /** Taken as data: withdrawing deletes the row this would otherwise read. */
+  /** Taken as data: the mail is the announcement of that moment, built from the titles the action already read. */
   | {
       type: 'APPLICATION_WITHDRAWN';
       candidateId: string;

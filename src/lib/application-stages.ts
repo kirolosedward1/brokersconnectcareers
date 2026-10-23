@@ -12,14 +12,30 @@ import type { ApplicationStatus } from '@/lib/supabase/database.types';
  * Pure on purpose: the app bundles this (scripts/check-shared.mjs).
  */
 
-/** Every stage, in the order the pipeline runs and the product counts them. */
-export const APPLICATION_STAGES = [
-  'new',
-  'shortlisted',
-  'interview',
-  'hired',
-  'rejected',
-] as const satisfies readonly ApplicationStatus[];
+/**
+ * The stages an employer moves, and the ones the pipeline counts.
+ * Withdrawing is the candidate's; it is not a column on the board.
+ */
+export const PIPELINE_STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const satisfies readonly ApplicationStatus[];
+
+/** Every status, pipeline first and withdrawn last — the order a list is drawn. */
+export const APPLICATION_STAGES = [...PIPELINE_STAGES, 'withdrawn'] as const satisfies readonly ApplicationStatus[];
+
+/**
+ * The broker badge for a withdrawn application: 12px, weight 500, #5B6475 on
+ * #F2F4F7, 6px radius. The pair is 5.3:1. The card uses the same text colour
+ * and does not fade.
+ */
+export const WITHDRAWN_BADGE = {
+  color: '#5B6475',
+  background: '#F2F4F7',
+  radius: 6,
+  fontSize: 12,
+  fontWeight: 500,
+} as const;
+
+/** Same grey, light enough to read on a dark card. */
+export const WITHDRAWN_TEXT_DARK = '#C5CAD3';
 
 // A status the list leaves out is a compile error rather than a missing column.
 type Missing = Exclude<ApplicationStatus, (typeof APPLICATION_STAGES)[number]>;
@@ -35,6 +51,7 @@ export const STAGE_TONE: Record<ApplicationStatus, StageTone> = {
   interview: 'primary',
   hired: 'success',
   rejected: 'destructive',
+  withdrawn: 'default',
 };
 
 /**
@@ -44,6 +61,17 @@ export const STAGE_TONE: Record<ApplicationStatus, StageTone> = {
  */
 export function canWithdraw(status: ApplicationStatus): boolean {
   return status === 'new' || status === 'shortlisted';
+}
+
+/** Standing applications keep their order; withdrawn ones follow them. */
+export function withWithdrawnLast<T extends { status: string }>(rows: readonly T[]): T[] {
+  const standing: T[] = [];
+  const withdrawn: T[] = [];
+  for (const row of rows) {
+    if (row.status === 'withdrawn') withdrawn.push(row);
+    else standing.push(row);
+  }
+  return standing.concat(withdrawn);
 }
 
 export type StepState = 'done' | 'current' | 'ahead' | 'stopped';
@@ -63,6 +91,15 @@ export function timelineSteps(application: {
   employer_viewed_at: string | null;
 }): TimelineStep[] {
   const { status } = application;
+  if (status === 'withdrawn') {
+    const seen = Boolean(application.employer_viewed_at);
+    return [
+      { key: 'sent', state: 'done', date: application.created_at },
+      { key: 'seen', state: seen ? 'done' : 'ahead', date: application.employer_viewed_at },
+      { key: 'shortlisted', state: 'ahead', date: null },
+      { key: 'decision', state: 'stopped', date: null },
+    ];
+  }
   const seen = status !== 'new' || Boolean(application.employer_viewed_at);
   const shortlisted = status === 'shortlisted' || status === 'interview' || status === 'hired';
   const decided = status === 'hired' || status === 'rejected';
