@@ -183,6 +183,9 @@ export function JobForm({
     key: draftKey('job', ownerId, job?.id ?? null),
     values: draftValues,
     restore: restoreDraft,
+    // The step is where the wizard is, not something typed: going to look at
+    // another step does not answer an offered draft.
+    typed: (kept) => ({ values: kept.values, benefits: kept.benefits, developerIds: kept.developerIds }),
     base: job?.version ?? null,
   });
 

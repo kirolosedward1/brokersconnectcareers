@@ -23,6 +23,7 @@ import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,
 import * as ApplyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]/apply';
 import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
+import { draftKey } from '~/lib/kept-draft';
 import { board, cairo, jobPage, listing, newCairo } from './fixtures';
 import { watchFocus } from './focus';
 import { placeViewsAt } from './measure';
@@ -369,6 +370,29 @@ describe('the form', () => {
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     const path = uploads()[0].url.pathname.replace('/storage/v1/object/cvs/', '');
     await waitFor(() => expect(bodyOf('/storage/v1/object/cvs')).toEqual({ prefixes: [path] }));
+  });
+
+  it('keeps a note typed when the app is ended, and opens with it shown, until it is sent', async () => {
+    const kept = draftKey('apply', USER_ID, listing.id);
+    await signedIn();
+    const first = await renderRouter(app, { initialUrl: APPLY });
+    await openForm();
+    fireEvent.changeText(screen.getByLabelText(ar.apply.note), 'متاحة من أول الشهر.');
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.note).toBe('متاحة من أول الشهر.'));
+
+    // iOS ends the app in the background: no Back, no question asked.
+    first.unmount();
+
+    await renderRouter(app, { initialUrl: APPLY });
+    expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
+    // Shown, not folded behind the one-tap summary.
+    expect(await screen.findByDisplayValue('متاحة من أول الشهر.')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/applyToJob')).toHaveLength(1));
+    expect(bodyOf('/api/mobile/v1/actions/applyToJob')).toMatchObject({ input: { note: 'متاحة من أول الشهر.' } });
+    // Sent: nothing more is kept of it.
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
   });
 
   it('holds the form while the application is on its way, and says so rather than "not saved"', async () => {

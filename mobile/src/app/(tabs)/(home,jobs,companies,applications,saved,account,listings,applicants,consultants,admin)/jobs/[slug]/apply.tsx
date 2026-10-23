@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentType } from 'react';
+import { useCallback, useMemo, useRef, useState, type ComponentType } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -53,6 +53,9 @@ import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { draftKey } from '~/lib/kept-draft';
+import { useKeptDraft } from '~/lib/use-kept-draft';
+import { DraftNotice } from '~/components/ui/draft-notice';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
 import { useTheme } from '~/theme/provider';
@@ -206,6 +209,7 @@ function Apply({ job }: { job: JobDetail }) {
   return (
     <ApplyForm
       job={job}
+      userId={viewer.userId}
       defaultName={viewer.profile.full_name}
       defaultPhone={viewer.profile.whatsapp_phone}
       profileCv={context.data.profileCv}
@@ -221,12 +225,15 @@ type Errors = Partial<Record<'fullName' | 'whatsapp' | 'experienceBand' | 'cv' |
 
 function ApplyForm({
   job,
+  userId,
   defaultName,
   defaultPhone,
   profileCv,
   onSent,
 }: {
   job: JobDetail;
+  /** Whose draft this form keeps (kept-draft.ts). */
+  userId: string;
   defaultName: string;
   defaultPhone: string;
   profileCv: string | null;
@@ -264,7 +271,28 @@ function ApplyForm({
   const [editing, setEditing] = useState(() => !defaultName.trim() || !isValidPhone(normalisePhone(defaultPhone)));
   // Leaving with a note written or a file picked asks first (the form goes once
   // it is sent); while it is being sent, the screen waits for the answer.
-  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending);
+  /*
+    What was typed, kept on the phone until it is sent (kept-draft.ts) — the
+    note, the band, a corrected name or number. Never the CV: a picked file is
+    the picker's, and the cache it sits in is emptied on signing out.
+  */
+  const kept = useKeptDraft({
+    key: draftKey('apply', userId, job.id),
+    values: useMemo(() => ({ fullName, whatsapp, picked, note }), [fullName, whatsapp, picked, note]),
+    restore: useCallback(
+      (held: { fullName: string; whatsapp: string; picked: ExperienceBand | null; note: string }) => {
+        setFullName(held.fullName);
+        setWhatsapp(held.whatsapp);
+        setBand(held.picked);
+        setNote(held.note);
+        // What was kept is shown, not folded away under the one-tap summary:
+        // the notice says it was put back, and a note behind a tap reads as lost.
+        setEditing(true);
+      },
+      [],
+    ),
+  });
+  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending, kept.drop);
 
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);
@@ -305,9 +333,14 @@ function ApplyForm({
         attachment,
       },
       {
-        onSuccess: onSent,
+        onSuccess: () => {
+          kept.clear();
+          onSent();
+        },
         onError: (failure) => {
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
+          // Nothing this form holds can be sent to this listing now, so nothing is kept of it.
+          if (reason === 'already_applied' || reason === 'not_open') kept.clear();
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
           if (reason === 'not_open') return showErrors({ form: t('apply.notOpen') });
@@ -344,6 +377,7 @@ function ApplyForm({
       keyboardDismissMode="interactive"
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
+      <DraftNotice draft={kept} />
       <View style={{ gap: space[1] }}>
         <Text variant="title" weight="bold" accessibilityRole="header">
           {t('apply.title', { job: title })}
