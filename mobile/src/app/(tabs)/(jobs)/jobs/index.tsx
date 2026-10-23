@@ -396,7 +396,7 @@ function BoardHeader({
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
-  const labelFor = useFilterLabel(filters);
+  const labelFor = useFilterLabel();
   const active = activeFilterList(filters);
   const company = first?.company;
   const inSheet = sheetFilterCount(filters);
@@ -507,7 +507,7 @@ function EmptyBoard({
   apply: (next: JobFilters) => void;
 }) {
   const t = useTranslations('jobs');
-  const labelFor = useFilterLabel(filters);
+  const labelFor = useFilterLabel();
   const searchLabel = useSearchLabel(filters, first);
   const active = activeFilterList(filters);
   const byKey = new Map(active.map((filter) => [filter.key, filter]));

@@ -7,6 +7,7 @@ import { formatDate, formatEgp, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
+import { APPLICATION_STAGES, STAGE_TONE } from '@/lib/application-stages';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
@@ -21,11 +22,9 @@ import { Select } from '~/components/ui/select';
 import { SwipeRow, type SwipeAction } from '~/components/ui/swipe-row';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
-import { STATUS_VARIANT } from '~/features/applications/queries';
 import {
   MovedAlready,
   openApplicationCv,
-  STAGES,
   useSetApplicationStatus,
   type Applicant,
 } from '~/features/employer/applicants';
@@ -223,7 +222,7 @@ export function ApplicantCard({
             {facts.join(' · ')}
           </Text>
         </View>
-        <Badge variant={STATUS_VARIANT[status]} label={t(`applicationStatus.${status}`)} />
+        <Badge variant={STAGE_TONE[status]} label={t(`applicationStatus.${status}`)} />
       </View>
 
       {profile ? (
@@ -353,7 +352,7 @@ export function ApplicantCard({
           value={status}
           placeholder={t(`applicationStatus.${status}`)}
           required
-          options={STAGES.map((value) => ({ value, label: t(`applicationStatus.${value}`) }))}
+          options={APPLICATION_STAGES.map((value) => ({ value, label: t(`applicationStatus.${value}`) }))}
           // A reason belongs to the decision it was written for: a move carries
           // one only when it was typed for it — words in the box that are not
           // the saved ones. The saved reason stays with its stage (sent along,
