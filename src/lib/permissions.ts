@@ -218,7 +218,7 @@ export function directoryDeniedRedirect(actor: Actor): string {
 // Navigation
 // ---------------------------------------------------------------------------
 
-export type SiteNavItem = { href: '/jobs' | '/companies' | '/agents' | '/blog'; key: 'searchJobs' | 'companies' | 'agents' | 'blog' };
+export type SiteNavItem = { href: '/jobs' | '/companies' | '/agents' | '/blog' | '/app'; key: 'searchJobs' | 'companies' | 'agents' | 'blog' | 'app' };
 
 /**
  * The public site's main navigation, by audience.
@@ -235,6 +235,8 @@ export function siteNavFor(actor: Actor): SiteNavItem[] {
   ];
   if (canBrowseAgentDirectory(actor)) items.push({ href: '/agents', key: 'agents' });
   items.push({ href: '/blog', key: 'blog' });
+  // The app's own page, last: what the site's sections lead to on a phone.
+  items.push({ href: '/app', key: 'app' });
   return items;
 }
 
