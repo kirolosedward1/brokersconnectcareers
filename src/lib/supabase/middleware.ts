@@ -20,7 +20,14 @@ export async function updateSession(
   request: NextRequest,
   response: NextResponse,
   { checkAdmin = false }: { checkAdmin?: boolean } = {},
-): Promise<{ user: User | null; response: NextResponse; isAdmin?: boolean | null; secondFactorDue?: boolean }> {
+): Promise<{
+  user: User | null;
+  response: NextResponse;
+  isAdmin?: boolean | null;
+  secondFactorDue?: boolean;
+  /** The session just accepted, so a follow-up read can be this person. Null when there is no session. */
+  accessToken: string | null;
+}> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -28,7 +35,7 @@ export async function updateSession(
   // error, so this has to be checked before constructing it.
   if (!url || !key) {
     console.warn('[middleware] Supabase is not configured; treating the request as anonymous.');
-    return { user: null, response };
+    return { user: null, response, accessToken: null };
   }
 
   const supabase = createServerClient<Database>(url, key, {
@@ -81,12 +88,14 @@ export async function updateSession(
       The token is the one getUser() just had accepted; no further request.
     */
     let secondFactorDue = false;
+    let accessToken: string | null = null;
     if (user) {
       const { data } = await supabase.auth.getSession();
-      secondFactorDue = isSecondFactorDue(user, data.session?.access_token);
+      accessToken = data.session?.access_token ?? null;
+      secondFactorDue = isSecondFactorDue(user, accessToken);
     }
 
-    return { user, response, isAdmin, secondFactorDue };
+    return { user, response, isAdmin, secondFactorDue, accessToken };
   } catch (error) {
     // A network failure reaching the auth server is not a reason to fail the
     // request. Protected routes will redirect to sign-in, which is the right
@@ -95,6 +104,6 @@ export async function updateSession(
       '[middleware] could not refresh the session:',
       error instanceof Error ? error.message : error,
     );
-    return { user: null, response };
+    return { user: null, response, accessToken: null };
   }
 }

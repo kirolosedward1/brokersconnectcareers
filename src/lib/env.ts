@@ -63,12 +63,12 @@ export const env = {
     return process.env.CRON_SECRET ?? '';
   },
   /**
-   * Where an email tells somebody to go when it did not answer their question.
+   * Where a reply to an email goes, and the address the footer names.
    *
-   * Optional, and unset by default, because this platform has no support page
-   * and no ticketing — inventing a /help link would put a 404 at the bottom of
-   * every message. Set it and every email grows a help line; leave it and none
-   * of them claims a support channel that does not exist.
+   * Optional, and unset by default. Set it and every message says the reader
+   * can reply or write there (and the send sets Reply-To to the same address).
+   * Leave it unset and the footer stays a neutral line, with no address and
+   * no instruction not to reply.
    */
   get supportEmail() {
     return process.env.SUPPORT_EMAIL ?? '';
