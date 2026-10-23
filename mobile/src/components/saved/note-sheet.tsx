@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Modal, Pressable, StyleSheet, View, type TextInput, type TextInputInstance } from 'react-native';
+import { Keyboard, Modal, Pressable, StyleSheet, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { canSaveJobs } from '@/lib/permissions';

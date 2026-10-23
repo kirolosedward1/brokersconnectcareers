@@ -1,6 +1,6 @@
 import { useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { View, type ScrollView, type TextInput, type ScrollViewInstance, type TextInputInstance } from 'react-native';
+import { View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2 } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';

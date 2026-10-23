@@ -93,7 +93,7 @@ const FACE_ID_PURPOSE = 'بنستخدم Face ID عشان تقفل التطبيق
 /**
  * An update for Expo Go (`pnpm run ota expo-go`, scripts/publish-update.mjs)
  * runs on Expo Go's native code, not this app's: its runtime version is Expo
- * Go's SDK ("exposdk:57.0.0"), which no fingerprint of this app matches.
+ * Go's SDK ("exposdk:58.0.0"), which no fingerprint of this app matches.
  */
 const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
 

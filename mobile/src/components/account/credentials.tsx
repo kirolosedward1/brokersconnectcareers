@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { View, type TextInput, type TextInputInstance } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { passwordRefusal } from '@/lib/auth/errors';
 import { westernDigits } from '@/lib/search/arabic';

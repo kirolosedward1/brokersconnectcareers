@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentType } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type TextInput, type ScrollViewInstance, type TextInputInstance } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import {

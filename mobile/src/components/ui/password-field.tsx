@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { Pressable, type TextInput, type TextInputProps, type TextInputInstance } from 'react-native';
+import { Pressable, type TextInputProps, type TextInputInstance } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { Eye, EyeOff } from '~/components/ui/lucide';
 import { useTheme } from '~/theme/provider';

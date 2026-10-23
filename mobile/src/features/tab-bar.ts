@@ -96,14 +96,20 @@ export function useTabList<T extends Scrollable = ScrollViewInstance>({ onPressA
 
   // Pressed again with the list already at its top (useScrollToTop has nothing left to do): `onPressAtTop`.
   useEffect(() => {
-    let tabs: typeof navigation | undefined = navigation;
-    while (tabs && tabs.getState()?.type !== 'tab') tabs = tabs.getParent();
-    if (!tabs) return;
-    return tabs.addListener('tabPress' as never, () => {
+    const pressed = () => {
       if (!latest.current || !navigation.isFocused() || (y.current ?? 0) > NEAR_TOP) return;
       // After the press has done its own work (the stack and the list are where they go).
       requestAnimationFrame(() => latest.current?.());
-    });
+    };
+    // Heard on every screen up the chain, as useScrollToTop does: only the tab's own
+    // screen is told of a press. The tabs cannot be picked out by their state here,
+    // which says it is the tabs only once they have handled an action — not yet when
+    // the app opens straight onto this list.
+    const stops: (() => void)[] = [];
+    for (let screen: typeof navigation | undefined = navigation; screen; screen = screen.getParent()) {
+      stops.push(screen.addListener('tabPress' as never, pressed));
+    }
+    return () => stops.forEach((stop) => stop());
   }, [navigation]);
 
   const onScroll = useCallback(

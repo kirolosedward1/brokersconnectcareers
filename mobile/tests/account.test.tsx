@@ -69,7 +69,8 @@ jest.mock('expo-file-system', () => ({
       exists: false,
       create: jest.fn(),
       delete: jest.fn(),
-      write: (content: string) => {
+      write: async (content: string) => {
+        await Promise.resolve();
         mockWritten[uri] = content;
       },
     };

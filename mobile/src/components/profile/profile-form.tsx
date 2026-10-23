@@ -1,5 +1,5 @@
 import { useRef, useState, type RefObject } from 'react';
-import { Pressable, View, type ScrollView, type TextInput, type ScrollViewInstance, type TextInputInstance } from 'react-native';
+import { Pressable, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';

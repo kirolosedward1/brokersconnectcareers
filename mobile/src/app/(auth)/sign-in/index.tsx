@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { View, type TextInput, type TextInputInstance } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';

@@ -1,5 +1,5 @@
 import { useRef, type RefObject } from 'react';
-import { AccessibilityInfo, type ScrollView, type View, type ScrollViewInstance, type ViewInstance } from 'react-native';
+import { AccessibilityInfo, type ScrollViewInstance, type ViewInstance } from 'react-native';
 import { haptic } from '~/lib/haptics';
 import { space } from '~/theme/tokens';
 

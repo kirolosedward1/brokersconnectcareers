@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ScrollView, type TextInput, type ScrollViewInstance, type TextInputInstance } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { useNavigation } from 'expo-router';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { useTranslations } from 'use-intl';
 import { dialog } from '~/lib/dialog';
@@ -59,14 +58,21 @@ export function useWorkInProgress(): boolean {
  */
 export function useLeaveGuard(dirty: boolean, sending = false) {
   const t = useTranslations();
-  const navigation = useNavigation();
   const confirm = useConfirmDiscard();
-  useHoldsWork(dirty || sending);
-  usePreventRemove(dirty || sending, ({ data }) => {
+  // Told to throw the work away, the screen stops holding itself and makes the
+  // leave it held back. Since SDK 58 the same action sent again is held again
+  // while the screen still prevents its removal, and Discard did nothing.
+  const [discarded, setDiscarded] = useState(false);
+  const holding = !discarded && (dirty || sending);
+  useHoldsWork(holding);
+  usePreventRemove(holding, ({ repeat }) => {
     if (sending) {
       dialog.alert(t('app.leave.sendingTitle'), t('app.leave.sendingBody'), [{ text: t('app.leave.stay'), style: 'cancel' }]);
       return;
     }
-    confirm(() => navigation.dispatch(data.action));
+    confirm(() => {
+      setDiscarded(true);
+      repeat();
+    });
   });
 }
