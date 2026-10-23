@@ -25,15 +25,6 @@ const MAX_ERROR_LENGTH = 500;
 /** A hung log write must not hold the request that asked for the email. */
 export const FALLBACK_WRITE_TIMEOUT_MS = 3_000;
 
-/**
- * How far back a row can be and still be the claim whose answer we lost.
- *
- * The in-process retry of that call is well under a second. Two minutes
- * covers clock skew between this process and the database without treating
- * yesterday's mail to the same person as this attempt.
- */
-export const FAILED_SEND_MATCH_WINDOW_MS = 2 * 60 * 1000;
-
 export type FailedEmailInsert = {
   template: string;
   recipient: string;
@@ -50,31 +41,15 @@ export type FailedEmailInsert = {
 export type EmailLogWriteResult = { error: { code?: string | null; message: string } | null };
 
 /**
- * How to find the row a claim may already have committed.
+ * The writes a failure may need.
  *
- * `dedupe_key` is the table's only unique column, so a keyed attempt is found
- * by that key and a second insert conflicts with it. A null key does not
- * conflict with another null — Postgres treats those as distinct — so an
- * attempt with no key cannot be told apart that way. It is matched on the
- * message instead: entity id (the message's subject; the outbox row id was
- * the answer that was lost), template, recipient, and a short created_at
- * window. There is no separate message-id column.
- */
-export type FailedSendLookup = {
-  dedupeKey: string | null;
-  template: string;
-  recipient: string;
-  entityId: string | null;
-  /** Rows created at or after this instant are the same attempt. */
-  createdAfter: string;
-};
-
-/**
- * The writes a failure may need, plus the read that keeps a lost claim
- * response from becoming a second row.
+ * Duplicate protection is the sink's job, and only through `dedupe_key`:
+ * `insertFailed` upserts and ignores a conflict on that column. A row with
+ * no key is always a new insert. Two applicants to the same job share
+ * entity, template, and recipient, so a time-window match would drop a real
+ * failure, and a null key does not conflict with another null.
  */
 export type EmailLogSink = {
-  findExisting(lookup: FailedSendLookup): Promise<{ row: { id: string } | null } & EmailLogWriteResult>;
   insertFailed(row: FailedEmailInsert): Promise<EmailLogWriteResult>;
   updateFailed(
     id: string,
@@ -169,13 +144,12 @@ export function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
  *
  * `existingId` updates the row the claim already created, and only while it
  * is still queued or failed — a sent row keeps its sent_at. Without an id,
- * look first. The claim insert can commit and still answer with a timeout;
- * inserting again would be a second message for the sweeper to send. A keyed
- * attempt is the `dedupe_key` row. An attempt with no key is the recent row
- * for the same message, because a null `dedupe_key` is not unique. A lookup
- * that itself fails does not insert: a missing log line is the safer side of
- * sending twice. A duplicate key on the insert is the race where the row
- * appeared between the read and the write, and is not a failure to log.
+ * insert. When the attempt has a `dedupe_key`, the sink upserts and ignores
+ * a duplicate, so a claim that committed and then timed out stays one row.
+ * An attempt with no key always inserts a new row: nothing else identifies
+ * it, and matching a recent row by entity, template, and recipient would
+ * hide a second, different failure. A duplicate-key error on the insert is
+ * that race and is not a failure to log.
  */
 export async function persistFailedSend(
   sink: EmailLogSink,
@@ -209,21 +183,6 @@ async function writeFailedRow(
   row: FailedEmailInsert,
   existingId: string | undefined,
 ): Promise<void> {
-  if (!existingId) {
-    const found = await sink.findExisting({
-      dedupeKey: spec.dedupeKey ?? null,
-      template: spec.template,
-      recipient: spec.to,
-      entityId: spec.entity?.id ?? null,
-      createdAfter: new Date(Date.now() - FAILED_SEND_MATCH_WINDOW_MS).toISOString(),
-    });
-    if (found.error) {
-      reportUnloggedSend(spec.template, spec.to, found.error.message);
-      return;
-    }
-    if (found.row) return;
-  }
-
   const result = existingId
     ? await sink.updateFailed(existingId, {
         status: 'failed',

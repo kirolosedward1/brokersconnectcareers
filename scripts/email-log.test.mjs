@@ -9,9 +9,7 @@
  * sweepOutbox is the retry job.
  */
 
-const { FAILED_SEND_MATCH_WINDOW_MS, FALLBACK_WRITE_TIMEOUT_MS, persistFailedSend } = await import(
-  '../src/lib/email/attempt-log.ts'
-);
+const { FALLBACK_WRITE_TIMEOUT_MS, persistFailedSend } = await import('../src/lib/email/attempt-log.ts');
 const { emailRowIsStale, markAgeUnknown, mergeEmailAges, sweepOutbox } = await import('../src/lib/jobs/outbox-sweep.ts');
 
 let pass = 0;
@@ -35,22 +33,20 @@ const section = (title) => console.log(`\n— ${title}`);
 
 const HOUR = 60 * 60 * 1000;
 
-/** A sink whose lookup sees the rows already inserted, the way dedupe_key does. */
+/**
+ * The same rule as the real sink: a dedupe_key upsert ignores a duplicate
+ * and leaves the existing row alone. A row with no key is always inserted.
+ */
 function memorySink() {
   const rows = [];
   let nextId = 1;
   return {
     rows,
-    async findExisting(lookup) {
-      const found = rows.find((row) => {
-        if (lookup.dedupeKey) return row.dedupe_key === lookup.dedupeKey;
-        if (row.template !== lookup.template || row.recipient !== lookup.recipient) return false;
-        if (lookup.entityId && row.entity_id !== lookup.entityId) return false;
-        return Date.parse(row.created_at) >= Date.parse(lookup.createdAfter);
-      });
-      return { row: found ? { id: found.id } : null, error: null };
-    },
     async insertFailed(row) {
+      if (row.dedupe_key) {
+        const existing = rows.find((stored) => stored.dedupe_key === row.dedupe_key);
+        if (existing) return { error: null };
+      }
       const stored = { ...row, id: `log-${nextId}`, created_at: new Date().toISOString() };
       nextId += 1;
       rows.push(stored);
@@ -196,7 +192,7 @@ section('the retry job skips one older than 48h');
   ok('the suppressed row is not settled and not resent', !settled.some((row) => row.id === 'blocked'));
 }
 
-section('a lost claim response does not insert a second row');
+section('dedupe is the key, and a send with no key is its own row');
 {
   const sink = memorySink();
   const spec = {
@@ -206,7 +202,7 @@ section('a lost claim response does not insert a second row');
     entity: { type: 'application', id: 'app-1' },
   };
   // The claim committed this row, then its answer timed out. The fallback
-  // runs as if nothing was written.
+  // upserts on the same key and leaves the claim alone.
   sink.rows.push({
     id: 'claimed',
     dedupe_key: spec.dedupeKey,
@@ -219,47 +215,51 @@ section('a lost claim response does not insert a second row');
   await persistFailedSend(sink, spec, new Error('claim timed out'));
   is('the keyed attempt stays one row', sink.rows.length, 1);
   is('and it is still the claim, not a second failed copy', sink.rows[0].id, 'claimed');
-
-  const unkeyed = memorySink();
-  const bare = {
-    template: 'application_receipt',
-    to: 'ada@example.com',
-    entity: { type: 'application', id: 'app-9' },
-  };
-  // No dedupe key: null does not conflict with null. The claim row is found
-  // by entity id, template, recipient, and the created window instead.
-  unkeyed.rows.push({
-    id: 'claimed-bare',
-    dedupe_key: null,
-    template: bare.template,
-    recipient: bare.to,
-    entity_id: 'app-9',
-    created_at: new Date().toISOString(),
-    status: 'queued',
-  });
-  const lookups = [];
-  const findExisting = unkeyed.findExisting.bind(unkeyed);
-  unkeyed.findExisting = async (lookup) => {
-    lookups.push(lookup);
-    return findExisting(lookup);
-  };
-  await persistFailedSend(unkeyed, bare, new Error('claim timed out'));
-  is('the unkeyed attempt stays one row', unkeyed.rows.length, 1);
-  is('looked up without a dedupe key', lookups[0]?.dedupeKey, null);
-  is('by template', lookups[0]?.template, 'application_receipt');
-  is('by recipient', lookups[0]?.recipient, 'ada@example.com');
-  is('by the message entity id', lookups[0]?.entityId, 'app-9');
-  const windowStart = Date.now() - FAILED_SEND_MATCH_WINDOW_MS - 1000;
-  ok(
-    'inside the created window',
-    Date.parse(lookups[0]?.createdAfter) >= windowStart && Date.parse(lookups[0]?.createdAfter) <= Date.now(),
-  );
+  is('the claim status is left alone', sink.rows[0].status, 'queued');
 
   const fresh = memorySink();
   await persistFailedSend(fresh, spec, new Error('claim failed before insert'));
   await persistFailedSend(fresh, spec, new Error('claim timed out'));
   is('two fallbacks for one key insert once', fresh.rows.length, 1);
   is('the inserted row keeps that key, so the unique index is the backstop', fresh.rows[0].dedupe_key, spec.dedupeKey);
+
+  // Two applicants to one job, both emailing the employer, share entity,
+  // template, and recipient. A time window would keep only the first failure.
+  const unkeyed = memorySink();
+  const bare = {
+    template: 'application_received',
+    to: 'employer@example.com',
+    entity: { type: 'job', id: 'job-1' },
+  };
+  await persistFailedSend(unkeyed, bare, new Error('claim timed out'));
+  await persistFailedSend(unkeyed, bare, new Error('claim timed out'));
+  is('two failures with no key are two rows', unkeyed.rows.length, 2);
+  ok(
+    'even when entity, template, and recipient are the same',
+    unkeyed.rows.every(
+      (row) =>
+        row.entity_id === 'job-1' &&
+        row.template === bare.template &&
+        row.recipient === bare.to &&
+        row.dedupe_key == null &&
+        row.status === 'failed',
+    ),
+  );
+
+  const alongside = memorySink();
+  alongside.rows.push({
+    id: 'already-there',
+    dedupe_key: null,
+    template: bare.template,
+    recipient: bare.to,
+    entity_id: 'job-1',
+    created_at: new Date().toISOString(),
+    status: 'queued',
+  });
+  await persistFailedSend(alongside, bare, new Error('claim timed out'));
+  is('a recent row with no key does not absorb the new failure', alongside.rows.length, 2);
+  is('the existing row is untouched', alongside.rows[0].id, 'already-there');
+  is('the new row is its own failed send', alongside.rows[1].status, 'failed');
 }
 
 section('the fallback write gives up after a few seconds');
@@ -275,11 +275,8 @@ section('the fallback write gives up after a few seconds');
   try {
     await persistFailedSend(
       {
-        async findExisting() {
-          return new Promise(() => {});
-        },
         async insertFailed() {
-          throw new Error('not reached');
+          return new Promise(() => {});
         },
         async updateFailed() {
           throw new Error('not reached');
@@ -384,10 +381,8 @@ section('a logging failure does not throw');
   const secret = 'sb_secret_thisisnotarealkey';
   let threw = false;
   try {
-    const absent = async () => ({ row: null, error: null });
     await persistFailedSend(
       {
-        findExisting: absent,
         async insertFailed() {
           throw new Error(`Invalid API key ${secret} while writing secret.user@example.com`);
         },
@@ -400,7 +395,6 @@ section('a logging failure does not throw');
     );
     await persistFailedSend(
       {
-        findExisting: absent,
         async insertFailed() {
           return { error: { code: 'PGRST301', message: `JWT ${secret} rejected` } };
         },
