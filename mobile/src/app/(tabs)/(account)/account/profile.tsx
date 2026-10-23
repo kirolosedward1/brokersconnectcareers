@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View, type ScrollViewInstance } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Compass, Eye, Info, UserRound } from '~/components/ui/lucide';
@@ -35,7 +35,7 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const { notice } = useLocalSearchParams<{ notice?: string }>();
   const { session, viewer, actor } = useSession();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const formY = useRef(0);
 
   const profile = useAgentProfile();

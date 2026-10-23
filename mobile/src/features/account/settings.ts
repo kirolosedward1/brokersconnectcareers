@@ -170,7 +170,8 @@ export async function shareMyData(userId: string, dialogTitle: string): Promise<
   const file = new File(Paths.cache, `brokers-connect-data-${userId.slice(0, 8)}.json`);
   if (file.exists) file.delete();
   file.create();
-  file.write(JSON.stringify(data, null, 2));
+  // Written before the share sheet opens on it: since SDK 58 the write is asynchronous.
+  await file.write(JSON.stringify(data, null, 2));
   await Sharing.shareAsync(file.uri, { mimeType: 'application/json', UTI: 'public.json', dialogTitle }).finally(() => {
     try {
       file.delete();

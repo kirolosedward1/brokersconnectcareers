@@ -3,7 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useIsFocused } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { canAccessEmployerArea } from '@/lib/permissions';
-import { useRetryKey } from '@/lib/retry-key';
+import { useRetryKey } from '~/lib/retry-key';
 import { clean } from '@/lib/security/sanitize';
 import type {
   ApplicationNoteRow,

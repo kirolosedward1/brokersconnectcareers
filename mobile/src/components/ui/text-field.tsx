@@ -1,5 +1,5 @@
 import { forwardRef, useId, useState, type ReactNode } from 'react';
-import { InputAccessoryView, Keyboard, Platform, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { InputAccessoryView, Keyboard, Platform, StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { appDirection } from '~/lib/direction';
 import { useTheme } from '~/theme/provider';
@@ -35,7 +35,7 @@ const NO_RETURN_KEY = new Set<TextInputProps['keyboardType']>(['number-pad', 'ph
  * them.
  */
 export const TextField = forwardRef<
-  TextInput,
+  TextInputInstance,
   TextInputProps & {
     leading?: ReactNode;
     trailing?: ReactNode;
