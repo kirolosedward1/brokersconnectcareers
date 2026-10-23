@@ -378,7 +378,7 @@ describe('the form', () => {
   it('keeps a note typed when the app is ended, and opens with it shown, until it is sent', async () => {
     const kept = draftKey('apply', USER_ID, listing.id);
     await signedIn();
-    const first = renderRouter(app, { initialUrl: APPLY });
+    const first = await renderRouter(app, { initialUrl: APPLY });
     await openForm();
     fireEvent.changeText(screen.getByLabelText(ar.apply.note), 'متاحة من أول الشهر.');
     await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.note).toBe('متاحة من أول الشهر.'));
@@ -386,7 +386,7 @@ describe('the form', () => {
     // iOS ends the app in the background: no Back, no question asked.
     first.unmount();
 
-    renderRouter(app, { initialUrl: APPLY });
+    await renderRouter(app, { initialUrl: APPLY });
     expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
     // Shown, not folded behind the one-tap summary.
     expect(await screen.findByDisplayValue('متاحة من أول الشهر.')).toBeTruthy();

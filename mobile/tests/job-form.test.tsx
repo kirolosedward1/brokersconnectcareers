@@ -171,7 +171,7 @@ describe('a new listing', () => {
 
   it('keeps what was typed when the app is ended, and opens again where it was, until the employer starts over', async () => {
     const kept = draftKey('job', USER_ID, null);
-    const first = renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    const first = await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
     next();
     expect(await screen.findByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
@@ -180,7 +180,7 @@ describe('a new listing', () => {
     // iOS ends the app in the background: no Back, no question asked.
     first.unmount();
 
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
     // On the step it was left on, with what was typed.
     expect(screen.getByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
