@@ -157,7 +157,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const shown = displayJobStatus(job);
 
   const confirmWithdraw = () => {
-    dialog.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
+    dialog.alert(t('myApplications.withdrawTitle', { title }), t('myApplications.withdrawBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('dashboard.withdraw'),

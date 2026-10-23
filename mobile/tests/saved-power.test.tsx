@@ -14,7 +14,7 @@ import { localHrefOf, PushBridge } from '~/components/navigation/push-bridge';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
 import { bestOf, parseCompareIds, togglePick } from '~/features/saved/compare';
-import { jobNotes, keepNote, NOTE_MAX } from '~/features/saved/notes';
+import { cleanNote, deviceNotes, forgetCarriedNotesForTests, forgetTakenNotesForTests, NOTE_MAX } from '~/features/saved/notes';
 import {
   closingInDays,
   forgetTakenRemindersForTests,
@@ -136,6 +136,8 @@ function job(id: string, overrides: Partial<JobListItem> = {}, closesIn = 30 * D
 }
 
 let savedJobs: JobListItem[];
+/** Each saved listing's note on the server (saved_jobs.note), by listing id. */
+let notes: Record<string, string>;
 
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
@@ -143,6 +145,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   savedJobs = [];
+  notes = {};
   phone.__scheduled.clear();
   phone.__counter.next = 0;
   jest.mocked(Notifications.getPermissionsAsync).mockReset().mockResolvedValue(granted as never);
@@ -151,7 +154,9 @@ beforeEach(async () => {
   jest.mocked(Notifications.cancelScheduledNotificationAsync).mockClear();
   jest.mocked(Notifications.addNotificationResponseReceivedListener).mockClear();
   jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(null);
-  jobNotes.resetForTests();
+  deviceNotes.resetForTests();
+  forgetTakenNotesForTests();
+  forgetCarriedNotesForTests();
   jobReminders.resetForTests();
   forgetTakenRemindersForTests();
   toast.hide();
@@ -168,11 +173,21 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/recordJobView', { ok: true });
   server.on('GET /rest/v1/applications', []);
   server.on('GET /rest/v1/saved_searches', []);
-  server.on('GET /rest/v1/saved_jobs', (url) =>
-    url.searchParams.get('select') === 'job_id'
-      ? savedJobs.map((item) => ({ job_id: item.id }))
-      : savedJobs.map((item) => ({ created_at: '2026-09-25T10:00:00Z', job: item })),
-  );
+  server.on('GET /rest/v1/saved_jobs', (url) => {
+    const select = url.searchParams.get('select');
+    if (select === 'job_id') return savedJobs.map((item) => ({ job_id: item.id }));
+    if (select === 'job_id,note') return savedJobs.filter((item) => notes[item.id]).map((item) => ({ job_id: item.id, note: notes[item.id] }));
+    return savedJobs.map((item) => ({ created_at: '2026-09-25T10:00:00Z', note: notes[item.id] ?? null, job: item }));
+  });
+  // The website's action: the note lives with the bookmark.
+  server.on('POST /api/mobile/v1/actions/setSavedJobNote', (_url, init) => {
+    const { input } = JSON.parse(String(init?.body));
+    if (!savedJobs.some((item) => item.id === input.jobId)) return { ok: false, error: 'not_saved' };
+    const text = cleanNote(input.note ?? '') || null;
+    if (text) notes[input.jobId] = text;
+    else delete notes[input.jobId];
+    return { ok: true, data: { note: text } };
+  });
   server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
     const { input } = JSON.parse(String(init?.body));
     const had = savedJobs.some((item) => item.id === input.jobId);
@@ -251,6 +266,8 @@ const app = {
 const sheetClosed = () => act(() => jest.advanceTimersByTimeAsync(800));
 
 const kept = async (key: string) => JSON.parse((await AsyncStorage.getItem(key)) ?? '[]') as Record<string, unknown>[];
+/** What was sent to setSavedJobNote, in order. */
+const sentNotes = () => server.asked('/api/mobile/v1/actions/setSavedJobNote').map((request) => (request.body as { input: unknown }).input);
 
 /* ------------------------------------------------------------------------- */
 
@@ -647,16 +664,10 @@ describe('a reminder before a saved listing closes', () => {
 /* ------------------------------------------------------------------------- */
 
 describe('a private note on a saved listing', () => {
-  it('is kept per person, trimmed, cut at the limit, and gone when emptied', async () => {
-    keepNote('person-a', 'job-1', '  كلمت منى  ');
-    expect(await jobNotes.read('person-a')).toEqual([expect.objectContaining({ id: 'job-1', text: 'كلمت منى' })]);
-    expect(await jobNotes.read('person-b')).toEqual([]);
-
-    keepNote('person-a', 'job-1', 'x'.repeat(NOTE_MAX + 50));
-    expect((await jobNotes.read('person-a'))[0].text).toHaveLength(NOTE_MAX);
-
-    keepNote('person-a', 'job-1', '   ');
-    expect(await jobNotes.read('person-a')).toEqual([]);
+  it('is trimmed and cut at the limit before it is sent, as the website keeps it; empty is none', () => {
+    expect(cleanNote('  كلمت منى  ')).toBe('كلمت منى');
+    expect(cleanNote('x'.repeat(NOTE_MAX + 50))).toHaveLength(NOTE_MAX);
+    expect(cleanNote('   ')).toBe('');
   });
 
   it('is written, changed and deleted from the saved card, and shown under it', async () => {
@@ -666,31 +677,33 @@ describe('a private note on a saved listing', () => {
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
     // Written.
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    fireEvent.changeText(await screen.findByLabelText(ar.app.saved.notes.title), '  المقابلة يوم الحد  ');
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    fireEvent.changeText(await screen.findByLabelText(ar.savedNotes.title), '  المقابلة يوم الحد  ');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.saved.notes.saved));
-    const shown = `${ar.app.saved.notes.prefix} المقابلة يوم الحد`;
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.savedNotes.saved));
+    const shown = `${ar.savedNotes.prefix} المقابلة يوم الحد`;
     expect(await screen.findByRole('button', { name: shown })).toBeTruthy();
-    expect(await kept(`bc.saved-notes.v1:${USER_ID}`)).toEqual([expect.objectContaining({ id: one.id, text: 'المقابلة يوم الحد' })]);
+    // Sent to the website's action, trimmed, and kept there.
+    await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'المقابلة يوم الحد' }]));
+    expect(notes[one.id]).toBe('المقابلة يوم الحد');
 
     // Changed: the sheet opens on the note as it is.
     await sheetClosed();
     fireEvent.press(screen.getByRole('button', { name: shown }));
-    const field = await screen.findByLabelText(ar.app.saved.notes.title);
+    const field = await screen.findByLabelText(ar.savedNotes.title);
     expect(field.props.value).toBe('المقابلة يوم الحد');
     fireEvent.changeText(field, 'المقابلة اتأجلت');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    const changed = `${ar.app.saved.notes.prefix} المقابلة اتأجلت`;
+    const changed = `${ar.savedNotes.prefix} المقابلة اتأجلت`;
     expect(await screen.findByRole('button', { name: changed })).toBeTruthy();
 
     // Deleted, with Undo.
     await sheetClosed();
     fireEvent.press(screen.getByRole('button', { name: changed }));
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.delete }));
-    await waitFor(() => expect(shownToast()).toMatchObject({ message: ar.app.saved.notes.deleted, action: { label: ar.app.toast.undo } }));
-    expect(await screen.findByRole('button', { name: ar.app.saved.notes.add })).toBeTruthy();
-    await waitFor(async () => expect(await kept(`bc.saved-notes.v1:${USER_ID}`)).toEqual([]));
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.delete }));
+    await waitFor(() => expect(shownToast()).toMatchObject({ message: ar.savedNotes.deleted, action: { label: ar.app.toast.undo } }));
+    expect(await screen.findByRole('button', { name: ar.savedNotes.add })).toBeTruthy();
+    await waitFor(() => expect(notes[one.id]).toBeUndefined());
     act(() => shownToast()?.action?.onPress());
     expect(await screen.findByRole('button', { name: changed })).toBeTruthy();
   });
@@ -699,8 +712,8 @@ describe('a private note on a saved listing', () => {
     savedJobs = [job('1')];
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    const field = await screen.findByLabelText(ar.app.saved.notes.title);
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    const field = await screen.findByLabelText(ar.savedNotes.title);
     // autoFocus raised the keyboard while iOS was still presenting the sheet.
     expect(field.props.autoFocus).toBeFalsy();
     const modal = screen.UNSAFE_getAllByType(Modal).find((node) => node.props.visible && node.props.onShow);
@@ -711,8 +724,8 @@ describe('a private note on a saved listing', () => {
     savedJobs = [job('1')];
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    await screen.findByLabelText(ar.app.saved.notes.title);
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    await screen.findByLabelText(ar.savedNotes.title);
     const room = () => StyleSheet.flatten(screen.getByTestId('note-sheet-room').props.style);
     expect(room().justifyContent).toBe('flex-start');
     // The keyboard rising moves nothing: there is nothing under it to move.
@@ -720,38 +733,71 @@ describe('a private note on a saved listing', () => {
     expect(room().justifyContent).toBe('flex-start');
     expect(room().paddingBottom).toBeUndefined();
     // Typed and saved, from the card at the top.
-    fireEvent.changeText(screen.getByLabelText(ar.app.saved.notes.title), 'اتصل بيهم الأحد');
+    fireEvent.changeText(screen.getByLabelText(ar.savedNotes.title), 'اتصل بيهم الأحد');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} اتصل بيهم الأحد` })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اتصل بيهم الأحد` })).toBeTruthy();
   });
 
   it('keeps Save quiet until something changed', async () => {
     savedJobs = [job('1')];
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    await screen.findByLabelText(ar.app.saved.notes.title);
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    await screen.findByLabelText(ar.savedNotes.title);
     expect(screen.getByRole('button', { name: ar.common.save }).props.accessibilityState).toMatchObject({ disabled: true });
-    fireEvent.changeText(screen.getByLabelText(ar.app.saved.notes.title), '   ');
+    fireEvent.changeText(screen.getByLabelText(ar.savedNotes.title), '   ');
     expect(screen.getByRole('button', { name: ar.common.save }).props.accessibilityState).toMatchObject({ disabled: true });
   });
 
-  it('belongs to the person who wrote it, not the next one on the phone', async () => {
+  it("kept on the phone before it lived with the bookmark, is carried to the server once, and the phone's copy let go", async () => {
     const one = job('1');
+    const gone = job('2');
     savedJobs = [one];
-    keepNote('somebody-else', one.id, 'ليست لك');
+    deviceNotes.add(USER_ID, { id: one.id, text: '  اتكلمت مع منى  ', updatedAt: 1 });
+    // A listing no longer saved: its note is let go. Somebody else's stays theirs.
+    deviceNotes.add(USER_ID, { id: gone.id, text: 'اتقفلت', updatedAt: 1 });
+    deviceNotes.add('somebody-else', { id: one.id, text: 'ليست لك', updatedAt: 1 });
+    // Written before the screen reads them (no timer: an earlier test may have left fake ones on).
+    await deviceNotes.read(USER_ID);
+    await deviceNotes.read('somebody-else');
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    expect(await screen.findByRole('button', { name: ar.app.saved.notes.add })).toBeTruthy();
-    expect(screen.queryByText('ليست لك')).toBeNull();
+    await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'اتكلمت مع منى' }]));
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اتكلمت مع منى` })).toBeTruthy();
+    await waitFor(async () => expect(await kept(`bc.saved-notes.v1:${USER_ID}`)).toEqual([]));
+    expect(await kept('bc.saved-notes.v1:somebody-else')).toHaveLength(1);
+  });
+
+  it('goes with the bookmark, and comes back with it on Undo', async () => {
+    const one = job('1');
+    savedJobs = [one];
+    notes = { [one.id]: 'اسأل عن العمولة' };
+    // A toggle that puts the bookmark back as well as taking it off.
+    server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
+      const { input } = JSON.parse(String(init?.body));
+      const had = savedJobs.some((item) => item.id === input.jobId);
+      savedJobs = had ? savedJobs.filter((item) => item.id !== input.jobId) : [...savedJobs, one];
+      if (had) delete notes[input.jobId];
+      return { ok: true, data: { saved: !had } };
+    });
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اسأل عن العمولة` })).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.jobs.removeSaved }));
+    await waitFor(() => expect(savedJobs).toEqual([]));
+    expect(notes[one.id]).toBeUndefined();
+    // Saved again (Undo): the note is posted back.
+    act(() => shownToast()?.action?.onPress());
+    await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'اسأل عن العمولة' }]));
+    expect(notes[one.id]).toBe('اسأل عن العمولة');
   });
 
   it('is on the listing page while the listing is saved', async () => {
     savedJobs = [listing];
+    notes = { [listing.id]: 'اسأل عن العمولة' };
     await signedIn();
-    keepNote(USER_ID, listing.id, 'اسأل عن العمولة');
     await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
-    expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} اسأل عن العمولة` })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اسأل عن العمولة` })).toBeTruthy();
   });
 
   it('is not offered on a listing that is not saved', async () => {
@@ -759,7 +805,7 @@ describe('a private note on a saved listing', () => {
     await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     expect(await screen.findByRole('button', { name: ar.jobs.save })).toBeTruthy();
     await waitFor(() => expect(screen.getByRole('button', { name: ar.jobs.save }).props.accessibilityState?.busy).toBeFalsy());
-    expect(screen.queryByRole('button', { name: ar.app.saved.notes.forListing })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.savedNotes.forListing })).toBeNull();
   });
 });
 

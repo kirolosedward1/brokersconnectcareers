@@ -739,6 +739,8 @@ export type SettleLeasedOutcome = 'cancelled' | 'dead' | 'defer' | 'failed';
 export type SavedJobRow = Timestamped & {
   candidate_id: string;
   job_id: string;
+  /** The candidate's own line about the listing (migration 356): 1–300 characters, or null. */
+  note: string | null;
 };
 
 /**

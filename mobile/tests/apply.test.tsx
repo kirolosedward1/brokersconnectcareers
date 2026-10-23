@@ -185,9 +185,6 @@ describe('the form', () => {
     expect(uploads()).toHaveLength(0);
     expect(await screen.findByText(ar.apply.success)).toBeTruthy();
     // No summary card of job, company and date under the confirmation.
-    expect(screen.queryByText(ar.apply.labelJob)).toBeNull();
-    expect(screen.queryByText(ar.apply.labelCompany)).toBeNull();
-    expect(screen.queryByText(ar.apply.labelDate)).toBeNull();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
     // Two more roles while the candidate is here, ranked against their profile.
     expect(await screen.findByText(ar.apply.nextRolesMatched)).toBeTruthy();

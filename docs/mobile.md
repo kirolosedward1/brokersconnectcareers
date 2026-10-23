@@ -77,7 +77,24 @@ web's `scripts/messages.mjs` scans `mobile/` too, so a key only the app uses is
 not reported as unused and a key the app asks for must exist.
 
 Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
-`src/lib/**` and `messages/**` as well as `mobile/**`.
+`src/lib/**` and `messages/**` as well as `mobile/**` — and on the API routes
+the app calls (`src/app/api/**`), the website's pages, and the brand files
+`mobile/tests/brand.test.ts` holds byte for byte.
+
+**Every website page has its place in the app.** `scripts/route-parity.test.mjs`
+(`pnpm test:route-parity`, in `pnpm check`) reads both route trees: each
+`page.tsx` under `src/app/[locale]` is put through the app's own mapper
+(`mobile/src/lib/links.ts`) and must name a screen under `mobile/src/app`, or
+be on the script's list of pages that stay on the website on purpose (the
+blog, the legal documents, the admin console, `/employers`, `/unsubscribe`) —
+and a page on that list must not be one iOS opens in the app. A new website
+page fails it until the app has a screen, a line in `APP_PATHS` saying where
+its screen is, or a line on that list.
+
+Four of the website's own checks read files under `mobile/` (the catalogue
+scan, the legal test, the app-links test and the route-parity test), and the
+Web workflow does not run for a change made only under `mobile/`, so the
+Mobile workflow's `website` job runs those four too.
 
 The other way round, a change only to `mobile/` does not build the website:
 `vercel.json`'s `ignoreCommand` skips the deployment when nothing outside
@@ -300,7 +317,13 @@ compare with (a new branch), it compares with the previous commit.
   directory, which a candidate's tab bar has no tab for.
 - **Saved.** Bookmarks, saved searches and follows are the website's rows and
   actions (`toggleSavedJob`, `saveSearch`, `setSearchAlerts`,
-  `deleteSavedSearch`, `followCompany` / `unfollowCompany`): offered to a
+  `deleteSavedSearch`, `followCompany` / `unfollowCompany`), and so is the
+  note a candidate keeps on a saved listing (`saved_jobs.note`, migration
+  356, `setSavedJobNote`): written in the app's note sheet or on the
+  website's saved page, shown on both, gone with the bookmark (held in memory
+  for Undo), the words from one `savedNotes` catalogue. Notes a phone kept
+  before (`bc.saved-notes.v1`) are carried over once the saved list is read
+  (`carryDeviceNotes`), then let go: offered to a
   candidate and, as a way into an account, to somebody signed out; shown at
   once and put back if the server refuses. A follow is a saved search with
   one filter, so the ten-row cap and the weekly email are shared.
@@ -379,7 +402,11 @@ phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
 ## Signing in
 
 The sign-in sheet (`mobile/src/app/(auth)/`) is the website's auth form, rule
-for rule, over Supabase Auth directly — as the website's browser code does:
+for rule, over Supabase Auth directly — as the website's browser code does.
+The website has the same sheet since October 2026: Save, Follow and Apply
+pressed by a visitor open a sign-in dialog over the page
+(`src/components/auth/sign-in-gate.tsx`), and the press goes through once
+they are in, instead of the round trip through the sign-in page.
 
 - **Password.** Eight characters before anything is sent; GoTrue's refusals in
   the reader's language through the website's own mapping
@@ -697,14 +724,16 @@ find or create one on the token's account with Expo's own `eas init`,
 
 Then, each time the phone should get the newest code:
 
-- from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
-  by itself on pushes to `main` and on this repository's pull requests. The
-  run's summary links the QR code and gives the `exp://` link to paste. A
-  channel holds one newest update, so a pull request publishes on its own,
-  `expo-go-pr-<number>` (`EXPO_GO_CHANNEL`, which `pnpm run ota expo-go`
-  honours too): the `expo-go` link below keeps opening `main`, and a branch's
-  link opens that branch until its next push, whatever other branches publish
-  meanwhile;
+- from GitHub: Actions → Over the air → Run workflow (on any branch). It also
+  runs by itself on pushes to `main` and on this repository's pull requests.
+  The run's summary links the QR code and gives the `exp://` link to paste.
+  Before it publishes anything it runs the app's checks (`pnpm check`), and on
+  `main` it waits for the website to serve the same push (below,
+  "Over-the-air updates"). A channel holds one newest update, so a pull
+  request publishes on its own, `expo-go-pr-<number>` (`EXPO_GO_CHANNEL`,
+  which `pnpm run ota expo-go` honours too): the `expo-go` link below keeps
+  opening `main`, and a branch's link opens that branch until its next push,
+  whatever other branches publish meanwhile;
 - or from a computer, signed in with `npx eas-cli@latest login`:
   `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
   creates the project the same way and prints the same link.
@@ -904,7 +933,24 @@ its profile's channel in `eas.json` (`production`, `preview`); a development
 build loads code from your computer instead. Without an EAS project id updates
 are off, and a build runs the code it was built with.
 
-Publish with the script, never a plain `eas update`:
+Every push to `main` is published on the `production` channel by itself, as
+Vercel deploys the website on every push (`.github/workflows/expo-go.yml`):
+an installed app takes the same code the website runs from its next launch,
+and nobody has to remember to publish. The workflow runs the app's checks
+first, then waits for the website: the update and the Vercel deployment of
+the same push start together and each takes a few minutes, so a phone could
+take the app's new code before the API it calls was there. The website says
+which commit it serves (`/api/mobile/v1/config`, `commit`), and the publish
+waits until that commit carries every change outside `mobile/` that the push
+does — the inverse of `vercel.json`'s `ignoreCommand` — and fails after
+twenty minutes rather than publish an app against a website that did not
+deploy. Account's footer shows the website's commit beside the app's own
+build marker, so "is the site on the same code as my phone?" is read, not
+guessed. (No store build exists yet, so these publishes reach nobody until
+there is one; a build takes only an update whose fingerprint matches its
+native code.)
+
+By hand, publish with the script, never a plain `eas update`:
 
     cd mobile
     pnpm run ota production --message "what changed"

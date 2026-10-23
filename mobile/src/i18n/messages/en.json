@@ -33,6 +33,7 @@
     "deleted": "Your account has been deleted.",
     "version": "Version {version}",
     "published": "Updated {date}",
+    "websiteAt": "website {commit}",
     "security": "Sign-in and security",
     "oauthOnlyApple": "This account signs in with Apple, so there is no password to change.",
     "mfaOpenApp": "Open in your authenticator app",
@@ -128,12 +129,6 @@
     "fewerNote": "They come last among the roles suggested to you on Home, and still show on the board."
   },
   "applications": {
-    "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will no longer see it. This cannot be undone.",
-    "timeline": "Where it stands",
-    "stepSent": "Sent",
-    "stepSeen": "Seen",
-    "stepDecision": "Decision",
     "activeHeading": "Still in progress",
     "decidedHeading": "Decided"
   },
@@ -377,20 +372,6 @@
       "tooFew": "Comparing needs at least two jobs",
       "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
       "back": "Back to Saved"
-    },
-    "notes": {
-      "title": "Your note",
-      "prefix": "Your note:",
-      "add": "Add a note",
-      "edit": "Edits the note",
-      "forListing": "Add a note to yourself about this listing",
-      "private": "Kept on this phone only. Nobody else sees it.",
-      "placeholder": "e.g. Spoke to them; interview on Sunday morning",
-      "count": "{count}/{max}",
-      "countSpoken": "{count} of {max} characters",
-      "saved": "Note saved",
-      "deleted": "Note deleted",
-      "delete": "Delete"
     },
     "remind": {
       "set": "Remind me",

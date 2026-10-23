@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { JobCard } from '@/components/jobs/job-card';
+import { SavedJobNote } from '@/components/dashboard/saved-job-note';
 import { SavedSearchList } from '@/components/dashboard/saved-search-list';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -44,6 +45,7 @@ export default async function SavedJobsPage({
     .select(
       `
       created_at,
+      note,
       job:jobs!inner (${LIST_SELECT})
     `,
     )
@@ -60,9 +62,10 @@ export default async function SavedJobsPage({
 
   if (error) raise(error, 'loading your saved jobs');
 
-  const jobs = ((data ?? []) as unknown as { job: JobListItem }[])
-    .map((row) => row.job)
-    .filter(Boolean);
+  const rows = (data ?? []) as unknown as { note: string | null; job: JobListItem }[];
+  const jobs = rows.map((row) => row.job).filter(Boolean);
+  // The reader's own line under each card (migration 356), the app's too.
+  const notes = new Map(rows.filter((row) => row.job).map((row) => [row.job.id, row.note]));
 
   /**
    * A saved role that has ended is not the same object as one still hiring.
@@ -154,6 +157,7 @@ export default async function SavedJobsPage({
                         saved
                         savable
                       />
+                      <SavedJobNote jobId={job.id} initialNote={notes.get(job.id) ?? null} />
                     </li>
                   ))}
                 </ul>
@@ -178,6 +182,7 @@ export default async function SavedJobsPage({
                         saved
                         savable
                       />
+                      <SavedJobNote jobId={job.id} initialNote={notes.get(job.id) ?? null} />
                     </li>
                   ))}
                 </ul>
