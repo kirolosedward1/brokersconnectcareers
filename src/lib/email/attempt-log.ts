@@ -25,7 +25,13 @@ const MAX_ERROR_LENGTH = 500;
 /** A hung log write must not hold the request that asked for the email. */
 export const FALLBACK_WRITE_TIMEOUT_MS = 3_000;
 
+/** The outbox row id, chosen before the claim insert so a lost answer still names that row. */
+export function newEmailLogId(): string {
+  return crypto.randomUUID();
+}
+
 export type FailedEmailInsert = {
+  id: string;
   template: string;
   recipient: string;
   status: 'failed';
@@ -43,11 +49,12 @@ export type EmailLogWriteResult = { error: { code?: string | null; message: stri
 /**
  * The writes a failure may need.
  *
- * Duplicate protection is the sink's job, and only through `dedupe_key`:
- * `insertFailed` upserts and ignores a conflict on that column. A row with
- * no key is always a new insert. Two applicants to the same job share
- * entity, template, and recipient, so a time-window match would drop a real
- * failure, and a null key does not conflict with another null.
+ * The attempt's id is chosen before the claim insert. `insertFailed` upserts
+ * on that id and ignores a duplicate, so a claim that committed and then
+ * timed out and this write are one row — with or without a dedupe key. A
+ * second, different attempt has its own id. When it also carries a dedupe
+ * key, the unique key still refuses it; a null key does not, and two such
+ * sends stay two rows even when they share entity, template, and recipient.
  */
 export type EmailLogSink = {
   insertFailed(row: FailedEmailInsert): Promise<EmailLogWriteResult>;
@@ -58,12 +65,35 @@ export type EmailLogSink = {
 };
 
 export type FailedSendSpec = {
+  /** The id the claim insert used, or would have used. */
+  id: string;
   template: string;
   to: string;
   dedupeKey?: string | null;
   userId?: string | null;
   entity?: { type: string; id: string } | null;
 };
+
+/** The claim insert. The id is the caller's, not one the database invents on the way in. */
+export function claimInsert(spec: FailedSendSpec): {
+  id: string;
+  dedupe_key: string | null;
+  template: string;
+  recipient: string;
+  user_id: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+} {
+  return {
+    id: spec.id,
+    dedupe_key: spec.dedupeKey ?? null,
+    template: spec.template,
+    recipient: spec.to,
+    user_id: spec.userId ?? null,
+    entity_type: spec.entity?.type ?? null,
+    entity_id: spec.entity?.id ?? null,
+  };
+}
 
 /** The domain only. The local part is contact data and does not belong in a log line. */
 export function recipientDomain(recipient: string): string {
@@ -143,13 +173,11 @@ export function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
  * Leave a retryable `failed` row for this attempt.
  *
  * `existingId` updates the row the claim already created, and only while it
- * is still queued or failed — a sent row keeps its sent_at. Without an id,
- * insert. When the attempt has a `dedupe_key`, the sink upserts and ignores
- * a duplicate, so a claim that committed and then timed out stays one row.
- * An attempt with no key always inserts a new row: nothing else identifies
- * it, and matching a recent row by entity, template, and recipient would
- * hide a second, different failure. A duplicate-key error on the insert is
- * that race and is not a failure to log.
+ * is still queued or failed — a sent row keeps its sent_at. Without one, the
+ * write upserts on the attempt's own id and ignores a duplicate, so a claim
+ * that committed and then timed out stays that one row. A duplicate-key
+ * error is the same attempt's dedupe key already held, and is not a failure
+ * to log.
  */
 export async function persistFailedSend(
   sink: EmailLogSink,
@@ -159,6 +187,7 @@ export async function persistFailedSend(
   timeoutMs: number = FALLBACK_WRITE_TIMEOUT_MS,
 ): Promise<void> {
   const row: FailedEmailInsert = {
+    id: spec.id,
     template: spec.template,
     recipient: spec.to,
     status: 'failed',

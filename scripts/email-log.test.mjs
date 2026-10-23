@@ -9,7 +9,9 @@
  * sweepOutbox is the retry job.
  */
 
-const { FALLBACK_WRITE_TIMEOUT_MS, persistFailedSend } = await import('../src/lib/email/attempt-log.ts');
+const { FALLBACK_WRITE_TIMEOUT_MS, claimInsert, newEmailLogId, persistFailedSend } = await import(
+  '../src/lib/email/attempt-log.ts'
+);
 const { emailRowIsStale, markAgeUnknown, mergeEmailAges, sweepOutbox } = await import('../src/lib/jobs/outbox-sweep.ts');
 
 let pass = 0;
@@ -34,22 +36,18 @@ const section = (title) => console.log(`\n— ${title}`);
 const HOUR = 60 * 60 * 1000;
 
 /**
- * The same rule as the real sink: a dedupe_key upsert ignores a duplicate
- * and leaves the existing row alone. A row with no key is always inserted.
+ * The same rule as the real sink. An id that is already there is the claim
+ * whose answer was lost: leave it. A dedupe key held by another id is the
+ * other attempt. Anything else is inserted under the id it was given.
  */
 function memorySink() {
   const rows = [];
-  let nextId = 1;
   return {
     rows,
     async insertFailed(row) {
-      if (row.dedupe_key) {
-        const existing = rows.find((stored) => stored.dedupe_key === row.dedupe_key);
-        if (existing) return { error: null };
-      }
-      const stored = { ...row, id: `log-${nextId}`, created_at: new Date().toISOString() };
-      nextId += 1;
-      rows.push(stored);
+      if (rows.some((stored) => stored.id === row.id)) return { error: null };
+      if (row.dedupe_key && rows.some((stored) => stored.dedupe_key === row.dedupe_key)) return { error: null };
+      rows.push({ ...row, created_at: new Date().toISOString() });
       return { error: null };
     },
     async updateFailed() {
@@ -69,6 +67,7 @@ section('a failed send writes a retryable row');
   await persistFailedSend(
     sink,
     {
+      id: 'attempt-receipt',
       template: 'application_receipt',
       to: 'ada@example.com',
       dedupeKey: 'application_receipt:app-1',
@@ -80,6 +79,7 @@ section('a failed send writes a retryable row');
 
   is('one row', sink.rows.length, 1);
   const row = sink.rows[0];
+  is('the row keeps the id chosen before the claim', row.id, 'attempt-receipt');
   is('status failed, which the sweeper already retries', row.status, 'failed');
   is('the dedupe key is kept, so the retry claims this row', row.dedupe_key, 'application_receipt:app-1');
   is('the recipient is the address the row is for', row.recipient, 'ada@example.com');
@@ -192,74 +192,83 @@ section('the retry job skips one older than 48h');
   ok('the suppressed row is not settled and not resent', !settled.some((row) => row.id === 'blocked'));
 }
 
-section('dedupe is the key, and a send with no key is its own row');
+section('a lost claim and its fallback are one row, by id');
 {
-  const sink = memorySink();
-  const spec = {
-    template: 'application_receipt',
-    to: 'ada@example.com',
-    dedupeKey: 'application_receipt:app-1',
-    entity: { type: 'application', id: 'app-1' },
-  };
-  // The claim committed this row, then its answer timed out. The fallback
-  // upserts on the same key and leaves the claim alone.
-  sink.rows.push({
-    id: 'claimed',
-    dedupe_key: spec.dedupeKey,
-    template: spec.template,
-    recipient: spec.to,
-    entity_id: 'app-1',
-    created_at: new Date().toISOString(),
-    status: 'queued',
-  });
-  await persistFailedSend(sink, spec, new Error('claim timed out'));
-  is('the keyed attempt stays one row', sink.rows.length, 1);
-  is('and it is still the claim, not a second failed copy', sink.rows[0].id, 'claimed');
-  is('the claim status is left alone', sink.rows[0].status, 'queued');
-
-  const fresh = memorySink();
-  await persistFailedSend(fresh, spec, new Error('claim failed before insert'));
-  await persistFailedSend(fresh, spec, new Error('claim timed out'));
-  is('two fallbacks for one key insert once', fresh.rows.length, 1);
-  is('the inserted row keeps that key, so the unique index is the backstop', fresh.rows[0].dedupe_key, spec.dedupeKey);
-
-  // Two applicants to one job, both emailing the employer, share entity,
-  // template, and recipient. A time window would keep only the first failure.
-  const unkeyed = memorySink();
+  const id = newEmailLogId();
+  ok('the id is chosen in the app, as a uuid', /^[0-9a-f-]{36}$/.test(id));
   const bare = {
+    id,
     template: 'application_received',
     to: 'employer@example.com',
     entity: { type: 'job', id: 'job-1' },
   };
-  await persistFailedSend(unkeyed, bare, new Error('claim timed out'));
-  await persistFailedSend(unkeyed, bare, new Error('claim timed out'));
-  is('two failures with no key are two rows', unkeyed.rows.length, 2);
+  // No dedupe key. The claim insert carries the id the app already holds.
+  const claimed = claimInsert(bare);
+  is('the claim insert uses that id', claimed.id, id);
+  is('and does not invent a key', claimed.dedupe_key, null);
+
+  const sink = memorySink();
+  // The insert committed, then its answer timed out. The fallback runs as
+  // if nothing was written, with the same id.
+  sink.rows.push({
+    ...claimed,
+    created_at: new Date().toISOString(),
+    status: 'queued',
+  });
+  await persistFailedSend(sink, bare, new Error('claim timed out'));
+  is('a keyless claim that landed stays one row', sink.rows.length, 1);
+  is('and it is still the claim, not a second failed copy', sink.rows[0].id, id);
+  is('the queued claim is left as it was', sink.rows[0].status, 'queued');
+
+  // Two applicants to one job, both emailing the employer, share entity,
+  // template, and recipient. Each attempt has its own id, so each failure
+  // is logged.
+  const separate = memorySink();
+  const shared = {
+    template: 'application_received',
+    to: 'employer@example.com',
+    entity: { type: 'job', id: 'job-1' },
+  };
+  await persistFailedSend(separate, { ...shared, id: 'send-a' }, new Error('claim failed'));
+  await persistFailedSend(separate, { ...shared, id: 'send-b' }, new Error('claim failed'));
+  is('two keyless sends are two rows', separate.rows.length, 2);
+  is('the first keeps its own id', separate.rows[0].id, 'send-a');
+  is('the second keeps its own id', separate.rows[1].id, 'send-b');
   ok(
     'even when entity, template, and recipient are the same',
-    unkeyed.rows.every(
+    separate.rows.every(
       (row) =>
         row.entity_id === 'job-1' &&
-        row.template === bare.template &&
-        row.recipient === bare.to &&
+        row.template === shared.template &&
+        row.recipient === shared.to &&
         row.dedupe_key == null &&
         row.status === 'failed',
     ),
   );
+}
 
-  const alongside = memorySink();
-  alongside.rows.push({
-    id: 'already-there',
-    dedupe_key: null,
-    template: bare.template,
-    recipient: bare.to,
-    entity_id: 'job-1',
-    created_at: new Date().toISOString(),
-    status: 'queued',
-  });
-  await persistFailedSend(alongside, bare, new Error('claim timed out'));
-  is('a recent row with no key does not absorb the new failure', alongside.rows.length, 2);
-  is('the existing row is untouched', alongside.rows[0].id, 'already-there');
-  is('the new row is its own failed send', alongside.rows[1].status, 'failed');
+section('a dedupe key still collapses two attempts');
+{
+  const spec = {
+    template: 'application_receipt',
+    to: 'ada@example.com',
+    dedupeKey: 'application_receipt:ada@example.com:app-1',
+    entity: { type: 'application', id: 'app-1' },
+  };
+  const sink = memorySink();
+  const claimed = claimInsert({ ...spec, id: 'claimed' });
+  sink.rows.push({ ...claimed, created_at: new Date().toISOString(), status: 'queued' });
+  await persistFailedSend(sink, { ...spec, id: 'claimed' }, new Error('claim timed out'));
+  is('the same attempt stays one row', sink.rows.length, 1);
+  is('and it is still the claim', sink.rows[0].id, 'claimed');
+  is('the claim status is left alone', sink.rows[0].status, 'queued');
+
+  const fresh = memorySink();
+  await persistFailedSend(fresh, { ...spec, id: 'first-try' }, new Error('claim failed before insert'));
+  await persistFailedSend(fresh, { ...spec, id: 'second-try' }, new Error('claim timed out'));
+  is('two fallbacks for one key insert once', fresh.rows.length, 1);
+  is('the inserted row keeps that key', fresh.rows[0].dedupe_key, spec.dedupeKey);
+  is('the first attempt is the row that landed', fresh.rows[0].id, 'first-try');
 }
 
 section('the fallback write gives up after a few seconds');
@@ -282,7 +291,7 @@ section('the fallback write gives up after a few seconds');
           throw new Error('not reached');
         },
       },
-      { template: 'welcome_candidate', to: 'ada@example.com', dedupeKey: 'welcome:slow' },
+      { id: 'slow', template: 'welcome_candidate', to: 'ada@example.com', dedupeKey: 'welcome:slow' },
       new Error('claim timed out'),
       undefined,
       40,
@@ -374,6 +383,7 @@ section('a logging failure does not throw');
     lines.push(String(line));
   };
   const spec = {
+    id: 'welcome-user-9',
     template: 'welcome_candidate',
     to: 'secret.user@example.com',
     dedupeKey: 'welcome:user-9',

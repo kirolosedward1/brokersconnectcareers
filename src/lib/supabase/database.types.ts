@@ -1377,6 +1377,8 @@ export type Database = {
       email_log: Table<
         EmailLogRow,
         {
+          /** Set by the app before the insert, so a lost response still names this row. */
+          id?: string;
           template: string;
           recipient: string;
           status?: EmailStatus;

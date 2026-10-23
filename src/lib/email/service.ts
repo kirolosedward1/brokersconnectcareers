@@ -6,6 +6,8 @@ import { currentRetryContext } from '@/lib/jobs/retry-context';
 import { sendEmail, type SendOutcome } from './send';
 import { TEMPLATES, isEssential, type TemplateName } from './templates';
 import {
+  claimInsert,
+  newEmailLogId,
   persistFailedSend,
   reportUnloggedSend,
   scrubEmailError,
@@ -50,25 +52,24 @@ export { MAX_EMAIL_ATTEMPTS as MAX_ATTEMPTS } from '@/lib/jobs/policy';
 /**
  * The outbox writes, narrowed to the two a failure needs.
  *
- * claim_email is still how a row is normally born. This is the way out when
- * that call failed, or when it succeeded and recording the outcome did not:
- * one insert or one update, and never a write that could turn a sent row
- * back into a failed one. A claim whose answer was lost is kept to one row
- * only when it has a dedupe_key; the upsert below ignores that conflict.
- * Without a key there is nothing to conflict on, and the insert is new.
+ * A first send is born from an insert whose id the app chose. claim_email
+ * remains the retry path: a sweeper already holds the row, and the lease
+ * token is what hands it back. This is the way out when that insert failed,
+ * or when it succeeded and recording the outcome did not: one upsert or one
+ * update, and never a write that could turn a sent row back into a failed one.
+ * The upsert conflicts on the attempt's id, so a claim that committed and
+ * then timed out stays that row. A dedupe key still refuses a second attempt
+ * that picked its own id.
  */
 function emailLogSink(admin: ReturnType<typeof createAdminClient>): EmailLogSink {
   return {
     async insertFailed(row) {
-      // Claim-timeout duplicate protection is this upsert, and only for a row
-      // that has a dedupe_key. ignoreDuplicates leaves the existing row as it
-      // is, sent_at included. A null key does not conflict with another null,
-      // so those attempts each get their own failed row: two applicants to
-      // the same job share entity, template, and recipient.
-      const write = row.dedupe_key
-        ? admin.from('email_log').upsert(row, { onConflict: 'dedupe_key', ignoreDuplicates: true })
-        : admin.from('email_log').insert(row);
-      const { error } = await write;
+      // Same id: the claim and this fallback are one row, key or no key.
+      // ignoreDuplicates leaves whatever won — queued, sent, sent_at — as it
+      // is. A different id with the same dedupe key hits the unique index;
+      // that is the other attempt, not a second message.
+      const { error } = await admin.from('email_log').upsert(row, { onConflict: 'id', ignoreDuplicates: true });
+      if (error?.code === '23505') return { error: null };
       return { error: error ? { code: error.code, message: error.message } : null };
     },
     async updateFailed(id, patch) {
@@ -97,13 +98,104 @@ export type DeliverySpec = {
   userId?: string | null;
   entity?: { type: string; id: string } | null;
   /**
-   * What makes two sends the same send. Omit only for messages with no natural
-   * key — those simply are not deduplicated, which is better than inventing a
-   * key that collides.
+   * What makes two sends the same send. Required, so a caller cannot forget
+   * one and have every retry become a new message. A send with a natural id
+   * — an application, a listing version, a decision — builds it from the
+   * template, the recipient, and that id. The pre-generated row id is the
+   * other half: a lost claim response still converges on one row.
    */
-  dedupeKey?: string | null;
+  dedupeKey: string;
   envelope: Envelope;
 };
+
+type DbWriteError = { code?: string; message: string } | null;
+
+/**
+ * The same refusal claim_email records, checked before the insert because
+ * that function mints its own id and cannot be given one without a migration.
+ * A complaint does not stop a security notice. Nothing else gets past a
+ * suppressed address, a reserved domain, or thirty messages to one inbox in
+ * an hour.
+ */
+async function refusalReason(
+  admin: ReturnType<typeof createAdminClient>,
+  spec: DeliverySpec,
+): Promise<{ reason: string | null; error: DbWriteError }> {
+  if (isUndeliverableDomain(spec.to)) return { reason: 'reserved domain, cannot receive mail', error: null };
+
+  const blocked = await admin.from('email_suppressions').select('reason').eq('email', spec.to.toLowerCase()).maybeSingle();
+  if (blocked.error) return { reason: null, error: { code: blocked.error.code, message: blocked.error.message } };
+
+  const essential = isEssential(spec.template);
+  if (blocked.data && !(blocked.data.reason === 'complaint' && essential)) {
+    return { reason: `address is suppressed (${blocked.data.reason})`, error: null };
+  }
+
+  if (!essential) {
+    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const recent = await admin
+      .from('email_log')
+      .select('id', { count: 'exact', head: true })
+      .ilike('recipient', escapeLike(spec.to))
+      .gt('created_at', since)
+      .neq('status', 'suppressed');
+    if (recent.error) return { reason: null, error: { code: recent.error.code, message: recent.error.message } };
+    if ((recent.count ?? 0) >= 30) return { reason: 'recipient hourly ceiling reached', error: null };
+  }
+
+  return { reason: null, error: null };
+}
+
+/** RFC 2606 / 6761, the same list as is_undeliverable_domain. The part after the first @. */
+function isUndeliverableDomain(email: string): boolean {
+  const domain = (email.split('@')[1] ?? '').toLowerCase();
+  if (domain === 'test' || domain === 'invalid' || domain === 'example' || domain === 'localhost') return true;
+  if (domain === 'example.com' || domain === 'example.net' || domain === 'example.org') return true;
+  return domain.endsWith('.test') || domain.endsWith('.invalid') || domain.endsWith('.example') || domain.endsWith('.localhost');
+}
+
+/** LIKE treats _ and % as wildcards. An address is a literal. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+/**
+ * Insert the outbox row under an id this process already holds.
+ *
+ * A unique violation is not always "do not send". The retry of an insert that
+ * committed and lost its answer collides with this id, and the row is queued
+ * and still ours to send. A collision on the dedupe key, or a row that is
+ * already suppressed, is somebody else's or already finished: send nothing.
+ */
+async function insertClaim(
+  admin: ReturnType<typeof createAdminClient>,
+  spec: DeliverySpec,
+  id: string,
+): Promise<{ data: string | null; error: DbWriteError }> {
+  const refusal = await refusalReason(admin, spec);
+  if (refusal.error) return { data: null, error: refusal.error };
+
+  const row = claimInsert({ ...spec, id });
+  if (refusal.reason) {
+    const { error } = await admin.from('email_log').insert({
+      ...row,
+      status: 'suppressed',
+      error: refusal.reason,
+      next_attempt_at: null,
+    });
+    if (error && error.code !== '23505') return { data: null, error: { code: error.code, message: error.message } };
+    return { data: null, error: null };
+  }
+
+  const { error } = await admin.from('email_log').insert(row);
+  if (!error) return { data: id, error: null };
+  if (error.code !== '23505') return { data: null, error: { code: error.code, message: error.message } };
+
+  const found = await admin.from('email_log').select('status').eq('id', id).maybeSingle();
+  if (found.error) return { data: null, error: { code: found.error.code, message: found.error.message } };
+  if (found.data?.status === 'queued') return { data: id, error: null };
+  return { data: null, error: null };
+}
 
 export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
   /*
@@ -140,21 +232,25 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
   // send, which then claims exactly as it always has.
   const retry = currentRetryContext();
 
-  // Retried through a dropped connection, never through a refusal. A retry
-  // after an insert that committed but whose answer was lost finds the key
-  // held and returns null — the message is then not sent now, and its row is
-  // waiting for the sweeper, which is the safe side of that coin.
+  // The id is chosen here, before the insert, and every retry of that insert
+  // uses it again. A first attempt that commits and loses its answer collides
+  // with itself instead of minting a second row. A sweeper retry already has
+  // its row; claim_email hands that one back, and a new id would be a second
+  // message.
+  const attemptId = retry ? null : newEmailLogId();
   const { data: claimed, error: claimError } = await retryDbResult(() =>
-    admin.rpc('claim_email', {
-      p_dedupe_key: spec.dedupeKey ?? null,
-      p_template: spec.template,
-      p_recipient: spec.to,
-      p_user_id: spec.userId ?? null,
-      p_entity_type: spec.entity?.type ?? null,
-      p_entity_id: spec.entity?.id ?? null,
-      p_essential: isEssential(spec.template),
-      p_lock_token: retry?.leaseToken ?? null,
-    }),
+    retry
+      ? admin.rpc('claim_email', {
+          p_dedupe_key: spec.dedupeKey,
+          p_template: spec.template,
+          p_recipient: spec.to,
+          p_user_id: spec.userId ?? null,
+          p_entity_type: spec.entity?.type ?? null,
+          p_entity_id: spec.entity?.id ?? null,
+          p_essential: isEssential(spec.template),
+          p_lock_token: retry.leaseToken,
+        })
+      : insertClaim(admin, spec, attemptId as string),
   );
 
   if (claimError) {
@@ -162,11 +258,13 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
     logFailure('email', 'could not claim', { template: spec.template, code: claimError.code });
     // The claim is what normally inserts the row. On a first send it just
     // failed, so without a row of our own the attempt is invisible to the
-    // sweeper. A retry already has the leased row; the sweep records the
-    // failure on that one, and a second insert would be a second message.
+    // sweeper. The fallback upserts the same id: if the insert had in fact
+    // committed, that is a no-op and the queued row is the one the sweeper
+    // sends; if it never landed, this is the failed row. A retry already has
+    // the leased row; the sweep records the failure on that one.
     // If the client itself is what failed — the invalid key — the insert
     // fails too, and is reported rather than thrown.
-    if (!retry) await persistFailedSend(sink, spec, claimError);
+    if (attemptId) await persistFailedSend(sink, { ...spec, id: attemptId }, claimError);
     return 'failed';
   }
 
@@ -236,7 +334,7 @@ export async function deliver(spec: DeliverySpec): Promise<SendOutcome> {
     // The row exists (the claim inserted it) but still says `queued`. A failed
     // send has to say `failed`, or the only record of the attempt is a row
     // that looks unattempted. The update keeps a sent row's sent_at intact.
-    if (result.outcome === 'failed') await persistFailedSend(sink, spec, storedError ?? recordError, logId);
+    if (result.outcome === 'failed') await persistFailedSend(sink, { ...spec, id: logId }, storedError ?? recordError, logId);
   }
 
   return result.outcome;
