@@ -26,6 +26,7 @@ import { WhatsAppMark } from '@/components/brand-marks';
 import { ApplicantNotes } from '@/components/employer/applicant-notes';
 import { Avatar } from '@/components/ui/avatar';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { APPLICATION_STAGES, STAGE_TONE } from '@/lib/application-stages';
 
 export type ApplicantProfile = {
   slug: string;
@@ -38,15 +39,8 @@ export type ApplicantProfile = {
   volume_egp: number | null;
 };
 
-const STATUSES: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
-
-const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'destructive'> = {
-  new: 'default',
-  shortlisted: 'primary',
-  interview: 'primary',
-  hired: 'success',
-  rejected: 'destructive',
-};
+const STATUSES: readonly ApplicationStatus[] = APPLICATION_STAGES;
+const STATUS_VARIANT = STAGE_TONE;
 
 export function ApplicantCard({
   application,

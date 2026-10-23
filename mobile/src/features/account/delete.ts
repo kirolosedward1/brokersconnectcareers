@@ -1,7 +1,9 @@
 import { Platform } from 'react-native';
 import { isAuthRetryableFetchError, type AuthError, type User } from '@supabase/supabase-js';
 import { appleAuthorizationCode } from '~/features/auth/providers';
+import { cancelAllReminders } from '~/features/saved/reminders';
 import { callAction } from '~/lib/api';
+import { forgetOwner } from '~/lib/local-list';
 import { supabase } from '~/lib/supabase';
 
 /** Why an account was not deleted: the website's refusals, Apple not confirming, or anything else. */
@@ -50,7 +52,7 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   // deleted": the website deletes the account, then answers. Asked whether it
   // still knows this account, the auth server settles it.
   if (!result && (await accountGone())) {
-    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    await leaveThisPhone(user);
     return null;
   }
   if (!result?.ok) {
@@ -65,8 +67,22 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   }
 
   // The account no longer exists (its phones went with it); what is left on this phone goes too.
-  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  await leaveThisPhone(user);
   return null;
+}
+
+/**
+ * What a deleted account leaves on this phone, gone with it: the reminders it
+ * scheduled, every list kept under its id (notes, searches, replies, the
+ * push choices — lib/local-list.ts), then the session. Signing out alone
+ * left them all behind, keyed by an id nothing would ask for again.
+ */
+async function leaveThisPhone(user: User | null | undefined): Promise<void> {
+  if (user?.id) {
+    await cancelAllReminders(user.id);
+    await forgetOwner(user.id);
+  }
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 }
 
 /**

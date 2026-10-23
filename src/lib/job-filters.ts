@@ -31,6 +31,7 @@ import type {
   LeadsSource,
 } from '@/lib/supabase/database.types';
 import { companySlugOrNull } from '@/lib/search/company-slug';
+import { formatNumber } from '@/lib/format';
 
 export const JOBS_PER_PAGE = 20;
 
@@ -132,6 +133,31 @@ export function parseJobFilters(searchParams: SearchParams): JobFilters {
     page: Number.isFinite(page) && page > 0 ? Math.min(page, 500) : 1,
   };
 }
+
+/**
+ * Every parameter the board reads and writes — the keys serializeJobFilters
+ * emits, with the page. The app names them all when it changes a filter
+ * (router.setParams: the ones in use set, the rest cleared), so a key added
+ * below without being added here would be kept from the last search. The
+ * website's job-filters test holds the two together.
+ */
+export const BOARD_PARAMS = [
+  'q',
+  'track',
+  'leads',
+  'exp',
+  'type',
+  'district',
+  'gov',
+  'salary',
+  'pay',
+  'comm',
+  'posted',
+  'company',
+  'ctype',
+  'sort',
+  'page',
+] as const;
 
 /** Inverse of parseJobFilters. Omits defaults so URLs stay short. */
 export function serializeJobFilters(filters: JobFilters): URLSearchParams {
@@ -244,4 +270,55 @@ export function activeFilterList(filters: JobFilters): ActiveFilter[] {
     ...each('exp', filters.experienceBands, 'experienceBands'),
     ...each('type', filters.employmentTypes, 'employmentTypes'),
   ];
+}
+
+/**
+ * The words for an active filter's chip, given by whichever side draws it:
+ * each is a translator over one namespace (`track`, `leadsSource`,
+ * `experienceBand`, `employmentType`, `companyType`, `commissionType`,
+ * `filters`), and the two place lookups. The website's board and the app's
+ * each had a copy of the switch below; one list, one set of words.
+ */
+export type FilterWords = {
+  locale: string;
+  track: (value: string) => string;
+  leads: (key: string) => string;
+  exp: (value: string) => string;
+  type: (value: string) => string;
+  companyType: (value: string) => string;
+  commission: (value: string) => string;
+  filters: (key: 'hasBasicSalaryYes' | 'hasBasicSalaryNo' | 'minSalaryAtLeast' | 'postedWithin', values?: Record<string, string | number>) => string;
+  districtName: (slug: string) => string;
+  governorateName: (slug: string) => string;
+};
+
+/** What a chip says: the reader's own search in «quotes», a track, a place, "10,000 EGP or more", "last 7 days". */
+export function activeFilterLabel(filter: ActiveFilter, words: FilterWords): string {
+  const value = String(filter.value);
+  switch (filter.kind) {
+    case 'q':
+      return `«${value}»`;
+    case 'track':
+      return words.track(value);
+    case 'district':
+      return words.districtName(value);
+    case 'gov':
+      return words.governorateName(value);
+    case 'ctype':
+      return words.companyType(value);
+    case 'leads':
+      return words.leads(`${value}_short`);
+    case 'salary':
+      return words.filters(filter.value ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo');
+    case 'pay':
+      return words.filters('minSalaryAtLeast', { amount: formatNumber(Number(filter.value), words.locale) });
+    case 'comm':
+      return words.commission(value);
+    case 'posted':
+      return words.filters('postedWithin', { days: Number(filter.value) });
+    case 'exp':
+      return words.exp(value);
+    case 'type':
+      return words.type(value);
+  }
 }

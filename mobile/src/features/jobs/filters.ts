@@ -1,13 +1,14 @@
 import { useCallback } from 'react';
 import { useLocale, useTranslations } from 'use-intl';
 import {
+  activeFilterLabel,
+  BOARD_PARAMS,
   countActiveFilters,
   EMPTY_FILTERS,
   serializeJobFilters,
   type ActiveFilter,
   type JobFilters,
 } from '@/lib/job-filters';
-import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 
@@ -18,24 +19,8 @@ import { useDistricts, useGovernorates } from '~/features/taxonomy';
  * same way and are read by the website's own parser (parseJobFilters).
  */
 
-/** Every parameter the board reads. A filter change names all of them. */
-export const BOARD_PARAMS = [
-  'q',
-  'track',
-  'leads',
-  'exp',
-  'type',
-  'district',
-  'gov',
-  'salary',
-  'pay',
-  'comm',
-  'posted',
-  'company',
-  'ctype',
-  'sort',
-  'page',
-] as const;
+/** Every parameter the board reads — the website's own list (src/lib/job-filters.ts). */
+export { BOARD_PARAMS };
 
 export type BoardParams = Record<(typeof BOARD_PARAMS)[number], string | undefined>;
 
@@ -105,39 +90,25 @@ export function useFilterLabel(filters: JobFilters) {
   const { data: governorates } = useGovernorates();
 
   return useCallback(
-    (filter: ActiveFilter): string => {
-      const value = String(filter.value);
-      switch (filter.kind) {
-        case 'q':
-          return `«${value}»`;
-        case 'track':
-          return tTrack(value as never);
-        case 'district': {
-          const district = districts?.find((item) => item.slug === value);
-          return district ? localized(locale, district.name_ar, district.name_en) : value;
-        }
-        case 'gov': {
+    (filter: ActiveFilter): string =>
+      activeFilterLabel(filter, {
+        locale,
+        track: (value) => tTrack(value as never),
+        leads: (key) => tLeads(key as never),
+        exp: (value) => tExp(value as never),
+        type: (value) => tType(value as never),
+        companyType: (value) => tCompanyType(value as never),
+        commission: (value) => tCommission(value as never),
+        filters: (key, values) => tFilters(key, values),
+        districtName: (slug) => {
+          const district = districts?.find((item) => item.slug === slug);
+          return district ? localized(locale, district.name_ar, district.name_en) : slug;
+        },
+        governorateName: (slug) => {
           const governorate = governorates?.find((item) => item.slug === filters.governorateSlug);
-          return governorate ? localized(locale, governorate.name_ar, governorate.name_en) : value;
-        }
-        case 'ctype':
-          return tCompanyType(value as never);
-        case 'leads':
-          return tLeads(`${value}_short` as never);
-        case 'salary':
-          return tFilters(filter.value ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo');
-        case 'pay':
-          return tFilters('minSalaryAtLeast', { amount: formatNumber(Number(filter.value), locale) });
-        case 'comm':
-          return tCommission(value as never);
-        case 'posted':
-          return tFilters('postedWithin', { days: Number(filter.value) });
-        case 'exp':
-          return tExp(value as never);
-        case 'type':
-          return tType(value as never);
-      }
-    },
+          return governorate ? localized(locale, governorate.name_ar, governorate.name_en) : slug;
+        },
+      }),
     [locale, districts, governorates, filters.governorateSlug, tTrack, tLeads, tExp, tType, tFilters, tCompanyType, tCommission],
   );
 }

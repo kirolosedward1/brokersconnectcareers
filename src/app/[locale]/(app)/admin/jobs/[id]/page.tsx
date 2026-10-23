@@ -16,6 +16,7 @@ import { raise } from '@/lib/queries/error';
 import { listingNotes, noteFor } from '@/lib/listing-notes';
 import { UUID_RE } from '@/lib/admin/params';
 import { jobIsLive } from '@/lib/job-state';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
 import type {
   AdminAuditRow,
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return { title: t('jobsQueue'), robots: { index: false, follow: false } };
 }
 
-const STAGES: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
+const STAGES: readonly ApplicationStatus[] = APPLICATION_STAGES;
 
 type JobDetail = JobRow & {
   company: {

@@ -14,6 +14,7 @@ import { formatNumber } from '@/lib/utils';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional, raise } from '@/lib/queries/error';
 import { looseArabicNeedle } from '@/lib/search/needle';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import type {
   ApplicationNoteRow,
@@ -61,7 +62,7 @@ type Row = {
  */
 const NO_COMPANY = '00000000-0000-0000-0000-000000000000';
 
-const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const;
+const STAGES = APPLICATION_STAGES;
 
 /**
  * How many applicant cards this page draws.

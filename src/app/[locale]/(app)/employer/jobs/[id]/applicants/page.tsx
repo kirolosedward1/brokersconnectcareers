@@ -14,6 +14,7 @@ import { ApplicantsSuspended } from '@/components/employer/applicants-suspended'
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
 import { UUID_RE } from '@/lib/admin/params';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import type {
   ApplicationNoteRow,
   ApplicationStatus,
@@ -38,7 +39,7 @@ type ApplicantRow = {
   } | null;
 };
 
-const PIPELINE: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
+const PIPELINE: readonly ApplicationStatus[] = APPLICATION_STAGES;
 
 /** The inbox's cap, for the same reason: past it, the inbox's filters reach the rest. */
 const APPLICANTS_SHOWN = 200;

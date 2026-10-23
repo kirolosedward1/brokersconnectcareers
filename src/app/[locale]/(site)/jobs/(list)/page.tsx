@@ -28,7 +28,7 @@ import {
   type SearchParams,
 } from '@/lib/queries/jobs';
 import { formatNumber } from '@/lib/utils';
-import { activeFilterList, type ActiveFilter as SharedActiveFilter } from '@/lib/job-filters';
+import { activeFilterLabel, activeFilterList, type ActiveFilter as SharedActiveFilter } from '@/lib/job-filters';
 
 export async function generateMetadata({
   params,
@@ -204,35 +204,20 @@ export default async function JobsPage({
 
   // The list and its order are shared with the mobile app (activeFilterList);
   // only the words are the page's.
-  const labelFor = (filter: SharedActiveFilter): string => {
-    const value = String(filter.value);
-    switch (filter.kind) {
-      case 'q':
-        return `«${value}»`;
-      case 'track':
-        return tTrack(value as never);
-      case 'district':
-        return districtLabel(value);
-      case 'gov':
-        return governorate ? localized(locale, governorate.name_ar, governorate.name_en) : value;
-      case 'ctype':
-        return tCompanyType(value as never);
-      case 'leads':
-        return tLeads(`${value}_short` as never);
-      case 'salary':
-        return tFilters(filter.value ? 'hasBasicSalaryYes' : 'hasBasicSalaryNo');
-      case 'pay':
-        return tFilters('minSalaryAtLeast', { amount: formatNumber(Number(filter.value), locale) });
-      case 'comm':
-        return tCommission(value as never);
-      case 'posted':
-        return tFilters('postedWithin', { days: Number(filter.value) });
-      case 'exp':
-        return tExp(value as never);
-      case 'type':
-        return tType(value as never);
-    }
-  };
+  const labelFor = (filter: SharedActiveFilter): string =>
+    activeFilterLabel(filter, {
+      locale,
+      track: (value) => tTrack(value as never),
+      leads: (key) => tLeads(key as never),
+      exp: (value) => tExp(value as never),
+      type: (value) => tType(value as never),
+      companyType: (value) => tCompanyType(value as never),
+      commission: (value) => tCommission(value as never),
+      filters: (key, values) => tFilters(key, values),
+      districtName: districtLabel,
+      governorateName: (slug) => (governorate ? localized(locale, governorate.name_ar, governorate.name_en) : slug),
+    });
+
 
   const activeFilters: ActiveFilter[] = activeFilterList(filters).map((filter) => ({
     key: filter.key,

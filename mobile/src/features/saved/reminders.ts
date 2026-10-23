@@ -290,6 +290,18 @@ export function restoreReminder(owner: string, jobId: string, now: Date = new Da
   }).catch(() => false);
 }
 
+/**
+ * Every reminder of this person's taken off the phone, the scheduled
+ * notifications with them — for an account deleted from this phone, whose
+ * lock screen must not go on naming what they were applying for.
+ */
+export function cancelAllReminders(owner: string): Promise<void> {
+  return serially(async () => {
+    for (const reminder of await jobReminders.read(owner)) await cancelScheduled(reminder.notificationId);
+    jobReminders.clear(owner);
+  }).catch(() => {});
+}
+
 /** For tests: nothing held for an Undo. */
 export function forgetTakenRemindersForTests() {
   takenWithBookmark.clear();

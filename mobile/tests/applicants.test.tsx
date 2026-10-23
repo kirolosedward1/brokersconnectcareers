@@ -772,13 +772,13 @@ describe('the inbox', () => {
     );
   });
 
-  it('searches by name, with LIKE’s own characters taken as typed', async () => {
+  it('searches by name as the website reads one: LIKE’s own characters taken out, a final ة left open', async () => {
     const result = renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.changeText(await screen.findByLabelText(ar.employer.searchApplicants), 'سارة_1%');
     fireEvent(screen.getByLabelText(ar.employer.searchApplicants), 'submitEditing');
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'سارة_1%' }));
     await waitFor(() =>
-      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%س_رة\\_1\\%%')).toBe(
+      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%س_ر_ 1%')).toBe(
         true,
       ),
     );

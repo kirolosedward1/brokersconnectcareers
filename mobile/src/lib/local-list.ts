@@ -17,8 +17,44 @@ type Kept<T> = {
  * Used for the jobs looked at lately, a company's saved WhatsApp replies and
  * its saved consultant searches — nothing the website needs to know.
  */
+/** Every list made below, so forgetOwner can drop what each holds in memory. */
+const lists = new Set<{ prefix: string; drop: (owner: string) => void }>();
+
+/**
+ * Everything kept on this phone for one person, gone: each list's memory of
+ * them, and every stored key that ends in their id — the lists above, and the
+ * push choices (features/push/device.ts), which are kept the same way. Called
+ * when the account is deleted from this phone: an account that no longer
+ * exists left its notes, searches and replies behind, keyed by an id nothing
+ * would ever ask for again.
+ */
+export async function forgetOwner(owner: string): Promise<void> {
+  for (const list of lists) list.drop(owner);
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const theirs = keys.filter((key) => key.endsWith(`:${owner}`));
+    if (theirs.length) await AsyncStorage.multiRemove(theirs);
+  } catch {
+    // Nothing to read, or nothing to remove.
+  }
+}
+
 export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: number; idOf: (item: T) => string; valid: (item: unknown) => item is T }) {
   const kept = new Map<string, Kept<T>>();
+  lists.add({
+    prefix,
+    drop(owner) {
+      // Let go of the store itself: a read still in flight lands in the
+      // detached one and never shows again. The screens following it are
+      // told, and read the (empty) new one.
+      const store = kept.get(owner);
+      if (!store) return;
+      kept.delete(owner);
+      storeFor(owner).listeners = store.listeners;
+      storeFor(owner).loaded = true;
+      for (const listener of store.listeners) listener();
+    },
+  });
 
   const storeFor = (owner: string): Kept<T> => {
     let store = kept.get(owner);

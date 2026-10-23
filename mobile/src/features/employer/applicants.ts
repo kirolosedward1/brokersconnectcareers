@@ -12,6 +12,7 @@ import type {
   JobTrack,
 } from '@/lib/supabase/database.types';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { looseArabicNeedle } from '@/lib/search/needle';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
@@ -25,7 +26,7 @@ import { supabase } from '~/lib/supabase';
  */
 
 export const APPLICANTS_CAP = 200;
-export const STAGES: readonly ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
+export const STAGES: readonly ApplicationStatus[] = APPLICATION_STAGES;
 
 export type ApplicantProfile = {
   slug: string;
