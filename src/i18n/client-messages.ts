@@ -70,6 +70,7 @@ export const CONSOLE_MESSAGES = [
   // The buy button on the billing page, when billing is on.
   'billing',
   'commissionType',
+  'compare',
   'compensation',
   'cv',
   'dashboard',

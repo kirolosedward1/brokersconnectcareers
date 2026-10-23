@@ -125,10 +125,10 @@ export default async function JobsPage({
     // the table's policies, functions included, on each one to find this
     // reader's handful.
     const [{ data: applied }, { data: saved }] = await Promise.all([
-      supabase.from('applications').select('job_id').eq('candidate_id', viewer.userId).in('job_id', jobIds),
+      supabase.from('applications').select('job_id, status').eq('candidate_id', viewer.userId).in('job_id', jobIds),
       supabase.from('saved_jobs').select('job_id').eq('candidate_id', viewer.userId).in('job_id', jobIds),
     ]);
-    appliedIds = new Set((applied ?? []).map((row) => row.job_id));
+    appliedIds = new Set((applied ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id));
     savedIds = new Set((saved ?? []).map((row) => row.job_id));
   }
 

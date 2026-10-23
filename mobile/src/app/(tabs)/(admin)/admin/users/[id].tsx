@@ -4,7 +4,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatDateTime, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { PIPELINE_STAGES } from '@/lib/application-stages';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { whatsappLink } from '@/lib/whatsapp';
 import { openDecision } from '~/components/admin/decision-sheet';
@@ -532,7 +532,7 @@ function Activity({ account, self }: { account: AccountFile; self: boolean }) {
           <Card style={{ gap: space[3] }}>
             <SectionTitle>{t('admin.applicationsCount', { count: n(activity.applications.total) })}</SectionTitle>
             <Counts
-              entries={APPLICATION_STAGES.map((status) => ({
+              entries={PIPELINE_STAGES.map((status) => ({
                 label: t(`applicationStatus.${status}`),
                 value: activity.applications.by_status[status] ?? 0,
               }))}

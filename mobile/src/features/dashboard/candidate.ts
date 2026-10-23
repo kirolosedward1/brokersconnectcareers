@@ -91,7 +91,9 @@ export function useSuggestions() {
   const ranking = useMemo(() => {
     if (!settled || !firstPage) return null;
     // A failed read of the applications suggests from the whole page, as the website does.
-    const appliedTo = new Set((applications.data ?? []).map((application) => application.job_id));
+    const appliedTo = new Set(
+      (applications.data ?? []).filter((application) => application.status !== 'withdrawn').map((application) => application.job_id),
+    );
     const { ranked, personalised } = rankJobs(
       withoutHiddenJobs(withoutHidden(firstPage, hidden), hiddenJobs).filter((job) => !appliedTo.has(job.id)),
       {

@@ -129,8 +129,9 @@ export function ApplicantReview({
   };
 
   const status = applicant?.status;
+  const withdrawn = status === 'withdrawn';
   const canShortlist = status === 'new';
-  const canTurnDown = status !== undefined && status !== 'rejected' && status !== 'hired';
+  const canTurnDown = status !== undefined && !withdrawn && status !== 'rejected' && status !== 'hired';
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => onClose()} onDismiss={onDismiss}>
@@ -189,6 +190,7 @@ export function ApplicantReview({
           }}
         >
           <View style={{ flexDirection: 'row', gap: space[2] }}>
+            {withdrawn ? null : (
             <View style={{ flex: 1 }}>
               <Button
                 label={t('app.review.reject')}
@@ -199,6 +201,7 @@ export function ApplicantReview({
                 onPress={turnDown}
               />
             </View>
+            )}
             <View style={{ flex: 1 }}>
               <Button
                 label={canShortlist ? t('app.review.shortlist') : last ? t('app.review.done') : t('app.review.next')}

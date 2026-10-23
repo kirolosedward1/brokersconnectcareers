@@ -8,7 +8,7 @@
  * writes anybody else's; it goes with the account. A new directory card is
  * hidden unless its owner says otherwise; the owner choosing is stamped with
  * the database's time, and nobody else changing the card counts as a choice.
- * A profile photo is only ever a file the person uploaded (migrations 339, 361).
+ * A profile photo is only ever a file the person uploaded (migrations 339, 364).
  */
 import { readFileSync } from 'node:fs';
 import { createTestDb, runner, reporter, FIXTURES, USERS } from './setup.mjs';
@@ -149,7 +149,7 @@ report.section('a photo somebody uploaded (migration 339)');
   report.check('and nothing that is not ours is queued for deletion', queued === 0);
 }
 
-report.section('only a photo somebody uploaded (migration 361)');
+report.section('only a photo somebody uploaded (migration 364)');
 {
   // Nothing writes a Google photo any more, so a person may not either: only
   // a file in their own avatar folder.
@@ -165,7 +165,7 @@ report.section('only a photo somebody uploaded (migration 361)');
   // Somebody who signed up with Google between 339 and the release that
   // stopped importing the photo: the file's own statement clears them.
   await db.exec(`update profiles set avatar_url = '${google}' where id = '${publicAgent}'`);
-  await db.exec(readFileSync(new URL('../migrations/20260101000361_only_a_photo_somebody_uploaded.sql', import.meta.url), 'utf8'));
+  await db.exec(readFileSync(new URL('../migrations/20260101000364_only_a_photo_somebody_uploaded.sql', import.meta.url), 'utf8'));
   const cleared = await one(`select avatar_url from profiles where id = '${publicAgent}'`);
   report.check('a Google photo saved in between is cleared', cleared.avatar_url === null, String(cleared.avatar_url));
 }

@@ -440,7 +440,7 @@ report.section('applications are private to the two parties');
   // have claimed this pair.
   await db.exec(`insert into applications (job_id, candidate_id, experience_band)
                  values ('${liveJob}', '${candidate}', 'mid_3_5')
-                 on conflict (job_id, candidate_id) do nothing`);
+                 on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing`);
 
   const own = await as(candidate, 'select id, candidate_id from applications');
   report.check('the candidate sees their own and only their own',
@@ -513,7 +513,7 @@ report.section('notifications are written by the platform, not by their reader')
 
   await db.exec(`insert into applications (job_id, candidate_id, experience_band)
                  values ('${live.id}', '${OUTSIDER}', 'mid_3_5')
-                 on conflict (job_id, candidate_id) do nothing`);
+                 on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing`);
 
   const after = (
     await db.query(`select count(*)::int n from notifications where user_id='${owner}'`)
@@ -714,7 +714,7 @@ report.section('only candidates apply');
   const r4 = await as(candidate,
     `insert into applications (job_id, candidate_id, experience_band)
      values ('${liveOther}', '${candidate}', 'mid_3_5')
-     on conflict (job_id, candidate_id) do nothing returning id`);
+     on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing returning id`);
   report.check('a candidate still can', r4.ok, r4.error);
 }
 
@@ -792,7 +792,7 @@ report.section('applying is consent, and the applicant inbox may read it');
   await db.exec(`
     insert into applications (job_id, candidate_id, experience_band)
       values ('${live}', '${publicOwner}', 'mid_3_5')
-      on conflict (job_id, candidate_id) do nothing;
+      on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing;
   `);
 
   const embed = (owner) => `
@@ -908,7 +908,8 @@ report.section('applying is consent, and the applicant inbox may read it');
   // Consent is the application, so it lasts exactly as long as one does.
   await db.exec(`
     update agent_profiles set visibility = 'verified_employers_only' where user_id = '${SHY}';
-    delete from applications where candidate_id = '${SHY}';
+    update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+      where candidate_id = '${SHY}' and status <> 'withdrawn';
   `);
   const afterWithdrawal = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
   report.check('and withdrawing closes it again',
@@ -1276,7 +1277,7 @@ report.section('a photo is the account\'s own photo');
   const google = await as(candidate, `
     update profiles set avatar_url = 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c'
      where id = '${candidate}' returning id`);
-  report.check('a Google picture is not: sign-up no longer copies one (migration 361)', !google.ok);
+  report.check('a Google picture is not: sign-up no longer copies one (migration 364)', !google.ok);
 
   const elsewhere = await as(candidate, `
     update profiles set avatar_url = 'https://xyz.supabase.co/storage/v1/object/public/avatars/${publicAgent}/a1b2c3.webp'
@@ -1504,7 +1505,7 @@ report.section('the row itself refuses shapes no form would send');
   const ownCv = await as(candidate, `
     insert into applications (job_id, candidate_id, cv_path, experience_band)
     values ('${liveJob}', '${candidate}', '${candidate}/mine.pdf', 'mid_3_5')
-    on conflict (job_id, candidate_id) do nothing`);
+    on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing`);
   report.check('and its own is fine', ownCv.ok, ownCv.error);
 
   const foreignAgentCv = await as(publicAgent,
@@ -2174,7 +2175,7 @@ report.section('the bell rings for everyone who does the work');
   await db.exec(`
     insert into applications (job_id, candidate_id, status)
       values ('${job}', '${OUTSIDER}', 'new')
-      on conflict (job_id, candidate_id) do nothing;
+      on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing;
   `);
 
   report.check('the recruiter hears about the applicant too',
@@ -2182,21 +2183,24 @@ report.section('the bell rings for everyone who does the work');
   report.check('and the owner still does',
     (await count(employerVerified, 'application_received')) === ownerBefore + 1);
 
-  // Shortlisted, then withdrawn: the one event the company was never told
-  // about, because the row simply stopped existing.
+  // Shortlisted, then withdrawn: the row stays, and the company is told
+  // because somebody they had already chosen left.
   const withdrawnBefore = await count(MATE, 'application_withdrawn');
 
   await db.exec(`update applications set status = 'shortlisted' where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
-  await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
+  await db.exec(`update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+                  where job_id = '${job}' and candidate_id = '${OUTSIDER}' and status = 'shortlisted'`);
 
   report.check('and hears when a shortlisted one withdraws',
     (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
 
   // A withdrawal from `new` is somebody changing their mind before anybody
-  // looked at them, which is not an event worth a notification.
+  // looked at them, which is not an event worth a notification. The withdrawn
+  // row stays, so this is a second application, then a withdrawal of that one.
   await db.exec(`
     insert into applications (job_id, candidate_id, status) values ('${job}', '${OUTSIDER}', 'new');
-    delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}';
+    update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+      where job_id = '${job}' and candidate_id = '${OUTSIDER}' and status = 'new';
   `);
   report.check('but not when an untouched one does',
     (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
@@ -2557,32 +2561,31 @@ report.section('withdrawing has a precondition the database keeps');
 {
   /*
     The dashboard offers withdrawal only while an application is new or
-    shortlisted. Until now the policy permitted a delete at any status, so a
-    hired candidate could remove the employer's only record of the hire with a
-    request the interface never makes.
+    shortlisted. The candidate has no update policy; withdraw_application is
+    the only door, and it returns nothing once the outcome is no longer open.
+    A hired candidate cannot remove the employer's record of the hire.
 
     Setup runs through db.exec — no JWT, so acting_as_admin() is true and the
-    column guard stands aside. Only the delete itself goes through as(), which
-    is the statement under test, and as() rolls back so the row survives into
-    the next case.
+    column guard stands aside. Only the function call goes through as(), which
+    rolls back, so the row survives into the next case.
   */
   const mine = (await db.query(
-    `select id from applications where candidate_id = '${candidate}' limit 1`,
+    `select id from applications where candidate_id = '${candidate}' and status <> 'withdrawn' limit 1`,
   )).rows[0].id;
 
-  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
-  const open = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+  await db.exec(`update applications set status = 'new', withdrawn_at = null where id = '${mine}'`);
+  const open = await as(candidate, `select * from public.withdraw_application('${mine}')`);
   report.check('a candidate may withdraw while the outcome is open',
     open.ok && open.rows.length === 1, open.error);
 
   for (const status of ['interview', 'hired', 'rejected']) {
-    await db.exec(`update applications set status = '${status}' where id = '${mine}'`);
-    const shut = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+    await db.exec(`update applications set status = '${status}', withdrawn_at = null where id = '${mine}'`);
+    const shut = await as(candidate, `select * from public.withdraw_application('${mine}')`);
     report.check(`and cannot once it is ${status}`,
-      shut.ok && shut.rows.length === 0, shut.error ?? `deleted ${shut.rows.length} row(s)`);
+      shut.ok && shut.rows.length === 0, shut.error ?? `returned ${shut.rows.length} row(s)`);
   }
 
-  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
+  await db.exec(`update applications set status = 'new', withdrawn_at = null where id = '${mine}'`);
 }
 
 report.section('two people moving one applicant');

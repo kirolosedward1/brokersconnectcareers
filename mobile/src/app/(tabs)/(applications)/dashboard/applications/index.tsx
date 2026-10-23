@@ -4,7 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
-import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
+import { STAGE_TONE, WITHDRAWN_BADGE, canWithdraw } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -148,7 +148,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const locale = useLocale();
   const { colors } = useTheme();
   const withdraw = useWithdrawApplication();
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'unavailable' | 'failed' | null>(null);
 
   const job = application.job;
   if (!job) return null;
@@ -163,10 +163,11 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
         text: t('dashboard.withdraw'),
         style: 'destructive',
         onPress: () => {
-          setFailed(false);
+          setFailed(null);
           withdraw.mutate(application.id, {
             onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
-            onError: () => setFailed(true),
+            onError: (error) =>
+              setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
           });
         },
       },
@@ -206,7 +207,22 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
             </View>
           </View>
         </View>
-        <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+        {application.status === 'withdrawn' ? (
+          <View
+            style={{
+              backgroundColor: WITHDRAWN_BADGE.background,
+              borderRadius: WITHDRAWN_BADGE.radius,
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+            }}
+          >
+            <Text style={{ color: WITHDRAWN_BADGE.color, fontSize: WITHDRAWN_BADGE.fontSize }} weight="medium">
+              {t('applicationStatus.withdrawn')}
+            </Text>
+          </View>
+        ) : (
+          <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+        )}
       </View>
 
       {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
@@ -267,7 +283,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 
       {failed ? (
         <Text variant="caption" tone="destructive" accessibilityRole="alert">
-          {t('common.errorBody')}
+          {failed === 'unavailable' ? t('myApplications.withdrawUnavailable') : t('common.errorBody')}
         </Text>
       ) : null}
     </View>

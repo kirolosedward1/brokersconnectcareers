@@ -191,13 +191,17 @@ report.section('withdrawing, and the CV it leaves behind');
       values ('${target}', '${CAND2}', 'new', '${CAND2}/withdrawn.pdf');
   `);
 
-  const withdrawn = await as(CAND2, `delete from applications where job_id = '${target}' returning id`);
+  const withdrawn = await as(CAND2, `select * from public.withdraw_application(
+    (select id from applications where job_id = '${target}' and candidate_id = '${CAND2}' and status <> 'withdrawn'))`);
   report.check('a new application can be withdrawn', withdrawn.ok && withdrawn.rows.length === 1, withdrawn.error);
 
-  await db.exec(`delete from applications where job_id = '${target}' and candidate_id = '${CAND2}'`);
+  // as() rolls the function call back. The committed withdrawal clears the
+  // path, which queues the file as replaced rather than as a deleted row.
+  await db.exec(`update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+                  where job_id = '${target}' and candidate_id = '${CAND2}' and status <> 'withdrawn'`);
   const queued = await one(`select reason, not_before > now() as waiting from storage_gc_queue
                              where bucket = 'cvs' and path = '${CAND2}/withdrawn.pdf'`);
-  report.check('its CV is queued for deletion', queued?.reason === 'row_deleted');
+  report.check('its CV is queued for deletion', queued?.reason === 'replaced');
   report.check('but not deletable yet — the grace period stands', queued?.waiting === true);
 
   const early = await q(`select * from public.claim_storage_gc(100) where path = '${CAND2}/withdrawn.pdf'`);
@@ -213,7 +217,8 @@ report.section('withdrawing, and the CV it leaves behind');
   const finished = await one(`select outcome from storage_gc_queue where path = '${CAND2}/withdrawn.pdf'`);
   report.check('and recording the removal closes it', finished.outcome === 'removed');
 
-  const shortlisted = await as(CAND, `delete from applications where job_id = '${expiredJob}' returning id`);
+  const shortlisted = await as(CAND, `select * from public.withdraw_application(
+    (select id from applications where job_id = '${expiredJob}' and candidate_id = '${CAND}'))`);
   report.check('an application past shortlisting cannot be withdrawn', shortlisted.ok && shortlisted.rows.length === 0);
 }
 
@@ -235,9 +240,10 @@ report.section('replacing a CV that an application still uses');
   report.check('the old file is never handed out while an application points at it',
     claimed.length === 0 && row.outcome === 'kept_referenced', JSON.stringify(row));
 
-  // The application is withdrawn later: the file is released a second time
-  // and this time nothing is holding it.
-  await db.exec(`delete from applications where job_id = '${liveJob}' and candidate_id = '${CAND}'`);
+  // The application is withdrawn later: the path is cleared, the file is
+  // released a second time, and this time nothing is holding it.
+  await db.exec(`update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+                  where job_id = '${liveJob}' and candidate_id = '${CAND}' and status <> 'withdrawn'`);
   const requeued = await one(`select outcome, done_at from storage_gc_queue where path = '${CAND}/profile-v1.pdf'`);
   report.check('once the last reference goes, it is queued again', requeued.outcome === null && requeued.done_at === null);
 }

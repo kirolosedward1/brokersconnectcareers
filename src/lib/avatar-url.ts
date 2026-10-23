@@ -3,7 +3,7 @@
  *
  * `profiles.avatar_url` is drawn as an <img> in every employer's browser: the
  * applicant card, the shortlist, the directory card, the profile page. The
- * database trigger (migrations 322, 352, 361) pins the *shape* of the value — the
+ * database trigger (migrations 322, 352, 364) pins the *shape* of the value — the
  * account's own folder in the avatars bucket —
  * but it cannot know this deployment's storage host, so a URL with the right
  * path on somebody else's host still passes it. Rendered as it stands, that
@@ -14,7 +14,7 @@
  * storage is fetched; anything else falls back to the monogram, which is what
  * a missing photo looks like anyway. Google's picture host was fetched too
  * while sign-up copied the Google account's photo; nothing does now, and the
- * trigger refuses one (migrations 339 and 361), so a reader's browser never
+ * trigger refuses one (migrations 339 and 364), so a reader's browser never
  * asks Google for somebody's face.
  *
  * No imports, so the auth suite can load it under Node.

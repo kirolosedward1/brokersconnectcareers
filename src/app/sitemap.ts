@@ -106,7 +106,7 @@ async function fromDatabase(): Promise<DbRows> {
         Every live listing — live by the date, not only the label, because
         the nightly cron that writes `expired` can be a day late. The same
         predicate the board and jobIsLive() use, so the sitemap never lists a
-        page that answers with a closed banner and noindex.
+        page that answers 410, or a closed one with its banner and noindex.
       */
       readAll<{
         slug: string;

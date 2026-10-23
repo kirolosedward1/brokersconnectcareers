@@ -1,5 +1,5 @@
 -- =============================================================================
--- 361 — Only a photo somebody uploaded
+-- 364 — Only a photo somebody uploaded
 --
 -- The second half of migration 339 (docs/data-lifecycle.md, item 13).
 -- Signing up with Google used to copy the Google account's photo into the

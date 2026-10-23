@@ -326,8 +326,9 @@ if (applicationId && employer) {
 
   const withdraw = await action(candidate.token, 'withdrawApplication', { applicationId });
   check('the candidate withdraws it', ok(withdraw), describe(withdraw));
-  const gone = await rest(candidate.token, `applications?select=id&id=eq.${applicationId}`);
-  check('and it is gone', Array.isArray(gone.json) && gone.json.length === 0, describe(gone));
+  // The row stays. Withdrawing is a status, so the company still has it.
+  const kept = await rest(candidate.token, `applications?select=id,status&id=eq.${applicationId}`);
+  check('and it stays, marked withdrawn', kept.json?.[0]?.id === applicationId && kept.json?.[0]?.status === 'withdrawn', describe(kept));
 }
 
 // ---------------------------------------------------------------------------
