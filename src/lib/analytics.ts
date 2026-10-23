@@ -48,7 +48,16 @@ export type AnalyticsEvent =
    */
   | 'homepage_job_browse_location'
   | 'homepage_job_browse_category'
-  | 'homepage_job_browse_company_type';
+  | 'homepage_job_browse_company_type'
+  /**
+   * The page for the app, /app. One question — does the page send anybody
+   * to the store — and two that say which part of it earned the click:
+   * `location` on the store click is hero, sticky or final; the other two
+   * carry the tab or the question that was opened.
+   */
+  | 'app_store_click'
+  | 'app_tour_tab'
+  | 'app_faq_open';
 
 export function track(event: AnalyticsEvent, props?: Props): void {
   if (typeof window === 'undefined') return;

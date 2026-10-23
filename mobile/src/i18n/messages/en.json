@@ -232,6 +232,17 @@
   "companies": {
     "searchPlaceholder": "Search by company name"
   },
+  "lock": {
+    "switch": "Lock the app",
+    "hint": "Face ID or your passcode before the app opens, and after a minute away. On this phone only.",
+    "title": "Brokers Connect is locked",
+    "body": "Unlock with Face ID or your passcode to carry on.",
+    "unlock": "Unlock",
+    "signOut": "Sign out",
+    "prompt": "Unlock Brokers Connect",
+    "cancel": "Cancel",
+    "failed": "That did not unlock the app. Try again."
+  },
   "search": {
     "clear": "Clear search"
   },

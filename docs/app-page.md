@@ -2,25 +2,31 @@
 
 What `/app` is for, what is on it and why, and how it moves. The page is
 `src/components/get-app/get-app-landing.tsx` and the pieces beside it; the
-copy is `appPage` in `messages/*.json`. This is the plan it was built to,
-kept so the next change can be measured against it.
+copy is `appPage` in `messages/*.json`; the store links are
+`src/lib/app-links.ts`. This is the plan it was built to, kept so the next
+change can be measured against it.
 
 ## The job
 
 One visitor, one action: somebody on a phone, usually arriving from a
-WhatsApp link or the site's footer, decides to install the app. Everything
-on the page either makes that decision easier or gets out of the way. There
-is no second call to action, no newsletter, no "learn more".
+WhatsApp link or the site's footer, decides to install the app. The store
+buttons open the page and close it; everything between is the app itself.
 
 The page has to be true. Every claim on it is one the store listing makes
 (`mobile/store.config.js`) and the code backs: pay in figures, the lead
 source on every listing, one-tap applications, a notification when an
-application moves, the directory profile the consultant controls. Nothing
-counts users, downloads or ratings, because nothing measures them yet.
+application moves, the verified badge, the follow button, the directory
+profile the consultant controls, light and dark and the phone's text size.
+The pay claim is worded as the site words it everywhere else: the lead
+source is on every listing; the salary and commission are asked of every
+company and shown in figures when the company publishes them. Nothing
+counts users, downloads, jobs or companies; nothing is rated,
+quoted or endorsed, because nothing measures those yet. A fact the page
+wants and does not have is a `TODO` in the code, never a guess.
 
 ## What is on the screen
 
-The pictures are the app itself: captures from the `iOS screens` workflow
+The pictures are the app: captures from the `iOS screens` workflow
 (`.github/workflows/ios-screens.yml`), which builds the App Store build and
 photographs it on an iPhone simulator in Arabic against the live site — the
 largest iPhone in the light appearance (the store set), the same in the dark
@@ -56,111 +62,130 @@ for (const [pass, dir] of Object.entries(passes)) for (const [from, to] of Objec
 `public/brand/og-app.jpg`, is drawn from the Home capture by
 `scripts/og-app-card.mjs` and is re-drawn with it.
 
+What the captures do not show is drawn in HTML and says so by looking like
+a sketch: the notifications (the run is signed out and sees none), the
+filters as chips, the follow button, and a profile with a blank avatar,
+"your name" and empty fields.
+
+Wherever the app already has words for something, the page uses them
+rather than paraphrasing: the notification cards are built from the same
+catalogue keys the bell and the push use (`notifications.*`, with a sample
+job title and saved search), the follow button and the line under it are
+the company page's (`companies.follow*`), the three visibility choices and
+their explanations are the onboarding form's (`visibility.*`), and the
+filters are the board's own tracks, lead sources and sort orders.
+
 ## The page, top to bottom
 
-1. **Hero.** The landing pages' dark ground, without the film, with a slow
-   aurora drifting behind it. At the start: an eyebrow naming what the app
-   is (iPhone, Arabic, free for candidates), the headline «بروكرز كونكت،
-   دلوقتي في جيبك», one sentence on what it does, the two store badges, and
-   the line that it costs a candidate nothing. At the end: the phone, held
-   up, showing the app's Home — and then, every few seconds, the board and a
-   listing, cross-fading, with three dots saying which. The header floats
-   over it as it does on `/employers`.
+1. **Hero.** A pill naming what it is (iPhone, Arabic), the headline, one
+   sentence, the two store buttons, the line that it costs a candidate
+   nothing. Three phones fanned: Home in front, floating, the board and a
+   listing behind it. A soft dot grid and a glow, nothing busier.
+2. **Four highlights**, one row: who supplies the leads, pay in figures
+   (when the company publishes it), applying in one tap, updates on an
+   application.
+3. **The terms before applying** (dark). The listing's capture with three
+   chips pointing at the three facts on it, and two small cards: the
+   phrases many listings use, struck through, beside this board's.
+4. **Finding the right job.** The board's capture beside the filters as
+   chips to try: the six tracks, eight areas, the three lead sources, the
+   two sort orders — the board's own words.
+5. **Applying** (tinted). Three steps that light up one after another,
+   ending on "sent".
+6. **Notifications** (dark). Four cards sliding in over a blurred Home:
+   the application arrived, moved to the shortlist, moved to an interview,
+   a new job in a saved search — the real templates.
+7. **Companies.** The companies and a company's page side by side, three
+   points, and the follow button to press, with the line the app shows
+   under it.
+8. **The profile** (tinted). A profile with nothing real on it under the
+   three choices the product offers: every approved company, verified
+   companies only (the name blurs, as an unverified company sees it), or
+   hidden.
+9. **The tour.** From `lg`, one phone and five tabs; the screen follows the
+   tab, and the tour advances on its own until touched. Below `lg`, a
+   row that snaps, dots and arrows.
+10. **Three steps to start.**
+11. **The two doors**: looking for work, hiring.
+12. **Questions**, one open at a time, with `FAQPage` data for search.
+13. **The ask, again** (dark), with a phone leaning in from the edge.
 
-2. **Walkthrough.** The centre of the page: the five screens, each with a
-   sentence on what the reader does there. From `lg` the phone sticks to the
-   side while the five steps scroll past it, and the screen changes to the
-   step in view; tapping a step does the same. Below `lg` it is one row of
-   phones that snaps as it scrolls, with the step under each, arrows at the
-   ends and dots that say where the reader is.
+On a phone, once the hero has scrolled away, a small floating bar near the
+foot of the screen carries the mark, the name and a "get the app" button to
+the App Store; it leaves while the closing band is on screen. The site header
+scrolls away on this page instead of sticking, so the two never share the
+screen.
 
-3. **Features.** Four cards, each a thing the app does for a consultant that
-   the screens above showed: pay in figures, apply in a minute, follow every
-   application, the profile is theirs to show or hide. An icon, a title, two
-   lines. They arrive as the reader reaches them.
-
-4. **Appearance.** "On your phone, your way": one phone and a three-way
-   switch — light, dark, large text — that cross-fades between the real
-   captures of the same screen. It is the one section with a control in it,
-   because it is the one claim best proved by letting the reader try it.
-
-5. **The ask, again.** A band with the headline's answer and the two badges,
-   closing the page the way `/employers` closes.
+(An appearance section — light, dark, large text — was here and was taken
+out on the owner's request; the dark and large-text captures stay in
+`public/app-screenshots/` for the store and for later.)
 
 ## How it moves
 
-Motion here is of two kinds, and both respect `prefers-reduced-motion`
-(`motion-safe:` on every utility, and the keyframes are not started at all
-under the media query).
+Every piece respects `prefers-reduced-motion` (`motion-safe:` on each
+utility; the observers that time sequences skip straight to the end).
 
-- **Things that change while you watch.** The hero's screen cross-fading
-  (400 ms, opacity and a 2% scale), the walkthrough's screen following the
-  step, the appearance switch, a carousel moving on an arrow press (smooth
-  scroll to the snap point), the badges on hover (2% larger, brighter) and
-  on press (2% smaller). This is the kind of motion the rest of the site
-  already allows itself.
-- **Things that arrive.** Section headings and the feature cards fade up
-  12 px as they enter the viewport, once, 400 ms, the cards 60 ms apart. The
-  site's other pages do not do this (globals.css says why); this page is a
-  product page for a phone app, where a little arrival is the convention,
-  and it is kept to the two places where it says "there is more below".
-- **Ambient.** The hero's aurora (two blobs, transform only, a 24 s loop) and
-  the hero phone floating 6 px over 6 s. On a pointer device the hero phone
-  tilts a few degrees toward the cursor; on a touch device it does not move
-  with the finger. The hero's cross-fade pauses while the pointer is over
-  the phone, while anything in it has focus, and while the tab is hidden.
+- **Things that arrive.** Headings and cards fade up 16px as they enter the
+  viewport, once (`reveal.tsx`, which never hides what is on screen at the
+  first paint and hides nothing without JavaScript). Rows arrive 80ms
+  apart.
+- **Things that change while you watch.** The tour's cross-fade (300ms),
+  the visibility choice, the carousel moving on an arrow, chips and the
+  follow button on press, the store buttons on hover and press, the FAQ
+  opening by growing its grid row.
+- **Sequences.** The callout chips, the three apply steps and the four
+  notification cards run once, when their section is in view.
+- **Ambient.** The hero's front phone floats 6px over 6s; the dark sections'
+  glows drift on long loops, transform only.
 
 No scroll-linked parallax, no counters, no typewriters, no particles.
 
 ## Shape, by width
 
-- **Phone (to `sm`).** One column: hero text, badges, then the phone cropped
-  at the band's edge. The walkthrough is the carousel, one phone and a half
-  in view. Features one to a row, then two from `sm`. The appearance phone
-  is centred under its switch.
-- **Tablet (`sm`–`lg`).** The hero stays one column with the phone centred;
-  the carousel shows two and a half phones; features two to a row.
-- **Desktop (`lg` up).** The hero is two columns, phone at the end (right in
-  English, left in Arabic). The walkthrough is the sticky phone beside the
-  steps. Features four to a row. The appearance section is the switch and
-  phone side by side.
-
-Everything is logical (`start`/`end`, `ms`/`me`), so Arabic mirrors the
-layout and the drawn phone's buttons stay on their physical sides.
+Logical properties throughout, so Arabic mirrors the layout; the drawn
+phone's buttons stay on their physical sides. Below `lg` the page is one
+column and its text is centred — headings, paragraphs, buttons, the
+highlight cards, the filter chips, the steps — with the words before the
+pictures. Desktop (`lg` up): two columns, text at the start of its column,
+the phone changing sides from one feature to the next, the highlights four
+across, the tour as tabs beside a phone. No horizontal scroll at 360px, and
+no phone in the hero is cut by the edge of the screen.
 
 ## Words
 
 Short, concrete, in the register the rest of the site uses (Egyptian
-colloquial in Arabic). Each section says one thing. Nothing is "seamless",
-"powerful", "effortless" or "designed for you"; no sentence exists to fill a
-grid cell. The captions under the screens are the app's own tab and screen
-names, so a reader who installs it meets the same words.
+colloquial in Arabic); each section says one thing. Captions are the app's
+own screen names, so a reader who installs it meets the same words.
 
 ## Access
 
-Headings in order, one `h1`. Every capture has an alt that names the screen
-it shows. The walkthrough's steps are buttons with `aria-current` on the one
-in view; the carousel's arrows and dots are buttons with names; the
-appearance switch is a group of radio buttons. The hero's rotating screen
-announces nothing (it is decoration over a labelled image). The Google Play
-badge is `aria-disabled`, out of the tab order, and says "coming soon" in
-its name. Focus rings are white on the dark hero and brand blue elsewhere.
+One `h1`, headings in order. Every capture that carries meaning has an alt
+naming the screen; a capture repeating one described nearby is decorative.
+The tour is the tabs pattern; the chips, dots and the follow button say
+their state with `aria-pressed`; the visibility choice is a radio group; the FAQ's
+closed answers are `inert`. The Google Play badge is `aria-disabled`, out
+of the tab order, and says "coming soon" in its name. Focus rings are the
+brand blue, white on the dark sections.
 
 ## Weight
 
-No new dependency: the motion is CSS and three small client components
-(the hero phone, the walkthrough, the appearance switch). The page's
-first-load JavaScript stays inside the public-page budget in
-`perf-budget.json` (155 kB; it was 112 kB before the interaction was
-added). Every capture goes through `next/image` with `sizes` set to what the
-frame is actually given, the hero's preloaded and the rest lazy; the
-cross-fading stacks keep only their current image in the DOM's painted set.
+No new dependency. The route's first-load JavaScript stays inside the
+public-page budget in `perf-budget.json`. Every capture goes through
+`next/image` with `sizes`; the hero's front phone is preloaded, the rest
+lazy.
+
+## Analytics
+
+Three events (`src/lib/analytics.ts`), no-ops until a provider is set:
+`app_store_click` with `location` (hero, sticky, final), `app_tour_tab`,
+`app_faq_open`.
 
 ## Still to do, outside this page
 
-- The store links. Both badges point at `#` until the listing exists
-  (`docs/app-store.md`); then the App Store badge takes `MOBILE_APP_STORE_URL`
-  and the Google Play one wakes up with `MOBILE_PLAY_STORE_URL`.
-- Signed-in screens. The captures are a signed-out run, so the applications,
-  saved and profile tabs are described, not shown. A capture pass signed in
-  as the review candidate would add them.
+- The store links in `src/lib/app-links.ts`: `APP_STORE_URL` once the
+  listing exists, `GOOGLE_PLAY_URL` when Android ships (the badge wakes up
+  on its own).
+- Signed-in captures: the run is signed out, so the applications, saved
+  and profile tabs are described, not shown. A capture pass signed in as
+  the review candidate would add them, and a real notifications screen
+  would replace the drawn cards.

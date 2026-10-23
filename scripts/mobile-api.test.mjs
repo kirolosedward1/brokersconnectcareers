@@ -14,6 +14,7 @@
 import { readFileSync } from 'node:fs';
 
 const { readBearer, challenge, tokenRefused } = await import('../src/lib/mobile-api/bearer.ts');
+const { secondFactorDue, tokenAssurance } = await import('../src/lib/auth/second-factor.ts');
 const { adminDoor, assuranceOf } = await import('../src/lib/mobile-api/admin-door.ts');
 const { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError, AuthUnknownError } = await import('@supabase/supabase-js');
 
@@ -172,6 +173,56 @@ console.log('\n— a mobile route never builds the cookie client');
   const scopeCheck = server.indexOf('mobileScope()');
   const cookieRead = server.indexOf('await cookies()');
   is('createClient asks for the mobile scope first', scopeCheck > -1 && scopeCheck < cookieRead, true);
+}
+
+console.log('\n— a password alone is not the account when it has an authenticator');
+{
+  const token = (claims) =>
+    `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.c2ln`;
+  const aal1 = token({ sub: '1', aal: 'aal1' });
+  const aal2 = token({ sub: '1', aal: 'aal2' });
+  const verified = { factors: [{ status: 'verified' }] };
+  const unverified = { factors: [{ status: 'unverified' }] };
+
+  is('the claim is read', tokenAssurance(aal2), 'aal2');
+  is('no claim is none', tokenAssurance(token({ sub: '1' })), null);
+  is('garbage is none', tokenAssurance('a.%%%.c'), null);
+  is('nothing is none', tokenAssurance(undefined), null);
+  is('a claim that is not a word is none', tokenAssurance(token({ aal: 2 })), null);
+
+  is('factor, aal1: owes the code', secondFactorDue(verified, aal1), true);
+  is('factor, aal2: answered', secondFactorDue(verified, aal2), false);
+  is('factor, a token that states nothing: owes it', secondFactorDue(verified, token({ sub: '1' })), true);
+  is('factor, no token at all: owes it', secondFactorDue(verified, null), true);
+  is('no factor, aal1: nothing owed', secondFactorDue({ factors: [] }, aal1), false);
+  is('a setup never finished is no factor', secondFactorDue(unverified, aal1), false);
+  is('no factor list is no factor', secondFactorDue({}, aal1), false);
+  is('nobody owes nothing', secondFactorDue(null, aal1), false);
+
+  const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+  const http = read('../src/lib/mobile-api/http.ts');
+  is('the door judges every token it accepts', /secondFactorDue: secondFactorDue\(data\.user, jwt\)/.test(http), true);
+  is('a route that needs somebody refuses it', /if \(factorDue && !options\.optional\) return secondFactorRequired\(\)/.test(http), true);
+  is('a signed-out-welcome route runs it signed out', /session = factorDue \? null : verified\.session/.test(http), true);
+  is('the shared routes refuse it, by token and by cookie', (http.match(/return secondFactorRequired\(\)/g) ?? []).length >= 3, true);
+
+  const actions = read('../src/app/api/mobile/v1/actions/[name]/route.ts');
+  is('the actions door says why it refused', /refusedForSecondFactor\(\) \? secondFactorRequired\(\)/.test(actions), true);
+
+  const middleware = read('../src/lib/supabase/middleware.ts');
+  is(
+    "the website's pages judge the server's user, not the cookie's copy",
+    /isSecondFactorDue\(user, /.test(middleware) && !/getAuthenticatorAssuranceLevel\(\)/.test(middleware),
+    true,
+  );
+
+  const account = read('../src/lib/actions/account.ts');
+  const deletion = account.slice(account.indexOf('export async function deleteMyAccount'));
+  is(
+    'deleting an account asks first, before anything is removed',
+    deletion.indexOf('sessionOwesSecondFactor(') > -1 && deletion.indexOf('sessionOwesSecondFactor(') < deletion.indexOf('deleteUser('),
+    true,
+  );
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
