@@ -13,14 +13,7 @@ import { raise } from '@/lib/queries/error';
 import { formatDate, isoDate } from '@/lib/utils';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
-
-const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'destructive'> = {
-  new: 'default',
-  shortlisted: 'primary',
-  interview: 'primary',
-  hired: 'success',
-  rejected: 'destructive',
-};
+import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 
 export async function generateMetadata({
   params,
@@ -148,7 +141,7 @@ export default async function ApplicationsPage({
                 </p>
               </div>
 
-              <Badge variant={STATUS_VARIANT[application.status]}>
+              <Badge variant={STAGE_TONE[application.status]}>
                 {tStatus(application.status)}
               </Badge>
             </div>
@@ -231,7 +224,7 @@ export default async function ApplicationsPage({
               </time>
 
               {/* Withdrawing is only offered while the outcome is still open. */}
-              {application.status === 'new' || application.status === 'shortlisted' ? (
+              {canWithdraw(application.status) ? (
                 <WithdrawButton applicationId={application.id} label={t('withdraw')} />
               ) : null}
             </div>
