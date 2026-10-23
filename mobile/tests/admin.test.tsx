@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Modal, Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { router, Stack, Tabs } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,6 +9,8 @@ import type {
   AdminOverview,
   AdminReportCase,
   AdminReportDetail,
+  AdminSummary,
+  AdminTrend,
   AdminUserSearchRow,
   JobRow,
   ProfileRow,
@@ -16,6 +18,7 @@ import type {
 import { DecisionSheetHost } from '~/components/admin/decision-sheet';
 import { shownToast, toast } from '~/components/feedback/toast';
 import { catalogues, I18nProvider } from '~/i18n/provider';
+import { summaryWaiting } from '~/features/admin/queries';
 import { rememberActor } from '~/lib/last-actor';
 import { routeFromOutside, routeInside } from '~/lib/links';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -99,6 +102,42 @@ const overview: AdminOverview = {
     },
   ],
   generated_at: '2026-10-22T10:00:00Z',
+};
+
+/** The website rail's figures (admin_summary), which the tab's badge adds up. */
+const summary: AdminSummary = {
+  queue_total: 3,
+  queue_over_24h: 1,
+  reports_open: 2,
+  appeals_open: 1,
+  companies_pending: 2,
+  accounts_pending: 4,
+  companies_total: 10,
+  live_jobs: 14,
+  candidates: 30,
+  employers: 8,
+  signups_7d: 5,
+  published_7d: 3,
+  applications_7d: 6,
+};
+
+/** Thirty days, the last of them busy. */
+const trend: AdminTrend = {
+  days: Array.from({ length: 30 }, (_, i) => ({
+    d: `2026-${String(i < 8 ? 9 : 10).padStart(2, '0')}-${String(i < 8 ? 23 + i : i - 7).padStart(2, '0')}`,
+    signups: i === 29 ? 5 : 0,
+    published: i === 29 ? 3 : 0,
+    applications: i === 29 ? 6 : 1,
+  })),
+};
+
+const REQUEST_ID = 'de1e7e00-0000-4000-8000-000000000001';
+
+const deletionRequest = {
+  id: REQUEST_ID,
+  reference: 'BC-7Q2M',
+  created_at: '2026-10-18T10:00:00Z',
+  user_id: OTHER_USER,
 };
 
 const pendingJob = {
@@ -229,6 +268,11 @@ beforeEach(async () => {
   server.on('POST /rest/v1/rpc/my_company_id', () => null);
   server.on('HEAD /rest/v1/notifications', { body: null, headers: { 'content-range': '*/0' } });
   server.on('POST /rest/v1/rpc/admin_overview', () => overview);
+  server.on('POST /rest/v1/rpc/admin_summary', () => summary);
+  server.on('POST /rest/v1/rpc/admin_trend', () => trend);
+  // Nobody asking to leave, and mail switched on, unless a test says otherwise.
+  server.on('GET /rest/v1/support_requests', () => []);
+  server.on('GET /api/mobile/v1/admin/mail', { configured: true, missing: [] });
   server.on('GET /rest/v1/jobs', (url: URL) =>
     url.searchParams.get('status') === 'eq.pending_review'
       ? { body: [pendingJob], headers: { 'content-range': '0-0/1' } }
@@ -263,6 +307,7 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/setAccountApproval', { ok: true });
   server.on('POST /api/mobile/v1/actions/reviewCompany', { ok: true });
   server.on('POST /api/mobile/v1/actions/getDocumentUrl', { ok: true, data: { url: 'https://storage.example/doc?token=abc' } });
+  server.on('POST /api/mobile/v1/actions/closeDeletionRequest', { ok: true });
 
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
@@ -318,7 +363,14 @@ const app = {
   '(tabs)/(admin)/admin/jobs/[id]': ListingScreen,
   '(tabs)/(admin)/admin/reports/index': ReportsScreen,
   '(tabs)/(admin)/admin/users/index': AccountsScreen,
+  '(tabs)/(admin)/admin/users/[id]': stand('an account'),
   '(tabs)/(admin)/admin/companies/index': CompaniesScreen,
+  '(tabs)/(admin)/admin/companies/[id]': stand('a company'),
+  // The rest of the console, as the overview's figures and rows open it.
+  '(tabs)/(admin)/admin/applications/index': stand('the applications'),
+  '(tabs)/(admin)/admin/agents/index': stand('the consultants'),
+  '(tabs)/(admin)/admin/search/index': stand('the search'),
+  '(tabs)/(admin)/admin/audit/index': stand('the audit log'),
   mfa: stand('the code screen'),
 };
 
@@ -354,11 +406,22 @@ describe('the tab bar', () => {
     renderRouter(tabbed, { initialUrl: '/' });
     await screen.findByText('home');
 
-    // 3 listings + 2 report cases + 2 companies + 4 accounts, said with the tab's name.
+    // The website rail's sense of waiting (admin_summary): 3 in the queue + 2
+    // companies pending + 2 reported targets + 1 open appeal + 4 accounts,
+    // said with the tab's name.
     await waitFor(() => {
       const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
-      expect(labels.some((label) => label.startsWith(ar.admin.title) && /11/.test(label))).toBe(true);
+      expect(labels.some((label) => label.startsWith(ar.admin.title) && /12/.test(label))).toBe(true);
     });
+    expect(server.asked('/rest/v1/rpc/admin_summary')).toHaveLength(1);
+  });
+
+  it('counts what the rail counts, and no appeals on a database that has none yet', () => {
+    expect(summaryWaiting(summary)).toBe(12);
+    // Before migration 328 the function answers without appeals_open: none, never unreadable.
+    const { appeals_open: _absent, ...older } = summary;
+    expect(summaryWaiting(older)).toBe(11);
+    expect(summaryWaiting(undefined)).toBe(0);
   });
 
   it('and nobody else', async () => {
@@ -369,7 +432,7 @@ describe('the tab bar', () => {
 
     const labels = screen.getAllByRole('tab').map((tab) => tab.props.accessibilityLabel as string);
     expect(labels.some((label) => label.startsWith(ar.admin.title))).toBe(false);
-    expect(server.requests.some((request) => request.url.pathname === '/rest/v1/rpc/admin_overview')).toBe(false);
+    expect(server.requests.some((request) => request.url.pathname.startsWith('/rest/v1/rpc/admin_'))).toBe(false);
   });
 });
 
@@ -467,18 +530,151 @@ describe('the overview', () => {
     await signIn();
     const result = renderRouter(app, { initialUrl: '/admin' });
 
+    // The first row: what waits on a person, the website's five cells.
     expect(await screen.findByLabelText(`${ar.dashboard.statQueue}: 3`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.dashboard.statQueueOld}: 1`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statReports}: 2`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statCompaniesPending}: 2`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.statAccountsPending}: 4`)).toBeTruthy();
+    // The marketplace: live, expiring, quiet, expired, this week's applications (up by two), unopened.
+    expect(screen.getByText(ar.admin.marketplace)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.dashboard.statLiveJobs}: 14`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.dashboard.statExpiring}: 2`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statNoApplicants}: 5`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statExpired}: 2`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statApplications7d}: 6، 2 ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statUnopened}: 2`)).toBeTruthy();
+    // The people and the companies: the directory counts the public and gated profiles, the hidden ones said beside.
+    expect(screen.getByText(ar.admin.population)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statCompaniesHiring}: 5`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statCompaniesVerified}: 3`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statCandidates}: 30`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statEmployers}: 8`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.dashboard.statSignups}: 5`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statAgents}: 10`)).toBeTruthy();
+    expect(screen.getByText(ar.admin.statAgentsHint.replace('{hidden}', '2'), { exact: false })).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statSuspendedAccounts}: 1`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statSuspendedCompanies}: 0`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statRestrictedConsultants}: 0`)).toBeTruthy();
+    // Thirty days of activity, the three series the website draws.
+    expect(screen.getByText(ar.dashboard.trendActivityTitle)).toBeTruthy();
+    expect(screen.getByText(ar.dashboard.trendPublished)).toBeTruthy();
+    expect(screen.getByText(ar.dashboard.trendSignups)).toBeTruthy();
     // The decisions made lately, in the website's words.
     expect(screen.getByText(ar.admin.auditAction.job_approve, { exact: false })).toBeTruthy();
+    // Nobody asking to leave: no section for it.
+    expect(screen.queryByText(ar.admin.deletionRequests)).toBeNull();
 
     fireEvent.press(screen.getByLabelText(`${ar.dashboard.statQueue}: 3`));
     await waitFor(() => expect(result.getPathname()).toBe('/admin/jobs'));
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
     // What its own words flag, before it is opened.
     expect(screen.getByText(ar.admin.flag.asks_for_money, { exact: false })).toBeTruthy();
+  });
+
+  it("opens each figure's own list, by the website's path and filter", async () => {
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/admin' });
+
+    fireEvent.press(await screen.findByLabelText(`${ar.dashboard.statLiveJobs}: 14`));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin/jobs'));
+    expect(result.getSearchParams()).toEqual({ status: 'live' });
+
+    act(() => router.navigate('/admin'));
+    fireEvent.press(await screen.findByLabelText(`${ar.admin.statUnopened}: 2`));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin/applications'));
+    expect(result.getSearchParams()).toEqual({ status: 'unopened' });
+
+    act(() => router.navigate('/admin'));
+    fireEvent.press(await screen.findByLabelText(`${ar.admin.statRestrictedConsultants}: 0`));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin/agents'));
+    expect(result.getSearchParams()).toEqual({ visibility: 'restricted' });
+
+    act(() => router.navigate('/admin'));
+    fireEvent.press(await screen.findByLabelText(`${ar.admin.statCandidates}: 30`));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin/users'));
+    expect(result.getSearchParams()).toEqual({ role: 'candidate' });
+
+    act(() => router.navigate('/admin'));
+    fireEvent.press(await screen.findByLabelText(`${ar.admin.statSuspendedCompanies}: 0`));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin/companies'));
+    expect(result.getSearchParams()).toEqual({ status: 'suspended' });
+  });
+
+  it('opens a recent decision where it was decided, the audit log, and the search', async () => {
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/admin' });
+
+    fireEvent.press(await screen.findByRole('link', { name: `${ar.admin.auditAction.job_approve} — مستشار مبيعات` }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/admin/jobs/${JOB_ID}`));
+
+    act(() => router.navigate('/admin'));
+    fireEvent.press(await screen.findByRole('link', { name: ar.admin.auditLog }));
+    await waitFor(() => expect(result.getPathname()).toBe('/admin/audit'));
+
+    act(() => router.navigate('/admin'));
+    const field = await screen.findByLabelText(ar.admin.search);
+    expect(field.props.placeholder).toBe(ar.admin.searchEverythingPlaceholder);
+    fireEvent.changeText(field, ' منى ');
+    fireEvent(field, 'submitEditing');
+    await waitFor(() => expect(result.getPathname()).toBe('/admin/search'));
+    expect(result.getSearchParams()).toEqual({ q: 'منى' });
+  });
+
+  it('lists the owners asking to leave while there are any, and closes a request through the website', async () => {
+    server.on('GET /rest/v1/support_requests', (url: URL) => {
+      // Only the columns the website reads — never the message — and only the open deletion requests, oldest first.
+      expect(url.searchParams.get('select')).toBe('id,reference,created_at,user_id');
+      expect(url.searchParams.get('topic')).toBe('eq.account_deletion');
+      expect(url.searchParams.get('status')).toBe('eq.open');
+      expect(url.searchParams.get('order')).toBe('created_at.asc');
+      expect(url.searchParams.get('limit')).toBe('50');
+      return [deletionRequest];
+    });
+    // The owners' names, looked up by their ids; the viewer's own profile as before.
+    server.on('/rest/v1/profiles', (url: URL) =>
+      url.searchParams.get('id')?.startsWith('in.') ? [{ id: OTHER_USER, full_name: 'أحمد سمير' }] : [me],
+    );
+    server.on('GET /rest/v1/companies', (url: URL) =>
+      url.searchParams.has('owner_id') ? [{ id: company.id, name_ar: company.name_ar, owner_id: OTHER_USER }] : [],
+    );
+    await signIn();
+    const result = renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.admin.deletionRequests)).toBeTruthy();
+    expect(screen.getByText('BC-7Q2M')).toBeTruthy();
+    // The account and its company, each the way to its file.
+    fireEvent.press(screen.getByRole('link', { name: company.name_ar }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/admin/companies/${company.id}`));
+    act(() => router.navigate('/admin'));
+    fireEvent.press(await screen.findByRole('link', { name: 'أحمد سمير' }));
+    await waitFor(() => expect(result.getPathname()).toBe(`/admin/users/${OTHER_USER}`));
+    act(() => router.navigate('/admin'));
+
+    // Closing it records only that: confirmed, no reason asked, the request's id and nothing else sent.
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.deletionRequestClose}: BC-7Q2M` }));
+    expect(await screen.findByText(ar.app.admin.overview.closeDeletionBody)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.admin.reasonLabel)).toBeNull();
+    expect(shownToast()).toBeNull();
+    await act(async () => {
+      fireEvent.press(screen.getAllByRole('button', { name: ar.admin.deletionRequestClose }).at(-1)!);
+    });
+    await waitFor(() => expect(actionsCalled('closeDeletionRequest')).toHaveLength(1));
+    expect(actionsCalled('closeDeletionRequest')[0].body).toEqual({ input: { requestId: REQUEST_ID } });
+    await waitFor(() => expect(shownToast()?.message).toBe(`تم: ${ar.admin.deletionRequestClose} — BC-7Q2M`));
+  });
+
+  it('says a request whose account is gone as that', async () => {
+    server.on('GET /rest/v1/support_requests', () => [{ ...deletionRequest, user_id: null }]);
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.admin.deletionRequestAccountGone)).toBeTruthy();
+    // No account to look up: nothing asked of the profiles or the companies for it.
+    expect(
+      server.requests.some((request) => request.url.pathname === '/rest/v1/profiles' && request.url.searchParams.get('id')?.startsWith('in.')),
+    ).toBe(false);
+    expect(server.requests.some((request) => request.url.pathname === '/rest/v1/companies')).toBe(false);
   });
 
   it('says the figures could not be read, never that nothing is waiting', async () => {
@@ -488,6 +684,18 @@ describe('the overview', () => {
 
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.admin.needsAttention)).toBeNull();
+  });
+
+  it('says the deletion requests or the trend could not be read, with a retry, never leaving them out', async () => {
+    server.on('GET /rest/v1/support_requests', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
+    server.on('POST /rest/v1/rpc/admin_trend', { status: 503, body: { code: 'PGRST002', message: 'schema cache' } });
+    await signIn();
+    renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.admin.deletionRequests)).toBeTruthy();
+    expect(screen.getByText(ar.dashboard.trendActivityTitle)).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: ar.common.retry })).toHaveLength(2);
+    expect(screen.queryByText(ar.dashboard.trendPublished)).toBeNull();
   });
 });
 
