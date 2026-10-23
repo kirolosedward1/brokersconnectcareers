@@ -432,7 +432,25 @@
     "call": "Call",
     "addNote": "Add a note",
     "noteLabel": "Note (admins only)",
-    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
+    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever.",
+    "audit": {
+      "filteredActor": "Only one admin's decisions are shown.",
+      "filteredTarget": "Only the decisions about one thing are shown.",
+      "actorHint": "Shows only this admin's decisions",
+      "targetHint": "Opens what the decision was about"
+    },
+    "taxonomy": {
+      "newEntry": "New entry",
+      "addTitle": "Add “{name}”",
+      "addBody": "“{name}” joins the lists the filters, the forms and the pages are built from, and shows on the site at once. The slug cannot change afterwards.",
+      "renameTitle": "Rename “{name}”",
+      "renameBody": "The new names show on the site at once; the slug stays as it is.",
+      "edit": "Rename",
+      "empty": "Nothing in this list yet."
+    },
+    "search": {
+      "resultHint": "Opens it in the console"
+    }
   },
   "keyboard": {
     "done": "Done"
