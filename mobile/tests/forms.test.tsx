@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Field } from '~/components/ui/field';
+import { AuthSwitch } from '~/components/auth/auth-scroll';
 import { PasswordField } from '~/components/ui/password-field';
 import { Select } from '~/components/ui/select';
 import { TextField } from '~/components/ui/text-field';
@@ -161,6 +162,23 @@ describe('a password', () => {
     expect(StyleSheet.flatten(password().props.style).writingDirection).toBe('ltr');
   });
 
+  it('keeps the eye inside the field, at the end of a left-to-right row', () => {
+    render(<PasswordField accessibilityLabel={ar.auth.password} />, { wrapper: Providers });
+    const eye = screen.getByRole('button', { name: ar.app.auth.showPassword });
+    const style = StyleSheet.flatten(typeof eye.props.style === 'function' ? eye.props.style({ pressed: false }) : eye.props.style);
+    expect(style.width).toBe(hitTarget);
+    expect(style.height).toBe(hitTarget);
+    expect(style.marginEnd).toBeUndefined();
+    let node: typeof eye | null = eye;
+    let direction: unknown;
+    while (node) {
+      const parentStyle = StyleSheet.flatten(node.props.style);
+      if (parentStyle?.direction) direction = parentStyle.direction;
+      node = node.parent;
+    }
+    expect(direction).toBe('ltr');
+  });
+
   it('is shown and hidden again with the eye at its end, which says what it will do', () => {
     render(<PasswordField accessibilityLabel={ar.auth.password} />, { wrapper: Providers });
     fireEvent.press(screen.getByRole('button', { name: ar.app.auth.showPassword }));
@@ -176,6 +194,19 @@ describe('a password', () => {
     fireEvent(password(), 'blur');
     expect(password().props.secureTextEntry).toBe(true);
     expect(onBlur).toHaveBeenCalled();
+  });
+});
+
+describe('a link inside a sentence', () => {
+  it('is a 44-point target', () => {
+    const onPress = jest.fn();
+    render(<AuthSwitch question={ar.auth.hasAccount} action={ar.auth.signIn} onPress={onPress} />, { wrapper: Providers });
+    const link = screen.getByRole('link', { name: ar.auth.signIn });
+    const style = StyleSheet.flatten(typeof link.props.style === 'function' ? link.props.style({ pressed: false }) : link.props.style);
+    expect(style.minHeight).toBe(hitTarget);
+    expect(style.minWidth).toBe(hitTarget);
+    fireEvent.press(link);
+    expect(onPress).toHaveBeenCalled();
   });
 });
 

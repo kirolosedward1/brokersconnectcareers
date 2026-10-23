@@ -5,29 +5,37 @@ import { TrackDistrictLanding } from '~/components/jobs/landing';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { useLanding } from '~/features/browse/queries';
 import { useJob } from '~/features/jobs/queries';
+import { useDistricts } from '~/features/taxonomy';
 import { ApiError } from '~/lib/api';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
  * /jobs/<slug> is two things on the website, and here: a listing, or a
- * track-in-a-district page (/jobs/primary-new-cairo). The landing form is
- * tried first, as the website does — it is a string match — and a slug that
- * only looks like one (a listing whose title starts with a track) falls
- * through to the listing when no such district exists.
+ * track-in-a-district page (/jobs/primary-sales-new-cairo). The website
+ * decides in process. Here the landing route is asked only when the district
+ * half is a district this phone already knows — a listing whose title starts
+ * with a track (`resale-consultant-…`) parses the same way, and asking the
+ * route for it answered 404 for every such listing. While the districts are
+ * still loading, nothing is asked. If they could not be read, the route is
+ * asked as before, so a real landing is not hidden behind that failure.
  */
 export default function JobOrLandingScreen() {
   const { slug: raw } = useLocalSearchParams<{ slug: string }>();
   const slug = typeof raw === 'string' ? raw.toLowerCase() : '';
   const parsed = parseLandingSlug(slug);
-  const landing = useLanding(parsed ? slug : '');
+  const districts = useDistricts();
+  const known = parsed && districts.data?.some((row) => row.slug === parsed.districtSlug) ? parsed : null;
+  const askLanding = Boolean(known) || Boolean(parsed && districts.isError && !districts.data);
+  const landing = useLanding(askLanding ? slug : '');
 
-  if (parsed && landing.isPending) return <Loading />;
-  if (parsed && landing.data) {
-    return <TrackDistrictLanding slug={slug} track={parsed.track} districtSlug={parsed.districtSlug} />;
+  if (parsed && districts.isLoading) return <Loading />;
+  if (askLanding && landing.isLoading) return <Loading />;
+  if (known && landing.data) {
+    return <TrackDistrictLanding slug={slug} track={known.track} districtSlug={known.districtSlug} />;
   }
   // Only "no such district" makes it a listing's address; a landing that could
   // not be read is not a listing that does not exist.
-  if (parsed && landing.isError && !(landing.error instanceof ApiError && landing.error.status === 404)) {
+  if (askLanding && landing.isError && !(landing.error instanceof ApiError && landing.error.status === 404)) {
     return (
       <>
         <Stack.Screen options={{ title: '' }} />

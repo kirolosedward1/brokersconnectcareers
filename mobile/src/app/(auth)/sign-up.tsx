@@ -12,6 +12,7 @@ import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { PasswordField } from '~/components/ui/password-field';
+import { InlineLink, LinkLine } from '~/components/ui/inline-link';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useCaptcha } from '~/features/auth/captcha';
@@ -256,20 +257,20 @@ export default function SignUpScreen() {
         {/* The website's line: where the address is asked for, the policy that
             says what happens to it. Agreeing is onboarding's checkbox, the one
             step every way in goes through. */}
-        <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+        <LinkLine>
           {t.rich('auth.signUpNotice', {
             terms: (chunks: ReactNode) => (
-              <Text variant="caption" weight="semibold" tone="primary" onPress={() => openSitePage('/terms')} suppressHighlighting accessibilityRole="link">
+              <InlineLink variant="caption" onPress={() => openSitePage('/terms')}>
                 {chunks}
-              </Text>
+              </InlineLink>
             ),
             privacy: (chunks: ReactNode) => (
-              <Text variant="caption" weight="semibold" tone="primary" onPress={() => openSitePage('/privacy')} suppressHighlighting accessibilityRole="link">
+              <InlineLink variant="caption" onPress={() => openSitePage('/privacy')}>
                 {chunks}
-              </Text>
+              </InlineLink>
             ),
           })}
-        </Text>
+        </LinkLine>
       </View>
 
       <AuthSwitch question={t('auth.hasAccount')} action={t('auth.signIn')} onPress={toSignIn} />

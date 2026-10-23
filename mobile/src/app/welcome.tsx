@@ -14,6 +14,7 @@ import { Button, GLASS } from '~/components/ui/button';
 import { ForwardChevron, SignInMark } from '~/components/ui/icons';
 import { CircleAlert, UserRoundPlus } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
+import { InlineLink } from '~/components/ui/inline-link';
 import { Text } from '~/components/ui/text';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { intentFromParams } from '~/features/auth/intent';
@@ -192,19 +193,25 @@ export default function WelcomeScreen() {
           />
           <SocialCircles size={compact ? 48 : 56} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
         </View>
-        <Text variant="small" style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
-          {`${t('app.welcome.employer')} `}
-          <Text
-            variant="small"
-            weight="semibold"
-            accessibilityRole="link"
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingTop: space[1],
+          }}
+        >
+          <Text variant="small" style={{ color: colors.onHeroMuted, maxWidth: '100%', textAlign: 'center' }}>
+            {`${t('app.welcome.employer')} `}
+          </Text>
+          <InlineLink
+            color={colors.champagne}
             onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
-            suppressHighlighting
-            style={{ color: colors.champagne }}
           >
             {t('app.auth.forCompanies')}
-          </Text>
-        </Text>
+          </InlineLink>
+        </View>
       </Appear>
     </View>
   );

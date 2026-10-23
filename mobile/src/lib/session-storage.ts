@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { AESEncryptionKey, AESSealedData, aesDecryptAsync, aesEncryptAsync } from 'expo-crypto';
+import { Platform } from 'react-native';
 import { utf8Decode, utf8Encode } from './utf8';
 
 /**
@@ -16,6 +17,11 @@ import { utf8Decode, utf8Encode } from './utf8';
  * ciphertext comes along and the key does not; the copy cannot be opened, is
  * discarded, and the person signs in again — which is what should happen.
  *
+ * The web has no Keychain. SecureStore's web build calls a native method that
+ * is not there (`getValueWithKeyAsync is not a function`), which crashed
+ * "Continue with Google" the moment a session was written. On the web the key
+ * lives in the same app storage as the sealed session.
+ *
  * What was read or written is kept in memory too. supabase-js reads the
  * session before every request, and each read was a storage read, an AES
  * decryption and a parse; nothing but this process writes these keys.
@@ -24,15 +30,38 @@ const KEY_NAME = 'bc.session-key.v1';
 
 let keyPromise: Promise<AESEncryptionKey> | null = null;
 
+/** The Keychain on a phone. The web's SecureStore module has no native methods. */
+async function keychainAvailable(): Promise<boolean> {
+  if (Platform.OS === 'web') return false;
+  try {
+    return await SecureStore.isAvailableAsync();
+  } catch {
+    return false;
+  }
+}
+
+async function readKey(): Promise<string | null> {
+  if (!(await keychainAvailable())) return AsyncStorage.getItem(KEY_NAME);
+  return SecureStore.getItemAsync(KEY_NAME);
+}
+
+async function writeKey(encoded: string): Promise<void> {
+  if (!(await keychainAvailable())) {
+    await AsyncStorage.setItem(KEY_NAME, encoded);
+    return;
+  }
+  await SecureStore.setItemAsync(KEY_NAME, encoded, {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+  });
+}
+
 function sessionKey(): Promise<AESEncryptionKey> {
   keyPromise ??= (async () => {
-    const stored = await SecureStore.getItemAsync(KEY_NAME);
+    const stored = await readKey();
     if (stored) return AESEncryptionKey.import(stored, 'base64');
 
     const fresh = await AESEncryptionKey.generate();
-    await SecureStore.setItemAsync(KEY_NAME, await fresh.encoded('base64'), {
-      keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
-    });
+    await writeKey(await fresh.encoded('base64'));
     return fresh;
   })().catch((error: unknown) => {
     // Let the next call try again rather than caching a failure forever.

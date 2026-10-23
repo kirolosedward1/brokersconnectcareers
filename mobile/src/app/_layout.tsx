@@ -16,6 +16,7 @@ import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arab
 import { LaunchCurtain } from '~/components/brand/launch-screen';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
+import { WebAnchorParams } from '~/components/navigation/web-anchor';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
 import { AppLock } from '~/components/navigation/app-lock';
 import { CrashNotice } from '~/components/navigation/crash-notice';
@@ -165,6 +166,7 @@ function AppStack() {
       <WelcomeGate onDecided={decided} />
       <SessionGate />
       <PendingPath />
+      <WebAnchorParams />
       <PushBridge />
       <AppleCredentialWatch />
       <CrashNotice />

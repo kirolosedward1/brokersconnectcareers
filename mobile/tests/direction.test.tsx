@@ -2,6 +2,7 @@ import { I18nManager, StyleSheet, Text } from 'react-native';
 import * as Updates from 'expo-updates';
 import { render } from '@testing-library/react-native';
 import { renderRouter, screen } from 'expo-router/testing-library';
+import { Text as AppText, textAlignStart } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { resetWelcomeForTests } from '~/features/welcome';
 import { catalogues } from '~/i18n/provider';
@@ -113,5 +114,24 @@ describe('a field', () => {
 
   it('starts an email at the left edge, as it is read', () => {
     expect(alignment(<TextField testID="field" ltr value="" onChangeText={() => {}} />)).toBe('left');
+  });
+});
+
+describe('a label', () => {
+  it('starts at the right edge on the phone, and at start on the web', () => {
+    // The phone does not mirror `left`, and this run says left to right
+    // (I18nManager.isRTL is false). Arabic still starts on the right.
+    expect(I18nManager.isRTL).toBe(false);
+    expect(textAlignStart('ios', 'rtl')).toBe('right');
+    expect(textAlignStart('android', 'rtl')).toBe('right');
+    expect(textAlignStart('ios', 'ltr')).toBe('left');
+    expect(textAlignStart('web', 'rtl')).toBe('start');
+
+    render(
+      <ThemeProvider>
+        <AppText testID="label">مرحبا</AppText>
+      </ThemeProvider>,
+    );
+    expect(StyleSheet.flatten(screen.getByTestId('label').props.style).textAlign).toBe('right');
   });
 });
