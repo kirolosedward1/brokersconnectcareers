@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, within } from '@testing-library/react-native';
+import { ActionMenu } from '~/components/ui/action-menu';
+import { X } from '~/components/ui/lucide';
 import { Select } from '~/components/ui/select';
+import { Text } from '~/components/ui/text';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ThemeProvider } from '~/theme/provider';
 
@@ -114,5 +118,40 @@ describe('a chosen value in a Select', () => {
     mockWindow.fontScale = 3.571;
     render(field(), { wrapper: Providers });
     expect(screen.getByText(long).props.numberOfLines).toBeUndefined();
+  });
+});
+
+describe("a held card's menu", () => {
+  // A listing's whole title, as the header shows it at the accessibility sizes.
+  const title = 'مدير مبيعات عقارية أول — مشروعات سكنية وتجارية في التجمع الخامس والعاصمة الإدارية الجديدة';
+
+  function Providers({ children }: { children: ReactNode }) {
+    return (
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 375, height: 667 }, insets: { top: 20, bottom: 0, left: 0, right: 0 } }}>
+        <ThemeProvider>
+          <I18nProvider>{children}</I18nProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    );
+  }
+
+  it('is never taller than the screen, and scrolls what does not fit', () => {
+    mockWindow.fontScale = 3.571;
+    const items = ['open', 'share', 'save', 'hide', 'fewer'].map((label) => ({ label, icon: X, onPress: () => {} }));
+    render(
+      <ActionMenu visible onClose={() => {}} onDismiss={() => {}} header={<Text>{title}</Text>} items={items} />,
+      { wrapper: Providers },
+    );
+
+    const scroll = screen.UNSAFE_getByType(ScrollView);
+    expect(within(scroll).getByText(title)).toBeTruthy();
+    for (const { label } of items) expect(within(scroll).getByRole('menuitem', { name: label })).toBeTruthy();
+
+    // The card around it is bounded by the window, less the status bar and its margins.
+    let card = scroll.parent;
+    while (card && StyleSheet.flatten(card.props.style)?.maxHeight === undefined) card = card.parent;
+    const { maxHeight } = StyleSheet.flatten(card?.props.style) ?? {};
+    expect(typeof maxHeight).toBe('number');
+    expect(maxHeight as number).toBeLessThan(mockWindow.height - 20);
   });
 });

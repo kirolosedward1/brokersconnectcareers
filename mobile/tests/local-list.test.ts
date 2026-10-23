@@ -12,7 +12,12 @@ type Item = { id: string };
 const isItem = (item: unknown): item is Item => typeof (item as Item | null)?.id === 'string';
 
 let n = 0;
-const list = () => createLocalList<Item>(`bc.test-${++n}.v1`, { max: 10, idOf: (item) => item.id, valid: isItem });
+/** A fresh list, in a fresh app: nobody forgotten yet, so each test's deletion is its own. */
+const list = () => {
+  const made = createLocalList<Item>(`bc.test-${++n}.v1`, { max: 10, idOf: (item) => item.id, valid: isItem });
+  made.resetForTests();
+  return made;
+};
 
 beforeEach(async () => {
   await AsyncStorage.clear();
