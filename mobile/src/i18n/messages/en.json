@@ -76,6 +76,9 @@
     "switchCancel": "Stay in my account",
     "mfaSignOut": "I do not have the code — sign out",
     "mfaLost": "Lost the phone with your authenticator app? Write to us and we will help you back into your account.",
+    "mfaEnrolLede": "Add Brokers Connect to the authenticator app on this phone (Google Authenticator, or the iPhone's own Passwords), then type the six-digit number it shows.",
+    "mfaEnrolOpenApp": "Add it to the authenticator app",
+    "mfaEnrolNoApp": "No authenticator app opened. Install one, or type the key below into it by hand.",
     "linkUsedTitle": "That link no longer works",
     "linkUsedBody": "It has been used already or has expired. You are signed in as {email}, so there is nothing more to do.",
     "resetLinkFailed": "That link has expired or has already been used. You are signed in as {email}, so you can set a new password for it in Sign-in and security.",
@@ -408,8 +411,7 @@
   "admin": {
     "door": {
       "enrolTitle": "Set up two-step sign-in first",
-      "enrolBody": "The admin console asks for a code from an authenticator app each time a session starts. Set one up on the website — Account, then Sign-in and security — then come back here.",
-      "enrolOpen": "Set it up on the website",
+      "enrolBody": "The admin console asks for a code from an authenticator app each time a session starts. Set one up here — it takes a minute — and the console opens.",
       "enrolDone": "I've set it up",
       "challengeTitle": "Enter your code first",
       "challengeBody": "This account has an authenticator app. Enter its code to open the console.",

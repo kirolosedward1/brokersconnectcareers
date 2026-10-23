@@ -320,6 +320,7 @@ const app = {
   '(tabs)/(admin)/admin/users/index': AccountsScreen,
   '(tabs)/(admin)/admin/companies/index': CompaniesScreen,
   mfa: stand('the code screen'),
+  'mfa-enrol': stand('setting up two-step'),
 };
 
 function actionsCalled(name: string) {
@@ -435,14 +436,16 @@ describe('the door', () => {
     expect(await screen.findByText(ar.app.admin.door.enrolTitle)).toBeTruthy();
   });
 
-  it('asks an admin without an authenticator to set one up first, and reads nothing of the console', async () => {
+  it('asks an admin without an authenticator to set one up first — on the phone — and reads nothing of the console', async () => {
     await signIn({ aal: 'aal1', factor: false });
-    renderRouter(app, { initialUrl: '/admin' });
+    const result = renderRouter(app, { initialUrl: '/admin' });
 
     expect(await screen.findByText(ar.app.admin.door.enrolTitle)).toBeTruthy();
     expect(server.requests.some((request) => request.url.pathname.startsWith('/rest/v1/rpc/admin_'))).toBe(false);
-    fireEvent.press(screen.getByRole('button', { name: ar.app.admin.door.enrolOpen }));
-    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(expect.stringMatching(/\/dashboard\/account\?mfa=required$/));
+    fireEvent.press(screen.getByRole('button', { name: ar.account.mfaSetup }));
+    await waitFor(() => expect(result.getPathname()).toBe('/mfa-enrol'));
+    // Never the website.
+    expect(WebBrowser.openBrowserAsync).not.toHaveBeenCalled();
   });
 
   it('opens where the deployment does not require an authenticator', async () => {

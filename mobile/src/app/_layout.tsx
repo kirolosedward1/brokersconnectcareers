@@ -151,6 +151,8 @@ function AppStack() {
         <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+        {/* Two-step verification set up on the phone (the admin console's door asks for it). */}
+        <Stack.Screen name="mfa-enrol" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
         {/* Answered rather than swiped away. It fades in: at a launch over
