@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { JobCard } from '@/components/jobs/job-card';
+import { SavedJobNote } from '@/components/dashboard/saved-job-note';
 import { SavedSearchList } from '@/components/dashboard/saved-search-list';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -44,6 +45,8 @@ export default async function SavedJobsPage({
     .select(
       `
       created_at,
+      note,
+      remind_at,
       job:jobs!inner (${LIST_SELECT})
     `,
     )
@@ -60,9 +63,12 @@ export default async function SavedJobsPage({
 
   if (error) raise(error, 'loading your saved jobs');
 
-  const jobs = ((data ?? []) as unknown as { job: JobListItem }[])
-    .map((row) => row.job)
-    .filter(Boolean);
+  const rows = ((data ?? []) as unknown as { note: string | null; remind_at: string | null; job: JobListItem }[]).filter(
+    (row) => Boolean(row.job),
+  );
+  const jobs = rows.map((row) => row.job);
+  // The note and the reminder on each bookmark — the app's too (migration 356).
+  const extras = new Map(rows.map((row) => [row.job.id, { note: row.note, remindAt: row.remind_at }]));
 
   /**
    * A saved role that has ended is not the same object as one still hiring.
@@ -154,6 +160,12 @@ export default async function SavedJobsPage({
                         saved
                         savable
                       />
+                      <SavedJobNote
+                        jobId={job.id}
+                        note={extras.get(job.id)?.note ?? null}
+                        remindAt={extras.get(job.id)?.remindAt ?? null}
+                        locale={locale}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -177,6 +189,12 @@ export default async function SavedJobsPage({
                         applied={appliedTo.has(job.id)}
                         saved
                         savable
+                      />
+                      <SavedJobNote
+                        jobId={job.id}
+                        note={extras.get(job.id)?.note ?? null}
+                        remindAt={extras.get(job.id)?.remindAt ?? null}
+                        locale={locale}
                       />
                     </li>
                   ))}

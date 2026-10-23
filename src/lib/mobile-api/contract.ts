@@ -266,6 +266,13 @@ export type MobileActions = {
 
   // Jobs, saved jobs, searches and follows
   toggleSavedJob: { input: { jobId: string }; output: ActionResult<{ saved: boolean }> };
+  /** An empty note takes it away. `not_saved` when the listing is not bookmarked; `too_long` past 300 characters. */
+  setSavedJobNote: { input: { jobId: string; note: string }; output: ActionResult<{ note: string | null }> };
+  /** An ISO timestamp, or null to take the reminder away; `closing` when it is past, or not before the listing closes. */
+  setSavedJobReminder: {
+    input: { jobId: string; remindAt: string | null };
+    output: ActionResult<{ remindAt: string | null }>;
+  };
   recordJobView: { input: { slug: string }; output: ActionResult };
   reportTarget: { input: ReportInput; output: ActionResult };
   saveSearch: { input: { label: string; query: string }; output: ActionResult<{ id: string }> };

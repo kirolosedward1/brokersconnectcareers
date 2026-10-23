@@ -14,7 +14,8 @@ import { BellCheck, BellOff, BellPlus, CircleAlert, Hourglass } from '~/componen
 import { Text } from '~/components/ui/text';
 import { useListOwner } from '~/features/jobs/recent';
 import { COMPARE_MAX } from '~/features/saved/compare';
-import { useJobNote } from '~/features/saved/notes';
+import { useJobNote } from '~/features/saved/note-queries';
+import { useRefreshSavedMarks } from '~/features/saved/queries';
 import { useReminderWords } from '~/features/saved/reminder-words';
 import {
   cancelReminder,
@@ -201,6 +202,7 @@ function RemindButton({ job, reminder, locale }: { job: JobListItem; reminder: J
   const owner = useListOwner();
   const queryClient = useQueryClient();
   const words = useReminderWords()(job);
+  const refreshMarks = useRefreshSavedMarks();
   const [busy, setBusy] = useState(false);
   // The reader's own taps that set one: what the bell's pop answers.
   const [sets, setSets] = useState(0);
@@ -212,6 +214,8 @@ function RemindButton({ job, reminder, locale }: { job: JobListItem; reminder: J
     // The phone may have just been asked: the account's switch and the push bridge read it again.
     void queryClient.invalidateQueries({ queryKey: ['push', 'state'] });
     if (result.status === 'set') {
+      // Kept on the bookmark: the website's saved page says it now too.
+      void refreshMarks();
       haptic.tap();
       setSets((count) => count + 1);
       toast.show({
@@ -234,7 +238,15 @@ function RemindButton({ job, reminder, locale }: { job: JobListItem; reminder: J
   };
 
   const takeBack = async (offerUndo: boolean) => {
-    if (!(await cancelReminder(owner, job.id))) return;
+    setBusy(true);
+    const gone = await cancelReminder(owner, job.id);
+    setBusy(false);
+    if (!gone) {
+      // The website could not be told: it is still set, here and there.
+      toast.show({ message: t('cancelFailed'), icon: CircleAlert });
+      return;
+    }
+    void refreshMarks();
     toast.show({
       message: t('cancelled'),
       icon: BellOff,

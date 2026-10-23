@@ -6,11 +6,11 @@ import { canSaveJobs } from '@/lib/permissions';
 import { toast, type Toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
 import { Button } from '~/components/ui/button';
-import { Lock, NotebookPen, Pencil, Plus, Trash2, X } from '~/components/ui/lucide';
+import { CircleAlert, Lock, NotebookPen, Pencil, Plus, Trash2, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
-import { useListOwner } from '~/features/jobs/recent';
-import { cleanNote, deleteNote, jobNotes, keepNote, NOTE_MAX, useJobNote, type JobNote } from '~/features/saved/notes';
+import { useJobNote, useKeepNote } from '~/features/saved/note-queries';
+import { cleanNote, NOTE_MAX, type JobNote } from '~/features/saved/notes';
 import { useSavedJobIds } from '~/features/saved/queries';
 import { markupTags } from '~/i18n/rich';
 import { appDirection } from '~/lib/direction';
@@ -50,8 +50,9 @@ export function NoteSheet({
   const tToast = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
-  const owner = useListOwner();
   const note = useJobNote(jobId);
+  // Shown at once; the website's no puts the note back as it was, and says so.
+  const keep = useKeepNote(() => toast.show({ message: t('failed'), icon: CircleAlert }));
   // Null until the reader types: until then the field shows the note as it is kept.
   const [draft, setDraft] = useState<string | null>(null);
   const text = draft ?? note?.text ?? '';
@@ -77,15 +78,17 @@ export function NoteSheet({
     return () => clearTimeout(late);
   }, [visible]);
 
+  const write = (text: string) => keep.mutate({ jobId, text });
+
   const deleted = (before: JobNote): Toast => ({
     message: t('deleted'),
     icon: Trash2,
-    action: { label: tToast('undo'), onPress: () => jobNotes.add(owner, before) },
+    action: { label: tToast('undo'), onPress: () => write(before.text) },
   });
 
   const save = () => {
     if (!changed) return;
-    keepNote(owner, jobId, clean);
+    write(clean);
     haptic.tap();
     onClose();
     // Emptied and saved is the same as deleted, and says so.
@@ -95,7 +98,7 @@ export function NoteSheet({
 
   const remove = () => {
     if (!note) return;
-    deleteNote(owner, jobId);
+    write('');
     haptic.tap();
     onClose();
     toast.show(deleted(note));

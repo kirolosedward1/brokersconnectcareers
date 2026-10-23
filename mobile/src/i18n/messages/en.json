@@ -384,12 +384,13 @@
       "add": "Add a note",
       "edit": "Edits the note",
       "forListing": "Add a note to yourself about this listing",
-      "private": "Kept on this phone only. Nobody else sees it.",
+      "private": "Kept with your account: only you see it, here and on the website.",
       "placeholder": "e.g. Spoke to them; interview on Sunday morning",
       "count": "{count}/{max}",
       "countSpoken": "{count} of {max} characters",
       "saved": "Note saved",
       "deleted": "Note deleted",
+      "failed": "Couldn't save the note. Try again.",
       "delete": "Delete"
     },
     "remind": {
@@ -402,6 +403,7 @@
       "denied": "Notifications are off for the app, so we can't remind you. Turn them on in Settings.",
       "tooLate": "This listing closes within the hour: too late for a reminder",
       "failed": "We couldn't set the reminder. Try again.",
+      "cancelFailed": "We couldn't cancel the reminder. Try again.",
       "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
       "notifyBody": "{job} at {company}. Apply before it closes."
     }

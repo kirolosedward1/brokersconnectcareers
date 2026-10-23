@@ -1768,6 +1768,23 @@
     "deleteRequested": "We have your request (reference {reference}). We will write to you within 7 days to agree what happens to the company, and your account is deleted within 30 days.",
     "deleteRequestLimited": "You have sent several requests today, and we have them. There is no need to send another."
   },
+  "savedNote": {
+    "prefix": "Your note:",
+    "add": "Add a note",
+    "edit": "Edit",
+    "label": "Your note",
+    "placeholder": "e.g. Spoke to them; interview on Sunday morning",
+    "private": "Only you see it — here and in the app.",
+    "count": "<v>{count}/{max}</v>",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "failed": "We couldn't save that. Try again.",
+    "notSaved": "This listing is no longer saved, so the note has nowhere to go.",
+    "tooLong": "That note is longer than a note can be. Shorten it a little.",
+    "reminder": "The app reminds you on {when}, before it closes.",
+    "reminderRemove": "Remove reminder"
+  },
   "savedSearch": {
     "cta": "Alert me",
     "labelField": "Search name",

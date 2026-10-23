@@ -303,7 +303,21 @@ compare with (a new branch), it compares with the previous commit.
   `deleteSavedSearch`, `followCompany` / `unfollowCompany`): offered to a
   candidate and, as a way into an account, to somebody signed out; shown at
   once and put back if the server refuses. A follow is a saved search with
-  one filter, so the ten-row cap and the weekly email are shared.
+  one filter, so the ten-row cap and the weekly email are shared. A bookmark
+  carries the candidate's **note** (300 characters) and when to **remind**
+  them before the listing closes — `saved_jobs.note` and `remind_at`
+  (migration 356), written by `setSavedJobNote` and `setSavedJobReminder`
+  and read with the bookmarks themselves (`features/saved/queries.ts`), so
+  the website's `/dashboard/saved` shows and edits the same note, a new phone
+  finds both, and a bookmark taken off anywhere takes both with it (an Undo
+  on the phone posts them back). The reminder itself is a notification the
+  app schedules on the phone, the day before the closing at ten in Cairo
+  (`features/saved/reminders.ts`): a copy of `remind_at`, made to match at
+  each read of the saved list — at launch and as the app comes back while
+  either side holds one (`reminders-follow.ts`) — so one taken back on the
+  website goes from the phone, one set on another phone is scheduled here
+  (never asking for permission to), and one whose listing closed early goes
+  from both.
 - **Applying** is `/jobs/<slug>/apply`, the website's path, so a sign-in that
   began with "apply" comes back to it. The page shows the website's states in
   its order (closed, signed out, not a candidate, held or suspended — told
@@ -337,7 +351,15 @@ compare with (a new branch), it compares with the previous commit.
 ### Kept on the phone, and small conveniences
 
 Nothing below reaches the website; each is the app's own, per person on the
-phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
+phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`). A saved
+listing's note and its reminder before it closes are not among them: they are
+kept on the bookmark (see **Saved** above). What stays on the phone of those is
+the schedule of reminder notifications (`bc.saved-reminders.v1:<user>`), a copy
+of `remind_at` taken off the phone when its person signs out and put back when
+they return. Notes kept on a phone before then (`bc.saved-notes.v1:<user>`) are
+posted to their bookmarks once, the first time that person's saved list is
+read, and the phone's copy emptied (`features/saved/move.ts`); a bookmark that
+already has a note keeps it.
 
 - **Quick filters** under the board's title (`components/jobs/quick-filters.tsx`):
   a basic salary, primary and resale, and the two areas with the most live

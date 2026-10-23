@@ -739,6 +739,10 @@ export type SettleLeasedOutcome = 'cancelled' | 'dead' | 'defer' | 'failed';
 export type SavedJobRow = Timestamped & {
   candidate_id: string;
   job_id: string;
+  /** The candidate's own line about it, at most 300 characters (migration 356). */
+  note: string | null;
+  /** When the app reminds them before it closes; null when no reminder is set. */
+  remind_at: string | null;
 };
 
 /**
