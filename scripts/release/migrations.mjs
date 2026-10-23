@@ -566,12 +566,18 @@ function changedOutsideMigrations(mergeBase) {
  *              search migration. Production's ledger carried neither 068 on
  *              2026-09-28, so the later of the two moved to the free 069 and
  *              the application order stayed the same.
+ *   350 → 356  a_cv_line_or_a_note_written_twice_by_one_retry: merged beside
+ *              350's my_company_is_nobodys_when_signed_out, so a fresh
+ *              database (db:apply, db reset) stopped at the second 350 with a
+ *              duplicate ledger key. Production ran it by name on 2026-10-23,
+ *              after 355, so 356 is also the order it actually ran in.
  *
  * Frozen like LEGACY: a clash from now on is caught by the version rule
  * before it merges, and is renumbered on its branch.
  */
 const RENUMBERED = {
   '20260101000068_what_the_provider_said_happened.sql': '20260101000069_what_the_provider_said_happened.sql',
+  '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql': '20260101000356_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
 };
 
 function lint(options) {
