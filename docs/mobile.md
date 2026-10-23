@@ -104,6 +104,10 @@ alone before, so a push of several commits whose last one touched only the app
 skipped the website changes in the commits before it. When that deployment's
 commit is not in Vercel's shallow clone, the build runs; with no deployment to
 compare with (a new branch), it compares with the previous commit.
+A redeploy of the commit already deployed always builds: there is nothing to
+compare, and a redeploy is how a changed environment variable reaches the site
+(a new `SUPABASE_SERVICE_ROLE_KEY` was cancelled twice by the check before
+this, and every server call went on being refused with the old key).
 
 ## Inside the app
 
