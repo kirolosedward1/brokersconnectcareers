@@ -11,6 +11,7 @@ import { ApplicantsSuspended } from '@/components/employer/applicants-suspended'
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional, raise } from '@/lib/queries/error';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
@@ -59,8 +60,6 @@ type Row = {
  * that has no listings to have applicants on.
  */
 const NO_COMPANY = '00000000-0000-0000-0000-000000000000';
-
-const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const;
 
 /**
  * How many applicant cards this page draws.
@@ -200,7 +199,7 @@ export default async function AllApplicantsPage({
 
   // Narrowed rather than asserted, so an unknown ?stage= in the URL is simply
   // ignored instead of reaching the query as an invalid enum value.
-  const activeStage = STAGES.find((value) => value === stage);
+  const activeStage = APPLICATION_STAGES.find((value) => value === stage);
   if (activeStage) query = query.eq('status', activeStage);
   /*
     The same rule the stage gets, which this filter was left out of.
@@ -403,7 +402,7 @@ export default async function AllApplicantsPage({
    * paints its own ground, so this holds in both themes without a dark variant
    * and without a token that only exists inside a media query.
    */
-  const STAGE_COLOUR: Record<(typeof STAGES)[number], string> = {
+  const STAGE_COLOUR: Record<ApplicationStatus, string> = {
     new: 'oklch(0.55 0.16 266)',
     shortlisted: 'oklch(0.55 0.16 300)',
     interview: 'oklch(0.52 0.13 70)',
@@ -569,7 +568,7 @@ export default async function AllApplicantsPage({
           </span>
         </Link>
 
-        {STAGES.map((value) => {
+        {APPLICATION_STAGES.map((value) => {
           const active = stage === value;
           const count = stageCount.get(value) ?? 0;
           return (

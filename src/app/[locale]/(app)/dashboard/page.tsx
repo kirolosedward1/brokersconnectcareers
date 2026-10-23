@@ -16,16 +16,7 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 import { rankJobs } from '@/lib/match';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { ApplicationStatus, CandidateSummary } from '@/lib/supabase/database.types';
-
-/** Shared with the applications page, which shows the same states in full. */
-const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'destructive'> =
-  {
-    new: 'default',
-    shortlisted: 'primary',
-    interview: 'primary',
-    hired: 'success',
-    rejected: 'destructive',
-  };
+import { STAGE_TONE } from '@/lib/application-stages';
 
 type RecentApplication = {
   id: string;
@@ -349,7 +340,7 @@ export default async function DashboardOverviewPage({
                   </p>
                 </div>
 
-                <Badge variant={STATUS_VARIANT[application.status]}>
+                <Badge variant={STAGE_TONE[application.status]}>
                   {tStatus(application.status)}
                 </Badge>
               </li>
