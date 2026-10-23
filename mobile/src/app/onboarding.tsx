@@ -40,7 +40,7 @@ import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useHoldBack } from '~/lib/use-hold-back';
-import { webAddress } from '~/lib/web-address';
+import { webAddress } from '@/lib/web-address';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';

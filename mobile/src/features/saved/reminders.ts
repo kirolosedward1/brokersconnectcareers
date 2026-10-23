@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { readDate } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { useListOwner } from '~/features/jobs/recent';
@@ -113,11 +114,6 @@ function cairoDayNumber(date: Date): number {
   return Date.UTC(wall.year, wall.month - 1, wall.day) / DAY_MS;
 }
 
-function readDate(value: string | Date | null | undefined): Date | null {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 /**
  * When to remind somebody of a listing closing at `expiresAt`: ten in the

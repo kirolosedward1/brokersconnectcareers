@@ -242,6 +242,8 @@ export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: B
         ) : null}
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
+          // A tab whose screens stay but whose button does not (Home, for an admin: (tabs)/_layout.tsx).
+          if (StyleSheet.flatten(options.tabBarItemStyle)?.display === 'none') return null;
           const focused = index === state.index;
           const name = options.title ?? route.name;
           // A count says there is something to see over there: not on the tab already open.

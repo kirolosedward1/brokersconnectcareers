@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { deleteAccountHere } from '~/features/account/delete';
 import { setPushOff, dismissPushPrompt } from '~/features/push/device';
-import { jobNotes } from '~/features/saved/notes';
+import { deviceNotes } from '~/features/saved/notes';
 import { callAction } from '~/lib/api';
 import { forgetPerson } from '~/lib/local-list';
 import { supabase } from '~/lib/supabase';
@@ -31,7 +31,7 @@ const reminder = (id: string, notificationId: string) => ({
 
 async function keepFor(userId: string, notificationId: string) {
   await AsyncStorage.multiSet([
-    [`bc.saved-notes.v1:${userId}`, JSON.stringify([{ id: 'job-1', text: 'Call Mona', at: 1 }])],
+    [`bc.saved-notes.v1:${userId}`, JSON.stringify([{ id: 'job-1', text: 'Call Mona', updatedAt: 1 }])],
     [`bc.saved-reminders.v1:${userId}`, JSON.stringify([reminder('job-1', notificationId)])],
     [`bc.agent-searches.v1:${userId}`, '[]'],
     [`bc.wa-replies.v1:${userId}`, '[]'],
@@ -50,7 +50,7 @@ async function keepFor(userId: string, notificationId: string) {
 
 beforeEach(async () => {
   await AsyncStorage.clear();
-  jobNotes.resetForTests();
+  deviceNotes.resetForTests();
   jest.mocked(Notifications.cancelScheduledNotificationAsync).mockClear();
   await AsyncStorage.setItem('bc.theme', 'dark');
   await keepFor(GONE, 'reminder-gone');
@@ -75,10 +75,10 @@ describe('forgetPerson', () => {
   });
 
   it('lets go of what a list held in memory for them', async () => {
-    expect(await jobNotes.read(GONE)).toHaveLength(1);
+    expect(await deviceNotes.read(GONE)).toHaveLength(1);
     await forgetPerson(GONE);
-    expect(await jobNotes.read(GONE)).toEqual([]);
-    expect(await jobNotes.read(STAYS)).toHaveLength(1);
+    expect(await deviceNotes.read(GONE)).toEqual([]);
+    expect(await deviceNotes.read(STAYS)).toHaveLength(1);
   });
 
   it('never throws when the phone will not answer', async () => {

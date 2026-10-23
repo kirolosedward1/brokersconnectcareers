@@ -1,6 +1,6 @@
 # Device compatibility and accessibility (work 11)
 
-Status on **2026-10-23**, `main` at 97566e1 plus this branch. The website's
+Status on **2026-10-23**, `main` at 900f326 plus this branch. The website's
 full three-engine pass is `docs/cross-browser-qa.md` (September); this round
 is mostly about the app, with the website re-checked where it could be.
 
@@ -30,8 +30,8 @@ or a person can fill are marked so.
 
 | Check | How | Result |
 | --- | --- | --- |
-| The app's whole suite (`pnpm check`): typecheck, lint, shared-code guard, update-publishing check, licences, Jest | Node 22, jest-expo 57.0.5, React Native 0.86.3 test renderer | 74 suites, 1,204 tests, all pass (this branch with `main` at 97566e1; 70 suites, 1,137 before the QA review's fixes at be9130d). `tests/auth.test.tsx` has two tests that now and then time out at 5 s under full parallel load and pass when the suite runs alone; they predate this branch |
-| Text cut short at the accessibility sizes | A static audit of every `numberOfLines` in `src/` | **37 places fixed** (17, then 20 more that arrived from `main` while this was open), plus the select field. Now a test, `tests/large-text.test.tsx` |
+| The app's whole suite (`pnpm check`): typecheck, lint, shared-code guard, update-publishing check, licences, Jest | Node 22, jest-expo 58, React Native 0.88 test renderer | 87 suites, 1,368 tests, all pass (this branch with `main` at 900f326; 70 suites, 1,137 before the QA review's fixes at be9130d). `tests/auth.test.tsx` has two tests that now and then time out at 5 s under full parallel load and pass when the suite runs alone; they predate this branch |
+| Text cut short at the accessibility sizes | A static audit of every `numberOfLines` in `src/` | **47 places fixed** (17, then 30 more that arrived from `main` while this was open), plus the select field. Now a test, `tests/large-text.test.tsx` |
 | The welcome screen on small phones at large text | Line wrapping measured with the app's own font (IBM Plex Sans Arabic via HarfBuzz/raqm), the welcome's real strings and its type scale, at 375 × 667, 375 × 812 and 440 × 956, font scales 1–3.571 | **Fixed**: see below |
 | VoiceOver/TalkBack labels | Static audit of every `Pressable`, `PressableScale`, `Switch`, `TextInput`, `TextField` and `Image` | Every control has a role; all 50 text fields carry their label; errors are announced (`useErrorsInView`). Nothing to fix |
 | Safe areas and pinned bars | Audit of every view pinned with `insets.bottom` or `position: 'absolute'` | The filter sheet's footer is one button and fits; the welcome's footer did not (fixed) |
@@ -100,8 +100,9 @@ is fixed again without a size cap. It listed all seventeen before the fix.
 While this was open, `main` added screens (the timeline of an application,
 recently viewed, the weekly summary, the compare table, notes, toasts, the
 month picker, swipe actions, the quick apply card, the board's count) with
-twenty more; the test listed them on the merge (the last two found while
-resolving it), and they follow the same rule now. It allows three kinds of fixed line count: text whose size is
+twenty more, and then the admin screens (email activity, operations, reports,
+search) with ten; the test listed them on each merge (two found while
+resolving one), and they follow the same rule now. It allows three kinds of fixed line count: text whose size is
 capped or never grows (`maxFontSizeMultiplier`, `allowFontScaling={false}`,
 as the tab bar's names), a single word that shrinks to fit its cell
 (`adjustsFontSizeToFit`, a month in the picker's grid: wrapping would split

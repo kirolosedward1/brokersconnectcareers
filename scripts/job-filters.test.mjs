@@ -12,7 +12,7 @@ import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { activeFilterList, parseJobFilters, serializeJobFilters, EMPTY_FILTERS } = await import(
+const { activeFilterList, parseJobFilters, serializeJobFilters, EMPTY_FILTERS, JOB_FILTER_PARAMS } = await import(
   '../src/lib/job-filters.ts'
 );
 
@@ -92,6 +92,15 @@ console.log('\n— dropping an entry and serialising gives the board without it'
 const dropped = serializeJobFilters({ ...everything, ...byKey['track-primary'].without, page: 1 });
 is('the other track stays', dropped.getAll('track'), ['resale']);
 is('everything else stays', dropped.get('district'), 'new-cairo');
+
+console.log('\n— the app names every parameter the board writes, and no other');
+{
+  // The app clears a parameter by naming it (JOB_FILTER_PARAMS); a key the
+  // serialiser writes that the list lacks would be kept from the last search.
+  const written = new Set([...serializeJobFilters({ ...everything, sort: 'salary', page: 3 }).keys()]);
+  is('every written key is in JOB_FILTER_PARAMS', [...written].filter((key) => !JOB_FILTER_PARAMS.includes(key)), []);
+  is('and every JOB_FILTER_PARAMS key is written by a full board', JOB_FILTER_PARAMS.filter((key) => !written.has(key)), []);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

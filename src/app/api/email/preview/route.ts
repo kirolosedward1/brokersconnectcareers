@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sessionOwesSecondFactor } from '@/lib/auth/second-factor-server';
 import {
   PREVIEW_CASES,
   PREVIEW_TEMPLATES,
@@ -63,6 +64,12 @@ async function isAdmin(): Promise<boolean> {
     // Allowed to fail quietly, and deliberately fails closed: this is the
     // gate on a route that renders every template in the product. Unknown is
     // treated as "not an admin", which is the answer that costs nothing.
+    // An admin with an authenticator who has not entered its code this
+    // session (aal1) is not let in, the rule every other admin page follows.
+    // /api/* is outside the middleware's second-factor challenge, so nothing
+    // else asks here.
+    if (await sessionOwesSecondFactor(supabase, user)) return false;
+
     const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
     return data?.role === 'admin';
   } catch {

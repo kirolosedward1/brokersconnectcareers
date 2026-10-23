@@ -205,7 +205,6 @@ describe('suggestions as the reader types', () => {
 
   it('lists the places and tracks first, a name starting with the words before one that has them inside', () => {
     expect(said(suggestionsFor('بيع', sources))).toEqual([
-      ['track', ar.track.primary, 'بيع'],
       ['track', ar.track.resale, 'بيع'],
       // «مبيعات»: the words inside a word, after the names that start with them; the shorter name first.
       ['title', titled.title_ar, 'بيع'],
@@ -226,7 +225,7 @@ describe('suggestions as the reader types', () => {
     const filters = { ...EMPTY_FILTERS, q: 'القاهره', tracks: ['resale' as const] };
     const [area] = suggestionsFor('القاهره', sources);
     expect(withSuggestion(filters, area)).toEqual({ ...filters, q: '', districtSlugs: [newCairo.slug] });
-    const [track] = suggestionsFor('بيع أول', sources);
+    const [track] = suggestionsFor('قيد الإنشاء', sources);
     expect(withSuggestion(filters, track)).toEqual({ ...filters, q: '', tracks: ['resale', 'primary'] });
     const [title] = suggestionsFor('مستشار', sources);
     expect(withSuggestion(filters, title)).toEqual({ ...filters, q: titled.title_ar });
@@ -254,7 +253,7 @@ describe('suggestions as the reader types', () => {
     it.each([
       ['القاهره', t('app.jobs.suggestArea', { name: newCairo.name_ar }), { district: newCairo.slug }],
       ['tagam', t('app.jobs.suggestArea', { name: newCairo.name_ar }), { district: newCairo.slug }],
-      ['بيع أول', t('app.jobs.suggestTrack', { name: ar.track.primary }), { track: 'primary' }],
+      ['قيد الإنشاء', t('app.jobs.suggestTrack', { name: ar.track.primary }), { track: 'primary' }],
       ['مبيعات', t('app.jobs.suggestWords', { words: listing.title_ar }), { q: listing.title_ar }],
       ['نايل', t('app.jobs.suggestWords', { words: listing.company.name_ar }), { q: listing.company.name_ar }],
     ])('typed «%s», "%s" shows the board for it at once', async (words, name, expected) => {

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Building2, Eye, MapPin } from 'lucide-react';
+import { Building2, MapPin } from 'lucide-react';
 import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ApplicationSteps } from '@/components/dashboard/application-steps';
 import { WithdrawButton } from '@/components/dashboard/withdraw-button';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -159,12 +160,9 @@ export default async function ApplicationsPage({
               is the news and this becomes a smaller, older fact competing with
               it.
             */}
-            {application.status === 'new' && application.employer_viewed_at ? (
-              <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-success">
-                <Eye className="size-3.5" aria-hidden />
-                {t('applicationOpened')}
-              </p>
-            ) : null}
+            {/* Now the steps, as the app draws them: "seen by the company" is
+                one of them, dated, and stays reached once the status moves. */}
+            <ApplicationSteps application={application} locale={locale} />
 
             {/*
               What happened to the listing, when something did.
@@ -225,7 +223,7 @@ export default async function ApplicationsPage({
 
               {/* Withdrawing is only offered while the outcome is still open. */}
               {canWithdraw(application.status) ? (
-                <WithdrawButton applicationId={application.id} label={t('withdraw')} />
+                <WithdrawButton applicationId={application.id} label={t('withdraw')} title={localized(locale, job.title_ar, job.title_en)} />
               ) : null}
             </div>
             </li>

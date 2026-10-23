@@ -75,8 +75,9 @@ console.log('\n— malformed credentials are refused without a round trip');
 
 console.log('\n— only listed actions exist');
 {
-  const r = await call('/api/mobile/v1/actions/requeueEmail', { headers: json, body: '{}' });
-  check('an admin action the app does not have is not one (404)', r.status === 404, `got ${r.status}`);
+  // Every console lever is listed now; a website action that is not one (checkout) stays out.
+  const r = await call('/api/mobile/v1/actions/createCheckout', { headers: json, body: '{}' });
+  check('an action the app does not have is not one (404)', r.status === 404, `got ${r.status}`);
   const lever = await call('/api/mobile/v1/actions/moderateJob', { headers: json, body: '{}' });
   check('an admin lever the app has still wants a token (401)', lever.status === 401, `got ${lever.status}`);
   const p = await call('/api/mobile/v1/actions/__proto__', { headers: json, body: '{}' });
@@ -125,6 +126,13 @@ console.log('\n— the directory needs a token');
 {
   const r = await call('/api/mobile/v1/agents', { method: 'GET' });
   check('401 signed out', r.status === 401, `got ${r.status}`);
+}
+
+console.log("\n— the console's mail status is an admin's alone");
+{
+  const r = await call('/api/mobile/v1/admin/mail', { method: 'GET' });
+  check('401 signed out', r.status === 401, `got ${r.status}`);
+  check('and says nothing of the environment', !JSON.stringify(r.json ?? {}).match(/RESEND|SUPABASE/), JSON.stringify(r.json ?? {}));
 }
 
 console.log('\n— the shared CV route keeps its website behaviour');
