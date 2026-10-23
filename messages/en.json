@@ -354,7 +354,8 @@
       "body": "Press Continue to pick up where you left off.",
       "continue": "Continue",
       "why": "This step keeps the link safe from email scanners that open it before you do."
-    }
+    },
+    "gateReport": "Sign in to report this"
   },
   "savedNotes": {
     "title": "Your note",

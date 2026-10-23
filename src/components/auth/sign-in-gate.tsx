@@ -37,7 +37,7 @@ import { Dialog } from '@/components/ui/dialog';
  * old round trip to the sign-in page, so a caller never has to know which.
  */
 export type SignInAsk = {
-  reason: 'save' | 'follow' | 'apply';
+  reason: 'save' | 'follow' | 'apply' | 'report';
   /** Where to come back to, as a path: the listing, the company, the apply form. */
   next: string;
   /** For Apply: the listing named, so the gate reads as a step inside something already begun. */
@@ -96,7 +96,7 @@ export function SignInGateProvider({
     [],
   );
 
-  const titles = { save: t('gateSave'), follow: t('gateFollow'), apply: t('gateApply') } as const;
+  const titles = { save: t('gateSave'), follow: t('gateFollow'), apply: t('gateApply'), report: t('gateReport') } as const;
 
   return (
     <SignInGateContext.Provider value={gate}>
