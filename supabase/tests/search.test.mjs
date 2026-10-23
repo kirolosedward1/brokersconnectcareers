@@ -460,7 +460,7 @@ report.section('a database seeded before the aliases gets them from migrations 3
   const restored = await aliasSet();
   report.check(
     `342, 358 and 359 put back the seed's ${seeded.length} aliases, and only those`,
-    seeded.length === 34 && JSON.stringify(restored) === JSON.stringify(seeded),
+    seeded.length === 39 && JSON.stringify(restored) === JSON.stringify(seeded),
     JSON.stringify({
       missing: seeded.filter((row) => !restored.includes(row)),
       extra: restored.filter((row) => !seeded.includes(row)),

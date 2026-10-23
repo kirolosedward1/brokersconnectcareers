@@ -147,7 +147,7 @@
     "rental": "Rentals",
     "commercial": "Commercial & administrative",
     "property_management": "Property management",
-    "back_office": "Back office"
+    "back_office": "Admin roles"
   },
   "employmentType": {
     "full_time": "Full time",
