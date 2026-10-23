@@ -131,8 +131,10 @@ console.log('\n— the generated mail');
   const confirmation = readFileSync(join(ROOT, 'supabase', 'templates', 'confirmation.html'), 'utf8');
   const recovery = readFileSync(join(ROOT, 'supabase', 'templates', 'recovery.html'), 'utf8');
   is(
-    'confirmation says 24 hours, in MSA',
-    confirmation.includes('هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.') && confirmation.includes('أهلاً بك في بروكرز كونكت'),
+    'confirmation says one hour, in MSA',
+    confirmation.includes('هذا الرابط صالح لمدة ساعة واحدة، ويعمل مرة واحدة فقط.') &&
+      confirmation.includes('This link is valid for one hour, and it works only once.') &&
+      confirmation.includes('أهلاً بك في بروكرز كونكت'),
     true,
   );
   is('recovery still says one hour', recovery.includes('هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.') && !recovery.includes('24 ساعة'), true);
