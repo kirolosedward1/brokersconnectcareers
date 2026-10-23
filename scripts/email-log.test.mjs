@@ -6,8 +6,13 @@
  *
  * The database and the provider are fakes. persistFailedSend is the write
  * deliver() uses when claim_email failed or the failure could not be recorded;
- * sweepOutbox is the retry job.
+ * sweepOutbox is the retry job. The hook resolves the extensionless import
+ * newEmailLogId uses for its id.
  */
+
+import { register } from 'node:module';
+
+await register('./email-harness/hooks.mjs', import.meta.url);
 
 const { FALLBACK_WRITE_TIMEOUT_MS, claimInsert, newEmailLogId, persistFailedSend } = await import(
   '../src/lib/email/attempt-log.ts'
