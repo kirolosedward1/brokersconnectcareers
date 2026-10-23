@@ -136,6 +136,10 @@ jobs:
       - name: The app's checks
         if: steps.token.outputs.present == 'yes'
         run: pnpm check
+        env:
+          # The job's channel is for the publish; the checks test the default
+          # channel and would read a pull request's instead (an empty name is no name).
+          EXPO_GO_CHANNEL: ''
 
       - name: Wait for the website to carry this push
         if: steps.token.outputs.present == 'yes' && github.event_name == 'push'
