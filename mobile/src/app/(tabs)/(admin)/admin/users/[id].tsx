@@ -4,7 +4,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatDateTime, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
-import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
+import type { JobStatus } from '@/lib/supabase/database.types';
 import { whatsappLink } from '@/lib/whatsapp';
 import { openDecision } from '~/components/admin/decision-sheet';
 import { AdminGate, ApprovalBadge, Fact, SectionTitle, useRoleLabel } from '~/components/admin/kit';
@@ -45,8 +46,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Tab = 'overview' | 'activity' | 'security' | 'record';
 const TABS: readonly Tab[] = ['overview', 'activity', 'security', 'record'];
 
-/** The stages and the statuses, in the order the product counts them. */
-const APPLICATION_STAGES: readonly ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
+/** The statuses, in the order the product counts them (the stages are APPLICATION_STAGES). */
 const JOB_STATES: readonly JobStatus[] = ['draft', 'pending_review', 'active', 'expired', 'closed', 'rejected'];
 
 /** What a lever's answer carries when the website reveals a contact. */

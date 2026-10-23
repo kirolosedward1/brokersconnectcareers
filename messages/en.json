@@ -140,7 +140,7 @@
     "postedWithin": "{days, plural, =1 {Last 24 hours} other {Last # days}}"
   },
   "track": {
-    "primary": "Primary sales",
+    "primary": "Off-plan",
     "resale": "Resale",
     "rental": "Rentals",
     "commercial": "Commercial",

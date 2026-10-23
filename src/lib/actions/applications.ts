@@ -21,6 +21,7 @@ import type {
 import { logFailure } from '@/lib/observe';
 import { insertOnce } from '@/lib/actions/idempotency';
 import { jobIsLive } from '@/lib/job-state';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -318,7 +319,7 @@ async function removeOrphanedCv(
 
 const statusSchema = z.object({
   applicationId: z.string().uuid(),
-  status: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']),
+  status: z.enum(APPLICATION_STAGES),
   /** Optional, and deliberately so — a required field becomes "not a fit" forever. */
   decisionNote: z.string().trim().max(500).optional().nullable(),
   /**
@@ -330,7 +331,7 @@ const statusSchema = z.object({
    * their own optimistic value until they happened to refresh, and the
    * candidate was emailed twice about two different outcomes.
    */
-  from: z.enum(['new', 'shortlisted', 'interview', 'hired', 'rejected']).optional(),
+  from: z.enum(APPLICATION_STAGES).optional(),
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */

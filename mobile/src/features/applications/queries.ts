@@ -5,20 +5,6 @@ import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
-/** The badge each status wears, as on the website's dashboard and applications page. */
-export const STATUS_VARIANT: Record<ApplicationStatus, 'default' | 'primary' | 'success' | 'destructive'> = {
-  new: 'default',
-  shortlisted: 'primary',
-  interview: 'primary',
-  hired: 'success',
-  rejected: 'destructive',
-};
-
-/** Withdrawing is offered only while the outcome is still open. */
-export function canWithdraw(status: ApplicationStatus): boolean {
-  return status === 'new' || status === 'shortlisted';
-}
-
 export type CandidateApplication = {
   id: string;
   job_id: string;

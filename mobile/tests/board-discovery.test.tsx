@@ -100,7 +100,11 @@ beforeEach(async () => {
   server.on('/rest/v1/profiles', [profile]);
   server.on('/rest/v1/districts', [newCairo, october, zayed]);
   server.on('/rest/v1/governorates', [cairo]);
-  server.on('/rest/v1/search_aliases', [{ alias: 'Tagamoa', district_id: newCairo.id, track: null }]);
+  server.on('/rest/v1/search_aliases', [
+    { alias: 'Tagamoa', district_id: newCairo.id, track: null },
+    // The first-sale track's old name (migration 342), which its renamed label no longer carries.
+    { alias: 'بيع أول', district_id: null, track: 'primary' },
+  ]);
   server.on('/api/mobile/v1/browse', browse);
   server.on('/api/mobile/v1/jobs', board());
   server.on('GET /rest/v1/applications', []);
@@ -181,7 +185,9 @@ const boardReads = () => server.asked('/api/mobile/v1/jobs').map((request) => re
 
 describe('suggestions as the reader types', () => {
   const titled = posted('31', 'مُستشار مَبيعات', 1, { title_en: 'Sales consultant' });
-  const sources = { locale: 'ar', districts: [newCairo, october, zayed], aliases: [], listings: [listing, titled] };
+  // The track's old name, which people still type, as migration 342 keeps it for the renamed label.
+  const firstSale = { alias: 'بيع أول', district_id: null, track: 'primary' as const };
+  const sources = { locale: 'ar', districts: [newCairo, october, zayed], aliases: [firstSale], listings: [listing, titled] };
   const marked = (suggestion: SearchSuggestion) => suggestion.matched.slice(suggestion.span.start, suggestion.span.end);
   const said = (suggestions: SearchSuggestion[]) => suggestions.map((suggestion) => [suggestion.kind, suggestion.label, marked(suggestion)]);
 
