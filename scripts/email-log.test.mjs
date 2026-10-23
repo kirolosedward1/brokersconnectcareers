@@ -8,6 +8,9 @@
  * deliver() uses when claim_email failed or the failure could not be recorded;
  * sweepOutbox is the retry job.
  */
+import { register } from 'node:module';
+
+register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
 const { FALLBACK_WRITE_TIMEOUT_MS, claimInsert, newEmailLogId, persistFailedSend } = await import(
   '../src/lib/email/attempt-log.ts'
