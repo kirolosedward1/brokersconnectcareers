@@ -1,7 +1,10 @@
 /*
-  No imports: the landing-slug parser is passed in, so the test suite can run
-  this file directly with the real parser from lib/taxonomy.ts.
+  The landing-slug parser is passed in, so the test suite can run this file
+  with the real parser from lib/taxonomy.ts. Ended-or-not is job-state's
+  question; the test registers the `@/` alias before loading this file.
 */
+import { displayJobStatus } from '@/lib/job-state';
+import type { JobStatus } from '@/lib/supabase/database.types';
 type ParseLanding = (slug: string) => { districtSlug: string } | null;
 
 /**
@@ -61,20 +64,27 @@ function readSlug(raw: string): string | null {
   return slug;
 }
 
+const JOB_STATUSES = ['draft', 'pending_review', 'active', 'expired', 'closed', 'rejected'] as const satisfies readonly JobStatus[];
+
+function isJobStatus(value: unknown): value is JobStatus {
+  return typeof value === 'string' && (JOB_STATUSES as readonly string[]).includes(value);
+}
+
 /**
  * A job row as the public API returned it. No status means "there", not
  * "gone" — the existence check used to ask only whether a row came back.
+ *
+ * Ended or not is displayJobStatus's question. An unparseable date is not a
+ * closed window: it is left off, and a stored `expired` still reads as gone.
  */
 export function jobAvailability(row: unknown): 'exists' | 'gone' {
   if (!row || typeof row !== 'object') return 'exists';
   const status = 'status' in row ? row.status : undefined;
   const expires = 'expires_at' in row ? row.expires_at : undefined;
-  if (status === 'expired') return 'gone';
-  if (status === 'active' && typeof expires === 'string' && expires.length > 0) {
-    const at = new Date(expires).getTime();
-    if (!Number.isNaN(at) && at <= Date.now()) return 'gone';
-  }
-  return 'exists';
+  if (!isJobStatus(status)) return 'exists';
+  const parsed = typeof expires === 'string' && expires.length > 0 ? new Date(expires).getTime() : Number.NaN;
+  const expiresAt = typeof expires === 'string' && expires.length > 0 && !Number.isNaN(parsed) ? expires : null;
+  return displayJobStatus({ status, expires_at: expiresAt }) === 'expired' ? 'gone' : 'exists';
 }
 
 export function detailTargets(path: string, parseLandingSlug: ParseLanding): Target[] | null {

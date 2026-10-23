@@ -56,6 +56,15 @@ function stripLocale(pathname: string): { locale: string; path: string } {
   return { locale: routing.defaultLocale, path: pathname };
 }
 
+/**
+ * The path, or a page under it. A prefix, not a decision that a string is an
+ * internal URL — that decision is safeNext's, and a `startsWith('/')` here is
+ * what the auth test treats as a second copy of it.
+ */
+function under(path: string, prefix: string): boolean {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
 function localized(locale: string, path: string): string {
   return locale === routing.defaultLocale ? path : `/${locale}${path}`;
 }
@@ -121,12 +130,13 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // English is translated but unpublished. Send /en/* to the Arabic equivalent
-  // rather than 404-ing it, and do it temporarily (307) so the URLs are not
-  // written off by search engines while the language is merely paused.
+  // English is translated but unpublished. Send /en and every page under it
+  // to the Arabic equivalent rather than 404-ing it, and do it temporarily
+  // (307) so the URLs are not written off by search engines while the language
+  // is merely paused.
   if (!ENGLISH_ENABLED) {
     const { pathname, search } = request.nextUrl;
-    if (pathname === '/en' || pathname.startsWith('/en/')) {
+    if (under(pathname, '/en')) {
       const target = pathname === '/en' ? '/' : pathname.slice(3);
       return NextResponse.redirect(new URL(`${target}${search}`, request.url), 307);
     }
@@ -158,7 +168,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   // still a better outcome than falling all the way through to the bare
   // fallback below and losing the locale rewrite with it.
   const { locale, path } = stripLocale(request.nextUrl.pathname);
-  const inConsole = path === '/admin' || path.startsWith('/admin/');
+  const inConsole = under(path, '/admin');
 
   let user = null;
   let isAdmin: boolean | null | undefined;
@@ -241,7 +251,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     header and the 410. A direct request for the internal path is a normal
     miss, answered by the catch-all the same way every other unknown URL is.
   */
-  if (path === '/gone' || path.startsWith('/gone/')) {
+  if (under(path, '/gone')) {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/__missing${path}`;
     url.search = '';

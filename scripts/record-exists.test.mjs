@@ -8,8 +8,12 @@
  * A wrong "missing" is a live listing served as a 404 to Google, so the
  * cases that matter most are the ones that must NOT 404.
  */
-import { detailTargets, goneRewritePath, recordState } from '../src/lib/seo/record-exists.ts';
+import { register } from 'node:module';
 import { parseLandingSlug } from '../src/lib/taxonomy.ts';
+
+register('../supabase/tests/alias-hooks.mjs', import.meta.url);
+
+const { detailTargets, goneRewritePath, recordState } = await import('../src/lib/seo/record-exists.ts');
 
 let pass = 0;
 let fail = 0;

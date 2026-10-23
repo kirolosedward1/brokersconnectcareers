@@ -12,6 +12,7 @@ import { OPERATOR } from '@/lib/business';
 import { configuredValue, env } from '@/lib/env';
 import { safeNext } from '@/lib/safe-next';
 import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
+import { raise } from '@/lib/queries/error';
 import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
@@ -63,7 +64,10 @@ export default async function AccountPage({
   const tLicenses = await getTranslations('licenses');
 
   const supabase = await createClient();
-  const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  // A failed read is not "no authenticator". The page would otherwise open the
+  // whole account to a session that still owes a code.
+  if (assuranceError) raise(assuranceError, 'reading whether a code is still owed');
   const mfaLevel = assurance?.currentLevel === 'aal2' ? 'aal2' : 'aal1';
   const mfaEnrolled = assurance?.nextLevel === 'aal2';
   const mfaMode = mfa === 'required' ? 'required' : mfa === 'challenge' ? 'challenge' : null;
@@ -92,6 +96,7 @@ export default async function AccountPage({
     );
   }
 
+  // The preview link only. Allowed to fail quietly: the directory page still says whether the card is there.
   const { data: card } = await supabase
     .from('agent_profiles')
     .select('slug')

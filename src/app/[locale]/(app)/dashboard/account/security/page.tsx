@@ -5,6 +5,7 @@ import { asLocale } from '@/i18n/routing';
 import { CredentialsSettings } from '@/components/dashboard/credentials-settings';
 import { MfaSettings } from '@/components/dashboard/mfa-settings';
 import { requireProfile } from '@/lib/auth';
+import { raise } from '@/lib/queries/error';
 import { safeNext } from '@/lib/safe-next';
 import { createClient } from '@/lib/supabase/server';
 
@@ -41,7 +42,8 @@ export default async function SecurityPage({
     data: { user },
   } = await supabase.auth.getUser();
   const hasPassword = (user?.identities ?? []).some((identity) => identity.provider === 'email');
-  const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (assuranceError) raise(assuranceError, 'reading whether a code is still owed');
   const mfaLevel = assurance?.currentLevel === 'aal2' ? 'aal2' : 'aal1';
   const mfaEnrolled = assurance?.nextLevel === 'aal2';
   const mfaMode = mfa === 'required' ? 'required' : mfa === 'challenge' ? 'challenge' : null;
