@@ -151,8 +151,8 @@ export const emailCopy = {
     },
 
     statusChanged: {
-      subject: (job: string) => `تحديث على طلبك لوظيفة ${job}`,
-      preheader: 'هناك تحديث على طلب التقديم الخاص بك.',
+      subject: (job: string) => `تحديث على طلبك على وظيفة ${job}`,
+      preheader: 'هناك تحديث على طلبك.',
       heading: 'تم تحديث طلبك',
       body: (job: string, company: string) =>
         `حدّثت شركة ${company} حالة طلبك على وظيفة «${job}».`,
@@ -163,7 +163,7 @@ export const emailCopy = {
     },
 
     applicationRejected: {
-      subject: (job: string) => `تحديث بشأن تقديمك على وظيفة ${job}`,
+      subject: (job: string) => `تحديث على طلبك على وظيفة ${job}`,
       preheader: 'هناك تحديث على طلبك.',
       heading: 'تحديث على طلبك',
       body: (job: string, company: string) =>
@@ -313,7 +313,7 @@ export const emailCopy = {
       heading: 'لم تعد شركتك موثّقة',
       body: (company: string) =>
         `أُزيلت علامة التوثيق من صفحة «${company}» ومن إعلاناتها، ومعها إمكانية الاطلاع على ملفات المستشارين المخصّصة للشركات الموثّقة. يمكنك طلب التوثيق مجدداً من صفحة الشركة بسجل تجاري وبطاقة ضريبية ساريين، وإذا كان لديك أي سؤال فراسلنا.`,
-      cta: 'افتح صفحة الشركة',
+      cta: 'عرض صفحة الشركة',
       labelCompany: 'الشركة',
     },
 

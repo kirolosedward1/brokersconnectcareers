@@ -463,7 +463,7 @@ const BUILDERS: Record<string, Builder> = {
   saved_search_digest: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).digest;
-    const label = f.locale === 'ar' ? 'primary في التجمع' : 'Primary in Tagamoa';
+    const label = f.locale === 'ar' ? 'رئيسي في التجمع' : 'Primary in Tagamoa';
     const meta = optional(f, [
       f.locale === 'ar' ? 'التجمع الخامس' : 'Fifth Settlement',
       f.locale === 'ar' ? 'دوام كامل' : 'Full time',
