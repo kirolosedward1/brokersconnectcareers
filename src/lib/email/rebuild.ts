@@ -1,4 +1,5 @@
 import 'server-only';
+import { RETRYABLE_TEMPLATES } from './retryable';
 import {
   notifyApplicationWithdrawn,
   notifyCandidateOfApplication,
@@ -97,7 +98,15 @@ export const NOT_RETRYABLE = [
  * that reported success would have hidden.
  *
  * Every template notify.ts sends is either rebuilt or listed above.
+ *
+ * The list itself lives in retryable.ts, which the app imports too (this
+ * file is server-only): the two are checked here, at load, to be one set.
  */
-export function isRetryable(template: string): boolean {
-  return Object.prototype.hasOwnProperty.call(REBUILDERS, template);
+export { isRetryable } from './retryable';
+
+{
+  const listed = new Set<string>(RETRYABLE_TEMPLATES);
+  const rebuilt = Object.keys(REBUILDERS);
+  const drift = [...rebuilt.filter((t) => !listed.has(t)), ...[...listed].filter((t) => !(t in REBUILDERS))];
+  if (drift.length) throw new Error(`email/retryable.ts and the rebuilders disagree about: ${drift.join(', ')}`);
 }

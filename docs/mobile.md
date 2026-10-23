@@ -2,8 +2,8 @@
 
 `mobile/` is the phone version of the website: an Expo (SDK 58) / React Native
 app for candidates and employers, on the same Supabase project, built from the
-same rules. Admins get the console's queues in an Admin tab (see "The admin
-console in the app" below); the rest of the console stays on the website.
+same rules. Admins get the whole moderation console in an Admin tab (see
+"The admin console in the app" below).
 
 It is being built in phases. This document describes what exists and the
 rules that keep the two clients one product.
@@ -23,11 +23,11 @@ iOS app ──supabase-js (publishable key + the user's JWT, row-level security)
 server action the website's form runs, as the signed-in user. The emails, the
 upload checks, the slugs, the sanitising and the rate limits therefore happen
 for the app exactly as for the site. The actions the app may call are listed in
-`src/lib/mobile-api/registry.ts` — nothing else is reachable. Of the admin
-console, only the levers the app's own console screens offer are
-(`ADMIN_ACTIONS`), each behind the admin door
-(`src/lib/mobile-api/admin-door.ts`). Their inputs and outputs are typed in
-`src/lib/mobile-api/contract.ts`, which the app imports.
+`src/lib/mobile-api/registry.ts` — nothing else is reachable. Every lever of
+the admin console is there (`ADMIN_ACTIONS`, twenty of them), each behind the
+admin door (`src/lib/mobile-api/admin-door.ts`); checkout is not. Their inputs
+and outputs are typed in `src/lib/mobile-api/contract.ts`, which the app
+imports.
 
 Three kinds of write go straight to Supabase, as the website's browser code
 does: notification read-state (the `mark_notifications_read` /
@@ -989,32 +989,43 @@ well.
 
 ## The admin console in the app
 
-An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`):
-the website's `/admin` overview and its queues — listings waiting for review
-(`/admin/jobs`, and one listing's review at `/admin/jobs/<id>`), open reports
-in their two queues, new and under review (`/admin/reports`), the accounts
-(`/admin/users`: every account by standing or role, searched as the website
-searches them, and one account's file at `/admin/users/<id>` with every lever
-the website's page has — approval, role, sign-in block, sessions, reporting,
-contact revealed for a reason, notes) and companies whose papers wait
-(`/admin/companies`). Links to those paths open there; any other `/admin/…`
-page opens the overview, which links to the full console on the website
-(search, the audit log, taxonomy, applications, email, appeals). An admin who
-runs a company has the company's console in the bar instead of the public
-tabs, and the consultant directory opens inside the Admin tab
-(`(consultants,admin)` in the routes).
+An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`),
+and nothing of the public site's: its bar is the console and the account.
+Home's screens stay in the app with their button hidden, `/` opens the
+console, and a listing, a company or the bell's feed the console points at
+opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
+
+Every page of the website's console is a native screen under `(admin)`, at the
+website's own path: the overview (`/admin`, which ends with every section in
+the website rail's order and with the rail's badges), the listing queue and a
+listing's review (`/admin/jobs`, `/admin/jobs/<id>`), companies and one
+company's file (`/admin/companies`, `/admin/companies/<id>`), reports in their
+queues (`/admin/reports`), appeals (`/admin/appeals`), the accounts and one
+account's file (`/admin/users`, `/admin/users/<id>`), applications and one
+application (`/admin/applications`, `/admin/applications/<id>`), the
+consultants and one profile (`/admin/agents`, `/admin/agents/<id>`), search,
+the audit log, taxonomy, email activity, background work and security. A
+file screen carries the record's audit trail and notes as the website's does.
+Nothing in the console opens the website; an `/admin/…` path the app does not
+know opens the overview. Setting up an authenticator is native too
+(`src/app/mfa-enrol.tsx`). An admin who runs a company has the company's
+console in the bar beside the Admin tab, and the consultant directory opens
+inside the Admin tab (`(consultants,admin)` in the routes).
 
 - **Reads** go straight to Supabase under the admin's session — the same
   tables and `admin_*` functions the website's pages read
   (`mobile/src/features/admin/queries.ts`). Row policies and the functions
   answer an admin only.
 - **Writes** are the website's own admin actions (`ADMIN_ACTIONS` in
-  `src/lib/mobile-api/contract.ts`: `moderateJob`, `reviewCompany`,
-  `setAccountApproval`, `moderateReports`, `getDocumentUrl`, `revealContact`,
-  `addModerationNote`, `setReportingRestriction`, `setUserRole`,
-  `setSignInBlock`, `endSessions`) through `/api/mobile/v1/actions`, each one
+  `src/lib/mobile-api/contract.ts`: every lever of the console — listings
+  decided and featured, companies reviewed and suspended, accounts in every
+  respect, consultants restricted, reports and appeals answered, taxonomy
+  kept, a dead letter retried, a deletion request closed, a paper opened, a
+  contact revealed, a note left) through `/api/mobile/v1/actions`, each one
   admin_* function that checks, decides and writes the audit record in one
-  transaction. Every lever opens one confirmation sheet
+  transaction. One read is the console's alone too: `GET /api/mobile/v1/admin/mail`
+  says whether mail is configured and which variable names stand in the way,
+  behind the same door. Every lever opens one confirmation sheet
   (`mobile/src/components/admin/decision-sheet.tsx`, drawn once at the root):
   a reason where somebody is owed one, the version the screen showed, and
   "done" only once the website answers `ok`.
@@ -1023,8 +1034,8 @@ tabs, and the consultant directory opens inside the Admin tab
   server) opens only for a session that gave its authenticator's code, or —
   where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
   app reads it from `/config`) — for an admin without one. An admin without
-  an authenticator is sent to set one up on the website, then asked for the
-  code by the app's own second-factor screen. The server refuses the levers
+  an authenticator sets one up on the phone (`mfa-enrol`), then is asked for
+  the code by the app's own second-factor screen. The server refuses the levers
   with `mfa_required` / `mfa_challenge` regardless of what the app shows.
 
 `mobile/tests/admin.test.tsx` and `mobile/tests/admin-accounts.test.tsx`

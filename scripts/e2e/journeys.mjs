@@ -416,8 +416,9 @@ section('doors');
 
 const noToken = await action(null, 'applyToJob', { jobId: crypto.randomUUID() });
 check('a protected action without a token is a 401', noToken.status === 401, describe(noToken));
-const unknown = await action(candidate.token, 'requeueEmail', {});
-check('an admin action the app does not have is not on the mobile API', unknown.status === 404, describe(unknown));
+// Every console lever is on the mobile API now; checkout, which the app never sells, is not.
+const unknown = await action(candidate.token, 'createCheckout', {});
+check('an action the app does not have is not on the mobile API', unknown.status === 404, describe(unknown));
 // The levers the app's console has are behind the admin door (src/lib/mobile-api/admin-door.ts):
 // anybody who is not an admin is turned away before the action runs, and told nothing more.
 const lever = await action(candidate.token, 'moderateJob', { jobId: crypto.randomUUID(), action: 'approve' });

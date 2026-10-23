@@ -112,7 +112,9 @@ const AUDIENCE_DOOR = /^\/(sign-in|sign-up)\/(candidate|employer)$/;
  * file — opens the app's overview, which links to the website for them.
  */
 // Case-insensitive, as the screens read their id: an uppercase uuid in a link still lands on the file.
-const ADMIN_SCREENS = /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users(?:\/[0-9a-f-]{36})?|companies))?$/i;
+// Every page of the website's console: each has, or is getting, a native screen under (admin).
+const ADMIN_SCREENS =
+  /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users(?:\/[0-9a-f-]{36})?|companies(?:\/[0-9a-f-]{36})?|agents(?:\/[0-9a-f-]{36})?|applications(?:\/[0-9a-f-]{36})?|appeals|audit|taxonomy|search|email|operations|security))?$/i;
 
 /** A website path (already through webPathToAppPath) as the app opens it; the query is kept. */
 export function appPathFor(path: string): string {
@@ -136,12 +138,14 @@ export function appPathFor(path: string): string {
 const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabName[], exact?: 'exact'])[] = [
   // The board is the Jobs tab's own screen; a listing opens in any tab.
   ['/jobs', ['jobs'], 'exact'],
-  ['/jobs', ['jobs', 'home']],
-  ['/companies', ['companies', 'home']],
+  // A listing, a company and the bell open in the Admin tab for an admin,
+  // whose bar has no Home (tabs.ts).
+  ['/jobs', ['jobs', 'home', 'admin']],
+  ['/companies', ['companies', 'home', 'admin']],
   ['/dashboard/applications', ['applications']],
   ['/dashboard/saved', ['saved']],
   ['/account', ['account']],
-  ['/notifications', ['home']],
+  ['/notifications', ['home', 'admin']],
   ['/employer/jobs', ['listings']],
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],

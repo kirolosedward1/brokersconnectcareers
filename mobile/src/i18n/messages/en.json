@@ -77,6 +77,9 @@
     "switchCancel": "Stay in my account",
     "mfaSignOut": "I do not have the code — sign out",
     "mfaLost": "Lost the phone with your authenticator app? Write to us and we will help you back into your account.",
+    "mfaEnrolLede": "Add Brokers Connect to the authenticator app on this phone (Google Authenticator, or the iPhone's own Passwords), then type the six-digit number it shows.",
+    "mfaEnrolOpenApp": "Add it to the authenticator app",
+    "mfaEnrolNoApp": "No authenticator app opened. Install one, or type the key below into it by hand.",
     "linkUsedTitle": "That link no longer works",
     "linkUsedBody": "It has been used already or has expired. You are signed in as {email}, so there is nothing more to do.",
     "resetLinkFailed": "That link has expired or has already been used. You are signed in as {email}, so you can set a new password for it in Sign-in and security.",
@@ -400,8 +403,7 @@
   "admin": {
     "door": {
       "enrolTitle": "Set up two-step sign-in first",
-      "enrolBody": "The admin console asks for a code from an authenticator app each time a session starts. Set one up on the website — Account, then Sign-in and security — then come back here.",
-      "enrolOpen": "Set it up on the website",
+      "enrolBody": "The admin console asks for a code from an authenticator app each time a session starts. Set one up here — it takes a minute — and the console opens.",
       "enrolDone": "I've set it up",
       "challengeTitle": "Enter your code first",
       "challengeBody": "This account has an authenticator app. Enter its code to open the console.",
@@ -410,21 +412,53 @@
       "mfa_challenge": "Enter your authenticator code first, then try again."
     },
     "tabWaiting": "{name}, {count, plural, one {# waiting on a decision} other {# waiting on a decision}}",
-    "showing": "<v>{shown}</v> of <v>{total}</v> here — the rest are on the website.",
-    "fullConsole": "The full console on the website",
-    "fullConsoleHint": "Search, the audit log, applications, taxonomy and each account's file.",
     "adminConsole": "Admin console",
-    "papers": "Papers sent",
-    "onWebsite": "Open on the website",
-    "deletedTarget": "Removed since it was reported. Close these reports from the full console on the website.",
-    "companyRecord": "The company's record — rejections, duplicates, shared phones — is on its page in the full console.",
-    "reportedBy": "Reported by {name}",
     "reportCount": "{count, plural, one {<v>#</v> report} other {<v>#</v> reports}}",
     "openWhatsApp": "Open WhatsApp",
     "call": "Call",
     "addNote": "Add a note",
     "noteLabel": "Note (admins only)",
-    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
+    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever.",
+    "reports": {
+      "dayPlaceholder": "YYYY-MM-DD",
+      "dayInvalid": "Write the day as YYYY-MM-DD, a day that exists.",
+      "caseTotal": "{count, plural, one {<v>#</v> case} other {<v>#</v> cases}}"
+    },
+    "appeals": {
+      "filedOn": "Sent on {date}"
+    },
+    "audit": {
+      "filteredActor": "Only one admin's decisions are shown.",
+      "filteredTarget": "Only the decisions about one thing are shown.",
+      "actorHint": "Shows only this admin's decisions",
+      "targetHint": "Opens what the decision was about"
+    },
+    "taxonomy": {
+      "newEntry": "New entry",
+      "addTitle": "Add “{name}”",
+      "addBody": "“{name}” joins the lists the filters, the forms and the pages are built from, and shows on the site at once. The slug cannot change afterwards.",
+      "renameTitle": "Rename “{name}”",
+      "renameBody": "The new names show on the site at once; the slug stays as it is.",
+      "edit": "Rename",
+      "empty": "Nothing in this list yet."
+    },
+    "search": {
+      "resultHint": "Opens it in the console"
+    },
+    "overview": {
+      "closeDeletionBody": "Only the request is closed, and nobody is told. Nothing is deleted: agree what happens to the company and the account first, from their files.",
+      "sections": "Everything in the console"
+    },
+    "ops": {
+      "mailUnknown": "We couldn't check whether email sending is on.",
+      "retryBody": "The message goes back in the queue for one more attempt on the next sweep, within a few minutes. Nothing is sent right now."
+    },
+    "listings": {
+      "oneCompany": "One company's listings"
+    },
+    "companies": {
+      "takenDown": "{count, plural, =0 {No listing was taken down.} one {<v>#</v> listing taken down.} other {<v>#</v> listings taken down.}}"
+    }
   },
   "keyboard": {
     "done": "Done"
