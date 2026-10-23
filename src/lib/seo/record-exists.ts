@@ -17,29 +17,35 @@ type ParseLanding = (slug: string) => { districtSlug: string } | null;
  * Search Console warning.
  *
  * One indexed lookup through the public REST API with the anon key, so
- * row-level security answers exactly as it answers the page: an expired or
- * closed listing still exists (it keeps its page, noindexed), a draft, a
- * listing in review or a rejected one does not, and a consultant profile
- * exists unless it is hidden.
+ * row-level security answers exactly as it answers the page: an expired
+ * listing is `gone` (410), one closed by its owner still exists (it keeps
+ * its page, noindexed), a draft, a listing in review or a rejected one
+ * does not, and a consultant profile exists unless it is hidden.
  *
  * Fails open. Anything but a clean answer — no configuration, a timeout, an
  * error status — is 'unknown', and the request goes through to the page,
  * which still handles a missing record the way it always has.
+ *
+ * A listing that has run out (`expired`, or still labelled active after
+ * `expires_at`) is `gone`: the middleware answers 410 before the page
+ * streams. Closed by its owner is still `exists` — that page stays, with
+ * its closed notice. A row with no status (an older answer) is `exists`,
+ * never `gone`: a wrong 410 hides a live listing.
  */
-export type RecordState = 'exists' | 'missing' | 'unknown';
+export type RecordState = 'exists' | 'missing' | 'unknown' | 'gone';
 
 const TIMEOUT_MS = 1500;
 
 type Target = { table: string; column: string; value: string } | { rpc: string; arg: string; value: string };
 
-/**
- * Which records a path could name — any one existing means the page exists —
- * or null when it is not a detail page.
- */
-export function detailTargets(path: string, parseLandingSlug: ParseLanding): Target[] | null {
-  const match = path.match(/^\/(jobs|companies|agents)\/([^/]+)$/);
+/** The internal page an expired listing is drawn on, or null when `path` is not a job URL. */
+export function goneRewritePath(locale: string, path: string): string | null {
+  const match = path.match(/^\/jobs\/([^/]+)(?:\/apply)?$/);
   if (!match) return null;
-  const [, section, raw] = match;
+  return `/${locale}/gone/jobs/${match[1]}`;
+}
+
+function readSlug(raw: string): string | null {
   let slug: string;
   try {
     slug = decodeURIComponent(raw);
@@ -47,6 +53,37 @@ export function detailTargets(path: string, parseLandingSlug: ParseLanding): Tar
     return null;
   }
   if (!slug || slug.length > 200) return null;
+  return slug;
+}
+
+/**
+ * A job row as the public API returned it. No status means "there", not
+ * "gone" — the existence check used to ask only whether a row came back.
+ */
+export function jobAvailability(row: unknown): 'exists' | 'gone' {
+  if (!row || typeof row !== 'object') return 'exists';
+  const status = 'status' in row ? row.status : undefined;
+  const expires = 'expires_at' in row ? row.expires_at : undefined;
+  if (status === 'expired') return 'gone';
+  if (status === 'active' && typeof expires === 'string' && expires.length > 0) {
+    const at = new Date(expires).getTime();
+    if (!Number.isNaN(at) && at <= Date.now()) return 'gone';
+  }
+  return 'exists';
+}
+
+export function detailTargets(path: string, parseLandingSlug: ParseLanding): Target[] | null {
+  const apply = path.match(/^\/jobs\/([^/]+)\/apply$/);
+  if (apply) {
+    const slug = readSlug(apply[1]);
+    return slug ? [{ table: 'jobs', column: 'slug', value: slug }] : null;
+  }
+
+  const match = path.match(/^\/(jobs|companies|agents)\/([^/]+)$/);
+  if (!match) return null;
+  const [, section, raw] = match;
+  const slug = readSlug(raw);
+  if (!slug) return null;
 
   if (section === 'jobs') {
     const job: Target = { table: 'jobs', column: 'slug', value: slug };
@@ -67,11 +104,17 @@ export function detailTargets(path: string, parseLandingSlug: ParseLanding): Tar
   return [{ rpc: 'get_agent_card', arg: 'p_slug', value: slug }];
 }
 
+/**
+ * Which records a path could name — any one existing means the page exists —
+ * or null when it is not a detail page. `/jobs/<slug>/apply` names the same
+ * listing as the page it belongs to, so an expired one can answer 410 there
+ * too instead of streaming a soft 404.
+ */
 async function lookup(target: Target, base: string, key: string, fetcher: typeof fetch): Promise<RecordState> {
   const url =
     'rpc' in target
       ? `${base}/rest/v1/rpc/${target.rpc}?${target.arg}=${encodeURIComponent(target.value)}&select=id`
-      : `${base}/rest/v1/${target.table}?select=${target.column}&${target.column}=eq.${encodeURIComponent(target.value)}&limit=1`;
+      : `${base}/rest/v1/${target.table}?select=${target.table === 'jobs' ? 'status,expires_at' : target.column}&${target.column}=eq.${encodeURIComponent(target.value)}&limit=1`;
 
   try {
     const response = await fetcher(url, {
@@ -82,7 +125,8 @@ async function lookup(target: Target, base: string, key: string, fetcher: typeof
     if (!response.ok) return 'unknown';
     const rows = (await response.json()) as unknown;
     if (!Array.isArray(rows)) return 'unknown';
-    return rows.length ? 'exists' : 'missing';
+    if (!rows.length) return 'missing';
+    return !('rpc' in target) && target.table === 'jobs' ? jobAvailability(rows[0]) : 'exists';
   } catch {
     return 'unknown';
   }
@@ -100,9 +144,12 @@ export async function recordState(
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!base || !key || base.startsWith('REPLACE_ME') || key.startsWith('REPLACE_ME')) return 'unknown';
 
+  // A live page wins: a landing whose slug is also an expired listing is the
+  // landing. Gone only when a listing has run out and nothing else is there.
   // Missing only when every candidate is definitely missing.
   const answers = await Promise.all(targets.map((target) => lookup(target, base, key, fetcher)));
   if (answers.includes('exists')) return 'exists';
+  if (answers.includes('gone')) return 'gone';
   if (answers.includes('unknown')) return 'unknown';
   return 'missing';
 }

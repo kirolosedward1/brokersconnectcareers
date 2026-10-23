@@ -2,9 +2,10 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
 import { routing, locales, ENGLISH_ENABLED } from '@/i18n/routing';
 import { updateSession } from '@/lib/supabase/middleware';
+import { redirectForEntry } from '@/lib/auth/entry-redirects';
 import { secondFactorChallenge } from '@/lib/auth/second-factor';
 import { safeNext } from '@/lib/safe-next';
-import { recordState } from '@/lib/seo/record-exists';
+import { goneRewritePath, recordState } from '@/lib/seo/record-exists';
 import { parseLandingSlug } from '@/lib/taxonomy';
 
 const handleI18n = createIntlMiddleware(routing);
@@ -121,6 +122,23 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     }
   }
 
+  /*
+    `/welcome` is the app's signed-out marketing screen. On the website that
+    screen is the home page, for a signed-in reader and a signed-out one, so
+    the redirect is permanent and does not wait on the session. It runs before
+    the locale rewrite: `/en/welcome` has already been sent to `/welcome` above
+    while English is unpublished, and this hop does not point back at itself.
+  */
+  {
+    const { locale, path } = stripLocale(request.nextUrl.pathname);
+    if (path === '/welcome') {
+      const entry = redirectForEntry(path, request.nextUrl.search, false, false);
+      if (entry) {
+        return NextResponse.redirect(new URL(localized(locale, entry.href), request.url), entry.status);
+      }
+    }
+  }
+
   const response = handleI18n(request);
 
   // A redirect from the i18n layer has nothing to authorise yet.
@@ -142,6 +160,18 @@ async function handle(request: NextRequest): Promise<NextResponse> {
       '[middleware] session refresh failed, treating the request as anonymous:',
       error instanceof Error ? error.message : error,
     );
+  }
+
+  /*
+    `/mfa` is the app's code screen. Here the code is entered on the account
+    page, and where that is depends on the session, so the redirect is
+    temporary and not cached. The target is never `/mfa` or `/welcome`.
+  */
+  const entry = redirectForEntry(path, request.nextUrl.search, Boolean(user), secondFactorDue);
+  if (entry) {
+    const redirected = NextResponse.redirect(new URL(localized(locale, entry.href), request.url), entry.status);
+    if (entry.status === 307) redirected.headers.set('cache-control', 'private, no-store');
+    return redirected;
   }
 
   const needsAuth = PROTECTED.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
@@ -191,11 +221,45 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     and goes through to the page, which decides for them as it always has.
     Any failure to get an answer lets the request through unchanged.
   */
-  if (!user && request.method === 'GET' && (await recordState(path, parseLandingSlug)) === 'missing') {
+  /*
+    The gone page is only reached through the rewrite below, which carries the
+    header and the 410. A direct request for the internal path is a normal
+    miss, answered by the catch-all the same way every other unknown URL is.
+  */
+  if (path === '/gone' || path.startsWith('/gone/')) {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/__missing${path}`;
     url.search = '';
     return NextResponse.rewrite(url);
+  }
+
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const state = await recordState(path, parseLandingSlug);
+    if (!user && state === 'missing') {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/__missing${path}`;
+      url.search = '';
+      return NextResponse.rewrite(url);
+    }
+    /*
+      Expired, for everyone: an anonymous reader and a signed-in one see the
+      same ended listing. The status is set on this rewrite. The page it draws
+      does not stream behind a loading skeleton, and a cache must not keep a
+      410 after the listing is renewed.
+    */
+    if (state === 'gone') {
+      const target = goneRewritePath(locale, path);
+      if (target) {
+        const url = request.nextUrl.clone();
+        url.pathname = target;
+        url.search = '';
+        const headers = new Headers(request.headers);
+        headers.set('x-bc-gone', '1');
+        const rewritten = NextResponse.rewrite(url, { request: { headers }, status: 410 });
+        rewritten.headers.set('cache-control', 'no-store');
+        return rewritten;
+      }
+    }
   }
 
   // A signed-in user with nothing left to do on /sign-in should not sit there.

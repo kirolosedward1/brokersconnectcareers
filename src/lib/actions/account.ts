@@ -276,6 +276,7 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
   if (!saved?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/account');
+  revalidatePath('/dashboard/account/emails');
   return { ok: true };
 }
 
@@ -291,8 +292,8 @@ const pushPreferencesSchema = z
 
 /**
  * The push switches (migration 335): which kinds reach the person's phones,
- * and whether the night is kept quiet. The app is the only place they are
- * shown — the website sends no pushes — but they are the person's, not one
+ * and whether the night is kept quiet. The website sends no pushes; the
+ * account page and the app edit the same row. They are the person's, not one
  * phone's, so they live on the profile beside the email switches and are
  * written the same way: through the caller's own session, RLS deciding the
  * row, and a write that touched nothing reported as such.
@@ -318,6 +319,9 @@ export async function updatePushPreferences(input: unknown): Promise<ActionResul
     .select('id');
   if (error) return { ok: false, error: 'failed' };
   if (!saved?.length) return { ok: false, error: 'not_found' };
+
+  revalidatePath('/dashboard/account');
+  revalidatePath('/dashboard/account/alerts');
   return { ok: true };
 }
 

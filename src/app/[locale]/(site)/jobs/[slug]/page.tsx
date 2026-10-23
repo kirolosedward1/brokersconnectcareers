@@ -135,7 +135,8 @@ export async function generateMetadata({
       description,
       alternates: alternatesFor(`/jobs/${slug}`, locale),
       openGraph: { title: `${title} — ${company}`, description, type: 'article' },
-      // An expired listing must not be indexed as if it were open.
+      // Closed, or an expiry the middleware could not confirm: not indexed.
+      // A confirmed expiry is a 410 from the middleware and never reaches here.
       //
       // isOpen() rather than a status check on its own: the nightly cron is
       // what flips 'active' to 'expired', so for up to a day after expires_at

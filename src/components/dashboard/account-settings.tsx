@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Download, Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 
 import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
@@ -31,10 +31,13 @@ export function AccountSettings({
   locale,
   isEmployer,
   initial,
+  part = 'all',
 }: {
   locale: Locale;
   isEmployer: boolean;
   initial: Prefs;
+  /** One section, on its own account page. `all` is the three together. */
+  part?: 'all' | 'emails' | 'delete';
 }) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
@@ -148,9 +151,8 @@ export function AccountSettings({
       : []),
   ];
 
-  return (
-    <div className="space-y-8">
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+  const emails = (
+    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-semibold">{t('emailsTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('emailsBody')}</p>
 
@@ -176,20 +178,9 @@ export function AccountSettings({
 
         {saved ? <p className="mt-3 text-sm text-success">{tCommon('saveSuccess')}</p> : null}
       </section>
+  );
 
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="font-semibold">{t('exportTitle')}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t('exportBody')}</p>
-        <Button asChild variant="outline" className="mt-4">
-          {/* A plain link, not fetch(): the browser's own download handling is
-              better than anything reimplemented here. */}
-          <a href="/api/account/export" download>
-            <Download aria-hidden />
-            {t('exportCta')}
-          </a>
-        </Button>
-      </section>
-
+  const deletion = (
       <section className="rounded-xl border border-destructive/30 bg-destructive/[0.03] p-6">
         <h2 className="font-semibold text-destructive">{t('deleteTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -253,6 +244,14 @@ export function AccountSettings({
           </p>
         ) : null}
       </section>
+  );
+
+  if (part === 'emails') return emails;
+  if (part === 'delete') return deletion;
+  return (
+    <div className="space-y-8">
+      {emails}
+      {deletion}
     </div>
   );
 }
