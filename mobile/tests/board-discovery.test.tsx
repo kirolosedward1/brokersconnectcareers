@@ -41,45 +41,6 @@ import { fakeServer } from './server';
   Against stand-ins for Supabase and the website, through the real screens.
 */
 
-
-jest.mock('expo-router', () => {
-  const actual = jest.requireActual('expo-router');
-  return {
-    ...actual,
-    useNavigation: (...args: unknown[]) => {
-      const navigation = actual.useNavigation(...args);
-      const chain: unknown[] = [];
-      let n = navigation;
-      while (n) {
-        chain.push(n.getState?.()?.type);
-        n = n.getParent?.();
-      }
-      // eslint-disable-next-line no-console
-      console.log('PROBE chain', JSON.stringify(chain));
-      let p = navigation;
-      while (p && p.getState?.()?.type !== 'tab') p = p.getParent?.();
-      if (p && !p.__wrapped) {
-        p.__wrapped = true;
-        const id = Math.random().toString(36).slice(2, 6);
-        const add = p.addListener;
-        p.addListener = (type: string, cb: (...a: unknown[]) => void) => {
-          if (type !== 'blur') return add(type, cb);
-          console.log('PROBE add', id);
-          const off = add(type, (...a: unknown[]) => {
-            console.log('PROBE blur fired', id);
-            cb(...a);
-          });
-          return () => {
-            console.log('PROBE remove', id);
-            off();
-          };
-        };
-      }
-      return navigation;
-    },
-  };
-});
-
 jest.mock('~/lib/session-storage', () => {
   const store = new Map<string, string>();
   return {

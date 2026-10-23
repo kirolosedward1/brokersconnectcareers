@@ -142,6 +142,8 @@ const app = {
 /** The same, with a second tab beside the listings: the applicants, as an employer has them. */
 const tabbed = {
   ...app,
+  // A tab navigator of its own: app's declares only the tabs app has, the listings.
+  '(tabs)/_layout': () => <DeclaredTabs routes={tabbed} />,
   '(tabs)/(applicants)/_layout': { default: () => <Stack />, unstable_settings: { anchor: 'employer/applicants/index' } },
   '(tabs)/(applicants)/employer/applicants/index': () => <Text>the inbox</Text>,
   '(tabs)/(applicants)/employer/applicants/one': () => <Text>one applicant</Text>,

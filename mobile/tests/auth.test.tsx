@@ -807,13 +807,16 @@ describe('the second factor', () => {
     await signedIn();
     // Removed on the website since: the auth server's account has none, and a refreshed session says so.
     user = authUser();
+    await renderRouter(app, { initialUrl: '/' });
+    // Expo Router gives the router its methods once the root has rendered,
+    // over any spy set before; the launch's push comes after that, once the
+    // stored session has been read.
     const pushes: unknown[] = [];
     const push = router.push.bind(router);
     jest.spyOn(router, 'push').mockImplementation((...args: Parameters<typeof router.push>) => {
       pushes.push(args[0]);
       return push(...args);
     });
-    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     // A while later, so the refreshed session is a new one (the clock stands still under renderRouter).
     act(() => jest.setSystemTime(Date.now() + 60_000));

@@ -406,8 +406,9 @@ describe('the directory, for a company whose account is not approved yet', () =>
     server.on('GET /rest/v1/company_members', () => [
       { user_id: USER_ID, role: 'admin', created_at: '2026-09-01T10:00:00Z', profile: { full_name: 'أحمد سمير' } },
     ]);
-    navigate = jest.spyOn(router, 'navigate').mockImplementation(() => {});
     await renderRouter(app, { initialUrl: '/agents' });
+    // Expo Router gives the router its methods once the root has rendered, over any spy set before.
+    navigate = jest.spyOn(router, 'navigate').mockImplementation(() => {});
 
     expect(await screen.findByText(ar.app.directory.verifyTitle)).toBeTruthy();
     expect(screen.getByText(ar.app.directory.verifyBody)).toBeTruthy();
