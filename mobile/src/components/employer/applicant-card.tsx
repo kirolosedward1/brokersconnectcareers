@@ -303,13 +303,13 @@ export function ApplicantCard({
       {applicant.note ? <Text variant="small">{`«${applicant.note}»`}</Text> : null}
 
       {/* Contact in this market is WhatsApp, with the first message already written.
-          A withdrawn application is closed, so neither this nor the saved replies
-          nor the no-CV line is offered. With nothing left to put here — no CV
-          either — the row is not drawn: an empty row would still take the card's
-          gap, and the 16px under the last line would no longer be the card's own. */}
-      {!withdrawn || applicant.cv_path ? (
+          A withdrawn application is closed: no WhatsApp, no saved replies, no CV,
+          no no-CV line. The profile link above is the only action, so this row
+          is not drawn. An empty row would still take the card's gap, and the
+          16px under the last line would no longer be the card's own. */}
+      {!withdrawn ? (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-        {!withdrawn && candidate ? (
+        {candidate ? (
           <Button
             label={t('employer.whatsappCandidate')}
             accessibilityLabel={`${t('employer.whatsappCandidate')}: ${name}`}
@@ -323,7 +323,7 @@ export function ApplicantCard({
           />
         ) : null}
         {/* The company's own replies, kept on this phone (saved-replies.tsx). */}
-        {!withdrawn && candidate ? (
+        {candidate ? (
           <Button
             label={t('app.replies.open')}
             accessibilityLabel={`${t('app.replies.open')}: ${name}`}
@@ -333,7 +333,7 @@ export function ApplicantCard({
             onPress={replies.show}
           />
         ) : null}
-        {!withdrawn && candidate && replies.mounted ? (
+        {candidate && replies.mounted ? (
           <SavedRepliesSheet
             visible={replies.open}
             onClose={replies.hide}
@@ -353,7 +353,7 @@ export function ApplicantCard({
             loading={opening}
             onPress={openCv}
           />
-        ) : withdrawn ? null : (
+        ) : (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <FileX2 size={14} color={colors.mutedForeground} />
             <Text variant="caption" tone="mutedForeground">

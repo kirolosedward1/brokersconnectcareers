@@ -577,7 +577,7 @@ describe("a listing's applicants", () => {
     expect(screen.getByText(`${LRI}2${PDI} متقدمين`)).toBeTruthy();
   });
 
-  it('draws no action row on a withdrawn card that has nothing to offer', async () => {
+  it('draws no action row on a withdrawn card, even when a CV is still on it', async () => {
     rows = [
       {
         ...omar,
@@ -585,12 +585,21 @@ describe("a listing's applicants", () => {
         status: 'withdrawn',
         note: null,
         decision_note: null,
-        cv_path: null,
+        cv_path: `${USER_ID}/withdrawn.pdf`,
         candidate: {
           full_name: 'نورا سليم',
           whatsapp_phone: '+201112223334',
           avatar_url: null,
-          agent_profiles: null,
+          agent_profiles: {
+            slug: 'nora-a1b2',
+            headline_ar: 'مستشارة',
+            headline_en: null,
+            years_experience: 4,
+            tracks: ['primary'],
+            district_ids: [newCairo.id],
+            units_closed: null,
+            volume_egp: null,
+          },
         },
       },
     ];
@@ -599,11 +608,13 @@ describe("a listing's applicants", () => {
     expect(screen.getAllByText(ar.applicationStatus.withdrawn).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: `${ar.employer.whatsappCandidate}: نورا سليم` })).toBeNull();
     expect(screen.queryByRole('button', { name: `${ar.app.replies.open}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.employer.downloadCv}: نورا سليم` })).toBeNull();
     expect(screen.queryByText(ar.employer.noCv)).toBeNull();
     expect(screen.queryByRole('button', { name: new RegExp(ar.employer.moveTo) })).toBeNull();
+    expect(screen.getByHintText(ar.agents.viewProfile)).toBeTruthy();
 
-    // The card's own padding is 16. An empty action row would be a second
-    // horizontal row and would push that 16 further down by the card's gap.
+    // The card's own padding is 16. The action row is the one that wraps.
+    // Drawing it empty would still take the card's gap under the last line.
     let node: ReturnType<typeof screen.getByRole> | null = header;
     let card: ReturnType<typeof screen.getByRole> | null = null;
     while (node) {
@@ -614,10 +625,11 @@ describe("a listing's applicants", () => {
       node = node.parent;
     }
     expect(card).not.toBeNull();
-    const rowsInCard = (card?.children ?? []).filter(
-      (child) => typeof child !== 'string' && StyleSheet.flatten(child.props.style)?.flexDirection === 'row',
+    expect(StyleSheet.flatten(card?.props.style)?.padding).toBe(16);
+    const actionRow = (card?.children ?? []).filter(
+      (child) => typeof child !== 'string' && StyleSheet.flatten(child.props.style)?.flexWrap === 'wrap',
     );
-    expect(rowsInCard).toHaveLength(1);
+    expect(actionRow).toHaveLength(0);
   });
 
   it("is not found when the listing is not the company's", async () => {

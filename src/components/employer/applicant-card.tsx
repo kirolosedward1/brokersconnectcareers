@@ -348,11 +348,12 @@ export function ApplicantCard({
         </p>
       ) : null}
 
-      {!withdrawn || application.cv_path ? (
+      {/* A withdrawn application is closed. WhatsApp, the CV, and the stage
+          move are not offered; the profile link above is the only action. */}
+      {!withdrawn ? (
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {/* Contact in this market is WhatsApp, with the opener already written.
-            A withdrawn application is closed, so the button is not offered. */}
-        {!withdrawn && candidate ? (
+        {/* Contact in this market is WhatsApp, with the opener already written. */}
+        {candidate ? (
           <Button asChild size="sm">
             <a
               href={whatsappLink(
@@ -381,7 +382,7 @@ export function ApplicantCard({
               {t('downloadCv')}
             </a>
           </Button>
-        ) : withdrawn ? null : (
+        ) : (
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <FileX2 className="size-3.5" aria-hidden />
             {t('noCv')}
@@ -398,24 +399,22 @@ export function ApplicantCard({
           </p>
         ) : null}
 
-        {withdrawn ? null : (
-          <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
-            {t('moveTo')}
-            <Select
-              size="sm"
-              value={status}
-              onChange={onStatusChange}
-              disabled={pending}
-              className="w-auto"
-            >
-              {PIPELINE_STAGES.map((value) => (
-                <option key={value} value={value}>
-                  {tStatus(value)}
-                </option>
-              ))}
-            </Select>
-          </label>
-        )}
+        <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
+          {t('moveTo')}
+          <Select
+            size="sm"
+            value={status}
+            onChange={onStatusChange}
+            disabled={pending}
+            className="w-auto"
+          >
+            {PIPELINE_STAGES.map((value) => (
+              <option key={value} value={value}>
+                {tStatus(value)}
+              </option>
+            ))}
+          </Select>
+        </label>
       </div>
       ) : null}
 
