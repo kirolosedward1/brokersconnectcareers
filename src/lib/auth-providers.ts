@@ -30,6 +30,10 @@ export async function enabledProviders(): Promise<{ google: boolean; apple: bool
   try {
     const response = await fetch(`${env.supabaseUrl}/auth/v1/settings`, {
       headers: { apikey: env.supabaseAnonKey },
+      // The sign-in page waits on this. An auth server that stalled held the
+      // page blank until the function timed out; now it is drawn without
+      // the provider buttons, as when the call fails.
+      signal: AbortSignal.timeout(3000),
       // Long enough that this is not a round trip per sign-in page view,
       // short enough that turning the provider on does not need a deploy.
       next: { revalidate: 300 },

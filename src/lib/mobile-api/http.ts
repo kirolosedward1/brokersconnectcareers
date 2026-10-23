@@ -58,11 +58,21 @@ export function refusedForSecondFactor(): boolean {
  * service is unavailable; signing somebody out because Supabase blinked would
  * be the worst reading of an outage).
  */
+/**
+ * How long the token check may take. A stalled auth server held every mobile
+ * request until the app gave up after 30 s and said "offline"; past this it
+ * is the 503 below, which the app says as the service being unavailable.
+ */
+const VERIFY_TIMEOUT_MS = 8000;
+
 async function verify(
   jwt: string,
 ): Promise<{ session: NonNullable<MobileSession>; secondFactorDue: boolean } | { refused: Response }> {
   const verifier = createSupabaseClient(env.supabaseUrl, env.supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: {
+      fetch: (input, init) => fetch(input, { ...init, signal: init?.signal ?? AbortSignal.timeout(VERIFY_TIMEOUT_MS) }),
+    },
   });
 
   try {
