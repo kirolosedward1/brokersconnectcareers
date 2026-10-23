@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Keyboard, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
@@ -219,7 +219,7 @@ describe('a refused form', () => {
   it('is felt when its errors are brought into view, every time it is refused', () => {
     jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions').mockImplementation(() => {});
     function Form() {
-      const scroll = useRef<ScrollView>(null);
+      const scroll = useRef<ScrollViewInstance>(null);
       const form = useErrorsInView(scroll, ['name']);
       return (
         <ScrollView ref={scroll}>

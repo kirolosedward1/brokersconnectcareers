@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, Modal, Pressable, StyleSheet, View, type TextInput } from 'react-native';
+import { Keyboard, Modal, Pressable, StyleSheet, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import { canSaveJobs } from '@/lib/permissions';
@@ -62,7 +62,7 @@ export function NoteSheet({
   // Focused once iOS has finished presenting the sheet, not as it mounts:
   // autoFocus raised the keyboard mid-presentation, and the sheet went while
   // the keyboard stayed up over the list, with nothing to type into.
-  const field = useRef<TextInput>(null);
+  const field = useRef<TextInputInstance>(null);
   const focused = useRef(false);
   const focusField = () => {
     if (focused.current) return;

@@ -53,7 +53,7 @@ env:
 
 jobs:
   screens:
-    # Xcode 26, as for the native build in mobile.yml (SDK 57 needs it).
+    # Xcode 26, as for the native build in mobile.yml (SDK 58 needs it).
     runs-on: macos-26
     timeout-minutes: 120
     defaults:
@@ -84,7 +84,7 @@ jobs:
         run: |
           xcodebuild -version
           if ! xcodebuild -version | grep -qE '^Xcode (2[6-9]|[3-9][0-9])\.'; then
-            echo "::error::Expo SDK 57 needs Xcode 26 or later"
+            echo "::error::Expo SDK 58 needs Xcode 26 or later"
             exit 1
           fi
 

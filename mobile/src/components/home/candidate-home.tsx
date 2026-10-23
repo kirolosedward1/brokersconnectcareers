@@ -23,7 +23,8 @@ import { Button } from '~/components/ui/button';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
-import { STATUS_VARIANT, useMyApplications, type CandidateApplication } from '~/features/applications/queries';
+import { STAGE_TONE } from '@/lib/application-stages';
+import { useMyApplications, type CandidateApplication } from '~/features/applications/queries';
 import { useBrowseCounts } from '~/features/browse/queries';
 import {
   candidateNextAction,
@@ -405,7 +406,7 @@ function RecentApplication({ application, first }: { application: CandidateAppli
           {`${company} · ${formatDate(application.created_at, locale)}`}
         </Text>
       </View>
-      <Badge variant={STATUS_VARIANT[application.status]} label={status} />
+      <Badge variant={STAGE_TONE[application.status]} label={status} />
     </Pressable>
   );
 }

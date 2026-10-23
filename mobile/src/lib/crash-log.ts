@@ -36,7 +36,7 @@ export function installCrashLog() {
     };
     // Only what closes the app is kept: a non-fatal error is already shown where it happened.
     if (crash.fatal) AsyncStorage.setItem(KEY, JSON.stringify(crash)).catch(() => {});
-    previous(error, fatal);
+    previous(error, Boolean(fatal));
   });
 }
 

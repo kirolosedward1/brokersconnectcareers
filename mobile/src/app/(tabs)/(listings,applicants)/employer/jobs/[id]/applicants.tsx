@@ -1,6 +1,7 @@
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';
 import { ApplicantCard } from '~/components/employer/applicant-card';
@@ -13,7 +14,6 @@ import { Text } from '~/components/ui/text';
 import {
   APPLICANTS_CAP,
   notesOf,
-  STAGES,
   useApplicantNotes,
   useListingApplicants,
   useMarkSeen,
@@ -127,7 +127,7 @@ export default function ListingApplicantsScreen() {
             or a push — moves under its new header as the same card, keeping
             the reason or note being typed in it; in a box per stage it was
             built again, empty. */}
-        {STAGES.flatMap((stage) => {
+        {APPLICATION_STAGES.flatMap((stage) => {
           const inStage = rows.filter((row) => row.status === stage);
           if (!inStage.length) return [];
           return [

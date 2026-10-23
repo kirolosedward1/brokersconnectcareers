@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentType } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type TextInput } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import {
@@ -238,10 +238,10 @@ function ApplyForm({
   const { colors } = useTheme();
   const large = useLargeText();
   const apply = useApplyToJob();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'experienceBand', 'cv']);
   // The return key moves on from the name to the number.
-  const whatsappField = useRef<TextInput>(null);
+  const whatsappField = useRef<TextInputInstance>(null);
 
   const [fullName, setFullName] = useState(defaultName);
   const [whatsapp, setWhatsapp] = useState(defaultPhone);

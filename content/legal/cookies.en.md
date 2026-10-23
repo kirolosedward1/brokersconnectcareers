@@ -1,6 +1,6 @@
 ---
 title: Cookies and storage on your device
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 This page explains everything the Brokers Connect website keeps in your browser, and everything the app keeps on your phone, and why. It is part of our [Privacy policy](/privacy).
@@ -38,12 +38,12 @@ There are no advertising tools on the website, no share buttons that track you, 
 
 The app uses no cookies. It keeps only the following on your phone:
 
-- **Your sign-in session:** encrypted, with a key held in the phone's secure storage (the Keychain on an iPhone), and deleted when you sign out. If you signed in with Apple, also the identifier Apple gives this app for your Apple ID, so the app can end the session if you stop using Sign in with Apple for it; deleted when you sign out.
+- **Your sign-in session:** encrypted, with a key held in the phone's secure storage (the Keychain on an iPhone), and deleted when you sign out.
 - **The last account signed in on this phone:** its kind (consultant or company) and approval status, and its company's id and verification status, so the app knows which tabs to show when it opens, before it reaches the internet. Forgotten when you sign out.
-- **Your settings on this phone:** your appearance choice, the companies, consultants and listings you hid from lists, and your notification token and choices.
-- **What you keep for yourself, for each account on this phone separately:** the jobs you looked at lately and your recent searches; your notes and reminders on saved jobs (a reminder is a notification the phone itself shows on the day you chose); the kinds of listing you asked to see fewer of; which listings on the board you have already seen, so the new ones can be marked; and, for a company, its saved WhatsApp replies and saved consultant searches. None of it is sent to us. Someone else signing in on the same phone does not see it, and it is deleted when you delete your account in the app.
-- **While you sign up:** where you were going when you began (a listing you tapped Apply on, say), so onboarding takes you back there. Deleted once onboarding is done.
-- **The last crash:** if the app closes because of an error, the error's message and where in the app's code it happened, kept so the app can tell you about it the next time it opens. It is sent to us only if you choose to share it from that notice.
+- **Your settings on this phone:** your appearance choice, the companies, consultants and listings you hid from lists, your notification token and choices, and whether the app asks for Face ID or your passcode when it opens.
+- **What you keep for yourself in the app:** your notes and closing-date reminders on saved jobs (the reminders are notifications the phone shows at the time you chose), your saved consultant searches and the alerts they send, your saved WhatsApp replies, the kinds of listing you asked to see fewer of, the listings and searches you looked at lately, and where you got to on the job board, so it can show what is new since. These are kept for your account alone, are never sent to us, and are deleted from the phone when you delete your account.
+- **For signing in:** where you were going when you started creating your account (a listing you tapped Apply on, say), until you get there; and, if you signed in with Apple on this phone, which Apple ID you used, so the app can sign you out if you stop using Apple with it. Both are forgotten when you sign out or delete your account.
+- **The last crash:** if the app closes because of an error, a short record of the error (its message and where in the app's code it happened) and the app's version, so the app can tell you about it the next time it opens and you can choose to send it to us. Nothing is sent unless you do.
 - **A temporary copy of public lists:** governorates, districts and developers, so search screens open quickly; and the counts on Home with the first page of the job board and of the company directory, so the app opens on them at once, even on a slow connection, and refreshes them behind. None is kept longer than a day, and none holds anything from your account.
 
 All of this is deleted when you delete the app from your phone. (An iPhone may keep the encryption key itself in the Keychain after the app is deleted, but with the session it protected gone, it unlocks nothing.)

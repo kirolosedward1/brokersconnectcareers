@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createLocalList, forgetOwner } from '~/lib/local-list';
+import { createLocalList, forgetPerson } from '~/lib/local-list';
 
 /*
-  What a person keeps on the phone goes with their account (forgetOwner,
+  What a person keeps on the phone goes with their account (forgetPerson,
   called once the account is deleted), and nothing still on its way to
   storage brings it back: a search's alert checked as the app opened, a
   note's Undo, a reminder put back, each finishing after the deletion.
@@ -27,7 +27,7 @@ it("takes the person's lists off the phone, and leaves everybody else's", async 
   ]);
   expect(await notes.read('gone')).toEqual([{ id: 'a' }]);
 
-  await forgetOwner('gone');
+  await forgetPerson('gone');
 
   expect(await AsyncStorage.getItem(`bc.test-${n}.v1:gone`)).toBeNull();
   expect(await AsyncStorage.getItem('push:off:gone')).toBeNull();
@@ -40,7 +40,7 @@ it('lets no write that was on its way bring them back', async () => {
 
   // Added while the list was still being read from the phone, then the account deleted.
   notes.add('gone', { id: 'b' });
-  await forgetOwner('gone');
+  await forgetPerson('gone');
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(await AsyncStorage.getItem(`bc.test-${n}.v1:gone`)).toBeNull();
 

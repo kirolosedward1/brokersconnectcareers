@@ -253,14 +253,14 @@ async function signedIn() {
 
 describe('the Account tab', () => {
   it('is the door when signed out', async () => {
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
     await press(ar.nav.signIn);
     expect(await screen.findByText(ar.auth.signInTitle)).toBeTruthy();
   });
 
   it('keeps the policies, the licences and who runs the app one tap away, signed in or not', async () => {
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
     expect(screen.getByText(ar.footer.operatedBy.replace('{name}', 'Top Suite Digital Marketing'))).toBeTruthy();
 
@@ -273,10 +273,10 @@ describe('the Account tab', () => {
   });
 
   it('writes to the address without showing it, and tells it when no mail app can', async () => {
-    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     // Alert.alert is the suite's own stand-in (above).
     jest.mocked(Alert.alert).mockClear();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     await press(ar.app.account.contact);
     expect(open).toHaveBeenCalledWith('mailto:help@brokersconnect.net');
     expect(screen.queryByText('help@brokersconnect.net')).toBeNull();
@@ -290,7 +290,7 @@ describe('the Account tab', () => {
 
   it('says who is signed in, and signs out of this phone only', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(screen.getByText(`داخل بحساب ${user.email}`)).toBeTruthy();
 
@@ -302,7 +302,7 @@ describe('the Account tab', () => {
 
 describe('signing in with a password', () => {
   it("says the website's words when GoTrue refuses, and tells the server", async () => {
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     await fillSignIn(' sara@example.com ', 'wrong-password');
     await press(ar.auth.signIn);
 
@@ -314,7 +314,7 @@ describe('signing in with a password', () => {
   });
 
   it('asks for eight characters before sending anything', async () => {
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     await fillSignIn('sara@example.com', 'short');
     await press(ar.auth.signIn);
     expect(await screen.findByText(ar.validation.passwordShort)).toBeTruthy();
@@ -323,7 +323,7 @@ describe('signing in with a password', () => {
 
   it('pauses when the server asks it to', async () => {
     server.on('POST /api/mobile/v1/actions/reportAuthOutcome', { pause: 6, challenge: false });
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     await fillSignIn('sara@example.com', 'wrong-password');
     await press(ar.auth.signIn);
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/reportAuthOutcome')).toHaveLength(1));
@@ -339,7 +339,7 @@ describe('signing in with a password', () => {
       status: 400,
       body: { code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' },
     });
-    renderRouter(app, { initialUrl: '/sign-in?role=employer' });
+    await renderRouter(app, { initialUrl: '/sign-in?role=employer' });
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
     expect(await screen.findByText(ar.auth.errEmailUnconfirmed)).toBeTruthy();
@@ -352,7 +352,7 @@ describe('signing in with a password', () => {
   });
 
   it('closes the sheet onto where the person was', async () => {
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
@@ -363,7 +363,7 @@ describe('signing in with a password', () => {
   });
 
   it('closes the welcome along with the sheet when the sign-in began there', async () => {
-    renderRouter(app, { initialUrl: '/welcome' });
+    await renderRouter(app, { initialUrl: '/welcome' });
     await press(ar.nav.signIn);
     // No one-tap way offered: no round buttons beside Sign in, and the form at once.
     expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
@@ -376,14 +376,14 @@ describe('signing in with a password', () => {
   });
 
   it('goes on to where the person was headed', async () => {
-    const result = renderRouter(app, { initialUrl: '/sign-in?next=%2Faccount%2Fdelete' });
+    const result = await renderRouter(app, { initialUrl: '/sign-in?next=%2Faccount%2Fdelete' });
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
     await waitFor(() => expect(result.getPathname()).toBe('/account/delete'));
   });
 
   it('refuses a destination that is not a path of ours', async () => {
-    const result = renderRouter(app, { initialUrl: '/sign-in?next=https%3A%2F%2Fevil.example' });
+    const result = await renderRouter(app, { initialUrl: '/sign-in?next=https%3A%2F%2Fevil.example' });
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
     await waitFor(() => expect(result.getPathname()).toBe('/'));
@@ -399,7 +399,7 @@ describe('the captcha', () => {
 
   it('holds the form until the page hands over a token, sends it, and fetches another', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ turnstileSiteKey: 'site-key' }));
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     await fillSignIn('sara@example.com', 'wrong-password');
 
     await screen.findByText(ar.app.auth.captchaChecking);
@@ -417,7 +417,7 @@ describe('the captcha', () => {
 
   it('shows the widget when Cloudflare wants a person, and offers a retry when it cannot load', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ turnstileSiteKey: 'site-key' }));
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     await screen.findByText(ar.app.auth.captchaChecking);
 
     post({ type: 'interactive' });
@@ -433,7 +433,7 @@ describe('the captcha', () => {
 
 describe('creating an account', () => {
   it('sends the confirmation back through onboarding, with the door and the destination', async () => {
-    renderRouter(app, { initialUrl: '/sign-up?role=employer&next=%2Fjobs%2Fsales-a1b2' });
+    await renderRouter(app, { initialUrl: '/sign-up?role=employer&next=%2Fjobs%2Fsales-a1b2' });
     expect(await screen.findByText(ar.auth.signUpTitleEmployer)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.auth.email), 'new@example.com');
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
@@ -452,7 +452,7 @@ describe('creating an account', () => {
   });
 
   it('says where the policies are where the address is asked for, and opens them', async () => {
-    renderRouter(app, { initialUrl: '/sign-up' });
+    await renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.press(await screen.findByText(ar.footer.privacy));
     expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy`);
     fireEvent.press(screen.getByText(ar.footer.terms));
@@ -463,7 +463,7 @@ describe('creating an account', () => {
   it('moves from field to field with the return key, and signs up from the last', async () => {
     const focus = watchFocus();
     try {
-      renderRouter(app, { initialUrl: '/sign-up' });
+      await renderRouter(app, { initialUrl: '/sign-up' });
       const email = await screen.findByLabelText(ar.auth.email);
       expect(email.props.returnKeyType).toBe('next');
       fireEvent.changeText(email, 'new@example.com');
@@ -483,7 +483,7 @@ describe('creating an account', () => {
   });
 
   it('catches a mistyped password before sending it', async () => {
-    renderRouter(app, { initialUrl: '/sign-up' });
+    await renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
     fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'correct-horsf');
@@ -496,7 +496,7 @@ describe('creating an account', () => {
 describe('onboarding', () => {
   it('follows a sign-in on an account with no profile, and makes one', async () => {
     profileRow = null;
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
@@ -556,7 +556,7 @@ describe('onboarding', () => {
     await signedIn();
     const focus = watchFocus();
     try {
-      renderRouter(app, { initialUrl: '/onboarding' });
+      await renderRouter(app, { initialUrl: '/onboarding' });
       await onward();
       fireEvent(await screen.findByLabelText(ar.onboarding.fullName), 'submitEditing');
       expect(focus.focused).toEqual([ar.onboarding.whatsapp]);
@@ -568,7 +568,7 @@ describe('onboarding', () => {
   it('offers the Terms and the Privacy policy inside the agreement to VoiceOver, which cannot reach its links', async () => {
     profileRow = null;
     await signedIn();
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     await onward();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
     await onward();
@@ -588,7 +588,7 @@ describe('onboarding', () => {
   it('asks for the directory choice, then the agreement and the age, before anything is created', async () => {
     profileRow = null;
     await signedIn();
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     await onward();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
     await onward();
@@ -610,7 +610,7 @@ describe('onboarding', () => {
     announce.mockClear();
     const layout = placeViewsAt(300);
     try {
-      renderRouter(app, { initialUrl: '/onboarding' });
+      await renderRouter(app, { initialUrl: '/onboarding' });
       await onward();
       fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
       await onward();
@@ -632,7 +632,7 @@ describe('onboarding', () => {
       fieldErrors: { whatsapp: 'invalidPhone' },
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     fireEvent.press(await screen.findByRole('radio', { name: EMPLOYER }));
     // The two kinds of account are one choice, named by the question they answer.
     expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
@@ -663,7 +663,7 @@ describe('onboarding', () => {
   it("takes a company's website as the company page does, and says when it is not one", async () => {
     profileRow = null;
     await signedIn();
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     fireEvent.press(await screen.findByRole('radio', { name: EMPLOYER }));
     await onward();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
@@ -689,7 +689,7 @@ describe('onboarding', () => {
   it('opens by itself when a returning session has no profile yet', async () => {
     profileRow = null;
     await signedIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
   });
 
@@ -701,7 +701,7 @@ describe('onboarding', () => {
     profileRow = null;
     jest.mocked(Alert.alert).mockClear();
     await signedIn();
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.onboarding.leaveDelete);
 
     // Asked first; nothing goes until the person says so.
@@ -734,7 +734,7 @@ describe('onboarding', () => {
       ['bc.saved-notes.v1:someone-else', JSON.stringify([{ id: 'j2', text: 'theirs', updatedAt: 1 }])],
       ['push:off:someone-else', '1'],
     ]);
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.onboarding.leaveDelete);
     await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
@@ -754,7 +754,7 @@ describe('onboarding', () => {
     // What the account keeps on this phone stays with it while it still exists.
     const mine = (await supabase.auth.getSession()).data.session!.user.id;
     await AsyncStorage.setItem(`bc.saved-notes.v1:${mine}`, JSON.stringify([{ id: 'j1', text: 'asked for 12k', updatedAt: 1 }]));
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.onboarding.leaveDelete);
     await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
 
@@ -769,7 +769,7 @@ describe('onboarding', () => {
 describe('the second factor', () => {
   it('is asked for after the password, and a wrong code is said to be wrong', async () => {
     user = authUser({ factors: [totpFactor] });
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
@@ -801,7 +801,7 @@ describe('the second factor', () => {
       body: { code: 'over_request_rate_limit', error_code: 'over_request_rate_limit', msg: 'Too many requests' },
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
     expect(await screen.findByText(ar.auth.errTooMany)).toBeTruthy();
@@ -812,7 +812,7 @@ describe('the second factor', () => {
   it('answers by itself once six digits are in: the number pad has no return key, and AutoFill presses nothing', async () => {
     user = authUser({ factors: [totpFactor] });
     await signedIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '12345');
     expect(server.asked(`/auth/v1/factors/${totpFactor.id}/verify`)).toHaveLength(0);
@@ -824,7 +824,7 @@ describe('the second factor', () => {
   it('takes the code typed with Arabic-Indic digits, as an Arabic keyboard types it', async () => {
     user = authUser({ factors: [totpFactor] });
     await signedIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '١٢٣٤٥٦');
     await waitFor(() =>
@@ -838,13 +838,16 @@ describe('the second factor', () => {
     await signedIn();
     // Removed on the website since: the auth server's account has none, and a refreshed session says so.
     user = authUser();
+    await renderRouter(app, { initialUrl: '/' });
+    // Expo Router gives the router its methods once the root has rendered,
+    // over any spy set before; the launch's push comes after that, once the
+    // stored session has been read.
     const pushes: unknown[] = [];
     const push = router.push.bind(router);
     jest.spyOn(router, 'push').mockImplementation((...args: Parameters<typeof router.push>) => {
       pushes.push(args[0]);
       return push(...args);
     });
-    renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     // A while later, so the refreshed session is a new one (the clock stands still under renderRouter).
     act(() => jest.setSystemTime(Date.now() + 60_000));
@@ -865,7 +868,7 @@ describe('the second factor', () => {
     });
     user = authUser({ factors: [totpFactor] });
     await signedIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123');
 
@@ -881,7 +884,7 @@ describe('the second factor', () => {
   it('can be walked away from only by signing out', async () => {
     user = authUser({ factors: [totpFactor] });
     await signedIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
     await press(ar.app.auth.mfaSignOut);
     expect(await screen.findByText('home screen')).toBeTruthy();
@@ -890,10 +893,10 @@ describe('the second factor', () => {
   });
 
   it('tells someone without the phone where to write, since nothing opens without the code', async () => {
-    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     user = authUser({ factors: [totpFactor] });
     await signedIn();
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.app.auth.mfaLost)).toBeTruthy();
     // The address the website names (config), shown on the button itself.
     await press(new RegExp(`${ar.app.account.contact}.*help@brokersconnect\\.net`));
@@ -915,7 +918,7 @@ describe('one-tap sign-in', () => {
       email: 'relay@privaterelay.appleid.com',
       realUserStatus: 1,
     });
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await press('Sign in with Apple');
 
@@ -936,7 +939,7 @@ describe('one-tap sign-in', () => {
       type: 'success',
       url: 'brokersconnect://auth/callback?code=google-code',
     });
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await press(ar.auth.continueWithGoogle);
 
@@ -964,7 +967,7 @@ describe('one-tap sign-in', () => {
       if (opened) act(() => router.navigate(opened as never));
       return { type: 'success', url: back };
     });
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await press(ar.auth.continueWithGoogle);
 
@@ -982,7 +985,7 @@ describe('one-tap sign-in', () => {
     jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({ type: 'cancel' } as Awaited<
       ReturnType<typeof WebBrowser.openAuthSessionAsync>
     >);
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     await press(ar.auth.continueWithGoogle);
     await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled());
     // The sheet is usable again, and says nothing went wrong.
@@ -998,7 +1001,7 @@ describe('a form whose config could not be read', () => {
     server.on('GET /api/mobile/v1/config', () =>
       online ? mobileConfig() : { status: 503, body: { error: 'unavailable' } },
     );
-    renderRouter(app, { initialUrl: '/sign-up' });
+    await renderRouter(app, { initialUrl: '/sign-up' });
     expect(await screen.findByText(ar.app.auth.configFailed)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.auth.email), 'new@example.com');
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
@@ -1018,7 +1021,7 @@ describe('a form whose config could not be read', () => {
       status: 400,
       body: { code: 400, error_code: 'captcha_failed', msg: 'captcha protection: request disallowed (no captcha response)' },
     });
-    renderRouter(app, { initialUrl: '/sign-up' });
+    await renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
     fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), PASSWORD);
@@ -1032,7 +1035,7 @@ describe('one-tap sign-in, as App Review asks', () => {
     // Google on at the auth server, Apple not set up there yet.
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     expect(await screen.findByText(ar.auth.signInTitle)).toBeTruthy();
     await waitFor(() => expect(server.asked('/api/mobile/v1/config').length).toBeGreaterThan(0));
     await act(async () => {
@@ -1044,7 +1047,7 @@ describe('one-tap sign-in, as App Review asks', () => {
   it('offers both once Apple is on', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeTruthy();
   });
@@ -1052,7 +1055,7 @@ describe('one-tap sign-in, as App Review asks', () => {
   it('keeps the email and password behind a button of their own beside them, and goes back to them', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
     expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
 
@@ -1078,7 +1081,7 @@ describe('one-tap sign-in, as App Review asks', () => {
       online ? mobileConfig({ providers: { google: true, apple: true } }) : { status: 503, body: { error: 'unavailable' } },
     );
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    renderRouter(app, { initialUrl: '/sign-in' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
     // No one-tap way known: the form is the page.
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'sara@example.com');
 
@@ -1095,7 +1098,7 @@ describe('one-tap sign-in, as App Review asks', () => {
   it('lets the welcome finish its own sign-in before anything else opens over it', async () => {
     // An account with no profile yet, signed in while the welcome is on screen (its round buttons do this).
     profileRow = null;
-    renderRouter(app, { initialUrl: '/welcome' });
+    await renderRouter(app, { initialUrl: '/welcome' });
     expect(await screen.findByTestId('welcome')).toBeTruthy();
     await act(async () => {
       const { error } = await supabase.auth.signInWithPassword({ email: 'sara@example.com', password: PASSWORD });
@@ -1118,7 +1121,7 @@ describe('one-tap sign-in, as App Review asks', () => {
       type: 'success',
       url: 'brokersconnect://auth/callback?code=google-code',
     });
-    renderRouter(app, { initialUrl: '/welcome' });
+    await renderRouter(app, { initialUrl: '/welcome' });
     const google = await screen.findByRole('button', { name: ar.auth.continueWithGoogle });
     expect(google.props.accessibilityHint).toBe(ar.app.welcome.signInGoogleHint);
     // Apple's beside Google's, no less to hand.
@@ -1134,7 +1137,7 @@ describe('one-tap sign-in, as App Review asks', () => {
 
 describe('a forgotten password', () => {
   it('asks the website for the link and answers the same whether or not the address exists', async () => {
-    renderRouter(app, { initialUrl: '/sign-in/forgot' });
+    await renderRouter(app, { initialUrl: '/sign-in/forgot' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), ' sara@example.com');
     await press(ar.auth.sendResetLink);
     expect(await screen.findByText(ar.auth.resetSent)).toBeTruthy();
@@ -1148,7 +1151,7 @@ describe('a forgotten password', () => {
 
   it('says so when the address has asked too often', async () => {
     server.on('POST /api/mobile/v1/actions/requestPasswordReset', { ok: false, error: 'wait' });
-    renderRouter(app, { initialUrl: '/sign-in/forgot' });
+    await renderRouter(app, { initialUrl: '/sign-in/forgot' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'sara@example.com');
     await press(ar.auth.sendResetLink);
     expect(await screen.findByText(ar.auth.resendWait)).toBeTruthy();
@@ -1161,7 +1164,7 @@ describe('an email link opened in the app', () => {
 
   it('confirms a sign-up and carries on to onboarding with the door already chosen', async () => {
     profileRow = null;
-    renderRouter(app, {
+    await renderRouter(app, {
       initialUrl: link('signup', `${SITE}${confirmationPath({ role: 'employer', next: '/jobs/sales-a1b2' })}`),
     });
 
@@ -1172,7 +1175,7 @@ describe('an email link opened in the app', () => {
 
   it('closes the sign-up sheet under it too once the account is in, rather than show its "check your email" again', async () => {
     profileRow = null;
-    renderRouter(app, { initialUrl: '/sign-up' });
+    await renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), PASSWORD);
     fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), PASSWORD);
@@ -1193,7 +1196,7 @@ describe('an email link opened in the app', () => {
   it('moves to the second password with the return key, and sets it from there', async () => {
     const focus = watchFocus();
     try {
-      renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+      await renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
       expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
       fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'a-new-password');
       fireEvent(screen.getByLabelText(ar.auth.password), 'submitEditing');
@@ -1207,7 +1210,7 @@ describe('an email link opened in the app', () => {
   });
 
   it('sets a new password from a reset link, ends the other sessions and sends the notice', async () => {
-    renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+    await renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
     expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'a-new-password');
     fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
@@ -1238,7 +1241,7 @@ describe('an email link opened in the app', () => {
       }
       return user;
     });
-    renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+    await renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
 
     // The code, not a form that could only be refused as "that link has expired".
     expect(await screen.findByText(ar.account.mfaTitle)).toBeTruthy();
@@ -1265,7 +1268,7 @@ describe('an email link opened in the app', () => {
       status: 422,
       body: { code: 'same_password', error_code: 'same_password', msg: 'New password should be different from the old password.' },
     });
-    renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+    await renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
     expect(await screen.findByText(ar.auth.newPasswordTitle)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'the-old-password');
     fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'the-old-password');
@@ -1295,7 +1298,7 @@ describe('an email link opened in the app', () => {
     it("asks, naming both, before another account's link signs this one out — a new address's too", async () => {
       await signedIn();
       linkFor(other);
-      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/profile`) });
+      await renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/profile`) });
       expect(await screen.findByText(ar.app.auth.switchTitle)).toBeTruthy();
       expect(
         screen.getByText(ar.app.auth.switchBody.replace('{email}', user.email).replace('{other}', other.email)),
@@ -1312,7 +1315,7 @@ describe('an email link opened in the app', () => {
     it('switches to the link\'s account when told to', async () => {
       await signedIn();
       linkFor(other);
-      renderRouter(app, { initialUrl: link('signup', `${SITE}/auth/callback?next=/onboarding`) });
+      await renderRouter(app, { initialUrl: link('signup', `${SITE}/auth/callback?next=/onboarding`) });
       await press(ar.app.auth.switchContinue);
       await waitFor(async () => expect(await signedInAs()).toBe(OTHER_ID));
     });
@@ -1320,7 +1323,7 @@ describe('an email link opened in the app', () => {
     it("takes this account's own link without a question", async () => {
       await signedIn();
       linkFor(user);
-      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      await renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
       await waitFor(() => expect(server.asked('/auth/v1/verify')).toHaveLength(1));
       expect(await screen.findByRole('button', { name: ar.app.account.security })).toBeTruthy();
       expect(screen.queryByText(ar.app.auth.switchTitle)).toBeNull();
@@ -1333,7 +1336,7 @@ describe('an email link opened in the app', () => {
         status: 403,
         body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
       });
-      renderRouter(app, { initialUrl: link('signup', `${SITE}/auth/callback?next=/onboarding`) });
+      await renderRouter(app, { initialUrl: link('signup', `${SITE}/auth/callback?next=/onboarding`) });
       expect(await screen.findByText(ar.app.auth.linkUsedTitle)).toBeTruthy();
       expect(screen.getByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeTruthy();
       expect(screen.queryByText(ar.app.auth.switchTitle)).toBeNull();
@@ -1351,7 +1354,7 @@ describe('an email link opened in the app', () => {
       );
       server.on('POST /auth/v1/token', { status: 503, body: { message: 'unavailable' } });
       linkFor(other);
-      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/profile`) });
+      await renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/profile`) });
       expect(await screen.findByText(ar.app.auth.switchTitle)).toBeTruthy();
       const stored = JSON.parse((await encryptedSessionStorage.getItem(SESSION_KEY)) ?? 'null') as {
         user?: { id: string };
@@ -1372,7 +1375,7 @@ describe('an email link opened in the app', () => {
         body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
       });
       const withSecurity = { ...app, '(tabs)/(account)/account/security': () => <Text>the security screen</Text> };
-      renderRouter(withSecurity, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      await renderRouter(withSecurity, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
       expect(await screen.findByText(ar.app.auth.emailChangeLinkFailed.replace('{email}', user.email))).toBeTruthy();
       expect(screen.queryByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeNull();
       expect(screen.queryByRole('button', { name: ar.nav.signIn })).toBeNull();
@@ -1388,7 +1391,7 @@ describe('an email link opened in the app', () => {
         status: 403,
         body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
       });
-      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      await renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
       expect(await screen.findByText(ar.app.auth.linkUsedBody.replace('{email}', 'new-address@example.com'))).toBeTruthy();
       expect(screen.queryByText(ar.app.auth.emailChangeLinkFailed.replace('{email}', user.email))).toBeNull();
       expect(screen.queryByRole('button', { name: ar.app.account.security })).toBeNull();
@@ -1403,7 +1406,7 @@ describe('an email link opened in the app', () => {
         status: 403,
         body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
       });
-      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      await renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
       expect(await screen.findByText(ar.app.auth.emailChangeLinkFailed.replace('{email}', user.email))).toBeTruthy();
       expect(screen.getByRole('button', { name: ar.app.account.security })).toBeTruthy();
     });
@@ -1418,7 +1421,7 @@ describe('an email link opened in the app', () => {
         status: 403,
         body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
       });
-      renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
+      await renderRouter(app, { initialUrl: link('email_change', `${SITE}/dashboard/account`) });
       expect(await screen.findByText(ar.app.auth.linkUsedBody.replace('{email}', 'new-address@example.com'))).toBeTruthy();
       expect(screen.queryByRole('button', { name: ar.app.account.security })).toBeNull();
     });
@@ -1429,7 +1432,7 @@ describe('an email link opened in the app', () => {
         status: 403,
         body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
       });
-      renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
+      await renderRouter(app, { initialUrl: link('recovery', `${SITE}/auth/callback?next=/sign-in/new-password`) });
       // Which account the new password would be for: the link may have been another of the person's.
       expect(await screen.findByText(ar.app.auth.resetLinkFailed.replace('{email}', user.email))).toBeTruthy();
       expect(screen.queryByText(ar.app.auth.linkUsedBody.replace('{email}', user.email))).toBeNull();
@@ -1442,7 +1445,7 @@ describe('an email link opened in the app', () => {
       status: 403,
       body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
     });
-    const result = renderRouter(app, {
+    const result = await renderRouter(app, {
       initialUrl: link('signup', `${SITE}${confirmationPath({ role: null, next: '/jobs/sales-a1b2' })}`),
     });
     expect(await screen.findByText(ar.auth.linkExpired)).toBeTruthy();
@@ -1456,13 +1459,13 @@ describe('an email link opened in the app', () => {
       status: 403,
       body: { code: 403, error_code: 'otp_expired', msg: 'Email link is invalid or has expired' },
     });
-    renderRouter(app, { initialUrl: link('recovery', `${SITE}/`) });
+    await renderRouter(app, { initialUrl: link('recovery', `${SITE}/`) });
     expect(await screen.findByText(ar.auth.linkExpired)).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.auth.sendResetLink })).toBeTruthy();
   });
 
   it('does not send a malformed token anywhere', async () => {
-    renderRouter(app, { initialUrl: '/auth/confirm?token_hash=x&type=signup' });
+    await renderRouter(app, { initialUrl: '/auth/confirm?token_hash=x&type=signup' });
     expect(await screen.findByText(ar.auth.linkExpired)).toBeTruthy();
     expect(server.asked('/auth/v1/verify')).toHaveLength(0);
   });
@@ -1476,13 +1479,13 @@ describe('onboarding cut short', () => {
     profileRow = null;
     await signedIn();
     try {
-      const first = renderRouter(withApply, { initialUrl: LANDING });
+      const first = await renderRouter(withApply, { initialUrl: LANDING });
       expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
       // iOS ends the app while the person is off copying their number.
       first.unmount();
 
       // Opened again from the icon: the session gate reopens onboarding, with what it had.
-      const second = renderRouter(withApply, { initialUrl: '/' });
+      const second = await renderRouter(withApply, { initialUrl: '/' });
       expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
       await answerOnboarding();
 
@@ -1503,7 +1506,7 @@ describe('onboarding cut short', () => {
       release = resolve;
     });
     server.on('POST /auth/v1/logout', async () => (await gate, {}));
-    renderRouter(app, { initialUrl: '/onboarding' });
+    await renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.nav.signOut);
     // Said on the button, and the other ways on held, until the screen closes.
     await waitFor(() => expect(screen.getByRole('button', { name: ar.nav.signOut }).props.accessibilityState).toMatchObject({ busy: true }));
@@ -1516,7 +1519,7 @@ describe('onboarding cut short', () => {
     profileRow = null;
     await signedIn();
     try {
-      const first = renderRouter(app, { initialUrl: '/onboarding?role=employer' });
+      const first = await renderRouter(app, { initialUrl: '/onboarding?role=employer' });
       expect(await screen.findByText(ar.onboarding.roleKnownEmployer)).toBeTruthy();
       // The wrong door: out, by onboarding's own way out.
       await press(ar.nav.signOut);
@@ -1525,7 +1528,7 @@ describe('onboarding cut short', () => {
 
       // In again later, with nothing saying which kind of account: asked, not told.
       await signedIn();
-      renderRouter(app, { initialUrl: '/onboarding' });
+      await renderRouter(app, { initialUrl: '/onboarding' });
       expect(await screen.findByText(ar.onboarding.roleQuestion)).toBeTruthy();
       expect(screen.queryByText(ar.onboarding.roleKnownEmployer)).toBeNull();
     } finally {
@@ -1537,7 +1540,7 @@ describe('onboarding cut short', () => {
 describe('deleting the account', () => {
   it('takes the word typed out, then the account', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     const confirm = await screen.findByLabelText(deleteLabel);
     expect(screen.getByRole('button', { name: ar.account.deleteCta }).props.accessibilityState.disabled).toBe(true);
     fireEvent.changeText(confirm, ar.account.deleteConfirmWord);
@@ -1551,7 +1554,7 @@ describe('deleting the account', () => {
 
   it('takes the English word too, for a keyboard with no Arabic on it (App Review)', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     const confirm = await screen.findByLabelText(deleteLabel);
     const button = () => screen.getByRole('button', { name: ar.account.deleteCta });
     fireEvent.changeText(confirm, 'remove');
@@ -1583,7 +1586,7 @@ describe('deleting the account', () => {
       });
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
@@ -1600,7 +1603,7 @@ describe('deleting the account', () => {
     jest.mocked(Alert.alert).mockClear();
     await signedIn();
     jest.spyOn(supabase.auth, 'signOut').mockResolvedValueOnce({ error: new Error('lock not acquired') } as never);
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
@@ -1619,7 +1622,7 @@ describe('deleting the account', () => {
       server.on('GET /auth/v1/user', { status: 403, body: { code: 403, error_code: 'bad_jwt', msg: 'invalid JWT' } });
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
@@ -1633,7 +1636,7 @@ describe('deleting the account', () => {
     server.on('POST /api/mobile/v1/actions/deleteMyAccount', () => {
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
@@ -1657,7 +1660,7 @@ describe('deleting the account', () => {
       realUserStatus: 1,
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     expect(await screen.findByText(ar.app.account.deleteApple)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
@@ -1676,7 +1679,7 @@ describe('deleting the account', () => {
         identities: [{ id: 'apple-user', user_id: USER_ID, provider: 'apple', identity_data: {} }],
       });
       await signedIn();
-      renderRouter(app, { initialUrl: '/account/delete' });
+      await renderRouter(app, { initialUrl: '/account/delete' });
       fireEvent.changeText(
         await screen.findByLabelText(deleteLabel),
         ar.account.deleteConfirmWord,
@@ -1695,7 +1698,7 @@ describe('deleting the account', () => {
   it("is refused while a suspension stands, in the website's words", async () => {
     server.on('POST /api/mobile/v1/actions/deleteMyAccount', { ok: false, error: 'under_review' });
     await signedIn();
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     fireEvent.changeText(
       await screen.findByLabelText(deleteLabel),
       ar.account.deleteConfirmWord,
@@ -1710,7 +1713,7 @@ describe('deleting the account', () => {
     server.on('GET /rest/v1/support_requests', []);
     server.on('POST /api/mobile/v1/actions/requestAccountDeletion', { ok: true, data: { reference: 'BC-7K3M-9QX2' } });
     await signedIn();
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     expect(await screen.findByText(ar.account.deleteBlockedCompany)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.account.deleteCta })).toBeNull();
     expect(screen.getByRole('button', { name: ar.app.account.contact })).toBeTruthy();
@@ -1733,7 +1736,7 @@ describe('deleting the account', () => {
     companyId = ownedCompany.id;
     server.on('GET /rest/v1/support_requests', [{ reference: 'BC-AAAA-BBBB' }]);
     await signedIn();
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     expect(await screen.findByText(ar.account.deleteRequested.replace('{reference}', 'BC-AAAA-BBBB'))).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.account.deleteRequestCta })).toBeNull();
   });
@@ -1744,7 +1747,7 @@ describe('deleting the account', () => {
     server.on('GET /rest/v1/support_requests', []);
     server.on('POST /api/mobile/v1/actions/requestAccountDeletion', { ok: false, error: 'rate_limit' });
     await signedIn();
-    renderRouter(app, { initialUrl: '/account/delete' });
+    await renderRouter(app, { initialUrl: '/account/delete' });
     await press(ar.account.deleteRequestCta);
     expect(await screen.findByText(ar.account.deleteRequestLimited)).toBeTruthy();
   });
@@ -1761,7 +1764,7 @@ describe('reporting', () => {
   it('sends the reason chosen and the words added, for the team to read', async () => {
     server.on('POST /api/mobile/v1/actions/reportTarget', { ok: true });
     await signedIn();
-    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await renderRouter(app, { initialUrl: '/companies/nile-brokers' });
     await press(ar.companies.report);
     fireEvent.press(await reasonNamed('scam'));
     fireEvent.changeText(screen.getByLabelText(ar.report.detailLabel), ' طلبوا فلوس قبل المقابلة ');
@@ -1775,7 +1778,7 @@ describe('reporting', () => {
 
   it('chooses no reason for the reader, and asks for one', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await renderRouter(app, { initialUrl: '/companies/nile-brokers' });
     await press(ar.companies.report);
     await press(ar.report.send);
     expect(await screen.findByText(ar.report.chooseReason)).toBeTruthy();
@@ -1787,7 +1790,7 @@ describe('reporting', () => {
       throw new TypeError('Network request failed');
     });
     await signedIn();
-    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await renderRouter(app, { initialUrl: '/companies/nile-brokers' });
     await press(ar.companies.report);
     fireEvent.press(await reasonNamed('scam'));
     await press(ar.report.send);
@@ -1807,7 +1810,7 @@ describe('reporting', () => {
   ] as const)('says what %s asks of the reader', async (refusal, copy) => {
     server.on('POST /api/mobile/v1/actions/reportTarget', { ok: false, error: refusal });
     await signedIn();
-    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await renderRouter(app, { initialUrl: '/companies/nile-brokers' });
     await press(ar.companies.report);
     fireEvent.press(await reasonNamed('suspicious_company'));
     await press(ar.report.send);
