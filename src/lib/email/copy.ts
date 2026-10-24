@@ -12,9 +12,9 @@ import type { ApplicationStatus } from '@/lib/supabase/database.types';
  * script that generates the Supabase Auth templates has to be able to load it
  * outside Next.
  *
- * Modern Standard Arabic on the Arabic side. The website and the app stay in
- * Egyptian (messages/ar.json); these emails are the surface that uses MSA.
- * Subjects stay literal and unexcited: what happened, and to which listing.
+ * Modern Standard Arabic on the Arabic side, the same register as the website
+ * and the app (messages/ar.json). Subjects stay literal and unexcited: what
+ * happened, and to which listing.
  */
 
 type Locale = 'ar' | 'en';
@@ -25,7 +25,7 @@ const arabicPlural = new Intl.PluralRules('ar');
  * A count in Arabic. One and two have forms of their own, three to ten take
  * the plural, eleven and up the singular again. `#` is the number. The
  * categories are the same ones the bell uses in messages/ar.json; the words
- * here are MSA, which these emails use, while the bell stays Egyptian. Until
+ * here are MSA, as the bell is too. Until
  * the categories were split, every number but one took the plural:
  * «فاضل 2 أيام», «11 وظائف جديدة».
  */

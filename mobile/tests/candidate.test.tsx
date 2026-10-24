@@ -223,7 +223,7 @@ describe('the bell', () => {
 
     fireEvent.press(bell);
     await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
-    expect(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة')).toBeTruthy();
+    expect(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة')).toBeTruthy();
     expect(screen.getByText('وصل طلبك على «مستشار مبيعات»')).toBeTruthy();
   });
 
@@ -241,7 +241,7 @@ describe('the feed', () => {
   it('asks for the newest page, without the applicants folded into another row', async () => {
     await signedIn();
     await renderRouter(app, { initialUrl: '/notifications' });
-    await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة');
+    await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة');
 
     const page = server.asked('/rest/v1/notifications').find((request) => request.method === 'GET');
     expect(page?.url.searchParams.get('user_id')).toBe(`eq.${USER_ID}`);
@@ -258,13 +258,13 @@ describe('the feed', () => {
         : feed,
     );
     await renderRouter(app, { initialUrl: '/notifications' });
-    expect(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة')).toBeTruthy();
+    expect(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة')).toBeTruthy();
   });
 
   it('follows a notification to where it points, through the website', async () => {
     await signedIn();
     const result = await renderRouter(app, { initialUrl: '/notifications' });
-    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    fireEvent.press(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة'));
 
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
@@ -284,7 +284,7 @@ describe('the feed', () => {
     await signedIn();
     const result = await renderRouter(app, { initialUrl: '/notifications' });
 
-    fireEvent.press(await screen.findByText('النيل للوساطة نزّلت وظيفتين جداد'));
+    fireEvent.press(await screen.findByText('النيل للوساطة نشرت وظيفتين جديدتين'));
     await waitFor(() => expect(result.getPathname()).toBe('/companies/nile-brokers'));
     expect(screen.getByText('company page')).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
@@ -295,7 +295,7 @@ describe('the feed', () => {
     const result = await renderRouter(app, { initialUrl: '/dashboard/applications' });
     await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
     act(() => router.push('/notifications'));
-    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    fireEvent.press(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة'));
 
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     // One screen in the tab: Back does not show the feed again.
@@ -310,7 +310,7 @@ describe('the feed', () => {
     const result = await renderRouter(app, { initialUrl: '/dashboard/applications' });
     await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
     act(() => router.push('/notifications'));
-    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    fireEvent.press(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة'));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(1));
 
     // A slow answer: the reader goes back and opens a listing meanwhile.

@@ -330,7 +330,7 @@ describe('signing in with a password', () => {
     await screen.findByText(ar.auth.errBadCredentials);
 
     await press(ar.auth.signIn);
-    expect(await screen.findByText(/استنى \d+ ثواني وحاول تاني\.|استنى \d+ ثانية وحاول تاني\./)).toBeTruthy();
+    expect(await screen.findByText(/انتظر \d+ (?:ثانية|ثانيتين|ثوانٍ) ثم أعد المحاولة\./)).toBeTruthy();
     expect(server.asked('/auth/v1/token')).toHaveLength(1);
   });
 

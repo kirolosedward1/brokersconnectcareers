@@ -333,7 +333,7 @@ describe("a company's page", () => {
     expect(jobReports.url.searchParams.get('status')).toBe('in.(open,investigating)');
     // What to weigh: the company's own words, and its doings.
     expect(screen.getByText(ar.admin.flag.whatsapp_link, { exact: false })).toBeTruthy();
-    expect(screen.getByText(/متكرر.*3/)).toBeTruthy();
+    expect(screen.getByText(/مكرر.*3/)).toBeTruthy();
     // The reports about it, each reporter a tap from their file.
     expect(screen.getByText('العنوان مش موجود.')).toBeTruthy();
 
@@ -431,7 +431,7 @@ describe("a company's page", () => {
       answer({ ok: true, data: { takenDown: 2 } });
     });
     await waitFor(() => expect(shownToast()?.message).toContain(ar.admin.suspendCompanyTitle.replace('{name}', company.name_ar)));
-    expect(shownToast()?.message).toMatch(/إعلانين/);
+    expect(shownToast()?.message).toMatch(/إعلانان/);
   });
 
   it('shows a suspended company its banner and reason, and lifts the suspension for a reason kept on the record', async () => {
