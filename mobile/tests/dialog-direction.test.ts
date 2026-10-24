@@ -6,7 +6,7 @@ const mockLocales = { direction: 'ltr' as 'ltr' | 'rtl' };
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageTag: 'en-US', textDirection: mockLocales.direction }],
 }));
-jest.mock('~/lib/direction', () => ({ appDirection: 'rtl' }));
+jest.mock('~/lib/direction', () => ({ appDirection: 'rtl', drawnDirection: () => 'rtl' as const, setDrawnLocale: () => {} }));
 
 import { Alert, I18nManager, Platform } from 'react-native';
 import { dialog, mirrored } from '~/lib/dialog';

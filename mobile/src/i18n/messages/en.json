@@ -46,7 +46,6 @@
     "photoDeleteTitle": "Delete your photo?"
   },
   "jobs": {
-    "searchLabel": "Search jobs",
     "loadMore": "Load more",
     "endOfList": "That is every matching job.",
     "wizardStep": "Step <v>{current}</v> of <v>{total}</v>",
@@ -65,7 +64,8 @@
     "suggestKindTitle": "Job",
     "suggestKindCompany": "Company",
     "seenDivider": "Posted before you last looked",
-    "amountEgp": "EGP <v>{amount}</v>"
+    "amountEgp": "EGP <v>{amount}</v>",
+    "searchLabel": "Search jobs"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -132,10 +132,6 @@
     "activeHeading": "Still in progress",
     "decidedHeading": "Decided",
     "timelineNow": "Now: {step}"
-  },
-  "dashboard": {
-    "trendUp": "Up {value}",
-    "trendDown": "Down {value}"
   },
   "apply": {
     "pickCv": "Choose a file",
@@ -316,14 +312,14 @@
     "saveFailed": "Could not save it. Try again.",
     "jobHidden": "You won't see this listing again",
     "companyHidden": "You won't see {company}'s listings again",
-    "agentHidden": "You won't see {name} again",
     "changesSaved": "Changes saved",
     "withdrawn": "Application withdrawn",
     "following": "You'll hear about every new job at {company}",
     "unfollowed": "You stopped following {company}",
     "entrySaved": "Saved to your CV",
     "fewer": "We'll show fewer jobs like this",
-    "fewerOff": "Jobs like this will show as usual again"
+    "fewerOff": "Jobs like this will show as usual again",
+    "agentHidden": "You won't see {name} again"
   },
   "jobMenu": {
     "open": "Open listing",
@@ -473,5 +469,9 @@
   },
   "keyboard": {
     "done": "Done"
+  },
+  "dashboard": {
+    "trendDown": "Down {value}",
+    "trendUp": "Up {value}"
   }
 }

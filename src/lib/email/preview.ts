@@ -274,6 +274,25 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
+  candidate_withdrew: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).candidateWithdrew;
+    const name = optional(f, w.name);
+    return {
+      subject: t.subject(w.job),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: name ? t.bodyNamed(name, w.job) : t.body(w.job) },
+        {
+          kind: 'facts',
+          rows: [[t.labelJob, w.job], ...(name ? ([[t.labelApplicant, name]] as [string, string][]) : [])],
+        },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs/example/applicants` },
+      ],
+    };
+  },
+
   job_submitted: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).jobSubmitted;
@@ -299,6 +318,29 @@ const BUILDERS: Record<string, Builder> = {
   job_approved: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).jobApproved;
+    const expires = optional(f, day(f));
+    return {
+      subject: t.subject(w.job),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(w.job) },
+        {
+          kind: 'facts',
+          rows: [
+            [t.labelJob, w.job],
+            [t.labelPublished, day(f)],
+            ...(expires ? ([[t.labelExpires, expires]] as [string, string][]) : []),
+          ],
+        },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs/example` },
+      ],
+    };
+  },
+
+  job_approved_owner: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).jobApprovedOwner;
     const expires = optional(f, day(f));
     return {
       subject: t.subject(w.job),

@@ -1039,7 +1039,7 @@ inside the Admin tab (`(consultants,admin)` in the routes).
 - **The second factor** is asked of the app as the website asks it: the door
   (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
   server) opens only for a session that gave its authenticator's code, or —
-  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
+  where `ADMIN_MFA_REQUIRED` is not exactly `true` (unset is off; the
   app reads it from `/config`) — for an admin without one. An admin without
   an authenticator sets one up on the phone (`mfa-enrol`), then is asked for
   the code by the app's own second-factor screen. The server refuses the levers

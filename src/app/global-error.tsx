@@ -35,9 +35,9 @@ export default function GlobalError({
         }}
       >
         <div style={{ maxWidth: '28rem', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>في حاجة غلط</h1>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>حدث خطأ</h1>
           <p style={{ marginTop: '0.5rem', color: '#6b7280' }}>
-            مقدرناش نحمّل الصفحة. جرّب تاني بعد شوية.
+            تعذّر تحميل الصفحة. أعد المحاولة بعد قليل.
           </p>
 
           <button
@@ -54,12 +54,12 @@ export default function GlobalError({
               cursor: 'pointer',
             }}
           >
-            جرّب تاني
+            أعد المحاولة
           </button>
 
           {error.digest ? (
             <p style={{ marginTop: '2rem', fontSize: '0.75rem', color: '#6b7280' }}>
-              كود العطل <span style={{ fontFamily: 'monospace' }}>{error.digest}</span>
+              مرجع الخطأ <span style={{ fontFamily: 'monospace' }}>{error.digest}</span>
             </p>
           ) : null}
         </div>

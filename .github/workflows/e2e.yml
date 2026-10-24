@@ -115,9 +115,21 @@ jobs:
 
       - name: Start the website
         run: |
+          set -m
           nohup pnpm start > "$RUNNER_TEMP/next.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/next.pid"
           for _ in $(seq 1 60); do
-            if curl -sf http://localhost:3000/api/mobile/v1/config > /dev/null; then echo "up"; exit 0; fi
+            if curl -sf http://localhost:3000/api/mobile/v1/config > /dev/null; then
+              node --input-type=module -e '
+                const body = await (await fetch("http://localhost:3000/api/mobile/v1/config")).json();
+                if (body.adminMfaRequired !== false) {
+                  console.error("::error::the website was started with admin two-step required");
+                  process.exit(1);
+                }
+              '
+              echo "up"
+              exit 0
+            fi
             sleep 2
           done
           tail -n 80 "$RUNNER_TEMP/next.log"
@@ -143,12 +155,55 @@ jobs:
 
       # The website's own pages in Chrome (preinstalled on the runner): sign up,
       # onboarding, applying on a throttled line and offline, a session ended
-      # elsewhere, signing out, the admin's two-step verification, the employer
+      # elsewhere, signing out, the admin console with two-step off, the employer
       # console. The reset-by-email journey skips here: config.toml sends auth
       # email through Resend, which the runner cannot reach.
       - name: Browser journeys
         run: node scripts/e2e/browser-journeys.mjs
         env:
+          SITE_URL: http://localhost:3000
+          SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      # The requirement is read when the server handles the request, so the
+      # same build serves both. This run is the enrolment button, the wrong
+      # code, the verifying code, and the next sign-in being asked for it.
+      - name: Restart the website with admin two-step required
+        run: |
+          set -m
+          if [ -f "$RUNNER_TEMP/next.pid" ]; then
+            kill -- "-$(cat "$RUNNER_TEMP/next.pid")" 2>/dev/null || kill "$(cat "$RUNNER_TEMP/next.pid")" 2>/dev/null || true
+          fi
+          if command -v fuser >/dev/null 2>&1; then fuser -k 3000/tcp || true; fi
+          for _ in $(seq 1 30); do
+            if ! curl -sf http://localhost:3000/api/mobile/v1/config >/dev/null; then break; fi
+            sleep 1
+          done
+          ADMIN_MFA_REQUIRED=true nohup pnpm start > "$RUNNER_TEMP/next-mfa.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/next.pid"
+          for _ in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/mobile/v1/config >/dev/null; then
+              node --input-type=module -e '
+                const body = await (await fetch("http://localhost:3000/api/mobile/v1/config")).json();
+                if (body.adminMfaRequired !== true) {
+                  console.error("::error::the website did not pick up ADMIN_MFA_REQUIRED=true");
+                  process.exit(1);
+                }
+              '
+              echo "up, admin two-step required"
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 80 "$RUNNER_TEMP/next-mfa.log"
+          echo "::error::the website did not start with admin two-step required"
+          exit 1
+
+      - name: Browser journey, admin two-step required
+        run: node scripts/e2e/browser-journeys.mjs
+        env:
+          ADMIN_MFA_REQUIRED: 'true'
+          BROWSER_JOURNEY: admin-mfa
           SITE_URL: http://localhost:3000
           SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -160,4 +215,8 @@ jobs:
 
       - name: What the website logged
         if: failure()
-        run: tail -n 200 "$RUNNER_TEMP/next.log" || true
+        run: |
+          echo '--- next.log ---'
+          tail -n 120 "$RUNNER_TEMP/next.log" || true
+          echo '--- next-mfa.log ---'
+          tail -n 120 "$RUNNER_TEMP/next-mfa.log" || true
