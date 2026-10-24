@@ -21,12 +21,13 @@ const { employerVerified, employerUnverified, employerPending, candidate, public
  * Several statements as one user in one transaction, rolled back afterwards —
  * for the questions `as()` cannot answer, which are about what a call *did*.
  */
-async function session(userId, fn) {
+/** `claims` adds to the JWT, as runner's does: `{ aal: 'aal2' }` is a session that answered the authenticator. */
+async function session(userId, fn, claims = {}) {
   await db.exec('begin');
   try {
     await db.exec('set local role authenticated;');
     await db.exec(`set local request.jwt.claim.sub = '${userId}';`);
-    await db.exec(`set local request.jwt.claims = '{"role":"authenticated","sub":"${userId}"}';`);
+    await db.exec(`set local request.jwt.claims = '${JSON.stringify({ role: 'authenticated', sub: userId, ...claims })}';`);
     const q = async (sql) => (await db.query(sql)).rows;
     return { ok: true, value: await fn(q) };
   } catch (error) {
@@ -667,18 +668,24 @@ report.section('accounts managed from one place (migration 355)');
   // The role.
   let r = await as(admin, `select admin_set_role('${admin}', 'candidate', 'سبب كافٍ')`);
   report.check('an admin cannot change their own role', !r.ok && /own role/.test(r.error ?? ''), r.error);
-  r = await as(admin, `select admin_set_role('${candidate}', 'admin', '')`);
+  r = await as(admin, `select admin_set_role('${candidate}', 'admin', '')`, 'authenticated', { aal: 'aal2' });
   report.check('making an admin needs a reason', !r.ok && /reason_required/.test(r.error ?? ''), r.error);
   r = await as(admin, `select admin_set_role('${candidate}', 'employer', 'سبب كافٍ')`);
   report.check('a candidate is not made an employer by an admin', !r.ok && /invalid_transition/.test(r.error ?? ''), r.error);
   r = await as(admin, `select admin_set_role('${candidate}', 'candidate', 'سبب كافٍ')`);
   report.check('the role an account already has is no change', !r.ok && /no_change/.test(r.error ?? ''), r.error);
-  r = await as(admin, `select admin_set_role('${employerPending}', 'admin', 'سبب كافٍ')`);
+  r = await as(admin, `select admin_set_role('${employerPending}', 'admin', 'سبب كافٍ')`, 'authenticated', { aal: 'aal2' });
   report.check(
     'an account still waiting is not made an admin (approve it first; a promotion lifts no hold)',
     !r.ok && /invalid_transition/.test(r.error ?? ''),
     r.error,
   );
+  // Migration 367: making an admin needs the second factor, whoever asks;
+  // taking the role away does not (it is how a compromised admin is contained).
+  r = await as(admin, `select admin_set_role('${candidate}', 'admin', 'سبب كافٍ')`);
+  report.check('an admin is not made from a session that showed only a password', !r.ok && /forbidden/.test(r.error ?? ''), r.error);
+  r = await as(admin, `select admin_set_role('${candidate}', 'admin', 'سبب كافٍ')`, 'authenticated', { aal: 'aal2' });
+  report.check('and is from one that answered the authenticator', r.ok, r.error);
   // The lever is the only way: a plain update under an admin's token walks
   // round its reason, its record and its rules, and is refused by the guard.
   r = await as(admin, `update profiles set role = 'admin' where id = '${candidate}'`);
@@ -707,7 +714,7 @@ report.section('accounts managed from one place (migration 355)');
     }
     await q('rollback to savepoint promote');
     return refused;
-  });
+  }, { aal: 'aal2' });
   report.check('an account whose sign-in is blocked is not made an admin (nobody could let it back in)', /invalid_transition/.test(blockedFirst.value ?? ''), blockedFirst.value ?? blockedFirst.error);
 
   const role = await session(admin, async (q) => {
@@ -722,7 +729,7 @@ report.section('accounts managed from one place (migration 355)');
       `select metadata from admin_audit_log where target_type = 'user' and target_id = '${candidate}' and action = 'user.demoted' order by id desc limit 1`,
     );
     return { profile, promoted, after, demoted };
-  });
+  }, { aal: 'aal2' });
   report.check(
     'making an admin sets the role, leaves the standing as it was (approved), and records why',
     role.ok && role.value.profile.role === 'admin' && role.value.profile.approval_status === 'approved'
@@ -801,7 +808,7 @@ report.section('accounts managed from one place (migration 355)');
     }
     await q('rollback to savepoint door');
     return refused;
-  });
+  }, { aal: 'aal2' });
   report.check("an admin's sign-in is not blocked from here", /belongs to an admin/.test(adminDoor.value ?? ''), adminDoor.value ?? adminDoor.error);
 
   // The sessions.
