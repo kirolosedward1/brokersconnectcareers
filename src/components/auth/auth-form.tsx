@@ -443,13 +443,13 @@ export function AuthForm({
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full max-w-full min-w-0 whitespace-normal"
                 size="lg"
                 onClick={() => signInWith('google')}
                 disabled={pending}
               >
                 <GoogleMark />
-                {t('continueWithGoogle')}
+                <span className="min-w-0 whitespace-normal">{t('continueWithGoogle')}</span>
               </Button>
             ) : null}
           </div>

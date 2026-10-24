@@ -67,7 +67,21 @@ is('the button is not hidden until the provider is on', !/appleEnabled \? \(/.te
 is('a switched-off provider is said in the catalogue', form.includes("t('appleUnavailable')"), true);
 is('the official white sheet', button.includes('/brand/apple-sign-in/left-white-logo-medium.svg'), true);
 is('the official black sheet', button.includes('/brand/apple-sign-in/left-black-logo-medium.svg'), true);
-is('same height and width as the other sign-in button', button.includes('size="lg"') && button.includes('w-full') && button.includes('h-12'), true);
+is(
+  'same height and width as the other sign-in button',
+  button.includes('size="lg"') &&
+    button.includes('w-full') &&
+    button.includes('max-w-full') &&
+    button.includes('min-w-0') &&
+    button.includes('whitespace-normal') &&
+    button.includes('h-12'),
+  true,
+);
+is(
+  'the Google button is held to the same width',
+  form.includes('w-full max-w-full min-w-0 whitespace-normal'),
+  true,
+);
 is('black on light, white in the dark theme', button.includes('bg-[#000000]') && button.includes('dark:bg-[#ffffff]'), true);
 is('the old redrawn mark is gone', !form.includes('M318.7') && !button.includes('M318.7'), true);
 const onboarding = read('src/app/[locale]/onboarding/page.tsx');

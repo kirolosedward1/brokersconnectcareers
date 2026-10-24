@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
  * (offset 7) and draws it at the full button height. Black sheet on a light
  * page, white sheet in the dark theme. The control itself is the same height,
  * corner radius and width as the Google button beside it (`size="lg"`,
- * `w-full`, `rounded-lg`).
+ * `w-full max-w-full min-w-0`, `rounded-lg`). The label is allowed to wrap:
+ * `whitespace-nowrap` on Button would keep «تسجيل الدخول باستخدام Apple»
+ * on one line and stretch every sign-in column past a 320px viewport.
  */
 const BUTTON_HEIGHT = '3rem';
 const MARK_WIDTH = `calc(${BUTTON_HEIGHT} * 17 / 44)`;
@@ -55,12 +57,12 @@ export function AppleSignInButton({
     <Button
       type="button"
       size="lg"
-      className="w-full border-0 bg-[#000000] text-white shadow-none hover:bg-[#000000] hover:opacity-[0.92] dark:bg-[#ffffff] dark:text-black dark:hover:bg-[#ffffff]"
+      className="w-full max-w-full min-w-0 whitespace-normal border-0 bg-[#000000] text-white shadow-none hover:bg-[#000000] hover:opacity-[0.92] dark:bg-[#ffffff] dark:text-black dark:hover:bg-[#ffffff]"
       disabled={disabled}
       onClick={onClick}
     >
       <AppleMark />
-      {label}
+      <span className="min-w-0 whitespace-normal">{label}</span>
     </Button>
   );
 }
