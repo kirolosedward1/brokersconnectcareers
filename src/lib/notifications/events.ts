@@ -4,6 +4,8 @@ import type { AgentVisibility } from '@/lib/supabase/database.types';
 import {
   notifyAccountDecision,
   notifyApplicationWithdrawn,
+  notifyBrokerOfJobApproval,
+  notifyBrokerOfWithdrawal,
   notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyCompanyVerification,
@@ -120,8 +122,10 @@ export const ROUTES: Routes = {
     email: [(e) => notifyCandidateOfStatus(e.applicationId)],
   },
   APPLICATION_WITHDRAWN: {
-    // The company hears via on_application_withdrawn when the applicant was
-    // shortlisted; the candidate did this themselves and saw it happen.
+    // The company hears in the bell via on_application_withdrawn when the
+    // applicant was shortlisted. The candidate gets a receipt. The owner of
+    // the listing is emailed on every withdrawal, shortlisted or not. A copy
+    // also goes to OWNER_NOTIFY_EMAIL when that is set.
     inApp: 'trigger:on_application_withdrawn',
     email: [
       (e) =>
@@ -131,6 +135,7 @@ export const ROUTES: Routes = {
           jobTitleAr: e.jobTitleAr,
           jobTitleEn: e.jobTitleEn,
         }),
+      (e) => notifyBrokerOfWithdrawal(e.applicationId),
     ],
   },
   JOB_SUBMITTED: {
@@ -139,8 +144,13 @@ export const ROUTES: Routes = {
     email: [(e) => notifyJobSubmitted(e.jobId, e.submittedBy)],
   },
   JOB_APPROVED: {
+    // The brokerage's owner, plus a copy to OWNER_NOTIFY_EMAIL when set.
+    // Other members keep the preference mail.
     inApp: 'trigger:on_job_moderated',
-    email: [(e) => notifyEmployerOfModeration(e.jobId, true)],
+    email: [
+      (e) => notifyBrokerOfJobApproval(e.jobId),
+      (e) => notifyEmployerOfModeration(e.jobId, true),
+    ],
   },
   JOB_REJECTED: {
     inApp: 'trigger:on_job_moderated',

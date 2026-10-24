@@ -190,6 +190,19 @@ export const emailCopy = {
       labelJob: 'الوظيفة',
     },
 
+    candidateWithdrew: {
+      // To the listing's owner. The name is the one the applicants page still
+      // shows after a withdrawal; the phone, the email and the CV are not.
+      subject: (job: string) => `انسحب متقدم من «${job}»`,
+      preheader: 'انسحب أحد المتقدمين من إعلانك.',
+      heading: 'انسحب متقدم',
+      body: (job: string) => `انسحب أحد المتقدمين من التقديم على وظيفة «${job}».`,
+      bodyNamed: (name: string, job: string) => `انسحب ${name} من التقديم على وظيفة «${job}».`,
+      cta: 'عرض المتقدمين',
+      labelJob: 'الوظيفة',
+      labelApplicant: 'المتقدم',
+    },
+
     // -----------------------------------------------------------------------
     // Listings
     // -----------------------------------------------------------------------
@@ -506,6 +519,17 @@ export const emailCopy = {
       reapply: 'You can apply again at any time while the listing is open.',
       cta: 'Browse roles',
       labelJob: 'Role',
+    },
+
+    candidateWithdrew: {
+      subject: (job: string) => `A candidate withdrew from "${job}"`,
+      preheader: 'An applicant withdrew from your listing.',
+      heading: 'A candidate withdrew',
+      body: (job: string) => `A candidate withdrew an application for "${job}".`,
+      bodyNamed: (name: string, job: string) => `${name} withdrew an application for "${job}".`,
+      cta: 'View applicants',
+      labelJob: 'Role',
+      labelApplicant: 'Applicant',
     },
 
     jobSubmitted: {

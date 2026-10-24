@@ -18,6 +18,8 @@ const {
   notifyCandidateOfStatus,
   notifyCompanyVerification,
   notifyCompanyVerificationRevoked,
+  notifyBrokerOfJobApproval,
+  notifyBrokerOfWithdrawal,
   notifyEmployerOfApplication,
   notifyEmployerOfModeration,
   notifyVisibilityChanged,
@@ -253,31 +255,38 @@ section("a listing's decision, retried, is sent while it stands, and only to who
         company: { id: 'C', owner_id: 'M1', name_ar: 'الرواد' },
       },
     ],
-    company_members: [{ company_id: 'C', user_id: 'M1' }, { company_id: 'C', user_id: 'M2' }],
-    profiles: ['M1', 'M2'].map((id) => ({ id, locale: 'en', role: 'employer', notify_status: true })),
-    profile_private: ['M1', 'M2'].map((user_id) => ({ user_id, unsubscribe_token: `t-${user_id}` })),
+    company_members: [
+      { company_id: 'C', user_id: 'M1' },
+      { company_id: 'C', user_id: 'M2' },
+      { company_id: 'C', user_id: 'M3' },
+    ],
+    profiles: ['M1', 'M2', 'M3'].map((id) => ({ id, locale: 'en', role: 'employer', notify_status: true })),
+    profile_private: ['M1', 'M2', 'M3'].map((user_id) => ({ user_id, unsubscribe_token: `t-${user_id}` })),
   };
-  mail.provider = (spec) => (spec.to.startsWith('M1@') ? 'failed' : 'sent');
+  // M1 owns the company and is told by the transactional receipt, not this copy.
+  mail.provider = (spec) => (spec.to.startsWith('M2@') ? 'failed' : 'sent');
   await notifyEmployerOfModeration('J', true);
   const failed = [...mail.rows.values()].find((row) => row.status === 'failed');
+  ok('the owner is not sent the preference copy', [...mail.rows.values()].every((row) => !String(row.to).startsWith('M1@')));
   mail.provider = () => 'sent';
 
   // The employer edits it: back in review, its version moved on.
   Object.assign(globalThis.__db.jobs[0], { status: 'pending_review', version: 7 });
   const before = mail.sends.length;
   mail.retry = { key: failed.key };
-  const inReview = await REBUILDERS.job_approved('J', 'M1');
+  const inReview = await REBUILDERS.job_approved('J', 'M2');
   mail.retry = null;
   ok('"your listing is live" is not sent about a listing back in review', mail.sends.length === before && inReview === 'skipped', inReview);
 
   // Edited where review does not look: still live, its version moved on.
   globalThis.__db.jobs[0].status = 'active';
   mail.retry = { key: failed.key };
-  await REBUILDERS.job_approved('J', 'M1');
+  await REBUILDERS.job_approved('J', 'M2');
   mail.retry = null;
   const sentTo = (who) => mail.sends.filter((send) => send.to.startsWith(`${who}@`) && send.outcome === 'sent').length;
-  ok('while it is live, the member whose copy failed gets it', sentTo('M1') === 1, `M1 received ${sentTo('M1')}`);
-  ok('and the colleague who had it is not sent it again', sentTo('M2') === 1, `M2 received ${sentTo('M2')}`);
+  ok('while it is live, the member whose copy failed gets it', sentTo('M2') === 1, `M2 received ${sentTo('M2')}`);
+  ok('and the colleague who had it is not sent it again', sentTo('M3') === 1, `M3 received ${sentTo('M3')}`);
+  ok('and the owner is still not sent the preference copy', sentTo('M1') === 0);
 }
 
 section("a refusal retried quotes the moderator's reason from where the database keeps it");
@@ -504,6 +513,292 @@ section('the provider: a refused key waits, and a message it already took is not
     else process.env.RESEND_API_KEY = saved.key;
     if (saved.from === undefined) delete process.env.RESEND_FROM;
     else process.env.RESEND_FROM = saved.from;
+  }
+}
+
+section('the owner is told once when a listing is approved, and once when a candidate withdraws');
+{
+  const { readFileSync } = await import('node:fs');
+  const { copyFor } = await import('../src/lib/email/copy.ts');
+  const { renderPreview } = await import('../src/lib/email/preview.ts');
+  const events = readFileSync(new URL('../src/lib/notifications/events.ts', import.meta.url), 'utf8');
+  const routes = (name) => events.slice(events.indexOf(`${name}:`));
+  ok(
+    'approving a listing emails the owner from the approval route',
+    /notifyBrokerOfJobApproval\(e\.jobId\)/.test(routes('JOB_APPROVED').slice(0, 500)),
+  );
+  ok(
+    'a withdrawal emails the owner from the withdrawal route',
+    /notifyBrokerOfWithdrawal\(e\.applicationId\)/.test(routes('APPLICATION_WITHDRAWN').slice(0, 800)),
+  );
+
+  const savedSupport = process.env.SUPPORT_EMAIL;
+  const savedOwner = process.env.OWNER_NOTIFY_EMAIL;
+  process.env.SUPPORT_EMAIL = 'info@topsuite.net';
+  delete process.env.OWNER_NOTIFY_EMAIL;
+  try {
+    for (const locale of ['ar', 'en']) {
+      const approved = renderPreview('job_approved_owner', locale, 'default');
+      const withdrew = renderPreview('candidate_withdrew', locale, 'default');
+      const bare = renderPreview('candidate_withdrew', locale, 'minimal');
+      const tApproved = copyFor(locale).jobApproved;
+      const tWithdrew = copyFor(locale).candidateWithdrew;
+      const job = locale === 'ar' ? 'مستشار عقاري أول' : 'Senior Property Consultant';
+      const name = locale === 'ar' ? 'أحمد محمود' : 'Ahmed Mahmoud';
+      ok(`${locale} approval subject`, approved.subject === tApproved.subject(job), approved.subject);
+      ok(`${locale} approval is Arabic-first RTL when Arabic`, locale !== 'ar' || (approved.html.includes('lang="ar"') && approved.html.includes('dir="rtl"')));
+      ok(`${locale} approval is left to right in English`, locale !== 'en' || approved.html.includes('dir="ltr"'));
+      ok(`${locale} approval has no unsubscribe`, !approved.html.includes('/unsubscribe') && approved.unsubscribeUrl == null);
+      ok(`${locale} approval names support`, approved.html.includes('mailto:info@topsuite.net'));
+      ok(`${locale} approval body`, approved.text.includes(tApproved.body(job)));
+      ok(`${locale} withdrawal subject`, withdrew.subject === tWithdrew.subject(job), withdrew.subject);
+      ok(`${locale} withdrawal names the candidate`, withdrew.text.includes(tWithdrew.bodyNamed(name, job)));
+      ok(`${locale} withdrawal without a name does not invent one`, bare.text.includes(tWithdrew.body(job)) && !bare.text.includes(name));
+      ok(`${locale} withdrawal has no unsubscribe`, bare.unsubscribeUrl == null && !bare.html.includes('/unsubscribe'));
+      ok(
+        `${locale} withdrawal copy is not Egyptian`,
+        locale !== 'ar' || !/مفيش|عايز|دلوقتي|بتاع|اتنشر|هيخلص/.test(withdrew.text),
+      );
+    }
+
+    const hostile = renderPreview('candidate_withdrew', 'ar', 'long');
+    // The long fixture's name is ordinary. The escape check uses a composed send below.
+    ok('a long Arabic withdrawal still renders', hostile.html.includes('dir="rtl"') && hostile.text.length > 20);
+
+    function listing(overrides = {}) {
+      return {
+        id: 'J',
+        slug: 'sales-x',
+        title_ar: 'مستشار <أول>',
+        title_en: 'Consultant',
+        expires_at: '2026-12-01T00:00:00Z',
+        published_at: '2026-10-01T10:00:00Z',
+        version: 5,
+        status: 'active',
+        rejection_note: null,
+        company: { id: 'C', owner_id: 'OWNER', name_ar: 'الرواد', suspended_at: null },
+        ...overrides,
+      };
+    }
+    function people(locale = 'ar') {
+      return {
+        profiles: [
+          { id: 'OWNER', locale, role: 'employer', notify_status: false, notify_applications: false },
+          { id: 'M2', locale: 'en', role: 'employer', notify_status: true },
+          {
+            id: 'CAND',
+            locale: 'ar',
+            role: 'candidate',
+            full_name: 'منى <script>',
+            whatsapp_phone: '+201012345678',
+            email: 'secret-candidate@example.com',
+          },
+        ],
+        profile_private: ['OWNER', 'M2'].map((user_id) => ({ user_id, unsubscribe_token: `t-${user_id}` })),
+        company_members: [
+          { company_id: 'C', user_id: 'OWNER' },
+          { company_id: 'C', user_id: 'M2' },
+        ],
+      };
+    }
+
+    reset();
+    globalThis.__db = { jobs: [listing()], ...people() };
+    const first = await notifyBrokerOfJobApproval('J');
+    const replay = await notifyBrokerOfJobApproval('J');
+    ok('the owner is emailed even with status notices off', first === 'sent', first);
+    ok('publishing the same approval again sends nothing', replay === 'skipped', replay);
+    const ownerMail = mail.sends.filter((send) => send.to.startsWith('OWNER@') && send.template === 'job_approved_owner');
+    ok('one approval message', ownerMail.length === 1, String(ownerMail.length));
+    ok('the job title cannot become markup', ownerMail[0].html.includes('مستشار &lt;أول&gt;') && !ownerMail[0].html.includes('<أول>'));
+    ok('approval is rtl arabic', ownerMail[0].html.includes('lang="ar"') && ownerMail[0].html.includes('dir="rtl"'));
+    ok('approval is not optional', ownerMail[0].unsubscribe == null && !ownerMail[0].html.includes('/unsubscribe'));
+    ok('approval subject', ownerMail[0].subject === copyFor('ar').jobApproved.subject('مستشار <أول>'));
+
+    await notifyEmployerOfModeration('J', true);
+    ok(
+      'the owner is not also sent the preference copy',
+      mail.sends.filter((send) => send.to.startsWith('OWNER@')).length === 1,
+    );
+    ok(
+      'a colleague with the preference on still hears',
+      mail.sends.some((send) => send.to.startsWith('M2@') && send.template === 'job_approved'),
+    );
+
+    globalThis.__db.jobs[0].version = 8;
+    const later = await notifyBrokerOfJobApproval('J');
+    const laterAgain = await notifyBrokerOfJobApproval('J');
+    ok('a later version is a new approval and sends once', later === 'sent', later);
+    ok('that later approval is not sent twice', laterAgain === 'skipped', laterAgain);
+
+    reset();
+    globalThis.__db = { jobs: [listing({ status: 'pending_review' })], ...people() };
+    ok('a listing that is not live is not announced as approved', (await notifyBrokerOfJobApproval('J')) === 'skipped');
+
+    reset();
+    globalThis.__db = { jobs: [listing()], ...people() };
+    mail.provider = () => 'failed';
+    const failed = await notifyBrokerOfJobApproval('J');
+    ok('a provider failure is reported, not thrown', failed === 'failed', failed);
+    mail.provider = () => 'sent';
+    const key = [...mail.rows.keys()].find((item) => item.startsWith('job_approved_owner:'));
+    mail.retry = { key };
+    const retried = await notifyBrokerOfJobApproval('J');
+    mail.retry = null;
+    ok('the retry sends that approval once', retried === 'sent' && mail.sends.filter((send) => send.outcome === 'sent').length === 1, retried);
+    const wrongPerson = await REBUILDERS.job_approved_owner('J', 'M2');
+    ok('a retry recorded for somebody else sends nothing', wrongPerson === 'skipped', wrongPerson);
+
+    reset();
+    globalThis.__db = { jobs: () => { throw new Error('db down'); } };
+    let threw = false;
+    let broken = 'sent';
+    try {
+      broken = await notifyBrokerOfJobApproval('J');
+    } catch {
+      threw = true;
+    }
+    ok('a failed read does not break the approval', !threw && broken === 'failed', `${threw} ${broken}`);
+
+    reset();
+    globalThis.__db = {
+      jobs: [listing()],
+      applications: [
+        {
+          id: 'A1',
+          status: 'withdrawn',
+          candidate_id: 'CAND',
+          cv_path: 'CAND/secret-cv.pdf',
+          note: 'واتساب +201099988877',
+          job: listing(),
+        },
+      ],
+      ...people('en'),
+    };
+    const withdrew = await notifyBrokerOfWithdrawal('A1');
+    const withdrewAgain = await notifyBrokerOfWithdrawal('A1');
+    ok('the owner is told the candidate withdrew', withdrew === 'sent', withdrew);
+    ok('the same withdrawal is not sent twice', withdrewAgain === 'skipped', withdrewAgain);
+    const body = mail.sends.map((send) => `${send.subject}\n${send.text}\n${send.html}`).join('\n');
+    const html = mail.sends.map((send) => send.html).join('\n');
+    ok('english withdrawal subject', mail.sends[0].subject === 'A candidate withdrew from "Consultant"');
+    ok('the display name is in the message', html.includes('منى &lt;script&gt;') && body.includes('منى <script>'));
+    ok('the name cannot become markup', html.includes('&lt;script&gt;') && !html.includes('<script>'));
+    for (const secret of ['+201012345678', 'secret-candidate@example.com', 'CAND/secret-cv.pdf', '+201099988877']) {
+      ok(`withdrawal omits ${secret}`, !body.includes(secret));
+    }
+    ok('withdrawal is not optional', mail.sends[0].unsubscribe == null);
+    ok('withdrawal points at the applicants page', body.includes('https://brokers.example/employer/jobs/J/applicants'));
+
+    globalThis.__db.applications[0].status = 'shortlisted';
+    reset();
+    globalThis.__db = {
+      applications: [{ id: 'A2', status: 'shortlisted', candidate_id: 'CAND', job: listing() }],
+      ...people(),
+    };
+    ok('a standing application is not announced as withdrawn', (await notifyBrokerOfWithdrawal('A2')) === 'skipped');
+
+    reset();
+    globalThis.__db = {
+      applications: [
+        {
+          id: 'A3',
+          status: 'withdrawn',
+          candidate_id: 'CAND',
+          job: listing({ company: { id: 'C', owner_id: 'OWNER', name_ar: 'الرواد', suspended_at: '2026-10-01T00:00:00Z' } }),
+        },
+      ],
+      ...people(),
+    };
+    const suspended = await notifyBrokerOfWithdrawal('A3');
+    ok('a suspended company is not handed the name', suspended === 'skipped' && mail.sends.length === 0, suspended);
+
+    reset();
+    globalThis.__db = {
+      applications: () => ({ data: null, error: { code: '57014', message: 'timeout' } }),
+    };
+    let withdrewThrew = false;
+    let withdrewBroken = 'sent';
+    try {
+      withdrewThrew = false;
+      withdrewBroken = await notifyBrokerOfWithdrawal('A9');
+    } catch {
+      withdrewThrew = true;
+    }
+    ok('a failed withdrawal read does not throw', !withdrewThrew && withdrewBroken === 'failed', `${withdrewThrew} ${withdrewBroken}`);
+
+    // No admin/owner notify address exists in the product, so the copy is off
+    // until OWNER_NOTIFY_EMAIL is set. It is never a hardcoded inbox.
+    process.env.OWNER_NOTIFY_EMAIL = 'platform-owner@brokersconnect.net';
+    reset();
+    globalThis.__db = {
+      jobs: [listing()],
+      applications: [
+        {
+          id: 'A1',
+          status: 'withdrawn',
+          candidate_id: 'CAND',
+          cv_path: 'CAND/secret-cv.pdf',
+          note: 'واتساب +201099988877',
+          job: listing(),
+        },
+      ],
+      ...people('ar'),
+    };
+    const copiedApproval = await notifyBrokerOfJobApproval('J');
+    const copiedApprovalAgain = await notifyBrokerOfJobApproval('J');
+    const approvalTos = mail.sends.filter((send) => send.template === 'job_approved_owner').map((send) => send.to);
+    ok('approval also copies the platform owner', copiedApproval === 'sent' && approvalTos.includes('platform-owner@brokersconnect.net'), approvalTos.join(','));
+    ok('the brokerage owner still receives the approval', approvalTos.includes('OWNER@example.test'));
+    ok('the approval copy is not sent twice', copiedApprovalAgain === 'skipped' && approvalTos.length === 2, String(approvalTos.length));
+
+    const copiedWithdrawal = await notifyBrokerOfWithdrawal('A1');
+    const copiedWithdrawalAgain = await notifyBrokerOfWithdrawal('A1');
+    const withdrawalSends = mail.sends.filter((send) => send.template === 'candidate_withdrew');
+    ok('withdrawal also copies the platform owner', copiedWithdrawal === 'sent' && withdrawalSends.some((send) => send.to === 'platform-owner@brokersconnect.net'));
+    ok('the withdrawal copy is not sent twice', copiedWithdrawalAgain === 'skipped' && withdrawalSends.length === 2, String(withdrawalSends.length));
+    const copiedBody = withdrawalSends.map((send) => `${send.text}\n${send.html}`).join('\n');
+    const copiedHtml = withdrawalSends.map((send) => send.html).join('\n');
+    for (const secret of ['+201012345678', 'secret-candidate@example.com', 'CAND/secret-cv.pdf', '+201099988877']) {
+      ok(`the withdrawal copy omits ${secret}`, !copiedBody.includes(secret));
+    }
+    ok('the copy cannot turn the name into markup', copiedHtml.includes('منى &lt;script&gt;') && !copiedHtml.includes('<script>'));
+
+    reset();
+    globalThis.__db = { jobs: [listing({ version: 6 })], ...people() };
+    process.env.OWNER_NOTIFY_EMAIL = 'owner@example.test';
+    const sameInbox = await notifyBrokerOfJobApproval('J');
+    ok(
+      'a copy to the brokerage owner’s own address is not a second email',
+      sameInbox === 'sent' && mail.sends.length === 1 && mail.sends[0].to === 'OWNER@example.test',
+      mail.sends.map((send) => send.to).join(','),
+    );
+
+    reset();
+    globalThis.__db = { jobs: [listing({ version: 7 })], ...people() };
+    process.env.OWNER_NOTIFY_EMAIL = 'not-an-address';
+    const badCopy = await notifyBrokerOfJobApproval('J');
+    ok('an unusable copy address does not drop the brokerage email', badCopy === 'sent' && mail.sends.length === 1, String(mail.sends.length));
+
+    reset();
+    globalThis.__db = { jobs: [listing({ version: 8 })], ...people() };
+    process.env.OWNER_NOTIFY_EMAIL = 'platform-owner@brokersconnect.net';
+    mail.provider = (spec) => (spec.to === 'platform-owner@brokersconnect.net' ? 'failed' : 'sent');
+    const copyFailed = await notifyBrokerOfJobApproval('J');
+    ok('a failed copy is reported without throwing', copyFailed === 'failed');
+    mail.provider = () => 'sent';
+    const copyKey = [...mail.rows.keys()].find((item) => item.endsWith(':copy'));
+    mail.retry = { key: copyKey };
+    const copyRetried = await notifyBrokerOfJobApproval('J', null);
+    mail.retry = null;
+    const afterRetry = mail.sends.filter((send) => send.outcome === 'sent').map((send) => send.to);
+    ok('retrying the copy does not send the brokerage a second one', copyRetried === 'sent' && afterRetry.filter((to) => to.startsWith('OWNER@')).length === 1, afterRetry.join(','));
+    ok('and the platform owner then receives it', afterRetry.includes('platform-owner@brokersconnect.net'));
+  } finally {
+    if (savedSupport === undefined) delete process.env.SUPPORT_EMAIL;
+    else process.env.SUPPORT_EMAIL = savedSupport;
+    if (savedOwner === undefined) delete process.env.OWNER_NOTIFY_EMAIL;
+    else process.env.OWNER_NOTIFY_EMAIL = savedOwner;
   }
 }
 

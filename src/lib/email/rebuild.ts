@@ -2,6 +2,8 @@ import 'server-only';
 import { RETRYABLE_TEMPLATES } from './retryable';
 import {
   notifyApplicationWithdrawn,
+  notifyBrokerOfJobApproval,
+  notifyBrokerOfWithdrawal,
   notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyCompanyVerification,
@@ -50,7 +52,9 @@ export const REBUILDERS: Record<string, Rebuild> = {
   // state): rebuilt for everybody, a retry after an edit sent "your listing
   // is live" to every member again, about a listing back in review.
   job_approved: (id, userId) => notifyEmployerOfModeration(id, true, undefined, userId),
+  job_approved_owner: (id, userId) => notifyBrokerOfJobApproval(id, userId),
   job_rejected: (id, userId) => notifyEmployerOfModeration(id, false, undefined, userId),
+  candidate_withdrew: (id, userId) => notifyBrokerOfWithdrawal(id, userId),
   company_verified: (id, userId) => notifyCompanyVerification(id, true, undefined, userId),
   company_verification_needed: (id, userId) => notifyCompanyVerification(id, false, undefined, userId),
   company_verification_revoked: (id, userId) => notifyCompanyVerificationRevoked(id, userId),
