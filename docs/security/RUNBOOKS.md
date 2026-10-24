@@ -18,10 +18,19 @@ Where to look, in order: `/admin/security` (events, audit trail, reveal counts),
 
 ### A2. An admin account is compromised
 
-1. **Contain**: SQL as `postgres` (dashboard SQL editor): `update profiles set role = 'employer' where id = '<admin>';` — the guard trigger allows it for a direct connection. Then *Sign out user*.
+1. **Contain**, from another admin's console (website `/admin/users/<id>` → Security tab, or the app's Admin tab → Accounts → the account): *Remove admin*, then *Sign out everywhere* (`admin_end_sessions`: every session and refresh token of the account ends, so the phone's next request is refused). Demoting works from any admin session, even one at aal1, by design (migration 367 asks a second factor only to *make* an admin). If you are the only admin, or the console is not trusted: SQL as `postgres` (dashboard SQL editor): `update profiles set role = 'employer' where id = '<admin>';` (the guard trigger allows a direct connection), then Authentication → Users → the account → *Sign out user*.
 2. **Revoke** anything the session could have minted: check `audit_log` for `job.moderated`, `company.verification_changed`, `account.approval_changed`, `company.credits_changed` rows with this actor since the suspected time, and reverse each (`set_account_approval`, `update companies set verification_status …`, `update jobs set status …` as postgres).
 3. **Rotate**: nothing platform-wide is exposed by an admin session (it holds no service key), but review Authentication → Users for accounts created or approved in the window.
 4. **Recover**: the admin re-enrols TOTP (`/dashboard/account`) on a clean device before the role is restored. Set `ADMIN_MFA_REQUIRED=true` if the console should require a second factor again; unset leaves that requirement off. An admin who has already enrolled is still refused at aal1 either way.
+
+### A2b. An admin's phone is lost or stolen
+
+The app holds an admin session sealed in the Keychain (`mobile/src/lib/session-storage.ts`), behind the app lock if it was turned on. What is on the phone is the session, the console's cached reads (in memory only; nothing of the console is written to disk) and a push registration.
+
+1. **End the session now**: another admin → the account → *Sign out everywhere*; or SQL `select public.admin_end_sessions_of('<admin>');` as `postgres`. The phone's next call is refused (`session_not_found`) and the app signs out, clearing its cache.
+2. **Stop pushes to it**: `delete from push_devices where user_id = '<admin>';` as `postgres`. Ending the session does not remove the phone's registration. A push carries only a notification id and opening it needs a session, so this is tidiness, not containment.
+3. **If the phone may be unlocked by someone else**, also do A2: demote, and re-promote only after the admin has a new phone, a new authenticator (the old TOTP secret was on the lost phone if the authenticator app was there) and a changed password. Remove the old factor: Authentication → Users → the account → *Factors*.
+4. **Check** `/admin/security` and `audit_log` for anything the session did since the loss, and the alert emails (§D): a new admin made from it sends one.
 
 ### A3. The service-role key is exposed (in a log, a commit, a screenshot)
 
@@ -98,11 +107,23 @@ Every outbound mail goes through `claim_email()` with a dedupe key and the suppr
 
 ## D. Alerting — what to page on, what to look at weekly
 
+**Wired (October 2026)**: `/api/cron/security-watch` runs every ten minutes and emails every admin, plus `SECURITY_ALERT_EMAIL` if set, about each `security_events` row with `severity = 'critical'`, once per event (migration 370). An account becoming an admin by any path is recorded as critical (`account.made_admin`, with `path: direct` for the SQL editor or a seed). On Mondays from 06:00 UTC the same job sends the weekly digest: failed sign-ins, rate-limited requests, rejected files, critical events, reveals per company, new admins. Firewall blocks are not in the database; the digest points to Vercel → Firewall.
+
+**Test it once after deploying** (and after rotating anything it depends on): as `postgres`,
+
+```sql
+select record_security_event('test.alert', 'critical', null, '{"note": "test from the runbook"}'::jsonb, null);
+```
+
+Within ten minutes each admin gets "Security alert: test.alert". Then `select id, alerted_at from security_events where kind = 'test.alert';` shows it marked. Record the date here: _(not yet)_.
+
+To see why `/api/health` says `degraded`: `curl -s -H "authorization: Bearer $CRON_SECRET" https://www.brokersconnect.net/api/health` (from your machine; the secret never goes in a chat or a log).
+
 **Page (someone looks within the hour)**
 - `/api/health` returns 503 for 3 consecutive checks (uptime monitor).
 - Vercel: 5xx rate > 2 % over 5 min.
 - Supabase: database CPU > 80 % for 10 min; connections > 80 % of pool.
-- `security_events` with `severity = 'critical'` (none are emitted automatically today; A7 above records one by hand — wire a database webhook on insert when the volume justifies it).
+- `security_events` with `severity = 'critical'`: emailed by `security-watch` (above). A new admin is one.
 
 **Look at daily (the `/admin/security` page, one glance)**
 - Failed sign-ins per 24 h above ~50, or concentrated on one hashed subject.
