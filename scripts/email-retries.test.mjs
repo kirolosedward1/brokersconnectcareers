@@ -390,6 +390,52 @@ section('a suspended company is not emailed its applicants (349)');
   );
 }
 
+section('a reapplication is a new notice, and the same application is not');
+{
+  reset();
+  const application = (id) => ({
+    id,
+    created_at: '2026-10-24T02:47:12Z',
+    experience_band: 'junior_1_3',
+    candidate_id: 'U2',
+    job: {
+      id: 'J',
+      slug: 'sales-x',
+      title_ar: 'مستشار',
+      title_en: 'Consultant',
+      expires_at: null,
+      published_at: null,
+      version: 1,
+      company: { id: 'C', suspended_at: null },
+    },
+  });
+  globalThis.__db = {
+    applications: [application('A1')],
+    company_members: [{ company_id: 'C', user_id: 'M1' }],
+    profiles: [
+      { id: 'M1', locale: 'en', role: 'employer', notify_applications: true, notify_applicant_digest: false },
+      { id: 'U2', full_name: 'Mona Saleh', role: 'candidate' },
+    ],
+    profile_private: [{ user_id: 'M1', unsubscribe_token: 't-M1' }],
+  };
+  const sent = () => mail.sends.filter((send) => send.template === 'new_application' && send.outcome === 'sent');
+  const first = await notifyEmployerOfApplication('A1');
+  const replay = await notifyEmployerOfApplication('A1');
+  ok(
+    'the same application is one message to the member',
+    first === 'sent' && replay === 'skipped' && sent().length === 1,
+    `${first} ${replay} ${sent().length}`,
+  );
+
+  globalThis.__db.applications = [application('A3')];
+  const again = await notifyEmployerOfApplication('A3');
+  ok(
+    'a new application by the same candidate sends again',
+    again === 'sent' && sent().length === 2 && sent().every((send) => send.to.startsWith('M1@')),
+    `${again} ${sent().length}`,
+  );
+}
+
 section('a move the bell calls no news is not emailed, whatever the outbox still holds');
 {
   reset();

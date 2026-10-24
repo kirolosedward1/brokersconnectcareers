@@ -539,7 +539,6 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
           memberId,
           job,
           applicationId,
-          candidateId: application.candidate_id,
           name,
         });
       } catch (error) {
@@ -567,14 +566,12 @@ async function oneApplicationNotice({
   memberId,
   job,
   applicationId,
-  candidateId,
   name,
 }: {
   admin: ReturnType<typeof createAdminClient>;
   memberId: string;
   job: JobBits;
   applicationId: string;
-  candidateId: string;
   name: string;
 }): Promise<SendOutcome> {
   const to = await recipient(admin, memberId, 'notify_applications');
@@ -606,16 +603,15 @@ async function oneApplicationNotice({
     to: to.email,
     userId: memberId,
     /*
-      The listing, the person, and the recipient.
+      The application and the member.
 
-      Withdrawing deletes the application and reapplying makes a new one with a
-      new id, so a key on the id let one candidate mail an employer about the
-      same listing as many times as they cared to apply and withdraw. The
-      employer's interest is "this person applied to this listing", which
-      happens once however many rows carry it — and once per member, since each
-      of them is a separate message to a separate inbox.
+      Migration 362 kept the withdrawn row and made a reapplication a new
+      application, with its own id. A key on the listing and the candidate
+      treated that second application as the first and sent nothing. The key
+      is the application, so the new one is told once, a replay of the same
+      one sends nothing, and each member is a separate message.
     */
-    dedupeKey: `new_application:${job.id}:${candidateId}:${memberId}`,
+    dedupeKey: `new_application:${applicationId}:${memberId}`,
     entity: { type: 'application', id: applicationId },
     envelope: buildEnvelope({
       audience: audienceOf(to, 'notify_applications'),
