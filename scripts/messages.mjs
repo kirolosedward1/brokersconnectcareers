@@ -880,6 +880,42 @@ console.log('\n— the email copy has two halves too');
   const misspelled = words(emailCopy.ar).filter(([, text]) => /وظايف|نتايج|قايمة|قوايم|رسايل|دقايق/.test(text)).map(([key]) => key);
   check('Arabic emails spell وظائف, نتائج and the rest as the site does', misspelled.length === 0, misspelled.join(', '));
 
+  // Tanween fath sits on the letter before the alef («تلقائيًا»، «فورًا»، «أهلًا»),
+  // the same spelling as messages/ar.json. «اً» is the alef carrying the mark.
+  const tanweenOnAlef = words(emailCopy.ar).filter(([, text]) => text.includes('اً')).map(([key]) => key);
+  check(
+    'Arabic emails write the tanween on the letter before the alef',
+    tanweenOnAlef.length === 0,
+    tanweenOnAlef.join(', '),
+  );
+
+  const blogDir = join(ROOT, 'content', 'blog');
+  const arabicPosts = readdirSync(blogDir).filter((name) => name.endsWith('.ar.md'));
+  const blogTanween = arabicPosts.filter((name) => readFileSync(join(blogDir, name), 'utf8').includes('اً'));
+  check(
+    'the two Arabic blog posts write the tanween the same way',
+    arabicPosts.length === 2 && blogTanween.length === 0,
+    blogTanween.join(', ') || `${arabicPosts.length} Arabic posts`,
+  );
+
+  const { employerOpener, employerToAgentOpener } = await import('../src/lib/whatsapp.ts');
+  const applicantOpener = employerOpener({
+    candidateName: 'سارة',
+    jobTitle: 'مستشار مبيعات',
+    companyName: 'نايل بروكرز',
+    locale: 'ar',
+  });
+  const agentOpener = employerToAgentOpener({ agentName: 'سارة', companyName: 'نايل بروكرز', locale: 'ar' });
+  const dialect = /دلوقتي|شفنا|ممكن تناسبك|نحب نتكلم|عندنا فرصة/;
+  check(
+    'employer WhatsApp openers are MSA',
+    applicantOpener === 'مرحبًا سارة، معك نايل بروكرز. وصلنا طلبك على وظيفة «مستشار مبيعات» ونود التحدث معك. هل الوقت مناسب الآن؟' &&
+      agentOpener === 'مرحبًا سارة، معك نايل بروكرز. اطلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.' &&
+      !dialect.test(applicantOpener) &&
+      !dialect.test(agentOpener),
+    `${applicantOpener} || ${agentOpener}`,
+  );
+
   // The same words in the website's own catalogue (the app's copy.test.ts reads it too, with the app's).
   const siteMisspelled = flatten(load('ar'))
     .filter(([, text]) => typeof text === 'string' && /وظايف|نتايج|قايمة|قوايم|رسايل|دقايق/.test(text))
