@@ -18,6 +18,7 @@ import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-
 import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -45,6 +46,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const districts = useDistricts();
   const hasBoard = useHasBoard();
   const pull = usePullRefresh(() => Promise.all([landing.refetch(), board.refetch()]));
+  const shrink = useShrinkingTabBar();
   // The companies this phone hides stay hidden here too, as on the board and Home.
   const hiddenCompanies = useHiddenCompanies();
   const hiddenJobs = useHiddenJobs();
@@ -108,6 +110,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
     <>
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
