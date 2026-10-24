@@ -591,4 +591,57 @@ report.section("369 — a company's owner, credits and suspension reason are its
   report.check("a listing's company card still reads signed out", embedded.ok && embedded.rows.length === 1, embedded.error);
 }
 
+report.section('370 — a critical event reaches a person');
+{
+  await db.exec('begin');
+  let flagged;
+  let promotedError = null;
+  try {
+    await db.exec('set local role authenticated;');
+    await db.exec(`set local request.jwt.claim.sub = '${admin}';`);
+    await db.exec(`set local request.jwt.claims = '${JSON.stringify({ role: 'authenticated', sub: admin, aal: 'aal2' })}';`);
+    await db.query(`select admin_set_role('${candidate}', 'admin', 'سبب كافٍ')`);
+    await db.exec('reset role');
+    flagged = (await db.query(`select kind, severity, actor_id, metadata from security_events where kind = 'account.made_admin' order by id desc limit 1`)).rows[0];
+  } catch (error) {
+    promotedError = error.message;
+  } finally {
+    await db.exec('rollback');
+  }
+  report.check('making an admin through the lever is a critical event, with who did it',
+    flagged?.severity === 'critical' && flagged?.actor_id === admin && flagged?.metadata?.target === candidate && flagged?.metadata?.path === 'session',
+    promotedError ?? JSON.stringify(flagged));
+
+  await db.exec('begin');
+  let direct;
+  try {
+    await db.exec(`update profiles set role = 'admin' where id = '${employerUnverified}'`);
+    direct = (await db.query(`select severity, metadata from security_events where kind = 'account.made_admin' order by id desc limit 1`)).rows[0];
+  } finally {
+    await db.exec('rollback');
+  }
+  report.check('and so is one made straight in SQL, marked as such', direct?.severity === 'critical' && direct?.metadata?.path === 'direct', JSON.stringify(direct));
+
+  await db.exec(`select record_security_event('test.critical', 'critical', null, '{}'::jsonb, null)`);
+  const due = await as(null, 'select id, kind from public.security_alerts_due(20)', 'service_role');
+  const test = due.rows.find((row) => row.kind === 'test.critical');
+  report.check('the watcher finds a critical event not yet sent', due.ok && Boolean(test), due.error ?? JSON.stringify(due.rows));
+  const marked = await as(null, `select public.mark_security_alerted(array[${test?.id ?? 0}]::bigint[]) as n`, 'service_role');
+  report.check('marks it sent', marked.ok && marked.rows[0]?.n === 1, marked.error);
+  await db.exec(`update security_events set alerted_at = now() where id = ${test?.id ?? 0}`);
+  const after = await as(null, 'select id from public.security_alerts_due(20)', 'service_role');
+  report.check('and does not find it again', after.ok && !after.rows.some((row) => row.id === test?.id), JSON.stringify(after.rows));
+
+  const digest = await as(null, 'select public.security_digest(7) as d', 'service_role');
+  const d = digest.rows[0]?.d;
+  report.check('the week sums up into numbers', digest.ok && typeof d?.auth_failures === 'number' && Array.isArray(d?.reveals_by_company) && d?.admins_now >= 1,
+    digest.error ?? JSON.stringify(d));
+
+  for (const [label, id, role] of [['an admin', admin, 'authenticated'], ['a visitor', null, 'anon']]) {
+    const r = await as(id, 'select public.security_digest(7)', role, { aal: 'aal2' });
+    const d2 = await as(id, 'select * from public.security_alerts_due(5)', role, { aal: 'aal2' });
+    report.check(`${label} calls neither (the watcher's alone)`, !r.ok && !d2.ok, `${r.error} / ${d2.error}`);
+  }
+}
+
 process.exitCode = report.finish() ? 0 : 1;

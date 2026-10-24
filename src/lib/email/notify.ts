@@ -14,6 +14,7 @@ import { unsubscribeLinks } from './unsubscribe-link';
 import { isNews, MAX_STAGE_TELLINGS, stageTelling, tellingSuffix } from '@/lib/application-arrival';
 import { excludeWithdrawn, withdrawnStatusMissing } from '@/lib/application-stages';
 import { listingNotes, noteFor } from '@/lib/listing-notes';
+import { alertBlocks, digestBlocks, type SecurityDigest, type SecurityEventRow } from '@/lib/security/alerts';
 
 /**
  * One function per product event.
@@ -2082,4 +2083,97 @@ function isoWeek(): string {
   const start = Date.UTC(now.getUTCFullYear(), 0, 1);
   const week = Math.floor((now.getTime() - start) / (7 * 86_400_000));
   return `${now.getUTCFullYear()}w${week}`;
+}
+
+// ---------------------------------------------------------------------------
+// Security, to the platform's admins (api/cron/security-watch, migration 370)
+// ---------------------------------------------------------------------------
+
+/**
+ * Who hears about the platform's security: every admin who can be written
+ * to, in their own language, and SECURITY_ALERT_EMAIL beside them when it is
+ * set. An admin is a person with the role now, read when the alert goes out,
+ * so a demoted one is not told about the console they no longer hold.
+ */
+async function securityRecipients(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<{ email: string; locale: 'ar' | 'en'; key: string }[]> {
+  const { data, error } = await admin.from('profiles').select('id').eq('role', 'admin');
+  if (error) readFailed('admins', error);
+  const out: { email: string; locale: 'ar' | 'en'; key: string }[] = [];
+  for (const row of data ?? []) {
+    const to = await recipient(admin, row.id, null);
+    if (to) out.push({ email: to.email, locale: to.locale, key: to.userId });
+  }
+  const inbox = configuredValue(env.securityAlertEmail)?.trim();
+  if (inbox && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inbox) && !out.some((to) => to.email.toLowerCase() === inbox.toLowerCase())) {
+    out.push({ email: inbox, locale: 'ar', key: 'inbox' });
+  }
+  return out;
+}
+
+/** One alert for one critical event, to each recipient once (keyed on the event). */
+export async function notifySecurityAlert(event: SecurityEventRow): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const recipients = await securityRecipients(admin);
+    if (!recipients.length) return 'skipped';
+    let outcome: SendOutcome = 'skipped';
+    for (const to of recipients) {
+      const c = copyFor(to.locale);
+      const result = await deliver({
+        template: 'security_alert',
+        to: to.email,
+        userId: to.key === 'inbox' ? null : to.key,
+        dedupeKey: `security_alert:${event.id}:${to.key}`,
+        entity: { type: 'security_event', id: String(event.id) },
+        envelope: buildEnvelope({
+          audience: { locale: to.locale },
+          subject: c.securityAlert.subject(event.kind),
+          preheader: c.securityAlert.preheader,
+          heading: c.securityAlert.heading,
+          blocks: alertBlocks(event, c, to.locale, env.siteUrl),
+        }),
+      });
+      if (result === 'failed') return 'failed';
+      if (result === 'sent') outcome = 'sent';
+    }
+    return outcome;
+  } catch (error) {
+    console.warn('[email] security alert failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/** The week's digest, once per ISO week per recipient. */
+export async function notifySecurityDigest(digest: SecurityDigest, week: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const recipients = await securityRecipients(admin);
+    if (!recipients.length) return 'skipped';
+    let outcome: SendOutcome = 'skipped';
+    let failed = false;
+    for (const to of recipients) {
+      const c = copyFor(to.locale);
+      const result = await deliver({
+        template: 'security_digest',
+        to: to.email,
+        userId: to.key === 'inbox' ? null : to.key,
+        dedupeKey: `security_digest:${week}:${to.key}`,
+        envelope: buildEnvelope({
+          audience: { locale: to.locale },
+          subject: c.securityDigest.subject,
+          preheader: c.securityDigest.preheader,
+          heading: c.securityDigest.heading,
+          blocks: digestBlocks(digest, c, env.siteUrl),
+        }),
+      });
+      if (result === 'sent') outcome = 'sent';
+      if (result === 'failed') failed = true;
+    }
+    return failed ? 'failed' : outcome;
+  } catch (error) {
+    console.warn('[email] security digest failed:', asMessage(error));
+    return 'failed';
+  }
 }

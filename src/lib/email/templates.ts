@@ -23,6 +23,10 @@ export const TEMPLATES = {
   visibility_changed: 'security',
   account_approved: 'security',
   account_rejected: 'security',
+  // To the platform's admins: an alert is the whole point of the message, and
+  // nobody unsubscribes from being told their console was taken over.
+  security_alert: 'security',
+  security_digest: 'security',
 
   welcome_candidate: 'transactional',
   welcome_employer: 'transactional',

@@ -78,6 +78,14 @@ export const env = {
    * runs the platform. Optional. Unset, blank, or a placeholder sends no copy.
    * Not the public support address and not a Reply-To.
    */
+  /**
+   * One more inbox for security alerts and the weekly digest, beside every
+   * admin's own (api/cron/security-watch). Optional; unset, blank or a
+   * placeholder sends to the admins only.
+   */
+  get securityAlertEmail() {
+    return process.env.SECURITY_ALERT_EMAIL ?? '';
+  },
   get ownerNotifyEmail() {
     return process.env.OWNER_NOTIFY_EMAIL ?? '';
   },

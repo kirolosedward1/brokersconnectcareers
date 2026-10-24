@@ -5,6 +5,7 @@ import { buildEnvelope } from './envelope';
 import type { Block } from './components';
 import type { Envelope } from './service';
 import { unsubscribeLinks } from './unsubscribe-link';
+import { alertBlocks, digestBlocks } from '@/lib/security/alerts';
 
 /**
  * Every template, rendered from fixtures.
@@ -468,6 +469,45 @@ const BUILDERS: Record<string, Builder> = {
         },
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/companies/example` },
       ],
+    };
+  },
+
+  security_alert: (f) => {
+    const c = copyFor(f.locale);
+    const event = {
+      id: 1,
+      kind: 'account.made_admin',
+      created_at: new Date().toISOString(),
+      actor_id: '00000000-0000-4000-8000-000000000001',
+      metadata: { path: 'session' },
+    };
+    return {
+      subject: c.securityAlert.subject(event.kind),
+      preheader: c.securityAlert.preheader,
+      heading: c.securityAlert.heading,
+      blocks: alertBlocks(event, c, f.locale, env.siteUrl),
+    };
+  },
+
+  security_digest: (f) => {
+    const c = copyFor(f.locale);
+    const digest = {
+      days: 7,
+      auth_failures: 41,
+      rate_limited: 3,
+      uploads_rejected: 1,
+      critical: 0,
+      warnings: 9,
+      reveals: 120,
+      reveals_by_company: [{ company: words(f).company, count: 90 }],
+      new_admins: [],
+      admins_now: 1,
+    };
+    return {
+      subject: c.securityDigest.subject,
+      preheader: c.securityDigest.preheader,
+      heading: c.securityDigest.heading,
+      blocks: digestBlocks(digest, c, env.siteUrl),
     };
   },
 

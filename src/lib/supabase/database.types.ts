@@ -1540,6 +1540,10 @@ export type Database = {
       my_company: { Args: Empty; Returns: CompanyRow[] };
       my_owned_company: { Args: Empty; Returns: CompanyRow[] };
       admin_company: { Args: { p_company: string }; Returns: CompanyRow[] };
+      /** The security watcher's (migration 370), service role only. */
+      security_alerts_due: { Args: { p_limit?: number }; Returns: import('@/lib/security/alerts').SecurityEventRow[] };
+      mark_security_alerted: { Args: { p_ids: number[] }; Returns: number };
+      security_digest: { Args: { p_days?: number }; Returns: import('@/lib/security/alerts').SecurityDigest };
       admin_companies_owned_by: {
         Args: { p_users: string[] };
         Returns: { id: string; name_ar: string; owner_id: string }[];

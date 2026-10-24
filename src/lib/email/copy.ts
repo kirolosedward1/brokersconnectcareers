@@ -318,6 +318,42 @@ export const emailCopy = {
       body: 'أوقفنا الحساب مؤقتاً إلى حين مراجعة البيانات مرة أخرى.',
     },
 
+    // -----------------------------------------------------------------------
+    // Security (to the platform's admins)
+
+    securityAlert: {
+      subject: (kind: string) => `تنبيه أمني: ${kind}`,
+      preheader: 'حدث أمني حرج يحتاج إلى مراجعة.',
+      heading: 'حدث أمني حرج',
+      body: 'سجّلت المنصة حدثاً أمنياً من الدرجة الحرجة. راجِعه في صفحة الأمان، واتبع دليل الاستجابة إن لم تكن أنت من قام به.',
+      madeAdmin: 'أصبح حساب مشرفاً. إن لم يكن ذلك بقرار منك، فاتبع الخطوة A2 في دليل الاستجابة الآن: ألغِ الصلاحية وأنهِ جلسات الحساب.',
+      labelKind: 'الحدث',
+      labelAt: 'الوقت',
+      labelActor: 'من قام به',
+      labelPath: 'الطريقة',
+      direct: 'مباشرة من قاعدة البيانات',
+      session: 'من جلسة مسجّلة',
+      nobody: 'غير معروف',
+      cta: 'فتح صفحة الأمان',
+    },
+
+    securityDigest: {
+      subject: 'ملخص الأمان الأسبوعي',
+      preheader: 'محاولات الدخول، والطلبات المرفوضة، وكشف الأرقام خلال الأسبوع.',
+      heading: 'ملخص الأمان للأيام السبعة الماضية',
+      labelAuth: 'محاولات دخول فاشلة',
+      labelRate: 'طلبات أوقفها حدّ المعدّل',
+      labelUploads: 'ملفات مرفوضة',
+      labelCritical: 'أحداث حرجة',
+      labelReveals: 'أرقام مكشوفة',
+      labelAdmins: 'عدد المشرفين الآن',
+      topCompanies: 'أكثر الشركات كشفاً للأرقام:',
+      newAdmins: (count: number) => `مشرفون جدد هذا الأسبوع: ${count}`,
+      noNewAdmins: 'لم يُضف أي مشرف جديد هذا الأسبوع.',
+      firewall: 'حظر جدار الحماية لا يُسجَّل في قاعدة البيانات: راجِعه في Vercel ← Firewall.',
+      cta: 'فتح صفحة الأمان',
+    },
+
     companyVerified: {
       subject: 'تم توثيق شركتك',
       preheader: 'ظهرت علامة التوثيق على صفحتك.',
@@ -649,6 +685,42 @@ export const emailCopy = {
       preheader: 'We need to review your account details again.',
       heading: 'Your account is on hold',
       body: 'We have paused the account until we can review the details again.',
+    },
+
+    // -----------------------------------------------------------------------
+    // Security (to the platform's admins)
+
+    securityAlert: {
+      subject: (kind: string) => `Security alert: ${kind}`,
+      preheader: 'A critical security event needs a look.',
+      heading: 'A critical security event',
+      body: 'The platform recorded a critical security event. Look at it on the security page, and follow the runbook if it was not you.',
+      madeAdmin: 'An account became an admin. If you did not decide that, follow runbook step A2 now: take the role away and end the account’s sessions.',
+      labelKind: 'Event',
+      labelAt: 'When',
+      labelActor: 'By',
+      labelPath: 'How',
+      direct: 'Directly in the database',
+      session: 'From a signed-in session',
+      nobody: 'Unknown',
+      cta: 'Open the security page',
+    },
+
+    securityDigest: {
+      subject: 'Weekly security digest',
+      preheader: 'Failed sign-ins, rate limits and contact reveals this week.',
+      heading: 'Security over the last seven days',
+      labelAuth: 'Failed sign-ins',
+      labelRate: 'Requests stopped by a rate limit',
+      labelUploads: 'Files refused',
+      labelCritical: 'Critical events',
+      labelReveals: 'Contacts revealed',
+      labelAdmins: 'Admins now',
+      topCompanies: 'Companies revealing the most contacts:',
+      newAdmins: (count: number) => `New admins this week: ${count}`,
+      noNewAdmins: 'No new admin this week.',
+      firewall: 'Firewall blocks are not in the database: see Vercel → Firewall.',
+      cta: 'Open the security page',
     },
 
     companyVerified: {
