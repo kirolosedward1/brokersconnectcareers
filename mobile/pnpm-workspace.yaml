@@ -34,6 +34,13 @@ minimumReleaseAge: 1440
 # 1.11.0), source-map-js through Expo's Metro config and postcss (an
 # event-loop denial of service, GHSA-68fv-2mgg-jv7q, fixed in 1.2.2). Each is
 # a minor or patch release inside the range its dependents ask for.
+#
+# And fast-uri, which ajv parses $id and $ref URIs with, reached through
+# @hookform/resolvers: before 3.1.9, four advisories (scheme spoofing by a
+# percent-encoded scheme, host confusion, path equivalence, scheme
+# injection; moderate and low). The app's schemas are its own and carry no
+# remote $ref, so the exposure is narrow; the fix is a patch release.
 overrides:
+  fast-uri: '^3.1.9'
   shell-quote: '^1.11.0'
   source-map-js: '^1.2.2'
