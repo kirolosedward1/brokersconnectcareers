@@ -48,9 +48,8 @@
  * send one test email to see the link arrive whole.
  *
  * The Arabic is Modern Standard Arabic, the same wording the other emails
- * use. An English copy sits under it. The confirmation link says 24 hours,
- * which is the hosted project's Email OTP expiration; the other links still
- * say one hour. Those durations stay until the OTP expiry setting changes.
+ * use. An English copy sits under it. Every link and the reauthentication
+ * code say one hour, matching Email OTP expiration (3600 seconds).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -166,7 +165,7 @@ const TEMPLATES = {
       { kind: 'button', label: 'تأكيد البريد الإلكتروني', href: CONFIRM_SIGNUP, plain: PLAIN_AR },
       {
         kind: 'text',
-        value: 'هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.',
+        value: 'هذا الرابط صالح لمدة ساعة واحدة، ويعمل مرة واحدة فقط.',
       },
       {
         kind: 'security',
@@ -183,7 +182,7 @@ const TEMPLATES = {
             'Welcome to Brokers Connect. Press the button so we can make sure this email is yours and activate the account.',
         },
         { kind: 'button', label: 'Confirm your email', href: CONFIRM_SIGNUP, plain: PLAIN_EN },
-        { kind: 'text', value: 'This link is valid for 24 hours, and it works only once.' },
+        { kind: 'text', value: 'This link is valid for one hour, and it works only once.' },
         {
           kind: 'security',
           value:
@@ -420,8 +419,8 @@ for (const item of written) {
   }
 }
 
-if (!written.find((item) => item.name === 'confirmation')?.html.includes('هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.')) {
-  console.error('  BROKEN  confirmation.html: the expiry does not say 24 hours');
+if (!written.find((item) => item.name === 'confirmation')?.html.includes('هذا الرابط صالح لمدة ساعة واحدة، ويعمل مرة واحدة فقط.')) {
+  console.error('  BROKEN  confirmation.html: the expiry does not say one hour');
   broken += 1;
 }
 

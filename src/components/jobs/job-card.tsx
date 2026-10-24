@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { FactLine } from '@/components/ui/fact-line';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
-import { CommissionLine, LeadsSourceText, SalaryLine } from '@/components/jobs/compensation';
+import { LeadsSourceText, SalaryLine } from '@/components/jobs/compensation';
 import { SaveJobToggle } from '@/components/jobs/save-job-toggle';
 import { cn, formatNumber, formatRelativeDay } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
@@ -173,19 +173,14 @@ export function JobCard({
             <span>{tBand(job.experience_band)}</span>
           </FactLine>
 
-          {/* The pay, the commission where it is a number, where the clients
-              come from, and how many of them. Seats used to be a gradient
-              panel in the corner, which outweighed the job title; it is a
-              figure people scan, so it reads as one. */}
+          {/* The pay, where the clients come from, and how many of them.
+              The commission rate is the listing's to state, not the card's:
+              the rate alone, without the terms around it, is read as the
+              offer. Seats used to be a gradient panel in the corner, which
+              outweighed the job title; it is a figure people scan, so it
+              reads as one. */}
           <FactLine className="mt-1.5 text-sm">
             <SalaryLine job={job} locale={locale} />
-            {/* Only a stated percentage. "Undisclosed" and "split" are words,
-                not terms, and the listing is where they are explained. */}
-            {job.commission_type === 'percentage' && job.commission_value != null ? (
-              <span className="text-muted-foreground">
-                <CommissionLine job={job} locale={locale} />
-              </span>
-            ) : null}
             <span className="text-muted-foreground">
               <LeadsSourceText job={job} />
             </span>

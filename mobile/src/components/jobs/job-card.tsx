@@ -33,8 +33,8 @@ import { ZoomLink } from './zoom-link';
 /**
  * A listing in a list — the website's JobCard, the same facts set as a card
  * to be read in one look: who is hiring and where, then what it pays — the
- * salary first and largest, the commission and where the clients come from
- * beside it — and under a hairline the kind of role, the experience asked
+ * salary first and largest, where the clients come from (the commission rate
+ * is the listing's) beside it — and under a hairline the kind of role, the experience asked
  * for, the seats and how fresh it is. A candidate can bookmark it from here
  * without opening it (the website's card toggle).
  *
@@ -65,7 +65,6 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const companyLeads = job.leads_source === 'company_provided';
   const leadsTone = companyLeads ? colors.primary : colors.mutedForeground;
   const flags = job.is_featured || closed || applied || match;
-  const commission = job.commission_type === 'percentage' && job.commission_value != null ? pay.commission(job, locale) : null;
   const facts = [
     t(`track.${job.track}`),
     t(`experienceBand.${job.experience_band}`),
@@ -83,7 +82,6 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
     applied ? t('jobs.applied') : null,
     match ? t.markup('app.jobs.match', { percent: match.percent, ...markupTags }) : null,
     salary.perMonth ? `${salary.amount} ${salary.perMonth}` : salary.amount,
-    commission,
     t(`leadsSource.${job.leads_source}_short`),
     facts,
     job.published_at ? formatRelativeDay(job.published_at, locale) : null,
@@ -205,11 +203,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
           {salary.perMonth ? <Text variant="small" tone="mutedForeground">{` ${salary.perMonth}`}</Text> : null}
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[3], rowGap: 2 }}>
-          {commission ? (
-            <Text variant="small" weight="medium">
-              {commission}
-            </Text>
-          ) : null}
+          {/* No commission rate: the listing states it with its terms, as on the website's card. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Target size={13} color={leadsTone} />
             <Text variant="small" weight={companyLeads ? 'medium' : 'regular'} style={{ color: leadsTone }}>

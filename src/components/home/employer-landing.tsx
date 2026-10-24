@@ -76,8 +76,11 @@ export async function EmployerLanding({
         {/* Three numbers rather than three claims. The first is live from the
             directory; the other two are policy, and policy is a fact. */}
         {/* A ruled row, not three frosted tiles: the figures are one
-            statement in three parts and read as one line. */}
-        <dl className="mt-8 grid w-full max-w-lg grid-cols-3 divide-x divide-white/15 rtl:divide-x-reverse">
+            statement in three parts and read as one line. Tailwind 4's
+            divide-x already rules the inline end of each figure, so it sits
+            between them in Arabic too; a divide-x-reverse moved the rules to
+            the start, one outside the row and none between the last two. */}
+        <dl className="mt-8 grid w-full max-w-lg grid-cols-3 divide-x divide-white/15">
           {[
             [formatNumber(consultantCount, locale), t('employerHero.stat1')],
             [formatNumber(30, locale), t('employerHero.stat2')],
