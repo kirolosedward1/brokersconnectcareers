@@ -56,6 +56,7 @@ export async function generateMetadata({
       title: fitTitle(post.title, 60),
       description,
       url: pageUrl,
+      locale: locale === 'ar' ? 'ar_EG' : 'en_US',
       images: [{ url: '/brand/og.jpg', width: 1200, height: 630, alt: tMeta('tagline') }],
       publishedTime: isoDate(post.date),
       authors: [post.author],

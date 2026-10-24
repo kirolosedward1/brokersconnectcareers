@@ -78,6 +78,7 @@ export async function generateMetadata({
       description,
       type: 'article',
       url: pageUrl(locale, path),
+      locale: locale === 'ar' ? 'ar_EG' : 'en_US',
       images: [{ ...OG_IMAGE, alt: tMeta('tagline') }],
     },
     robots: isOpen(job)
