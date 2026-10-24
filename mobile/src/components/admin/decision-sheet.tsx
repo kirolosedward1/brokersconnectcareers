@@ -14,6 +14,7 @@ import { pullLever, useAfterLever, type Lever } from '~/features/admin/levers';
 import { refusedAtTheDoor } from '~/lib/api';
 import { appDirection } from '~/lib/direction';
 import { haptic } from '~/lib/haptics';
+import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
 import { corner, font, gutter, hitTarget, space, type as scale } from '~/theme/tokens';
@@ -74,6 +75,9 @@ export function DecisionSheet({
   const [pending, setPending] = useState(false);
   const reasonMin = decision.reasonMin ?? REASON_MIN;
   const tooShort = decision.reason === 'required' && text.trim().length < reasonMin;
+  // A reason typed: pulled down, the sheet stays and asks first (iOS hands the attempt to onRequestClose).
+  const dirty = text.trim() !== '';
+  const confirmDiscard = useConfirmDiscard();
   // Still on screen: an answer that arrives after the sheet has gone (swiped
   // away, its row drawn again) must not close the next decision's sheet.
   const live = useRef(true);
@@ -137,8 +141,11 @@ export function DecisionSheet({
       animationType="slide"
       presentationStyle="pageSheet"
       // Not while the website is deciding: the answer would land on a closed sheet.
+      allowSwipeDismissal={!dirty && !pending}
       onRequestClose={() => {
-        if (!pending) onClose();
+        if (pending) return;
+        if (dirty) confirmDiscard(onClose);
+        else onClose();
       }}
     >
       <KeyboardRoom>

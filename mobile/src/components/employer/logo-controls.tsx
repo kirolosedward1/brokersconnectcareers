@@ -61,7 +61,7 @@ export function LogoControls({
   };
 
   const confirmRemove = () =>
-    dialog.alert(t('employer.logo'), undefined, [
+    dialog.alert(t('app.company.logoDeleteTitle'), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),

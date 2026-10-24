@@ -4,8 +4,10 @@ import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createTranslator } from 'use-intl';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
+import { shownToast } from '~/components/feedback/toast';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
 import { LRI, PDI } from '~/i18n/rich';
@@ -47,6 +49,7 @@ jest.mock('~/lib/session-storage', () => {
 jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn(async () => ({ type: 'opened' })) }));
 
 const ar = catalogues.ar;
+const tAr = createTranslator({ locale: 'ar', messages: catalogues.ar });
 const server = fakeServer();
 const PASSWORD = 'correct-horse';
 const user = authUser();
@@ -551,7 +554,7 @@ describe("a listing's applicants", () => {
   it('takes in the first applicant with a pull on the empty listing', async () => {
     rows = [];
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
-    expect(await screen.findByText(ar.employer.noApplicants)).toBeTruthy();
+    expect(await screen.findByText(ar.app.applicants.empty)).toBeTruthy();
 
     rows = [layla];
     await pull();
@@ -706,6 +709,33 @@ describe('the inbox', () => {
     expect((await screen.findAllByText(rows[1].candidate?.full_name ?? '')).length).toBeGreaterThan(1);
     fireEvent.press(screen.getAllByRole('button', { name: ar.app.review.done }).pop()!);
     await waitFor(() => expect(screen.queryByRole('header', { name: ar.app.review.title })).toBeNull(), { timeout: 2000 });
+  });
+
+  it('says whose decision did not go through, and sends the same one again from the toast', async () => {
+    const moves: { applicationId: string; status: string; from: string }[] = [];
+    let refuse = true;
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; from: string } }).input;
+      moves.push(move);
+      if (refuse) return { ok: false, error: 'failed' };
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
+      return { ok: true };
+    });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+    const first = rows[0];
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.shortlist }));
+
+    const name = first.candidate?.full_name ?? '';
+    await waitFor(() => expect(shownToast()?.message).toBe(tAr('app.review.failed', { name })));
+    expect(shownToast()).toMatchObject({ tone: 'destructive', action: { label: ar.common.retry } });
+
+    refuse = false;
+    act(() => shownToast()?.action?.onPress());
+    await waitFor(() => expect(moves).toHaveLength(2));
+    expect(moves[1]).toMatchObject({ applicationId: first.id, status: 'shortlisted', from: 'new' });
+    await waitFor(() => expect(shownToast()?.message).toBe(tAr('app.review.shortlisted', { name })));
   });
 
   it('shows one shortlisted in a review of the new as shortlisted when stepped back to, though the list no longer holds them', async () => {

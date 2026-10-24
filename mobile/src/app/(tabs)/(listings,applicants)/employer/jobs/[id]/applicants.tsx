@@ -9,7 +9,8 @@ import { useApplicantContext } from '~/components/employer/applicant-context';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
-import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
+import { EmptyState, ErrorState, NotFoundState, SkeletonScreen } from '~/components/ui/states';
+import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import {
   APPLICANTS_CAP,
@@ -18,7 +19,6 @@ import {
   useListingApplicants,
   useMarkSeen,
 } from '~/features/employer/applicants';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
@@ -53,7 +53,6 @@ export default function ListingApplicantsScreen() {
   useMarkSeen(viewer?.company?.suspended_at ? undefined : applicants);
   // A new applicant, or a colleague's move, reaches the pipeline with a pull.
   const pull = usePullRefresh(() => Promise.all([pipeline.refetch(), applicants?.length ? notes.refetch() : null]));
-  const shrink = useShrinkingTabBar();
 
   const job = pipeline.data?.job ?? null;
   const title = job ? localized(locale, job.title_ar, job.title_en) : t('employer.jobs');
@@ -61,14 +60,14 @@ export default function ListingApplicantsScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <SuspendedState />;
   else if (!viewer.company) body = <NotFoundState />;
   // A suspended company's applicants are hidden (migration 349): said, not
   // shown as an empty pipeline.
   else if (viewer.company.suspended_at) {
     body = <EmptyState icon={ShieldAlert} title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
   } else if (!id) body = <NotFoundState />;
-  else if (pipeline.isPending) body = <LoadingState />;
+  else if (pipeline.isPending) body = <SkeletonScreen />;
   else if (pipeline.isError && !pipeline.data) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
   else if (!pipeline.data || !job) body = <NotFoundState />;
   else if (pipeline.data.applicants.length === 0) {
@@ -82,7 +81,7 @@ export default function ListingApplicantsScreen() {
         <EmptyState
           icon={Inbox}
           illustration="review"
-          title={t('employer.noApplicants')}
+          title={t('app.applicants.empty')}
           body={t('employer.noApplicantsHint')}
           action={
             <View style={{ gap: space[2], alignSelf: 'stretch' }}>
@@ -102,7 +101,6 @@ export default function ListingApplicantsScreen() {
     const rows = pipeline.data.applicants;
     body = (
       <ScrollView
-        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"

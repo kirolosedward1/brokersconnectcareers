@@ -51,6 +51,7 @@ import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * The Account tab. Signed out, it is the door: sign in, create an account, or
@@ -95,9 +96,9 @@ export default function AccountScreen() {
     .join(' · ');
 
   const themes: { value: ThemePreference; label: string }[] = [
+    { value: 'system', label: t('theme.system') },
     { value: 'light', label: t('theme.light') },
     { value: 'dark', label: t('theme.dark') },
-    { value: 'system', label: t('theme.system') },
   ];
 
   if (!ready) return <LoadingState />;
@@ -112,10 +113,11 @@ export default function AccountScreen() {
     shareMyData(session.user.id, t('account.exportTitle'))
       .catch((failure: unknown) => {
         const status = failure instanceof ApiError ? failure.status : -1;
-        dialog.alert(
-          t('account.exportTitle'),
-          status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
-        );
+        // Said in passing (a toast), not an alert with one button to dismiss it.
+        toast.show({
+          message: status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
+          tone: 'destructive',
+        });
       })
       .then(() => setExporting(false));
   };
@@ -145,7 +147,7 @@ export default function AccountScreen() {
               ) : null}
               <View style={{ flex: 1, gap: space[1] }}>
                 {viewer?.profile?.full_name ? (
-                  <Text variant="title" weight="bold">
+                  <Text variant="title" weight="semibold">
                     {viewer.profile.full_name}
                   </Text>
                 ) : null}
@@ -174,7 +176,7 @@ export default function AccountScreen() {
         ) : (
           <View style={{ gap: space[3] }}>
             <View style={{ gap: space[1] }}>
-              <Text variant="title" weight="bold" accessibilityRole="header">
+              <Text variant="title" weight="semibold" accessibilityRole="header">
                 {t('app.account.signedOutTitle')}
               </Text>
               <Text tone="mutedForeground">{t('app.account.signedOutBody')}</Text>

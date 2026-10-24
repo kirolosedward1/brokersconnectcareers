@@ -18,7 +18,6 @@ import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-
 import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -35,6 +34,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const locale = useLocale();
   const t = useTranslations('landing');
   const tJobs = useTranslations('jobs');
+  const tNav = useTranslations('nav');
   const tTrack = useTranslations('track');
   const { colors } = useTheme();
 
@@ -45,7 +45,6 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const districts = useDistricts();
   const hasBoard = useHasBoard();
   const pull = usePullRefresh(() => Promise.all([landing.refetch(), board.refetch()]));
-  const shrink = useShrinkingTabBar();
   // The companies this phone hides stay hidden here too, as on the board and Home.
   const hiddenCompanies = useHiddenCompanies();
   const hiddenJobs = useHiddenJobs();
@@ -109,7 +108,6 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
     <>
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
-        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
@@ -117,7 +115,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >
         <View style={{ gap: space[2] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {t('title', { track: trackName, district: districtName })}
           </Text>
           <Text tone="mutedForeground">{t('subtitle', { track: trackName, district: districtName })}</Text>
@@ -159,13 +157,13 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           <EmptyState
             icon={SearchX}
             title={tJobs('empty')}
-            action={hasBoard ? <Button label={tJobs('title')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
+            action={hasBoard ? <Button label={tNav('browseJobs')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
           />
         )}
 
         {more && hasBoard ? (
           <Button
-            label={tJobs('title')}
+            label={tNav('browseJobs')}
             variant="outline"
             onPress={() => router.navigate({ pathname: '/jobs', params: filtersToParams(filters) })}
           />

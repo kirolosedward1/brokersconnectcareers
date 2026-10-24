@@ -19,7 +19,6 @@ import { Text } from '~/components/ui/text';
 import { TextLink } from '~/components/ui/text-link';
 import { recordAgentView, useAgentPage } from '~/features/directory/queries';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
@@ -44,7 +43,6 @@ export function AgentProfile({ handle }: { handle: string }) {
   const { session, viewer, actor } = useSession();
   const page = useAgentPage(handle);
   const pull = usePullRefresh(() => page.refetch());
-  const shrink = useShrinkingTabBar();
   const districts = useDistricts().data;
   const developers = useDevelopers().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -103,7 +101,6 @@ export function AgentProfile({ handle }: { handle: string }) {
     <>
       {header}
       <ScrollView
-        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
@@ -149,7 +146,7 @@ export function AgentProfile({ handle }: { handle: string }) {
           )}
           <View style={{ flex: 1, gap: space[1] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-              <Text variant="title" weight="bold" accessibilityRole="header" style={{ flexShrink: 1 }}>
+              <Text variant="title" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
                 {name}
               </Text>
               {card.is_unlocked ? null : (
@@ -259,7 +256,7 @@ function Availability({ value }: { value: AgentAvailability }) {
     <View
       accessible
       accessibilityLabel={`${t('agents.availability')}: ${t(`availability.${value}`)}`}
-      style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], paddingVertical: space[1] + 2, paddingHorizontal: space[3], ...corner('full'), backgroundColor: tone.fill }}
+      style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: space[2], paddingVertical: space[1.5], paddingHorizontal: space[3], ...corner('full'), backgroundColor: tone.fill }}
     >
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tone.dot }} />
       <Text variant="small" weight="semibold" style={{ color: tone.text }}>
