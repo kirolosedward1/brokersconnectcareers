@@ -591,11 +591,11 @@ describe('reporting and hiding', () => {
     // Listed by name under Account, out of every list as it is.
     await renderRouter(app, { initialUrl: '/account/hidden' });
     expect(await screen.findByText('نايل بروكرز')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'رجّع نايل بروكرز' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'أظهِر نايل بروكرز' })).toBeTruthy();
     screen.unmount();
 
     await renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
-    fireEvent.press(await screen.findByRole('button', { name: 'رجّع الشركة' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'أظهِر الشركة' }));
     expect(await screen.findByRole('button', { name: 'أخفِ هذه الشركة' })).toBeTruthy();
   });
 });
