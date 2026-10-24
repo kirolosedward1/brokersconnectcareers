@@ -999,23 +999,29 @@ describe('one-tap sign-in', () => {
     const os = jest.replaceProperty(Platform, 'OS', 'android');
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.signInAsync).mockClear();
+    // Earlier tests in this file already opened the browser for Google.
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockClear();
     jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({
       type: 'success',
       url: 'brokersconnect://auth/callback?code=apple-code',
     });
-    await renderRouter(app, { initialUrl: '/sign-in' });
-    await press(ar.app.auth.signInWithApple);
+    try {
+      await renderRouter(app, { initialUrl: '/sign-in' });
+      await press(ar.app.auth.signInWithApple);
 
-    expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
-    expect(await screen.findByText('home screen')).toBeTruthy();
-    const [authorize, returnTo] = jest.mocked(WebBrowser.openAuthSessionAsync).mock.calls[0];
-    const url = new URL(authorize);
-    expect(url.pathname).toBe('/auth/v1/authorize');
-    expect(url.searchParams.get('provider')).toBe('apple');
-    expect(url.searchParams.get('scopes')).toBe('name email');
-    expect(url.searchParams.get('redirect_to')).toBe('brokersconnect://auth/callback');
-    expect(returnTo).toBe('brokersconnect://auth/callback');
-    os.restore();
+      expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
+      expect(await screen.findByText('home screen')).toBeTruthy();
+      expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledTimes(1);
+      const [authorize, returnTo] = jest.mocked(WebBrowser.openAuthSessionAsync).mock.calls[0];
+      const url = new URL(authorize);
+      expect(url.pathname).toBe('/auth/v1/authorize');
+      expect(url.searchParams.get('provider')).toBe('apple');
+      expect(url.searchParams.get('scopes')).toBe('name email');
+      expect(url.searchParams.get('redirect_to')).toBe('brokersconnect://auth/callback');
+      expect(returnTo).toBe('brokersconnect://auth/callback');
+    } finally {
+      os.restore();
+    }
   });
 
   it('Google on Android: the return also arrives as a link, and the code is exchanged once', async () => {
