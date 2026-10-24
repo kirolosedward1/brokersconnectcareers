@@ -23,7 +23,7 @@ import { motion } from '~/theme/tokens';
   them (Animated.timing's settings) and what is drawn before the first frame.
 */
 
-jest.mock('~/lib/direction', () => ({ appDirection: 'rtl' }));
+jest.mock('~/lib/direction', () => ({ appDirection: 'rtl', drawnDirection: () => 'rtl' as const, setDrawnLocale: () => {} }));
 jest.mock('~/theme/reduce-motion', () => ({ useReduceMotion: jest.fn(() => false) }));
 
 function Providers({ children }: { children: ReactNode }) {

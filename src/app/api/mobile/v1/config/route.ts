@@ -36,7 +36,7 @@ import type { MobileConfig } from '@/lib/mobile-api/reads';
  *                     same push, and a phone can be matched to it (Account).
  *                     Not a secret: the repository is public.
  *   adminMfaRequired  whether an admin needs an authenticator before the
- *                     console opens (ADMIN_MFA_REQUIRED) — the app's console
+ *                     console opens (ADMIN_MFA_REQUIRED=true; unset is off) — the app's console
  *                     asks what the website's does, and the server refuses
  *                     its levers otherwise (mobile-api/admin-door.ts).
  */
