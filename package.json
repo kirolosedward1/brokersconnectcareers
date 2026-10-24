@@ -101,6 +101,7 @@
     "@supabase/supabase-js": "^2.49.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "libheif-js": "1.23.5",
     "lucide-react": "^0.475.0",
     "marked": "^18.0.11",
     "next": "15.5.27",
