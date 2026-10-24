@@ -6,13 +6,15 @@ import { Platform, type ViewStyle } from 'react-native';
  * The brand is the website's — its mark, its font, its royal blue — set in a
  * quieter, more considered key for the phone. Light is ivory paper with deep
  * sapphire ink: the brand blue taken down to the navy the industry's grandest
- * names print in. Dark is near-black with champagne, where navy would vanish.
- * Champagne gold is the one precious accent in both, kept for what has been
- * earned or checked — a verified company — never for decoration.
+ * names print in. Dark is near-black with champagne, where navy would vanish:
+ * there champagne carries the controls too — buttons, links, the chosen chip —
+ * the owner's choice over a pale blue. Otherwise champagne gold is kept for
+ * what has been earned or checked — a verified company, the hero's call to
+ * action, the share card — never for decoration.
  *
  * Every text colour holds 4.5:1 on every surface it is drawn on, in both
  * schemes; icons that carry meaning and the borders of fields hold 3:1.
- * Light is the default whatever the phone's setting, as on the website.
+ * The phone's own Light or Dark setting is the default (theme/provider.tsx).
  */
 export const palette = {
   light: {
@@ -54,6 +56,8 @@ export const palette = {
     heroDeep: '#0B1734',
     onHero: '#FFFFFF',
     onHeroMuted: '#C9D0DE',
+    /** The dimmed page behind a sheet or menu. */
+    scrim: 'rgba(5, 10, 25, 0.45)',
   },
   dark: {
     background: '#0A0C10',
@@ -89,6 +93,7 @@ export const palette = {
     heroDeep: '#0A1124',
     onHero: '#F3F0EA',
     onHeroMuted: '#B9C0CF',
+    scrim: 'rgba(0, 0, 0, 0.6)',
   },
 } as const;
 
@@ -146,20 +151,48 @@ export function corner(size: keyof typeof radius): Pick<ViewStyle, 'borderRadius
   return { borderRadius: radius[size], borderCurve: 'continuous' };
 }
 
-/** A 4-point spacing scale. */
-export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 7: 28, 8: 32, 10: 40, 12: 48 } as const;
+/**
+ * A 4-point spacing scale, numbered as the website's Tailwind is (a step is
+ * 4 points), with its half steps: 0.5 between lines that belong together, and
+ * the 6, 10 and 14 that optical padding — a pill, a chip, a label beside its
+ * icon — needs where 4, 8 and 12 read cramped or loose.
+ */
+export const space = {
+  0.5: 2,
+  1: 4,
+  1.5: 6,
+  2: 8,
+  2.5: 10,
+  3: 12,
+  3.5: 14,
+  4: 16,
+  5: 20,
+  6: 24,
+  7: 28,
+  8: 32,
+  10: 40,
+  12: 48,
+} as const;
 
 /** The margin between a screen's edge and its content. */
 export const gutter = space[5];
+
+/**
+ * Icon sizes, each set to sit beside a step of the type scale: `label` and
+ * `caption` beside those sizes of text (a badge, a fact), `small` and `body`
+ * beside theirs, `control` in a button or field.
+ */
+export const iconSize = { label: 12, caption: 14, small: 16, body: 18, control: 20 } as const;
 
 /** 44-point minimum touch target, as on the website's buttons. */
 export const hitTarget = 44;
 
 /**
- * IBM Plex Sans Arabic for both scripts, as on the website. Arabic reads at 17
+ * IBM Plex Sans Arabic for both scripts, as on the website. Arabic reads at 16
  * with generous leading and is never letter-spaced (tracking breaks its
  * joins); hierarchy comes from size and weight, headings at semibold rather
- * than bold.
+ * than bold. A step under iOS's own 17, by the owner's choice; nothing goes
+ * below 11, and every size still grows with the phone's text setting.
  */
 export const font = {
   regular: 'IBMPlexSansArabic_400Regular',
@@ -169,31 +202,31 @@ export const font = {
 } as const;
 
 export const type = {
-  display: { fontSize: 32, lineHeight: 46 },
-  title: { fontSize: 22, lineHeight: 32 },
-  headline: { fontSize: 18, lineHeight: 28 },
-  body: { fontSize: 17, lineHeight: 30 },
-  small: { fontSize: 15, lineHeight: 24 },
-  caption: { fontSize: 13, lineHeight: 20 },
-  label: { fontSize: 12, lineHeight: 18 },
+  display: { fontSize: 30, lineHeight: 43 },
+  title: { fontSize: 20, lineHeight: 29 },
+  headline: { fontSize: 17, lineHeight: 26 },
+  body: { fontSize: 16, lineHeight: 28 },
+  small: { fontSize: 14, lineHeight: 22 },
+  caption: { fontSize: 12, lineHeight: 18 },
+  label: { fontSize: 11, lineHeight: 16 },
 } as const;
 
 /**
  * Motion: a press settles the pressed thing slightly into the page, quickly in
- * and gently out. What arrives on a screen fades in as it rises a little way
+ * and gently out — a card, pressed all day down a list, less than a button
+ * (`cardPressScale`). What arrives on a screen fades in as it rises a little way
  * (`appear`, `appearDistance`), its parts a beat apart (`stagger`); a step of
  * a flow slides in from the side the reading goes to (`step`). When the phone
  * asks for reduced motion nothing travels: things only fade (`fade`).
  */
 export const motion = {
   pressScale: 0.97,
+  cardPressScale: 0.985,
   pressIn: 90,
   pressOut: 180,
-  appear: 460,
+  appear: 320,
   appearDistance: 14,
   stagger: 70,
   step: 320,
   fade: 200,
-  /** The tab bar and Home's header stepping aside as a list scrolls down, and back. */
-  bars: 260,
 } as const;

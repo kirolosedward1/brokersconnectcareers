@@ -25,7 +25,7 @@ type Shown = Toast & { id: number };
 
 /** How long one stays: longer when it offers something to do. */
 const STAY_MS = 3000;
-const STAY_WITH_ACTION_MS = 4500;
+export const STAY_WITH_ACTION_MS = 4500;
 
 let current: Shown | null = null;
 let nextId = 1;

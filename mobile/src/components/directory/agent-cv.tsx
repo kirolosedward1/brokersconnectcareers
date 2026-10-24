@@ -70,7 +70,7 @@ export function AgentCv({
                 <Text variant="caption" tone="mutedForeground">
                   {t('cv.unitsClosed')}
                 </Text>
-                <Text variant="title" weight="bold">
+                <Text variant="title" weight="semibold">
                   {formatNumber(unitsClosed, locale)}
                 </Text>
               </Card>
@@ -80,7 +80,7 @@ export function AgentCv({
                 <Text variant="caption" tone="mutedForeground">
                   {t('cv.volumeEgp')}
                 </Text>
-                <Text variant="title" weight="bold">
+                <Text variant="title" weight="semibold">
                   {formatEgp(volumeEgp, locale)}
                 </Text>
               </Card>

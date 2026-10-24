@@ -344,7 +344,7 @@ describe("a candidate's home", () => {
     const result = await open();
 
     expect(await screen.findByText(ar.dashboard.emptyCandidateTitle)).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: ar.jobs.title }));
+    fireEvent.press(screen.getByRole('button', { name: ar.nav.browseJobs }));
     await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
   });
 

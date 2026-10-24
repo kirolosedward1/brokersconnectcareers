@@ -1,3 +1,4 @@
+import { shownToast } from '~/components/feedback/toast';
 import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
 import { router, Stack } from 'expo-router';
@@ -651,7 +652,8 @@ describe('a copy of the data', () => {
     await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.account.exportTitle, ar.app.account.exportLimit));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.exportLimit));
+    expect(Alert.alert).not.toHaveBeenCalled();
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
 });

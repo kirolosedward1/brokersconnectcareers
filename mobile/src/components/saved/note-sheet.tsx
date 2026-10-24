@@ -84,12 +84,24 @@ export function NoteSheet({
     action: { label: tToast('undo'), onPress: () => void keep(before.id, before.text) },
   });
 
+  // A refusal puts the note back and says so, with the same change to try again.
+  const attempt = (write: () => Promise<boolean>) => {
+    void write().then((ok) => {
+      if (ok) return;
+      haptic.error();
+      toast.show({
+        message: tCommon('errorBody'),
+        icon: CircleAlert,
+        tone: 'destructive',
+        action: { label: tCommon('retry'), onPress: () => attempt(write) },
+      });
+    });
+  };
+
   const save = () => {
     if (!changed) return;
     // Shown at once; the server's refusal, should one come, puts the note back and says so.
-    void keep(jobId, clean).then((ok) => {
-      if (!ok) toast.show({ message: tCommon('errorBody'), icon: CircleAlert });
-    });
+    attempt(() => keep(jobId, clean));
     haptic.tap();
     onClose();
     // Emptied and saved is the same as deleted, and says so.
@@ -99,9 +111,7 @@ export function NoteSheet({
 
   const remove = () => {
     if (!note) return;
-    void removeNote(jobId).then((ok) => {
-      if (!ok) toast.show({ message: tCommon('errorBody'), icon: CircleAlert });
-    });
+    attempt(() => removeNote(jobId));
     haptic.tap();
     onClose();
     toast.show(deleted(note));
@@ -118,7 +128,7 @@ export function NoteSheet({
           direction: appDirection,
           justifyContent: 'flex-start',
           paddingTop: insets.top + space[2],
-          backgroundColor: 'rgba(5, 10, 25, 0.5)',
+          backgroundColor: colors.scrim,
         }}
         testID="note-sheet-room"
         {...fence}

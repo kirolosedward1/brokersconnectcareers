@@ -19,7 +19,6 @@ import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/component
 import { Text } from '~/components/ui/text';
 import { flattenShortlist, useShortlist, useShortlistedIds } from '~/features/directory/queries';
 import { useDistricts } from '~/features/taxonomy';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
@@ -44,7 +43,6 @@ export default function ShortlistScreen() {
   const shortlist = useShortlist();
   const nextPage = useNextPage(shortlist);
   const pull = usePullRefresh(() => shortlist.refetch());
-  const shrink = useShrinkingTabBar();
   const ids = useShortlistedIds().data;
   const districts = useDistricts().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -92,7 +90,6 @@ export default function ShortlistScreen() {
     <>
       {header}
       <FlashList
-        {...shrink}
         data={rows}
         keyExtractor={(row) => row.id}
         renderItem={({ item }) => <ShortlistRow row={item} districts={districtMap} />}

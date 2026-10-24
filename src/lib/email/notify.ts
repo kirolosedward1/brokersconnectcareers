@@ -178,7 +178,7 @@ type ApplicationWithdrawnForBroker = {
 
 type JobForOwner = JobBits & {
   /** Where the listing stands now: a message about a decision checks it still does. */
-  status: string;
+  status: JobStatus;
   company: { id: string; owner_id: string; name_ar: string } | null;
   /**
    * The listing's own note column: before migration 347 the moderator's
@@ -1210,8 +1210,8 @@ export async function notifyBrokerOfJobApproval(
     const job = await ownedJob(admin, jobId);
     const ownerId = job?.company?.owner_id;
     if (!job || !ownerId) return 'skipped';
-    // "Your listing is live" about one back in review is worse than silence.
-    if (!jobIsLive({ status: job.status as JobStatus, expires_at: job.expires_at })) return 'skipped';
+    // "Your listing is live" about one back in review, or already run out, is worse than silence.
+    if (!jobIsLive(job)) return 'skipped';
     const targets = noticeTargets(only, ownerId);
     if (!targets) return 'skipped';
 
