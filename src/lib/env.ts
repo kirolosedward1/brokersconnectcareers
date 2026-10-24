@@ -73,6 +73,14 @@ export const env = {
   get supportEmail() {
     return process.env.SUPPORT_EMAIL ?? '';
   },
+  /**
+   * A copy of the broker approval and withdrawal notices, for the person who
+   * runs the platform. Optional. Unset, blank, or a placeholder sends no copy.
+   * Not the public support address and not a Reply-To.
+   */
+  get ownerNotifyEmail() {
+    return process.env.OWNER_NOTIFY_EMAIL ?? '';
+  },
 };
 
 /**

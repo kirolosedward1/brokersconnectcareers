@@ -220,8 +220,8 @@ describe("a candidate's home", () => {
     await signIn();
     await open();
 
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
-    expect(await screen.findByText('فيه رد على طلب')).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText('رد على طلب')).toBeTruthy();
     // Each figure says what it is, to VoiceOver as well.
     expect(screen.getByLabelText(`${ar.dashboard.statApplications}: 1`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statCompleteness}: 80%`)).toBeTruthy();
@@ -273,7 +273,7 @@ describe("a candidate's home", () => {
     [`${ar.dashboard.statCompleteness}: 80%`, '/account/profile'],
     [`${ar.dashboard.statSaved}: 3`, '/dashboard/saved'],
     [`${ar.dashboard.statReplies}: 1`, '/dashboard/applications'],
-    [`فيه رد على طلب. ${ar.dashboard.nextRepliesBody}`, '/dashboard/applications'],
+    [`رد على طلب. ${ar.dashboard.nextRepliesBody}`, '/dashboard/applications'],
   ])('sends "%s" to where it can be acted on', async (name, path) => {
     await signIn();
     const result = await open();
@@ -477,7 +477,7 @@ describe('the Terms and the Privacy policy', () => {
     server.on('GET /rest/v1/policy_acceptances', acceptances(() => [{ terms_version: versions.terms, privacy_version: versions.privacy }]));
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
@@ -494,7 +494,7 @@ describe('the Terms and the Privacy policy', () => {
     );
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
@@ -502,7 +502,7 @@ describe('the Terms and the Privacy policy', () => {
   it('asks nothing when the website does not say what is current, and does not look', async () => {
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
     expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(0);
   });
@@ -524,7 +524,7 @@ describe('a directory card nobody asked about', () => {
     server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: '2026-10-01T10:00:00Z' }]);
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').length).toBeGreaterThan(0));
     expect(screen.queryByText(ar.dashboard.visibilityAskTitle)).toBeNull();
   });

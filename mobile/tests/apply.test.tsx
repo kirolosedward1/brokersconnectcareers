@@ -384,7 +384,7 @@ describe('the form', () => {
     first.unmount();
 
     await renderRouter(app, { initialUrl: APPLY });
-    expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
+    expect(await screen.findByText(/^احتفظنا بما كتبته هنا/)).toBeTruthy();
     // Shown, not folded behind the one-tap summary.
     expect(await screen.findByDisplayValue('متاحة من أول الشهر.')).toBeTruthy();
 

@@ -78,7 +78,7 @@ const easProjectId = process.env.EAS_PROJECT_ID || EAS_PROJECT_ID;
  * writes the same Info.plist key, so it is handed the same words: whichever
  * plugin runs last, the prompt says this.
  */
-const FACE_ID_PURPOSE = 'بنستخدم Face ID عشان تقفل التطبيق وتفتحه، لو انت شغّلت القفل بنفسك.';
+const FACE_ID_PURPOSE = 'نستخدم Face ID لقفل التطبيق وفتحه، إذا فعّلت القفل بنفسك.';
 
 /**
  * Over-the-air updates (EAS Update): JavaScript and images published after a
@@ -273,8 +273,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         // The base language's strings; the English ones are in assets/locales.
         photosPermission:
-          'بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك أو مستنداتها، ومفيش حاجة بتترفع غير اللي انت تختاره.',
-        cameraPermission: 'بنستخدم الكاميرا عشان تصوّر مستندات شركتك لتوثيقها.',
+          'نستخدم صورك لاختيار صورتك الشخصية أو شعار شركتك أو مستنداتها، ولا يُرفع شيء إلا ما تختاره.',
+        cameraPermission: 'نستخدم الكاميرا لتصوير مستندات شركتك لتوثيقها.',
         microphonePermission: false,
       },
     ],

@@ -373,7 +373,7 @@ section('applying on a slow line, pressing send twice');
   check('a bad phone on the apply form is refused there', (await sql('select 1 from applications where candidate_id = $1 and job_id = $2', [userId, target.id])).length === 0);
 
   await page.fill('input[name="whatsapp"]', '01001234567');
-  await page.fill('textarea[name="note"]', 'متاح فوراً (browser)');
+  await page.fill('textarea[name="note"]', 'متاح فورًا (browser)');
   await submit(page).click();
   await submit(page).click({ timeout: 1500 }).catch(() => {});
   check('on a slow line the application still goes through', await showsApplied(page, 60000), page.url());
@@ -602,9 +602,9 @@ section('the account deletes itself from the account page');
   check('they sign in once more', await landsOn(page, /\/dashboard/), page.url());
   // Deletion is its own page off the account hub, the same screen the app uses.
   await page.goto(`${SITE}/dashboard/account/delete`);
-  const remove = page.locator('button').filter({ hasText: 'احذف حسابي نهائياً' });
+  const remove = page.locator('button').filter({ hasText: 'احذف حسابي نهائيًا' });
   check('the delete button waits for the word to be typed', await remove.first().isDisabled());
-  await page.locator('label').filter({ hasText: 'عشان تأكّد' }).locator('input').fill('حذف');
+  await page.locator('label').filter({ hasText: 'للتأكيد' }).locator('input').fill('حذف');
   check('and opens once it is', await remove.first().isEnabled());
   await remove.first().click();
   check('deleting goes back to the home page, signed out', await landsOn(page, /^\/$/, 20000), page.url());

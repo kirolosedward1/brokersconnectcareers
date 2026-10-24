@@ -418,7 +418,7 @@ describe("a listing's review", () => {
     expect(screen.getByRole('link', { name: ar.admin.publicPage })).toBeTruthy();
 
     // The company's signals, worded as facts, with the companies they name a tap away.
-    expect(screen.getByText(/اترفضت.*2/)).toBeTruthy();
+    expect(screen.getByText(/رُفضت.*2/)).toBeTruthy();
     expect(screen.getByText(new RegExp(`\\(${ar.admin.suspended}\\)`))).toBeTruthy();
     fireEvent.press(screen.getByRole('link', { name: 'شركة تانية' }));
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/companies/${OTHER_COMPANY}`));

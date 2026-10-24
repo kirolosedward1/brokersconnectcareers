@@ -30,11 +30,11 @@ const { parseAllDocuments } = require(join(__dirname, '..', 'node_modules', 'yam
 /** The key each phrase is the text of, on the screen the flow looks for it on. */
 const KEYS: Record<string, string> = {
   // checks.yaml: the states no screen may be showing.
-  'في حاجة غلط': 'common.error',
-  'مفيش اتصال بالإنترنت': 'app.offline.title',
-  'الخدمة مش متاحة دلوقتي': 'app.unavailable.title',
-  'الصفحة مش موجودة': 'common.notFound',
-  'في نسخة أحدث من التطبيق': 'app.update.title',
+  'حدث خطأ': 'common.error',
+  'لا يوجد اتصال بالإنترنت': 'app.offline.title',
+  'الخدمة غير متاحة الآن': 'app.unavailable.title',
+  'الصفحة غير موجودة': 'common.notFound',
+  'يتوفر إصدار أحدث من التطبيق': 'app.update.title',
   // The welcome, Home, the tabs and the appearance switch.
   'تخطي': 'app.welcome.skip',
   'إنشاء حساب': 'nav.signUp',
@@ -45,18 +45,18 @@ const KEYS: Record<string, string> = {
   'غامق': 'theme.dark',
   // The board, a listing, the companies.
   'الفلاتر.*': 'jobs.filters',
-  'مفيش وظائف مطابقة لبحثك.': 'jobs.empty',
+  'لا توجد وظائف مطابقة لبحثك.': 'jobs.empty',
   'مشاركة': 'jobs.share',
-  'الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها.': 'companies.lede',
-  'مفيش شركات مطابقة.': 'companies.empty',
+  'الشركات التي توظّف على بروكرز كونكت، والموثّق منها.': 'companies.lede',
+  'لا توجد شركات مطابقة.': 'companies.empty',
   // signed-out.yaml: Account's card, its sign-in button, the sheet and its email button, the forgotten password, sign-up.
-  'ادخل على حسابك': 'app.account.signedOutTitle',
+  'سجّل الدخول إلى حسابك': 'app.account.signedOutTitle',
   'تسجيل الدخول': 'nav.signIn',
-  'أهلاً بيك تاني': 'auth.signInTitle',
-  'المتابعة بالإيميل': 'app.auth.continueWithEmail',
+  'مرحبًا بعودتك': 'auth.signInTitle',
+  'المتابعة بالبريد الإلكتروني': 'app.auth.continueWithEmail',
   'نسيت كلمة المرور؟': 'auth.forgotPassword',
-  'اكتب إيميلك وهنبعتلك لينك تعمل بيه كلمة مرور جديدة.': 'auth.forgotBody',
-  'اعمل حسابك': 'auth.signUpTitle',
+  'اكتب بريدك وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.': 'auth.forgotBody',
+  'أنشئ حسابك': 'auth.signUpTitle',
   'تأكيد كلمة المرور': 'auth.passwordConfirm',
 };
 
