@@ -247,7 +247,9 @@
   "directory": {
     "verifyTitle": "Verify your company to see the consultants",
     "verifyBody": "You can't view the consultant directory until your company is verified with its official papers.",
-    "reviewing": "The directory opens for you as soon as we finish reviewing your account."
+    "reviewing": "The directory opens for you as soon as we finish reviewing your account.",
+    "whatsapp": "WhatsApp",
+    "call": "Call"
   },
   "home": {
     "recentlyViewed": "Recently viewed",

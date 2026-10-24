@@ -70,8 +70,8 @@ export function SwipeRow({ left, right, children }: { left?: SwipeAction; right?
       }}
     >
       <View style={[StyleSheet.absoluteFill, styles.under]} pointerEvents="box-none">
-        {left ? <Action action={left} side="left" visible={shown === 'left'} onPress={() => run(left)} /> : <View />}
-        {right ? <Action action={right} side="right" visible={shown === 'right'} onPress={() => run(right)} /> : <View />}
+        {left ? <Action action={left} side="left" x={x} visible={shown === 'left'} onPress={() => run(left)} /> : <View />}
+        {right ? <Action action={right} side="right" x={x} visible={shown === 'right'} onPress={() => run(right)} /> : <View />}
       </View>
       <Animated.View {...responder.panHandlers} style={{ transform: [{ translateX: x }] }}>
         {children}
@@ -80,32 +80,53 @@ export function SwipeRow({ left, right, children }: { left?: SwipeAction; right?
   );
 }
 
-function Action({ action, side, visible, onPress }: { action: SwipeAction; side: 'left' | 'right'; visible: boolean; onPress: () => void }) {
+function Action({
+  action,
+  side,
+  x,
+  visible,
+  onPress,
+}: {
+  action: SwipeAction;
+  side: 'left' | 'right';
+  x: Animated.Value;
+  visible: boolean;
+  onPress: () => void;
+}) {
   const large = useLargeText();
+  // Seen only while the row is slid toward it: a row with no background of its
+  // own (the notifications list) otherwise shows every action through its text.
+  const opacity = x.interpolate({
+    inputRange: side === 'left' ? [0, 1] : [-1, 0],
+    outputRange: side === 'left' ? [0, 1] : [1, 0],
+    extrapolate: 'clamp',
+  });
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={action.label}
-      // Hidden from VoiceOver: the row offers the same as an action of its own.
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      onPress={onPress}
-      disabled={!visible}
-      testID={`swipe-${side}`}
-      style={{
-        width: OPEN - space[2],
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: space[1],
-        ...corner('xl'),
-        backgroundColor: action.color,
-      }}
-    >
-      {action.icon}
-      <Text variant="caption" weight="semibold" numberOfLines={large ? undefined : 2} style={{ color: action.ink, textAlign: 'center' }}>
-        {action.label}
-      </Text>
-    </Pressable>
+    <Animated.View style={{ flexDirection: 'row', opacity }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
+        // Hidden from VoiceOver: the row offers the same as an action of its own.
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        onPress={onPress}
+        disabled={!visible}
+        testID={`swipe-${side}`}
+        style={{
+          width: OPEN - space[2],
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: space[1],
+          ...corner('xl'),
+          backgroundColor: action.color,
+        }}
+      >
+        {action.icon}
+        <Text variant="caption" weight="semibold" numberOfLines={large ? undefined : 2} style={{ color: action.ink, textAlign: 'center' }}>
+          {action.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 

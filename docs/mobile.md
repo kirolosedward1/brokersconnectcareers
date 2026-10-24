@@ -186,17 +186,20 @@ this, and every server call went on being refused with the old key).
   a group all tabs share, so they open inside the tab the reader is in. The
   tab bar is the app's own (`mobile/src/components/navigation/tab-bar.tsx`), a
   capsule floating at the foot of the screen with every tab the reader has,
-  each an icon over its name. It keeps its size and its names however a list
-  scrolls, as Apple asks of a tab bar ("Include tab labels"); iOS 26's own bar
+  each an icon over its name. As a list scrolls down it grows smaller and the
+  names go, every tab kept, the way Instagram's does; scrolling back up,
+  reaching the top, or another screen coming into view brings it back whole
+  (`useTabList` and `useShrinkingTabBar` in `mobile/src/features/tab-bar.ts`,
+  on each tab's list and the pages opened inside a tab). iOS 26's own bar
   shrinks to the open tab alone instead. Pressing the open tab again goes back
-  to its first screen, then to the top of that screen's list (`useTabList` in
-  `mobile/src/features/tab-bar.ts`). Its band is part
+  to its first screen, then to the top of that screen's list. Its band is part
   of the layout, so screens end above it and need no room made under their
   last line. The Account tab shows the reader's own photo once they have put
   one on their account. Home has a header of its own
   (`mobile/src/components/home/home-frame.tsx`), slimmer than iOS's: the logo
-  at its start (in Arabic, the right) and the bell at its end; it stays put as
-  the page scrolls. No screen has iOS's large title:
+  at its start (in Arabic, the right) and the bell at its end; it slides away
+  under the status bar as the list scrolls down and comes back as it scrolls
+  up, on the tab bar's signal. No screen has iOS's large title:
   on iOS 26 one under a painted bar is not drawn until the screen is
   scrolled, and on a clear bar it is drawn mirrored at the left edge wherever
   iOS runs left to right (Expo Go, an iPhone not set to Arabic) under the bar

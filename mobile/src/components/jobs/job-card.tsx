@@ -46,7 +46,7 @@ import { ZoomLink } from './zoom-link';
 export function JobCard({ job, applied = false, swipeable = false }: { job: JobListItem; applied?: boolean; swipeable?: boolean }) {
   const locale = useLocale();
   const t = useTranslations();
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
   const pay = useCompensationText();
   const save = useSaveJob(job.id);
   const menu = useSheet();
@@ -64,6 +64,8 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const district = localized(locale, job.district.name_ar, job.district.name_en);
   const salary = pay.salary(job, locale);
   const companyLeads = job.leads_source === 'company_provided';
+  // In dark, the company bringing the clients is in the controls' champagne, as the card first had it (the owner's choice).
+  const leadsTone = scheme === 'dark' && companyLeads ? colors.primary : colors.mutedForeground;
   const flags = job.is_featured || closed || applied || match;
   const facts = [
     t(`track.${job.track}`),
@@ -187,8 +189,8 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
           ) : null}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
-          <Target size={iconSize.caption} color={colors.mutedForeground} />
-          <Text variant="small" weight={companyLeads ? 'medium' : 'regular'} tone="mutedForeground" style={{ flexShrink: 1 }}>
+          <Target size={iconSize.caption} color={leadsTone} />
+          <Text variant="small" weight={companyLeads ? 'medium' : 'regular'} style={{ color: leadsTone, flexShrink: 1 }}>
             {t(`leadsSource.${job.leads_source}_short`)}
           </Text>
         </View>
