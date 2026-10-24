@@ -124,7 +124,7 @@ await apply(
   grant select, insert, update, delete on all tables in schema public to authenticated;
   grant all on all tables in schema public to service_role;
   grant usage, select on all sequences in schema public to anon, authenticated, service_role;
-  -- The grants above put back the company columns migration 369 took away
+  -- The grants above put back the company columns migration 371 took away
   -- from anon and authenticated; this takes them away again.
   do $$ begin
     if to_regprocedure('public.apply_company_column_grants()') is not null then

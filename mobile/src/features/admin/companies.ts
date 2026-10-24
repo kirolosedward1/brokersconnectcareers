@@ -153,7 +153,7 @@ export function useCompanyFile(id: string | undefined) {
     queryFn: async (): Promise<CompanyFile | null> => {
       const companyId = id as string;
       // admin_company(): the whole row, owner and credits included, which the
-      // table no longer gives a session (migration 369).
+      // table no longer gives a session (migrations 369, 371).
       const read = await supabase
         .rpc('admin_company', { p_company: companyId })
         .select('*, district:districts (name_ar, name_en)')

@@ -88,7 +88,7 @@ export async function loadViewer(session: Session): Promise<Viewer> {
     if (membershipError) throw membershipError;
     if (companyId) {
       // Whole, through my_company(): the owner and the credit balance are not
-      // readable from the table by a session (migration 369).
+      // readable from the table by a session (migrations 369, 371).
       const { data, error: companyError } = await supabase.rpc('my_company').maybeSingle();
       if (companyError) throw companyError;
       company = (data as CompanyRow | null) ?? null;

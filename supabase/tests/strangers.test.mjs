@@ -1,6 +1,6 @@
 /**
  * A stranger reaches nothing of anybody else's, table by table, for every
- * table added or changed in migrations 340–369: saved listings and their
+ * table added or changed in migrations 340–371: saved listings and their
  * notes, notifications, push devices, application notes, support requests,
  * company documents and their files, contact reveals, orders, moderation
  * notes, withdrawn applications and the companies' private columns. For each:
@@ -129,7 +129,7 @@ R.check('candidate cannot insert pre-withdrawn row', String(await n(C1, `insert 
   R.check('withdrawn: the employer cannot reopen it', mv.startsWith('ERR'), mv);
 }
 
-R.section('companies_select_public (369)');
+R.section('companies_select_public (371)');
 const anonCo = await as(null, `select owner_id, post_credits from companies limit 2`, 'anon');
 R.check('anon is refused owner_id and post_credits', !anonCo.ok && /permission denied/.test(anonCo.error ?? ''), anonCo.error ?? JSON.stringify(anonCo.rows));
 const strangerCo = await as(C2, `select suspension_reason from companies limit 1`);

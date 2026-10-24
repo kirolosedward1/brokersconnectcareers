@@ -588,7 +588,7 @@ report.section('a company suspension: the company is told why, the internet is n
 {
   const suspension = await session(admin, async (q) => {
     const [{ n }] = await q(`select admin_set_company_suspension('${hub}', true, 'انتحال صفة مطور معروف') as n`);
-    // The whole row, as an admin reads it since migration 369 (the table
+    // The whole row, as an admin reads it since migrations 369 and 371 (the table
     // itself no longer gives a session suspension_reason).
     const company = (await q(`select suspended_at is not null as suspended, suspension_reason from public.admin_company('${hub}')`))[0];
     const privateReason = (await q(`select suspension_reason from company_moderation where company_id = '${hub}'`))[0];

@@ -553,7 +553,7 @@ report.section('354 — what production changed by hand');
   await drifted.close();
 }
 
-report.section("369 — a company's owner, credits and suspension reason are its own");
+report.section("369 and 371 — a company's owner, credits and suspension reason are its own");
 {
   const anonPublic = await as(null, `select id, name_ar, slug, verification_status from companies where id = '${verifiedCompany}'`, 'anon');
   report.check('a visitor still reads the public columns', anonPublic.ok && anonPublic.rows.length === 1, anonPublic.error);
