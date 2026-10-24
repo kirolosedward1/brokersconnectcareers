@@ -144,8 +144,8 @@ this, and every server call went on being refused with the old key).
   `textAlign` for text it lays out, not for what is typed into a field.
 - **Design.** The brand set in a quieter key for the phone
   (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
-  near-black with pale sapphire in dark, champagne kept in both for what has
-  been checked (a verified company) and never for a control; every text pair 4.5:1, marks and field borders 3:1.
+  near-black with champagne in dark (which there is also the controls' colour),
+  champagne otherwise kept for what has been checked (a verified company); every text pair 4.5:1, marks and field borders 3:1.
   Cards raised with a hairline and a soft shadow, continuous corners, capsule
   buttons and chips, a gentle press (none with Reduce Motion), a few haptics
   (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, the iPhone's

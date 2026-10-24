@@ -27,7 +27,7 @@ export const GLASS = {
 /**
  * A capsule, never smaller than a finger: 48 points by default, 56 for the
  * one thing a screen is for, 36 (with slop to 44) beside other controls.
- * Primary is ink-blue in light and pale sapphire in dark; champagne is champagne
+ * Primary is ink-blue in light and champagne in dark; champagne is champagne
  * in both, for the one action on the deep hero panel; outline is a quiet
  * surface with a hairline; ghost is the label alone; glass is see-through,
  * white on a hairline, for beside it over a photograph or the hero.

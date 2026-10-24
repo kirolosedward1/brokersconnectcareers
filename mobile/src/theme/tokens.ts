@@ -6,12 +6,11 @@ import { Platform, type ViewStyle } from 'react-native';
  * The brand is the website's — its mark, its font, its royal blue — set in a
  * quieter, more considered key for the phone. Light is ivory paper with deep
  * sapphire ink: the brand blue taken down to the navy the industry's grandest
- * names print in. Dark is near-black with the same sapphire lifted to a pale
- * periwinkle, where navy would vanish: buttons, links and the chosen chip stay
- * blue in both schemes. Champagne gold is the one precious accent in both,
- * kept for what has been earned or checked — a verified company, the hero's
- * call to action, the share card — never for decoration, and never the colour
- * of an ordinary control, so the seal is not mistaken for a button.
+ * names print in. Dark is near-black with champagne, where navy would vanish:
+ * there champagne carries the controls too — buttons, links, the chosen chip —
+ * the owner's choice over a pale blue. Otherwise champagne gold is kept for
+ * what has been earned or checked — a verified company, the hero's call to
+ * action, the share card — never for decoration.
  *
  * Every text colour holds 4.5:1 on every surface it is drawn on, in both
  * schemes; icons that carry meaning and the borders of fields hold 3:1.
@@ -64,10 +63,9 @@ export const palette = {
     background: '#0A0C10',
     foreground: '#F3F0EA',
     card: '#14171D',
-    // Pale sapphire: 9.5:1 on card, 6:1 on raised; its ink 9.4:1 on it.
-    primary: '#A9BCF0',
-    primaryPressed: '#C3D1F5',
-    primaryForeground: '#0B1734',
+    primary: '#D8BC86',
+    primaryPressed: '#E6CC99',
+    primaryForeground: '#17120A',
     secondary: '#1F232B',
     secondaryForeground: '#ECE7DD',
     muted: '#1A1D24',
@@ -190,10 +188,11 @@ export const iconSize = { label: 12, caption: 14, small: 16, body: 18, control: 
 export const hitTarget = 44;
 
 /**
- * IBM Plex Sans Arabic for both scripts, as on the website. Arabic reads at 17
+ * IBM Plex Sans Arabic for both scripts, as on the website. Arabic reads at 16
  * with generous leading and is never letter-spaced (tracking breaks its
  * joins); hierarchy comes from size and weight, headings at semibold rather
- * than bold.
+ * than bold. A step under iOS's own 17, by the owner's choice; nothing goes
+ * below 11, and every size still grows with the phone's text setting.
  */
 export const font = {
   regular: 'IBMPlexSansArabic_400Regular',
@@ -203,13 +202,13 @@ export const font = {
 } as const;
 
 export const type = {
-  display: { fontSize: 32, lineHeight: 46 },
-  title: { fontSize: 22, lineHeight: 32 },
-  headline: { fontSize: 18, lineHeight: 28 },
-  body: { fontSize: 17, lineHeight: 30 },
-  small: { fontSize: 15, lineHeight: 24 },
-  caption: { fontSize: 13, lineHeight: 20 },
-  label: { fontSize: 12, lineHeight: 18 },
+  display: { fontSize: 30, lineHeight: 43 },
+  title: { fontSize: 20, lineHeight: 29 },
+  headline: { fontSize: 17, lineHeight: 26 },
+  body: { fontSize: 16, lineHeight: 28 },
+  small: { fontSize: 14, lineHeight: 22 },
+  caption: { fontSize: 12, lineHeight: 18 },
+  label: { fontSize: 11, lineHeight: 16 },
 } as const;
 
 /**
