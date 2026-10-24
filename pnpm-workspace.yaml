@@ -53,3 +53,17 @@ overrides:
   postcss: '^8.5.23'
   sharp: '^0.35.5'
   source-map-js: '^1.2.2'
+
+# Advisories `pnpm audit --audit-level high` (CI's security gate) is told to
+# pass over, each with the reason it does not apply. Anything not listed here
+# fails the gate. Revisit each one when its package releases a fix.
+#
+# GHSA-mrhx-c7xc-m3w5, zod (high): memory exhaustion when an array schema
+# with no length bound validates a huge array. Fixed only in zod 4.6.6; zod 3
+# has no patched release. Every z.array in src/ and mobile/src carries a
+# .max(), and request bodies are capped (Next's server-action limit, the
+# mobile door's 256 KB), so no schema here reaches the path. Moving to zod 4
+# is its own change.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mrhx-c7xc-m3w5

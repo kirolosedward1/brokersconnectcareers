@@ -44,3 +44,17 @@ overrides:
   fast-uri: '^3.1.9'
   shell-quote: '^1.11.0'
   source-map-js: '^1.2.2'
+
+# Advisories `pnpm audit --audit-level high` (CI's security gate) is told to
+# pass over, each with the reason it does not apply. Anything not listed here
+# fails the gate.
+#
+# GHSA-mrhx-c7xc-m3w5, zod (high): see ../pnpm-workspace.yaml; every z.array
+# in the app and the shared code is bounded.
+# GHSA-86w9-cpqp-85rv, node-forge (high): RSA PKCS#1 v1.5 signature checks,
+# inside the Expo CLI (expo > @expo/cli), which runs on the build machine and
+# never ships in the app. No fixed release exists yet.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mrhx-c7xc-m3w5
+    - GHSA-86w9-cpqp-85rv
