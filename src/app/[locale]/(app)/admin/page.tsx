@@ -53,7 +53,7 @@ async function deletionRequests(supabase: Client): Promise<DeletionRequest[]> {
 
   const [people, companies] = await Promise.all([
     supabase.from('profiles').select('id, full_name').in('id', userIds),
-    supabase.from('companies').select('id, name_ar, owner_id').in('owner_id', userIds),
+    supabase.rpc('admin_companies_owned_by', { p_users: userIds }),
   ]);
   return rows.map((row) => {
     const company = (companies.data ?? []).find((item) => item.owner_id === row.user_id);

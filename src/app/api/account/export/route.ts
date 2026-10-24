@@ -85,7 +85,7 @@ async function handle() {
       .eq('candidate_id', user.id),
     supabase.from('saved_jobs').select('created_at, note, job:jobs (title_ar, slug)').eq('candidate_id', user.id),
     supabase.from('saved_searches').select('*').eq('candidate_id', user.id),
-    supabase.from('companies').select('*').eq('owner_id', user.id).maybeSingle(),
+    supabase.rpc('my_owned_company').maybeSingle(),
     supabase.from('company_members').select('role, created_at, company:companies (name_ar, slug)').eq('user_id', user.id),
     supabase
       .from('notifications')

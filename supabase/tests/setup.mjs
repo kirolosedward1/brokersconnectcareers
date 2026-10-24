@@ -125,6 +125,13 @@ grant select on all tables in schema public to anon;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant all on all tables in schema public to service_role;
 grant usage, select on all sequences in schema public to authenticated, service_role;
+-- Grants on every table put back what migration 369 took away; it says how
+-- to take it away again.
+do \$\$ begin
+  if to_regprocedure('public.apply_company_column_grants()') is not null then
+    perform public.apply_company_column_grants();
+  end if;
+end \$\$;
 `;
 
 /**

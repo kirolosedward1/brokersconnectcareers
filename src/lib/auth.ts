@@ -113,7 +113,9 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     */
     const { data: companyId } = await supabase.rpc('my_company_id');
     if (companyId) {
-      const { data } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
+      // Whole, through my_company(): the owner and the credit balance are not
+      // readable from the table by a session (migration 369).
+      const { data } = await supabase.rpc('my_company').maybeSingle();
       company = data ?? null;
     }
   }

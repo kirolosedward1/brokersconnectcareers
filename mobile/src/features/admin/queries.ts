@@ -156,7 +156,7 @@ export function useDeletionRequests() {
 
       const [people, companies] = await Promise.all([
         supabase.from('profiles').select('id, full_name').in('id', userIds),
-        supabase.from('companies').select('id, name_ar, owner_id').in('owner_id', userIds),
+        supabase.rpc('admin_companies_owned_by', { p_users: userIds }),
       ]);
       if (people.error) throw people.error;
       if (companies.error) throw companies.error;

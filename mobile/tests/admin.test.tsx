@@ -717,9 +717,7 @@ describe('the overview', () => {
     server.on('/rest/v1/profiles', (url: URL) =>
       url.searchParams.get('id')?.startsWith('in.') ? [{ id: OTHER_USER, full_name: 'أحمد سمير' }] : [me],
     );
-    server.on('GET /rest/v1/companies', (url: URL) =>
-      url.searchParams.has('owner_id') ? [{ id: company.id, name_ar: company.name_ar, owner_id: OTHER_USER }] : [],
-    );
+    server.on('POST /rest/v1/rpc/admin_companies_owned_by', [{ id: company.id, name_ar: company.name_ar, owner_id: OTHER_USER }]);
     await signIn();
     const result = await renderRouter(app, { initialUrl: '/admin' });
 
@@ -756,7 +754,7 @@ describe('the overview', () => {
     expect(
       server.requests.some((request) => request.url.pathname === '/rest/v1/profiles' && request.url.searchParams.get('id')?.startsWith('in.')),
     ).toBe(false);
-    expect(server.requests.some((request) => request.url.pathname === '/rest/v1/companies')).toBe(false);
+    expect(server.requests.some((request) => request.url.pathname === '/rest/v1/rpc/admin_companies_owned_by')).toBe(false);
   });
 
   it('says the figures could not be read, never that nothing is waiting', async () => {

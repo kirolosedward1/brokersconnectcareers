@@ -100,10 +100,10 @@ beforeEach(async () => {
   server.on('/rest/v1/profiles', () => [me]);
   server.on('POST /rest/v1/rpc/my_company_id', () => null);
   server.on('HEAD /rest/v1/notifications', { body: null, headers: { 'content-range': '*/0' } });
-  // The list (a page, with its total) or the one company the page asked for.
-  server.on('GET /rest/v1/companies', (url: URL) =>
-    url.searchParams.get('id')?.startsWith('eq.') ? [one] : { body: [row], headers: { 'content-range': '0-0/1' } },
-  );
+  // The list (a page, with its total) from the table; the one company the
+  // page asked for, whole, from admin_company() (migration 369).
+  server.on('GET /rest/v1/companies', () => ({ body: [row], headers: { 'content-range': '0-0/1' } }));
+  server.on('POST /rest/v1/rpc/admin_company', () => [one]);
   server.on('GET /rest/v1/company_documents', () => papers);
   server.on('GET /rest/v1/company_members', [
     { role: 'admin', created_at: '2026-07-01T10:00:00Z', profile: { id: company.owner_id, full_name: 'أحمد سمير', approval_status: 'approved' } },

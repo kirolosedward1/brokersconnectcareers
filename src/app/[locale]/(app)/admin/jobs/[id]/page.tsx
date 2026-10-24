@@ -42,7 +42,6 @@ type JobDetail = JobRow & {
     slug: string;
     verification_status: VerificationStatus;
     suspended_at?: string | null;
-    post_credits: number;
   };
   district: { name_ar: string; name_en: string } | null;
 };
@@ -78,7 +77,7 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
     await supabase
       .from('jobs')
       .select(
-        '*, company:companies (id, name_ar, name_en, slug, verification_status, suspended_at, post_credits), district:districts (name_ar, name_en)',
+        '*, company:companies (id, name_ar, name_en, slug, verification_status, suspended_at), district:districts (name_ar, name_en)',
       )
       .eq('id', id)
       .maybeSingle(),

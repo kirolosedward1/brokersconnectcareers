@@ -75,7 +75,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', () => [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => ownedCompany.id);
-  server.on('GET /rest/v1/companies', [ownedCompany]);
+  server.on('POST /rest/v1/rpc/my_company', [ownedCompany]);
   server.on('HEAD /rest/v1/notifications', { body: null, headers: { 'content-range': '*/0' } });
   server.on('GET /rest/v1/applications', (url: URL) => {
     if (url.searchParams.get('select')?.startsWith('status,')) return [{ status: 'new' }];
@@ -155,7 +155,7 @@ describe('a tab nobody has opened', () => {
   it("neither reads the inbox nor tells candidates their application was opened, until the employer opens it", async () => {
     const result = await renderRouter(app, { initialUrl: '/' });
     await screen.findByText('home-screen');
-    await waitFor(() => expect(server.asked('/rest/v1/companies').length).toBeGreaterThan(0));
+    await waitFor(() => expect(server.asked('/rest/v1/rpc/my_company').length).toBeGreaterThan(0));
     await act(async () => {
       await jest.advanceTimersByTimeAsync(100);
     });

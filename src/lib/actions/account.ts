@@ -69,11 +69,7 @@ export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
     the owner can. A colleague leaving is just a membership row cascading away,
     and they may close their account freely.
   */
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  const { data: company } = await supabase.rpc('my_owned_company').select('id').maybeSingle();
 
   if (company) return { ok: false, error: 'owns_company' };
 
@@ -179,11 +175,7 @@ export async function requestAccountDeletion(input: unknown): Promise<ActionResu
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
 
-  const { data: company } = await supabase
-    .from('companies')
-    .select('id, name_ar')
-    .eq('owner_id', user.id)
-    .maybeSingle();
+  const { data: company } = await supabase.rpc('my_owned_company').select('id, name_ar').maybeSingle();
   if (!company) return { ok: false, error: 'not_owner' };
 
   const { data: reference, error } = await supabase.rpc('submit_support_request', {

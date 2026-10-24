@@ -152,10 +152,11 @@ export function useCompanyFile(id: string | undefined) {
     enabled: open && Boolean(id),
     queryFn: async (): Promise<CompanyFile | null> => {
       const companyId = id as string;
+      // admin_company(): the whole row, owner and credits included, which the
+      // table no longer gives a session (migration 369).
       const read = await supabase
-        .from('companies')
+        .rpc('admin_company', { p_company: companyId })
         .select('*, district:districts (name_ar, name_en)')
-        .eq('id', companyId)
         .maybeSingle();
       if (read.error) throw read.error;
       if (!read.data) return null;

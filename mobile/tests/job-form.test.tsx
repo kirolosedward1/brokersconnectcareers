@@ -76,7 +76,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => ownedCompany.id);
-  server.on('GET /rest/v1/companies', [ownedCompany]);
+  server.on('POST /rest/v1/rpc/my_company', [ownedCompany]);
   server.on('/rest/v1/districts', [newCairo, zayed]);
   server.on('/rest/v1/developers', [{ id: 3, name_ar: 'بالم هيلز', name_en: 'Palm Hills', slug: 'palm-hills' }]);
   server.on('GET /rest/v1/jobs', [liveJob]);

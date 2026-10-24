@@ -179,7 +179,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', () => [me]);
   server.on('POST /rest/v1/rpc/my_company_id', () => company?.id ?? null);
-  server.on('GET /rest/v1/companies', () => (company ? [company] : []));
+  server.on('POST /rest/v1/rpc/my_company', () => (company ? [company] : []));
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);
   server.on('/rest/v1/developers', [{ id: 3, name_ar: 'بالم هيلز', name_en: 'Palm Hills', slug: 'palm-hills' }]);

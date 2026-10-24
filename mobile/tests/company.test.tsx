@@ -120,7 +120,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => company?.id ?? null);
-  server.on('GET /rest/v1/companies', () => (company ? [company] : []));
+  server.on('POST /rest/v1/rpc/my_company', () => (company ? [company] : []));
   server.on('/rest/v1/districts', [newCairo]);
   server.on('GET /rest/v1/company_documents', () => documents);
   server.on('GET /rest/v1/company_members', () => [
@@ -253,7 +253,7 @@ describe("the company's page, for a company admin", () => {
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordCompanyDocument')).toHaveLength(1));
     // Read again at version 5; the form is the one it was.
-    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(3));
+    await waitFor(() => expect(server.asked('/rest/v1/rpc/my_company')).toHaveLength(3));
     expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
 
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
@@ -261,7 +261,7 @@ describe("the company's page, for a company admin", () => {
     expect([4, 5]).toContain(input('/api/mobile/v1/actions/saveCompany')?.version);
     // Its own save coming back at version 6 leaves the form, and the word that it saved, where they are.
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
-    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(4));
+    await waitFor(() => expect(server.asked('/rest/v1/rpc/my_company')).toHaveLength(4));
     await waitFor(() => expect(screen.getByText(ar.common.saveSuccess)).toBeTruthy());
     expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
   });
@@ -284,7 +284,7 @@ describe("the company's page, for a company admin", () => {
     // The database: matched on the version, then moved on; the read back after the save is slow.
     let release: () => void = () => {};
     let hold = false;
-    server.on('GET /rest/v1/companies', () =>
+    server.on('POST /rest/v1/rpc/my_company', () =>
       hold ? new Promise((resolve) => (release = () => resolve([company]))) : company ? [company] : [],
     );
     server.on('POST /api/mobile/v1/actions/saveCompany', (_url: URL, init?: RequestInit) => {

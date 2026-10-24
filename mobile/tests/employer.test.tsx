@@ -125,7 +125,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', () => [me]);
   server.on('POST /rest/v1/rpc/my_company_id', () => company?.id ?? null);
-  server.on('GET /rest/v1/companies', () => (company ? [company] : []));
+  server.on('POST /rest/v1/rpc/my_company', () => (company ? [company] : []));
   server.on('POST /rest/v1/rpc/employer_summary', () => summary());
   server.on('POST /rest/v1/rpc/employer_trend', trend);
   server.on('HEAD /rest/v1/notifications', { body: null, headers: { 'content-range': '*/0' } });

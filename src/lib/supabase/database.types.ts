@@ -1532,6 +1532,19 @@ export type Database = {
       /** The company the caller belongs to, resolved through membership. */
       my_company_id: { Args: Empty; Returns: string | null };
       /**
+       * The whole company row, for whoever may read all of it (migration 369):
+       * the caller's company, the company the caller owns, any company for an
+       * admin. The table itself no longer gives a session owner_id,
+       * post_credits or suspension_reason.
+       */
+      my_company: { Args: Empty; Returns: CompanyRow[] };
+      my_owned_company: { Args: Empty; Returns: CompanyRow[] };
+      admin_company: { Args: { p_company: string }; Returns: CompanyRow[] };
+      admin_companies_owned_by: {
+        Args: { p_users: string[] };
+        Returns: { id: string; name_ar: string; owner_id: string }[];
+      };
+      /**
        * Service-role only, and called with the admin client: the answer is
        * whether an address has an account, which is not for every signed-in
        * user to ask. Used to find the colleague an employer is inviting.

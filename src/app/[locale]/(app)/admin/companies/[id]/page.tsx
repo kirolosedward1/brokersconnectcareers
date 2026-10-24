@@ -81,7 +81,7 @@ export default async function AdminCompanyPage({
 
   const supabase = await createClient();
   const company = must(
-    await supabase.from('companies').select('*, district:districts (name_ar, name_en)').eq('id', id).maybeSingle(),
+    await supabase.rpc('admin_company', { p_company: id }).select('*, district:districts (name_ar, name_en)').maybeSingle(),
     'loading a company',
   ).data as (CompanyRow & { district: { name_ar: string; name_en: string } | null }) | null;
   if (!company) notFound();

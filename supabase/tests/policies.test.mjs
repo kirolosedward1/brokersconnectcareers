@@ -2528,9 +2528,15 @@ report.section('one source of truth for the company a member acts for');
       and p.prosrc ~ 'owner_id\\s*=\\s*auth\\.uid\\(\\)'
     order by p.proname
   `);
+  /*
+    The one function whose question is ownership itself (migration 369):
+    "does deleting this account orphan a company" is the owner's alone
+    (account.ts), and it is not the company anybody acts for.
+  */
+  const ownershipItself = new Set(['my_owned_company']);
   report.check(
-    'no function resolves a company by ownership',
-    offenders.rows.length === 0,
+    'no function resolves the company a member acts for by ownership',
+    offenders.rows.every((r) => ownershipItself.has(r.proname)),
     offenders.rows.map((r) => r.proname).join(', '),
   );
 

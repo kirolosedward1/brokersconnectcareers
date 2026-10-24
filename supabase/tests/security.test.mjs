@@ -553,4 +553,42 @@ report.section('354 — what production changed by hand');
   await drifted.close();
 }
 
+report.section("369 — a company's owner, credits and suspension reason are its own");
+{
+  const anonPublic = await as(null, `select id, name_ar, slug, verification_status from companies where id = '${verifiedCompany}'`, 'anon');
+  report.check('a visitor still reads the public columns', anonPublic.ok && anonPublic.rows.length === 1, anonPublic.error);
+  for (const column of ['owner_id', 'post_credits', 'suspension_reason']) {
+    const anon = await as(null, `select ${column} from companies limit 1`, 'anon');
+    report.check(`a visitor is refused ${column}`, !anon.ok && /permission denied/.test(anon.error ?? ''), anon.error ?? JSON.stringify(anon.rows));
+    const stranger = await as(candidate, `select ${column} from companies limit 1`);
+    report.check(`so is a signed-in stranger`, !stranger.ok && /permission denied/.test(stranger.error ?? ''), stranger.error ?? JSON.stringify(stranger.rows));
+  }
+  const star = await as(null, 'select * from companies limit 1', 'anon');
+  report.check('and select * is refused rather than answered with them', !star.ok, star.error ?? 'answered');
+  const byOwner = await as(candidate, `select id from companies where owner_id = '${employerVerified}'`);
+  report.check('nor can a filter on the owner find who owns what', !byOwner.ok, byOwner.error ?? JSON.stringify(byOwner.rows));
+
+  const mine = await as(employerVerified, 'select id, owner_id, post_credits from public.my_company()');
+  report.check('a member reads their own company whole', mine.ok && mine.rows[0]?.id === verifiedCompany && typeof mine.rows[0]?.post_credits === 'number', mine.error ?? JSON.stringify(mine.rows));
+  const owned = await as(employerVerified, 'select id from public.my_owned_company()');
+  report.check('an owner finds the company they own', owned.ok && owned.rows.length === 1, owned.error ?? JSON.stringify(owned.rows));
+  const none = await as(candidate, 'select id from public.my_company() union all select id from public.my_owned_company()');
+  report.check('a candidate has neither', none.ok && none.rows.length === 0, none.error ?? JSON.stringify(none.rows));
+
+  const notAdmin = await as(employerVerified, `select id from public.admin_company('${unverifiedCompany}')
+                                              union all select id from public.admin_companies_owned_by(array['${employerUnverified}']::uuid[])`);
+  report.check("another company's employer reads no other company through the admin doors", notAdmin.ok && notAdmin.rows.length === 0, notAdmin.error ?? JSON.stringify(notAdmin.rows));
+  const asAdmin = await as(admin, `select post_credits from public.admin_company('${unverifiedCompany}')`);
+  report.check('an admin reads any company whole', asAdmin.ok && asAdmin.rows.length === 1, asAdmin.error);
+  const owners = await as(admin, `select id, owner_id from public.admin_companies_owned_by(array['${employerVerified}']::uuid[])`);
+  report.check('and which company an account owns', owners.ok && owners.rows[0]?.id === verifiedCompany, owners.error ?? JSON.stringify(owners.rows));
+  const anonDoor = await as(null, 'select id from public.my_company()', 'anon');
+  report.check('a visitor cannot call them', !anonDoor.ok, anonDoor.error ?? 'called');
+
+  const written = await as(employerVerified, `update companies set about_ar = 'نبذة' where id = '${verifiedCompany}' returning id`);
+  report.check('an admin member still saves the company (and gets its id back)', written.ok && written.rows.length === 1, written.error);
+  const embedded = await as(null, `select j.id, c.name_ar from jobs j join companies c on c.id = j.company_id where j.id = '${liveJob}'`, 'anon');
+  report.check("a listing's company card still reads signed out", embedded.ok && embedded.rows.length === 1, embedded.error);
+}
+
 process.exitCode = report.finish() ? 0 : 1;
