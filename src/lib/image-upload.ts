@@ -71,6 +71,34 @@ export function compressionSteps(longestSide: number, maxEdge: number): { edge: 
  * short. An empty message stays empty, and the caller keeps the generic
  * "try again" rather than a blank one.
  */
+/**
+ * The HEIC decoder's own limit. Past this the form stops waiting and says
+ * the file type is not supported, instead of sitting there with no answer.
+ */
+export const HEIC_TIMEOUT_MS = 20_000;
+
+/**
+ * Resolves with `work`, or rejects once `ms` has passed.
+ *
+ * The timer is cleared when the work finishes, so a late success cannot
+ * overturn a timeout that was already reported.
+ */
+export function deadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error('failed'));
+      },
+    );
+  });
+}
+
 export function storageDetail(message: string | null | undefined): string {
   return (message ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
 }

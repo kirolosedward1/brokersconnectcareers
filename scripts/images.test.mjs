@@ -95,7 +95,7 @@ console.log('\n— what is refused');
   check('nothing', (await reencodeImage(new Uint8Array())) === null);
 }
 
-const { isHeicBytes, isHeicFile, compressionSteps, storageDetail, imageFailureCopy } = await import(
+const { isHeicBytes, isHeicFile, compressionSteps, storageDetail, imageFailureCopy, deadline, HEIC_TIMEOUT_MS } = await import(
   '../src/lib/image-upload.ts'
 );
 const { fileType } = await import('../src/lib/file-type.ts');
@@ -131,6 +131,15 @@ console.log('\n— a picture chosen on the phone, before it is sent');
   check('a picture of the wrong kind says so', imageFailureCopy('file_type', undefined, copy) === 'type');
   check('one that will not shrink says so', imageFailureCopy('too_large', undefined, copy) === 'large');
   check('anything else stays generic', imageFailureCopy('unavailable', undefined, copy) === 'generic');
+  check('a HEIC conversion is given about 20 seconds', HEIC_TIMEOUT_MS === 20_000);
+  check('a finished conversion is kept', (await deadline(Promise.resolve('jpeg'), 50)) === 'jpeg');
+  let timedOut = false;
+  try {
+    await deadline(new Promise(() => {}), 30);
+  } catch {
+    timedOut = true;
+  }
+  check('a conversion that never answers is stopped', timedOut);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

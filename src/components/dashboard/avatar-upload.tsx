@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { ImageUp, Trash2 } from 'lucide-react';
+import { ImageUp, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { saveAvatar } from '@/lib/actions/account';
@@ -60,20 +60,34 @@ export function AvatarUpload({
 
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [converting, setConverting] = useState(false);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+  const busy = converting || pending;
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     // Emptied at once, whatever happens next. A picker only reports a change,
     // so after a failed upload the same photo was still selected, and choosing
     // it again — the obvious retry — did nothing at all.
-    event.target.value = '';
+    input.value = '';
     if (!file) return;
 
-    startTransition(async () => {
-      const prepared = await prepareUploadImage(file, 'avatar');
+    setError(null);
+    setConverting(true);
+    // Outside the transition so the spinner paints while a HEIC is decoded.
+    // The upload itself stays in one: a dropped request must not unmount the form.
+    void (async () => {
+      let prepared: Awaited<ReturnType<typeof prepareUploadImage>>;
+      try {
+        prepared = await prepareUploadImage(file, 'avatar');
+      } catch {
+        prepared = { ok: false, error: 'file_type' };
+      }
+      setConverting(false);
       if (!prepared.ok) {
+        input.value = '';
         setError(described(tValidation, tCommon, prepared.error));
         return;
       }
@@ -81,17 +95,17 @@ export function AvatarUpload({
       const form = new FormData();
       form.set('kind', 'avatar');
       form.set('file', prepared.file);
-
-      const result = await reach(uploadImage(form));
-      if (recoverSession(result)) return;
-      if (!result.ok) {
-        setError(described(tValidation, tCommon, result.error, 'detail' in result ? result.detail : undefined));
-        return;
-      }
-
-      setError(null);
-      router.refresh();
-    });
+      startTransition(async () => {
+        const result = await reach(uploadImage(form));
+        if (recoverSession(result)) return;
+        if (!result.ok) {
+          setError(described(tValidation, tCommon, result.error, 'detail' in result ? result.detail : undefined));
+          return;
+        }
+        setError(null);
+        router.refresh();
+      });
+    })();
   }
 
   function remove() {
@@ -111,7 +125,7 @@ export function AvatarUpload({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
+    <section aria-busy={busy} className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <Avatar name={name} src={avatarUrl} size="lg" />
 
@@ -119,6 +133,11 @@ export function AvatarUpload({
           <h2 className="font-semibold">{t('photo')}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">{t('photoHint')}</p>
 
+          {converting ? (
+            <p role="status" className="mt-2 text-sm text-muted-foreground">
+              {tCommon('loading')}
+            </p>
+          ) : null}
           {error ? (
             <p role="alert" className="mt-2 text-sm text-destructive">
               {error}
@@ -128,24 +147,24 @@ export function AvatarUpload({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <Button asChild variant="outline" disabled={pending}>
+        <Button asChild variant="outline" disabled={busy}>
           {/* A label, not a button that clicks a hidden input: the label is the
               control, so it works from the keyboard on its own. */}
           <label className="cursor-pointer">
-            <ImageUp aria-hidden />
+            {busy ? <Loader2 className="animate-spin" aria-hidden /> : <ImageUp aria-hidden />}
             {avatarUrl ? t('photoReplace') : t('photoUpload')}
             <input
               type="file"
               accept={IMAGE_ACCEPT}
               onChange={onPick}
-              disabled={pending}
+              disabled={busy}
               className="sr-only"
             />
           </label>
         </Button>
 
         {avatarUrl ? (
-          <Button variant="ghost" size="icon" onClick={remove} disabled={pending}>
+          <Button variant="ghost" size="icon" onClick={remove} disabled={busy}>
             <Trash2 aria-hidden />
             <span className="sr-only">{tCommon('delete')}</span>
           </Button>

@@ -242,6 +242,14 @@ console.log('\n— who writes a photo or a logo');
   );
 }
 
+console.log('\n— the HEIC decoder’s worker');
+{
+  const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
+  check("the worker policy names blob", /worker-src 'self' blob:/.test(config));
+  const scriptSrc = /`script-src[^`]*`/.exec(config)?.[0] ?? '';
+  check('script-src is left without blob', scriptSrc.length > 0 && !scriptSrc.includes('blob:'));
+}
+
 console.log('\n— secrets');
 {
   check('equal secrets match', secretsMatch('abc123', 'abc123'));

@@ -138,6 +138,14 @@ const nextConfig: NextConfig = {
       `default-src 'self'`,
       // Next inlines its bootstrap; see the note above about nonces.
       `script-src 'self' 'unsafe-inline' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile}`.replace(/\s+/g, ' ').trim(),
+      /*
+        heic2any turns an iPhone photo into JPEG inside a worker it builds
+        from a blob. With no worker-src, Chromium falls back to script-src
+        and WebKit reports worker-src, and both refuse that blob — the
+        conversion never finishes and the form looks idle. script-src is
+        unchanged: a blob may be a worker, not a script on the page.
+      */
+      `worker-src 'self' blob:`,
       // Tailwind ships as a stylesheet, but Next also inlines critical CSS.
       `style-src 'self' 'unsafe-inline'`,
       // Company logos come from Supabase storage; avatars come from whichever

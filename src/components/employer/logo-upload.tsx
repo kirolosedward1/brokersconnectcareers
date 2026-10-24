@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { ImageUp, Trash2 } from 'lucide-react';
+import { ImageUp, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { saveCompanyLogo } from '@/lib/actions/company';
@@ -64,20 +64,34 @@ export function LogoUpload({
 
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [converting, setConverting] = useState(false);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+  const busy = converting || pending;
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     // Emptied at once, whatever happens next. A picker only reports a change,
     // so after a failed upload the same photo was still selected, and choosing
     // it again — the obvious retry — did nothing at all.
-    event.target.value = '';
+    input.value = '';
     if (!file) return;
 
-    startTransition(async () => {
-      const prepared = await prepareUploadImage(file, 'logo');
+    setError(null);
+    setConverting(true);
+    // Outside the transition so the spinner paints while a HEIC is decoded.
+    // The upload itself stays in one: a dropped request must not unmount the form.
+    void (async () => {
+      let prepared: Awaited<ReturnType<typeof prepareUploadImage>>;
+      try {
+        prepared = await prepareUploadImage(file, 'logo');
+      } catch {
+        prepared = { ok: false, error: 'file_type' };
+      }
+      setConverting(false);
       if (!prepared.ok) {
+        input.value = '';
         setError(described(tValidation, tCommon, prepared.error));
         return;
       }
@@ -86,17 +100,17 @@ export function LogoUpload({
       form.set('kind', 'logo');
       form.set('companyId', companyId);
       form.set('file', prepared.file);
-
-      const result = await reach(uploadImage(form));
-      if (recoverSession(result)) return;
-      if (!result.ok) {
-        setError(described(tValidation, tCommon, result.error, 'detail' in result ? result.detail : undefined));
-        return;
-      }
-
-      setError(null);
-      router.refresh();
-    });
+      startTransition(async () => {
+        const result = await reach(uploadImage(form));
+        if (recoverSession(result)) return;
+        if (!result.ok) {
+          setError(described(tValidation, tCommon, result.error, 'detail' in result ? result.detail : undefined));
+          return;
+        }
+        setError(null);
+        router.refresh();
+      });
+    })();
   }
 
   function remove() {
@@ -119,7 +133,7 @@ export function LogoUpload({
   // phone, where it wrapped to five lines between the preview and the buttons.
   // The buttons drop below instead.
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
+    <div aria-busy={busy} className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <CompanyLogo name={companyName} logoUrl={logoUrl} seed={companySlug} size="lg" />
 
@@ -127,6 +141,11 @@ export function LogoUpload({
           <p className="text-sm font-medium">{t('logo')}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('logoHint')}</p>
 
+          {converting ? (
+            <p role="status" className="mt-2 text-sm text-muted-foreground">
+              {tCommon('loading')}
+            </p>
+          ) : null}
           {error ? (
             <p role="alert" className="mt-2 text-sm text-destructive">
               {error}
@@ -136,24 +155,24 @@ export function LogoUpload({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <Button asChild variant="outline" disabled={pending}>
+        <Button asChild variant="outline" disabled={busy}>
           {/* A label, not a button that clicks a hidden input: the label is
               the control, so it works from the keyboard on its own. */}
           <label className="cursor-pointer">
-            <ImageUp aria-hidden />
+            {busy ? <Loader2 className="animate-spin" aria-hidden /> : <ImageUp aria-hidden />}
             {logoUrl ? t('logoReplace') : t('logoUpload')}
             <input
               type="file"
               accept={IMAGE_ACCEPT}
               onChange={onPick}
-              disabled={pending}
+              disabled={busy}
               className="sr-only"
             />
           </label>
         </Button>
 
         {logoUrl ? (
-          <Button variant="ghost" size="icon" onClick={remove} disabled={pending}>
+          <Button variant="ghost" size="icon" onClick={remove} disabled={busy}>
             <Trash2 aria-hidden />
             <span className="sr-only">{tCommon('delete')}</span>
           </Button>

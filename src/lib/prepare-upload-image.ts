@@ -15,7 +15,9 @@
  */
 import {
   AVATAR_MAX_EDGE,
+  HEIC_TIMEOUT_MS,
   IMAGE_ACCEPT,
+  deadline,
   isAllowedRaster,
   isHeicBytes,
   isHeicFile,
@@ -36,10 +38,16 @@ export async function prepareUploadImage(file: File, kind: Kind): Promise<Prepar
   if (isSvg(file)) return { ok: false, error: 'file_type' };
 
   if (await isHeic(file)) {
-    const jpeg = await heicToJpeg(file);
-    const source = jpeg ?? file;
-    if (jpeg && jpeg.size <= MAX_IMAGE_BYTES) return { ok: true, file: jpeg };
-    return compress(source, kind, jpeg?.name ?? renamed(file.name, 'jpg'), 'image/jpeg');
+    try {
+      const jpeg = await deadline(heicToJpeg(file), HEIC_TIMEOUT_MS);
+      if (jpeg.size <= MAX_IMAGE_BYTES) return { ok: true, file: jpeg };
+      return await compress(jpeg, kind, jpeg.name, 'image/jpeg');
+    } catch {
+      // A refused worker, a decoder that never answers, or a file that is
+      // not a picture. The form says the type is unsupported and clears the
+      // picker; it does not keep waiting.
+      return { ok: false, error: 'file_type' };
+    }
   }
 
   const type = fileType(file);
@@ -58,16 +66,24 @@ async function isHeic(file: File): Promise<boolean> {
   return isHeicBytes(head);
 }
 
-async function heicToJpeg(file: File): Promise<File | null> {
+async function heicToJpeg(file: File): Promise<File> {
   try {
     const { default: convert } = await import('heic2any');
     const converted = await convert({ blob: file, toType: 'image/jpeg', quality: 0.92 });
     const blob = Array.isArray(converted) ? converted[0] : converted;
-    if (!blob || blob.size === 0) return null;
-    return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
+    if (blob && blob.size > 0) return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
   } catch {
-    // Safari decodes a HEIC itself. The canvas path below uses that.
-    return null;
+    // The worker was refused, or this browser can decode a HEIC on its own.
+  }
+
+  const bitmap = await decode(file);
+  if (!bitmap) throw new Error('heic');
+  try {
+    const blob = await encode(bitmap, Math.max(bitmap.width, bitmap.height), 0.92, 'image/jpeg');
+    if (!blob) throw new Error('heic');
+    return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
+  } finally {
+    bitmap.close();
   }
 }
 
