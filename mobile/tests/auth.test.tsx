@@ -316,12 +316,20 @@ describe('signing in with a password', () => {
     });
   });
 
-  it('asks for eight characters before sending anything', async () => {
+  it('asks for a password before sending anything', async () => {
     await renderRouter(app, { initialUrl: '/sign-in' });
-    await fillSignIn('sara@example.com', 'short');
+    await fillSignIn('sara@example.com', '');
     await press(ar.auth.signIn);
-    expect(await screen.findByText(ar.validation.passwordShort)).toBeTruthy();
+    expect(await screen.findByText(ar.validation.required)).toBeTruthy();
     expect(server.asked('/auth/v1/token')).toHaveLength(0);
+  });
+
+  it('sends a password shorter than a new one must be: it may predate the rule (password.ts)', async () => {
+    await renderRouter(app, { initialUrl: '/sign-in' });
+    await fillSignIn('sara@example.com', 'eight-ch');
+    await press(ar.auth.signIn);
+    await waitFor(() => expect(server.asked('/auth/v1/token')).toHaveLength(1));
+    expect(screen.queryByText(ar.validation.passwordShort)).toBeNull();
   });
 
   it('pauses when the server asks it to', async () => {
@@ -483,6 +491,17 @@ describe('creating an account', () => {
     } finally {
       focus.undo();
     }
+  });
+
+  it('holds a new password to ten characters', async () => {
+    await renderRouter(app, { initialUrl: '/sign-up' });
+    fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'nine-char');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'nine-char');
+    expect(await screen.findByText(ar.validation.passwordShort)).toBeTruthy();
+    expect(ar.validation.passwordShort).toContain('10');
+    await press(ar.auth.signUp).catch(() => {});
+    expect(server.asked('/auth/v1/signup')).toHaveLength(0);
   });
 
   it('catches a mistyped password before sending it', async () => {

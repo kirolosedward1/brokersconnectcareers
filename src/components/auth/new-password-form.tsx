@@ -13,6 +13,7 @@ import { useSessionRecovery } from '@/lib/session-expired';
 import { passwordRefusal } from '@/lib/auth/errors';
 import { secondFactorChallenge } from '@/lib/auth/second-factor';
 import { safeNext } from '@/lib/safe-next';
+import { NEW_PASSWORD_MIN } from '@/lib/auth/password';
 
 /**
  * Set the new password, on the session the recovery link just created.
@@ -41,7 +42,7 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
     const password = String(form.get('password') ?? '');
     const confirm = String(form.get('passwordConfirm') ?? '');
 
-    if (password.length < 8) {
+    if (password.length < NEW_PASSWORD_MIN) {
       setError(tValidation('passwordShort'));
       return;
     }
@@ -106,7 +107,7 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
           name="password"
           type="password"
           required
-          minLength={8}
+          minLength={NEW_PASSWORD_MIN}
           autoComplete="new-password"
           dir="ltr"
         />
@@ -118,7 +119,7 @@ export function NewPasswordForm({ locale }: { locale: Locale }) {
           name="passwordConfirm"
           type="password"
           required
-          minLength={8}
+          minLength={NEW_PASSWORD_MIN}
           autoComplete="new-password"
           dir="ltr"
         />

@@ -1385,7 +1385,7 @@
     "required": "This field is required",
     "invalidEmail": "That email does not look right",
     "invalidPhone": "Use international format, e.g. +201001234567",
-    "passwordShort": "Password must be at least 8 characters",
+    "passwordShort": "Password must be at least 10 characters",
     "salaryOrder": "Maximum salary must be above the minimum",
     "commissionRequired": "Enter the commission percentage",
     "fileTooLarge": "That file is too large",

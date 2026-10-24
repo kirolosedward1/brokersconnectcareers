@@ -1,5 +1,7 @@
-/** The website's rule for a new password, and the one the keyboard's suggestion follows. */
-export const PASSWORD_MIN = 8;
+import { NEW_PASSWORD_MIN } from '@/lib/auth/password';
+
+/** The website's rule for a new password (password.ts), and the one the keyboard's suggestion follows. */
+export const PASSWORD_MIN = NEW_PASSWORD_MIN;
 export const PASSWORD_RULES = `minlength: ${PASSWORD_MIN};`;
 
 /**

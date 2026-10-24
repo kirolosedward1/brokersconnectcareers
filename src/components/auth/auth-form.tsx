@@ -16,6 +16,7 @@ import { Turnstile, turnstileEnabled } from '@/components/security/turnstile';
 import { reportAuthOutcome, type AuthFriction } from '@/lib/actions/security';
 import { reach } from '@/lib/reach';
 import { knownAuthError } from '@/lib/auth/errors';
+import { NEW_PASSWORD_MIN } from '@/lib/auth/password';
 
 /**
  * Google's mark, inline.
@@ -211,8 +212,11 @@ export function AuthForm({
       return;
     }
 
-    if (password.length < 8) {
-      setError(tValidation('passwordShort'));
+    // A new password is held to the rule; signing in, to having typed one
+    // (password.ts: older passwords are shorter, and wrong is the server's
+    // answer to give).
+    if (mode === 'sign-up' ? password.length < NEW_PASSWORD_MIN : password.length === 0) {
+      setError(tValidation(mode === 'sign-up' ? 'passwordShort' : 'required'));
       return;
     }
 
@@ -495,7 +499,7 @@ export function AuthForm({
             name="password"
             type="password"
             required
-            minLength={8}
+            minLength={mode === 'sign-up' ? NEW_PASSWORD_MIN : undefined}
             autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'}
             dir="ltr"
           />
@@ -519,7 +523,7 @@ export function AuthForm({
               name="passwordConfirm"
               type="password"
               required
-              minLength={8}
+              minLength={NEW_PASSWORD_MIN}
               autoComplete="new-password"
               dir="ltr"
             />

@@ -19,6 +19,7 @@ import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { PASSWORD_MIN } from '~/lib/password-checks';
 
 /**
  * Set the new password, on the session the reset link has just made — the
@@ -44,7 +45,7 @@ export default function NewPasswordScreen() {
 
   async function submit() {
     setError(null);
-    if (password.length < 8) {
+    if (password.length < PASSWORD_MIN) {
       setError(t('validation.passwordShort'));
       return;
     }

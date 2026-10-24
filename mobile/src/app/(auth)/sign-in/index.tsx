@@ -80,8 +80,10 @@ export default function SignInScreen() {
       setError(t('auth.slowDown', { seconds: wait }));
       return;
     }
-    if (password.length < 8) {
-      setError(t('validation.passwordShort'));
+    // Having typed one is all signing in asks (password.ts): an account's
+    // password may predate the minimum, and a wrong one is the server's to say.
+    if (password.length === 0) {
+      setError(t('validation.required'));
       return;
     }
 

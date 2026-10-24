@@ -10,6 +10,7 @@ import { announcePasswordChange } from '@/lib/actions/account';
 import { reach } from '@/lib/reach';
 import { knownAuthError, passwordRefusal } from '@/lib/auth/errors';
 import { westernDigits } from '@/lib/search/arabic';
+import { NEW_PASSWORD_MIN } from '@/lib/auth/password';
 
 /**
  * Change your password, change your email.
@@ -64,7 +65,7 @@ export function CredentialsSettings({
     setPasswordDone(false);
     setPasswordError(null);
 
-    if (password.length < 8) {
+    if (password.length < NEW_PASSWORD_MIN) {
       setPasswordError(tValidation('passwordShort'));
       return;
     }
@@ -171,7 +172,7 @@ export function CredentialsSettings({
                 name="newPassword"
                 type="password"
                 required
-                minLength={8}
+                minLength={NEW_PASSWORD_MIN}
                 autoComplete="new-password"
                 dir="ltr"
               />
@@ -183,7 +184,7 @@ export function CredentialsSettings({
                 name="newPasswordConfirm"
                 type="password"
                 required
-                minLength={8}
+                minLength={NEW_PASSWORD_MIN}
                 autoComplete="new-password"
                 dir="ltr"
               />
