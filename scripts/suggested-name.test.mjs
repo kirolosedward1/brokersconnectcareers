@@ -62,8 +62,11 @@ const ar = JSON.parse(read('messages/ar.json'));
 const en = JSON.parse(read('messages/en.json'));
 const button = read('src/components/auth/apple-sign-in-button.tsx');
 const form = read('src/components/auth/auth-form.tsx');
-is('the Arabic label is Apple\'s', ar.auth.continueWithApple, 'تسجيل الدخول باستخدام Apple');
-is('the form uses that label', form.includes("t('continueWithApple')"), true);
+is('the Arabic label is Apple\'s', ar.auth.signInWithApple, 'تسجيل الدخول باستخدام Apple');
+is('the English label matches', en.auth.signInWithApple, 'Sign in with Apple');
+is('the form uses that label', form.includes("t('signInWithApple')"), true);
+is('the old continueWithApple key is gone', ar.auth.continueWithApple, undefined);
+is('the old continueWithGoogle key is gone', ar.auth.continueWithGoogle ?? en.auth.continueWithGoogle, undefined);
 is('sign-up says التسجيل باستخدام Apple', ar.auth.signUpWithApple, 'التسجيل باستخدام Apple');
 is('sign-in says تسجيل الدخول باستخدام Google', ar.auth.signInWithGoogle, 'تسجيل الدخول باستخدام Google');
 is('sign-up says التسجيل باستخدام Google', ar.auth.signUpWithGoogle, 'التسجيل باستخدام Google');
@@ -79,7 +82,8 @@ is(
   'Already have an account? Sign in with the same email first.',
 );
 is('the form shows that line', form.includes("t('appleSameEmail')"), true);
-is('the button is not hidden until the provider is on', !/appleEnabled \? \(/.test(form), true);
+is('the Apple button is hidden while the provider is off', /\{appleEnabled \? \(/.test(form), true);
+is('the divider stays when any provider is on', form.includes('appleEnabled || googleEnabled'), true);
 is('a switched-off provider is said in the catalogue', form.includes("t('appleUnavailable')"), true);
 is('the official white sheet', button.includes('/brand/apple-sign-in/left-white-logo-medium.svg'), true);
 is('the official black sheet', button.includes('/brand/apple-sign-in/left-black-logo-medium.svg'), true);
@@ -100,11 +104,17 @@ is(
   true,
 );
 is('the Apple label can shrink', button.includes('className="min-w-0 whitespace-nowrap"'), true);
+const noteAt = form.indexOf("t('appleSameEmail')");
+const googleAt = form.indexOf("t('signInWithGoogle')");
+const dividerAt = form.indexOf("{t('or')}");
 is(
-  'the linking note is 13px and does not wrap',
-  form.includes('whitespace-nowrap text-center text-[13px] leading-[18px] text-muted-foreground'),
+  'the linking note is 13px, grey, and balanced inside the column',
+  form.includes('w-full max-w-full min-w-0 text-balance text-center text-[13px] leading-[18px] text-muted-foreground'),
   true,
 );
+is('the note sits under both provider buttons', noteAt > googleAt && noteAt > form.indexOf("t('signInWithApple')"), true);
+is('and above the divider', noteAt < dividerAt, true);
+is('the note is not taken out of the column', !form.includes('whitespace-nowrap text-[13px]') && !form.includes('-translate-x-1/2'), true);
 is('black on light, white in the dark theme', button.includes('bg-[#000000]') && button.includes('dark:bg-[#ffffff]'), true);
 is('the old redrawn mark is gone', !form.includes('M318.7') && !button.includes('M318.7'), true);
 const onboarding = read('src/app/[locale]/onboarding/page.tsx');

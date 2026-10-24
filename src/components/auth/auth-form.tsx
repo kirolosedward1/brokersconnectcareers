@@ -61,9 +61,10 @@ export function AuthForm({
    */
   googleEnabled?: boolean;
   /**
-   * Whether GoTrue will accept Sign in with Apple. The button is drawn either
-   * way — an account made in the iOS app may have no other way in — and a
-   * click while it is off says so in Arabic instead of GoTrue's English.
+   * Whether GoTrue will accept Sign in with Apple. The same flag
+   * `/api/mobile/v1/config` publishes (`enabledProviders`). The button and the
+   * linking note are drawn only while it is on. A click that still comes back
+   * "provider is not enabled" says so in Arabic instead of GoTrue's English.
    */
   appleEnabled?: boolean;
   /**
@@ -432,23 +433,16 @@ export function AuthForm({
 
   return (
     <div className="space-y-5">
-      <>
+      {appleEnabled || googleEnabled ? (
+        <>
           <div className="space-y-2">
-            <AppleSignInButton
-              label={mode === 'sign-up' ? t('signUpWithApple') : t('continueWithApple')}
-              disabled={pending}
-              onClick={() => signInWith('apple')}
-            />
-            {/*
-              One line at 13px. The sentence is wider than the column at 320,
-              so it is taken out of the flow and centred: it uses the page's
-              side padding and does not stretch the column.
-            */}
-            <p className="relative h-[18px] w-full min-w-0">
-              <span className="absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap text-center text-[13px] leading-[18px] text-muted-foreground">
-                {t('appleSameEmail')}
-              </span>
-            </p>
+            {appleEnabled ? (
+              <AppleSignInButton
+                label={mode === 'sign-up' ? t('signUpWithApple') : t('signInWithApple')}
+                disabled={pending}
+                onClick={() => signInWith('apple')}
+              />
+            ) : null}
             {googleEnabled ? (
               <Button
                 type="button"
@@ -464,15 +458,26 @@ export function AuthForm({
                 </span>
               </Button>
             ) : null}
+            {/*
+              Under both provider buttons, above «أو». The sentence is wider
+              than the column at 320, so it wraps to two balanced lines and
+              stays the width of the buttons.
+            */}
+            {appleEnabled ? (
+              <p className="w-full max-w-full min-w-0 text-balance text-center text-[13px] leading-[18px] text-muted-foreground">
+                {t('appleSameEmail')}
+              </p>
+            ) : null}
           </div>
 
-          {/* The separator belongs to the buttons. Apple is always one of them. */}
+          {/* The separator stays for whichever provider is on, including Google alone. */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
             {t('or')}
             <span className="h-px flex-1 bg-border" />
           </div>
-      </>
+        </>
+      ) : null}
 
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label={t('email')} htmlFor="email">

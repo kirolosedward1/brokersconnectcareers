@@ -369,7 +369,7 @@ describe('signing in with a password', () => {
     await renderRouter(app, { initialUrl: '/welcome' });
     await press(ar.nav.signIn);
     // No one-tap way offered: no round buttons beside Sign in, and the form at once.
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
 
@@ -913,7 +913,7 @@ describe('one-tap sign-in', () => {
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
-    await press(ar.auth.continueWithGoogle);
+    await press(ar.auth.signInWithGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     const [authorize, returnTo] = jest.mocked(WebBrowser.openAuthSessionAsync).mock.calls[0];
@@ -941,7 +941,7 @@ describe('one-tap sign-in', () => {
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
-    await press(ar.auth.continueWithGoogle);
+    await press(ar.auth.signInWithGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(opened).toBeNull();
@@ -958,10 +958,10 @@ describe('one-tap sign-in', () => {
       ReturnType<typeof WebBrowser.openAuthSessionAsync>
     >);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    await press(ar.auth.continueWithGoogle);
+    await press(ar.auth.signInWithGoogle);
     await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled());
     // The sheet is usable again, and says nothing went wrong.
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle, disabled: false })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle, disabled: false })).toBeTruthy();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     expect(screen.getByText(ar.auth.signInTitle)).toBeTruthy();
   });
@@ -1013,14 +1013,14 @@ describe('one-tap sign-in, as App Review asks', () => {
     await act(async () => {
       await jest.advanceTimersByTimeAsync(100);
     });
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
   });
 
   it('offers both once Apple is on', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeTruthy();
   });
 
@@ -1028,16 +1028,16 @@ describe('one-tap sign-in, as App Review asks', () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
     expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
 
     await press(ar.app.auth.continueWithEmail);
     await fillSignIn('sara@example.com', PASSWORD);
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
 
     // The other ways are a tap away, and what was typed is still there on the way back.
     await press(ar.app.auth.otherWays);
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
     expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
     await press(ar.app.auth.continueWithEmail);
     expect((await screen.findByLabelText(ar.auth.email)).props.value).toBe('sara@example.com');
@@ -1062,9 +1062,9 @@ describe('one-tap sign-in, as App Review asks', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.auth.configRetry })).toBeNull());
     // Still the form, with what was typed; the one-tap ways a link away.
     expect(screen.getByLabelText(ar.auth.email).props.value).toBe('sara@example.com');
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
     await press(ar.app.auth.otherWays);
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
   });
 
   it('lets the welcome finish its own sign-in before anything else opens over it', async () => {
@@ -1094,10 +1094,10 @@ describe('one-tap sign-in, as App Review asks', () => {
       url: 'brokersconnect://auth/callback?code=google-code',
     });
     await renderRouter(app, { initialUrl: '/welcome' });
-    const google = await screen.findByRole('button', { name: ar.auth.continueWithGoogle });
+    const google = await screen.findByRole('button', { name: ar.auth.signInWithGoogle });
     expect(google.props.accessibilityHint).toBe(ar.app.welcome.signInGoogleHint);
     // Apple's beside Google's, no less to hand.
-    expect(screen.getByRole('button', { name: ar.auth.continueWithApple }).props.accessibilityHint).toBe(ar.app.welcome.signInAppleHint);
+    expect(screen.getByRole('button', { name: ar.auth.signInWithApple }).props.accessibilityHint).toBe(ar.app.welcome.signInAppleHint);
 
     fireEvent.press(google);
     expect(await screen.findByText('home screen')).toBeTruthy();
