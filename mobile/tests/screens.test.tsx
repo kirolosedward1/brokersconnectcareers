@@ -453,7 +453,7 @@ describe('a listing', () => {
       await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
       expect(await screen.findByText(firstPage[1].title_ar)).toBeTruthy();
       // Twenty in all, nineteen drawn: the twenty-first is on the board.
-      expect(screen.getByText(ar.jobs.title)).toBeTruthy();
+      expect(screen.getByText(ar.nav.browseJobs)).toBeTruthy();
     } finally {
       act(() => unhideJob(firstPage[0].id));
     }
@@ -465,7 +465,7 @@ describe('a listing', () => {
     act(() => firstPage.forEach((job) => hideJob(job.id, { name: job.title_ar, slug: job.slug })));
     try {
       await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
-      expect(await screen.findByText(ar.jobs.title)).toBeTruthy();
+      expect(await screen.findByText(ar.nav.browseJobs)).toBeTruthy();
       expect(screen.queryByText(ar.jobs.empty)).toBeNull();
       expect(screen.queryByText(firstPage[0].title_ar)).toBeNull();
     } finally {

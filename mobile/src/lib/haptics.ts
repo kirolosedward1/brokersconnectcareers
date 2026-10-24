@@ -21,6 +21,10 @@ export const haptic = {
   success() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   },
+  /** Asked for something it cannot do (a limit reached): a warning, not an error. */
+  warning() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+  },
   error() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
   },

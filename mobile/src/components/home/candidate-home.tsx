@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -11,7 +11,7 @@ import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
-import { StatRow } from '~/components/dashboard/stat-row';
+import { StatRow, StatRowPlaceholder } from '~/components/dashboard/stat-row';
 import { WeeklySummary } from '~/components/home/weekly-summary';
 import { JobBrowse } from '~/components/home/job-browse';
 import { RecentlyViewed } from './recently-viewed';
@@ -77,6 +77,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const figuresPending = summary.isPending || applications.isPending;
   const unreadable = !s && applications.isError;
   const noApplications = s ? s.applications_total === 0 : applications.isSuccess && applications.data.length === 0;
+  const hasApplied = s ? s.applications_total > 0 : (applications.data?.length ?? 0) > 0;
 
   const refresh = () =>
     Promise.all([
@@ -123,11 +124,11 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       {/* Who sees their directory card was decided before onboarding asked. */}
       {profile ? <VisibilityAsk /> : null}
 
-      {/* The phone's question, with its reason, until it has been answered. */}
-      {profile ? <PushPrompt audience="candidate" /> : null}
+      {/* The phone's question, with its reason — once there is an application to hear back on — until answered. */}
+      {profile && hasApplied ? <PushPrompt audience="candidate" /> : null}
 
       {figuresPending ? (
-        <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />
+        <StatRowPlaceholder count={5} label={t('common.loading')} />
       ) : (
         <>
           {next ? (
@@ -181,7 +182,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                 {t('dashboard.emptyCandidateBody')}
               </Text>
               <View style={{ marginTop: space[2] }}>
-                <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} />
+                <Button label={t('nav.browseJobs')} onPress={() => router.navigate('/jobs')} />
               </View>
             </View>
           ) : null}

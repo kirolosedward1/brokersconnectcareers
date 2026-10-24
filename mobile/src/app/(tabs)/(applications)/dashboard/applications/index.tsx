@@ -13,7 +13,7 @@ import { ApplicationTimeline } from '~/components/applications/timeline';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Illustration } from '~/components/ui/illustration';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
   useMyApplications,
@@ -56,7 +56,7 @@ export default function ApplicationsScreen() {
       />
     );
   } else if (applications.isPending) {
-    body = <LoadingState />;
+    body = <SkeletonScreen />;
   } else if (applications.isError && !applications.data) {
     // Never "you have not applied" for a read that failed.
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;

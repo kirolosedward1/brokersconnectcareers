@@ -15,7 +15,8 @@ import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
+import { SuspendedState } from '~/components/ui/suspended-state';
 import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
@@ -88,7 +89,7 @@ export default function InboxScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <SuspendedState />;
   else if (!viewer.company) {
     body = (
       <EmptyState
@@ -206,7 +207,7 @@ export default function InboxScreen() {
         </ScrollView>
 
         {inbox.isPending ? (
-          <LoadingState />
+          <SkeletonList count={4} compact inset={false} />
         ) : inbox.isError && !inbox.data ? (
           <ErrorState error={inbox.error} onRetry={() => inbox.refetch()} />
         ) : !rows?.length ? (
