@@ -14,7 +14,6 @@
  * Loaded by the two upload forms only. The decoder is a worker imported when
  * the file is actually a HEIC, so the rest of the site does not carry it.
  */
-import { pixelsAreMostlyOneValue } from '@/lib/heic-decode';
 import {
   AVATAR_MAX_EDGE,
   HEIC_TIMEOUT_MS,
@@ -91,17 +90,15 @@ async function heicToJpeg(file: File): Promise<File> {
     }
     return imageDataToJpeg(image, file.name);
   } catch (error) {
-    // The decoder looked at the file and refused it: the frame was short, the
-    // bytes after the header were not a picture, or the plane was one colour.
-    // A browser will still paint the missing tiles green and call that a
-    // success, which is the picture that was stored. Only a worker that never
-    // started may be handed to the browser, and a flat result there is refused
-    // the same way.
+    // The decoder looked at the file and refused it: the frame was short, or
+    // the bytes after the header were not a picture. A browser will still
+    // paint the missing tiles green and call that a success, which is the
+    // picture that was stored. Only a worker that never started may be handed
+    // to the browser.
     if (!(error instanceof Error) || error.message !== 'worker') throw error;
     const bitmap = await decode(file);
     if (!bitmap) throw error;
     try {
-      if (bitmapMostlyOneValue(bitmap)) throw new Error('flat');
       const blob = await encode(bitmap, Math.max(bitmap.width, bitmap.height), 0.92, 'image/jpeg');
       if (!blob) throw new Error('heic');
       return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
@@ -109,22 +106,6 @@ async function heicToJpeg(file: File): Promise<File> {
       bitmap.close();
     }
   }
-}
-
-/** The browser's own decode of a HEIC, reduced, so a green field is visible. */
-function bitmapMostlyOneValue(bitmap: ImageBitmap): boolean {
-  const longest = Math.max(bitmap.width, bitmap.height, 1);
-  const scale = Math.min(1, 96 / longest);
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) return false;
-  context.drawImage(bitmap, 0, 0, width, height);
-  const pixels = context.getImageData(0, 0, width, height).data;
-  return pixelsAreMostlyOneValue(pixels, width, height);
 }
 
 function decodeHeic(file: File): Promise<ImageData> {

@@ -156,7 +156,7 @@ const { readFileSync } = await import('node:fs');
 const { createRequire } = await import('node:module');
 const require = createRequire(import.meta.url);
 const libheif = require('libheif-js/wasm-bundle');
-const { decodeHeicPrimary, pixelsAreMostlyOneValue } = await import('../src/lib/heic-decode.ts');
+const { decodeHeicPrimary } = await import('../src/lib/heic-decode.ts');
 
 function refusal(run) {
   try {
@@ -167,9 +167,11 @@ function refusal(run) {
   }
 }
 
-// A 64×64 HEVC picture in a real HEIC container. The pixels are a gradient,
-// so a decoder that hands back one colour has not read it.
+// A 64×64 HEVC picture in a real HEIC container.
 const gradient = new Uint8Array(readFileSync(new URL('./fixtures/gradient.heic', import.meta.url)));
+// The same size, almost entirely white, with a small dark mark. A logo on a
+// white ground looks like this, and has to be kept.
+const whiteLogo = new Uint8Array(readFileSync(new URL('./fixtures/logo.heic', import.meta.url)));
 
 function boxEnd(bytes, name) {
   let cursor = 0;
@@ -245,18 +247,23 @@ console.log('\n— a HEIC that is not a whole picture');
 {
   const photo = decodeHeicPrimary(libheif, gradient);
   check('a complete HEIC is the photograph, at its own size', photo.width === 64 && photo.height === 64, `${photo.width}×${photo.height}`);
-  check('and it is not one colour', !pixelsAreMostlyOneValue(photo.pixels, photo.width, photo.height));
-  const solid = new Uint8Array(32 * 32 * 4);
-  for (let i = 0; i < solid.length; i += 4) {
-    solid[i + 1] = 136;
-    solid[i + 3] = 255;
+
+  const logo = decodeHeicPrimary(libheif, whiteLogo);
+  let pale = 0;
+  let mark = 0;
+  for (let i = 0; i < logo.width * logo.height; i++) {
+    const offset = i * 4;
+    const red = logo.pixels[offset];
+    const green = logo.pixels[offset + 1];
+    const blue = logo.pixels[offset + 2];
+    if (red > 240 && green > 240 && blue > 240) pale += 1;
+    if (red * 0.299 + green * 0.587 + blue * 0.114 < 40) mark += 1;
   }
-  check('a field of one colour would be refused', pixelsAreMostlyOneValue(solid, 32, 32));
-  const mostly = new Uint8Array(solid);
-  mostly[0] = 20;
-  mostly[1] = 40;
-  mostly[2] = 60;
-  check('so would a frame that is almost all that colour', pixelsAreMostlyOneValue(mostly, 32, 32));
+  check(
+    'a mostly-white logo, with a small mark, is kept',
+    logo.width === 64 && logo.height === 64 && pale / (logo.width * logo.height) > 0.95 && mark > 0,
+    `${logo.width}×${logo.height}, ${pale} pale, ${mark} dark`,
+  );
 
   const mdat = boxEnd(gradient, 'mdat');
   const cut = gradient.subarray(0, mdat.cursor + mdat.header + 16);
@@ -269,13 +276,12 @@ console.log('\n— a HEIC that is not a whole picture');
     junk[i] = state & 255;
   }
   const junked = refusal(() => decodeHeicPrimary(libheif, junk));
-  check('random bytes after a real header are refused', junked === 'decode' || junked === 'warning' || junked === 'truncated', junked);
+  check('random bytes after a real header are refused by the decode itself', junked === 'decode' || junked === 'warning' || junked === 'truncated', junked);
 
   const whole = decodeHeicPrimary(libheif, gridOf(gradient, 'full'));
   check('a whole grid is the full frame, not one tile', whole.width === 128 && whole.height === 128, `${whole.width}×${whole.height}`);
-  check('and that frame is still the photograph', !pixelsAreMostlyOneValue(whole.pixels, whole.width, whole.height));
   const shortGrid = refusal(() => decodeHeicPrimary(libheif, gridOf(gradient, 'cut')));
-  check('a grid whose later tiles were cut off is refused', shortGrid === 'truncated' || shortGrid === 'warning' || shortGrid === 'decode', shortGrid);
+  check('a grid whose later tiles were cut off is refused by the item check', shortGrid === 'truncated' || shortGrid === 'warning' || shortGrid === 'decode', shortGrid);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

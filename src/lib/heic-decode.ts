@@ -5,8 +5,8 @@
  * iPhone stores a photograph, one tile per block — a missing tile is then not
  * an error. The tile is skipped, a warning is stored on the image, and the
  * gap stays the colour of a zeroed plane, which comes out green. That frame
- * was uploaded. A warning, a short item, or a plane that is almost entirely
- * one colour is a file we will not keep.
+ * was uploaded. A warning or a short item is a file we will not keep. A logo
+ * that is almost all one colour is still a picture, and is kept.
  *
  * The wasm module is passed in. The worker bundles it; a test can load the
  * same build. This file does not import it, so the phone app never does either.
@@ -90,9 +90,8 @@ const INTERLEAVED = 10;
  * The primary frame, packed RGBA, every tile present.
  *
  * Throws when the file is short, the bytes after the header are not a
- * picture, libheif reports anything, or the plane is almost all one colour.
- * The caller turns that into the "could not be read" sentence and clears
- * the picker. Nothing here is caught.
+ * picture, or libheif reports anything. The caller turns that into the
+ * "could not be read" sentence and clears the picker. Nothing here is caught.
  */
 export function decodeHeicPrimary(lib: HeifLib, bytes: Uint8Array): DecodedHeic {
   const decoder = new lib.HeifDecoder();
@@ -156,7 +155,6 @@ export function decodeHeicPrimary(lib: HeifLib, bytes: Uint8Array): DecodedHeic 
       const planeHeight = lib._heif_image_get_height(image, channel);
       if (planeWidth !== chosen.width || planeHeight !== chosen.height) throw new Error('truncated');
       const pixels = copyPlane(lib, spare, image, channel, chosen.width, chosen.height);
-      if (pixelsAreMostlyOneValue(pixels, chosen.width, chosen.height)) throw new Error('flat');
       return { width: chosen.width, height: chosen.height, pixels };
     } finally {
       lib._heif_image_release(image);
@@ -167,46 +165,6 @@ export function decodeHeicPrimary(lib: HeifLib, bytes: Uint8Array): DecodedHeic 
     for (const image of images) image.free();
     if (decoder.decoder) lib.heif_context_free(decoder.decoder);
   }
-}
-
-/**
- * True when the plane is not a photograph: more than 95% of the sampled
- * pixels are the same colour, or the luminance barely varies.
- *
- * A short iPhone grid leaves most of the frame one green. A photograph does
- * not. The sample is the whole frame when it is small and a grid of it when
- * it is not, which is enough to see a field of one colour and cheap on a
- * 12 megapixel picture.
- */
-export function pixelsAreMostlyOneValue(pixels: ArrayLike<number>, width: number, height: number): boolean {
-  const total = width * height;
-  if (total < 1 || pixels.length < total * 4) return true;
-  const step = Math.max(1, Math.floor(Math.sqrt(total / 8192)));
-  const bins = new Map<number, number>();
-  let seen = 0;
-  let most = 0;
-  let sum = 0;
-  let sumSquares = 0;
-  for (let y = 0; y < height; y += step) {
-    for (let x = 0; x < width; x += step) {
-      const offset = (y * width + x) * 4;
-      const red = pixels[offset] ?? 0;
-      const green = pixels[offset + 1] ?? 0;
-      const blue = pixels[offset + 2] ?? 0;
-      const key = (red << 16) | (green << 8) | blue;
-      const count = (bins.get(key) ?? 0) + 1;
-      bins.set(key, count);
-      if (count > most) most = count;
-      const luma = red * 0.299 + green * 0.587 + blue * 0.114;
-      sum += luma;
-      sumSquares += luma * luma;
-      seen += 1;
-    }
-  }
-  if (seen < 1) return true;
-  const mean = sum / seen;
-  const variance = sumSquares / seen - mean * mean;
-  return most / seen > 0.95 || variance < 1;
 }
 
 function decodeToImage(
