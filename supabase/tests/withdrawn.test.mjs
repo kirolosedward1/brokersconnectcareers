@@ -138,6 +138,13 @@ report.section('only the candidate, and only while it is open');
   const told = await one(`select count(*)::int as n from notifications
                            where kind = 'application_withdrawn' and payload->>'job_id' = '${first}'`);
   report.check('a withdrawal from new does not tell the company', told.n === 0, String(told.n));
+
+  // Migration 366: withdrawing takes back what applying gave (migration 43),
+  // the profile row and its number included, as 362 already did for the
+  // consultant profile.
+  const contact = await as(EMP, `select full_name, whatsapp_phone from profiles where id = '${CAND}'`);
+  report.check('the company no longer reads the withdrawn person’s profile or number',
+    contact.ok && contact.rows.length === 0, contact.error ?? JSON.stringify(contact.rows));
 }
 
 report.section('applying again is a new row');
@@ -157,6 +164,10 @@ report.section('applying again is a new row');
     blocked = true;
     blockedError = error.message;
   }
+  const back = await as(EMP, `select whatsapp_phone from profiles where id = '${CAND}'`);
+  report.check('a new application shows the company the profile again',
+    back.ok && back.rows.length === 1 && back.rows[0].whatsapp_phone === '+201099900002', back.error ?? JSON.stringify(back.rows));
+
   report.check('a second standing application is still refused',
     blocked && /unique|duplicate/i.test(blockedError), blockedError || 'the insert was allowed');
 
