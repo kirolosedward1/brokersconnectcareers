@@ -11,7 +11,7 @@ import { buildEnvelope, type Audience } from './envelope';
 import { deliver } from './service';
 import type { SendOutcome } from './send';
 import { unsubscribeLinks } from './unsubscribe-link';
-import { isNews, stageTelling, tellingSuffix } from '@/lib/application-arrival';
+import { isNews, MAX_STAGE_TELLINGS, stageTelling, tellingSuffix } from '@/lib/application-arrival';
 import { excludeWithdrawn, withdrawnStatusMissing } from '@/lib/application-stages';
 import { listingNotes, noteFor } from '@/lib/listing-notes';
 
@@ -752,6 +752,9 @@ export async function notifyCandidateOfStatus(applicationId: string): Promise<Se
     // second message, whether or not that message's key is still held.
     if (!isNews(stages, application.status)) return 'skipped';
     const telling = stageTelling(stages, application.status);
+    // A fourth telling of one stage is an employer flipping the card, not
+    // news: the bell stops here too (migration 365).
+    if (telling > MAX_STAGE_TELLINGS) return 'skipped';
     const dedupeKey = `status:${applicationId}:${application.status}${tellingSuffix(telling)}`;
     const entity = { type: 'application', id: applicationId } as const;
 

@@ -10,7 +10,7 @@
  * histories, so the two channels cannot drift apart on what "once" means.
  */
 import { createTestDb, reporter, FIXTURES } from './setup.mjs';
-import { isNews, stageTelling, tellingSuffix } from '../../src/lib/application-arrival.ts';
+import { isNews, MAX_STAGE_TELLINGS, stageTelling, tellingSuffix } from '../../src/lib/application-arrival.ts';
 
 const report = reporter();
 const db = await createTestDb();
@@ -199,6 +199,34 @@ report.section('whichever trigger runs first');
   }
 }
 
+report.section('an employer flipping one card is told three times, not every time');
+{
+  const { application } = await freshApplication();
+  const history = ['new'];
+  for (let round = 0; round < 10; round += 1) {
+    for (const status of ['rejected', 'shortlisted']) {
+      await move(application, status);
+      history.push(status);
+    }
+  }
+  const bell = await keys(application);
+  report.check(
+    'ten rounds of rejected ↔ shortlisted ring the bell three times per stage',
+    bell.filter((key) => key.startsWith('rejected')).length === MAX_STAGE_TELLINGS &&
+      bell.filter((key) => key.startsWith('shortlisted')).length === MAX_STAGE_TELLINGS,
+    JSON.stringify(bell),
+  );
+  const emailed = new Set();
+  const seen = ['new'];
+  for (const status of history.slice(1)) {
+    seen.push(status);
+    if (isNews(seen, status) && stageTelling(seen, status) <= MAX_STAGE_TELLINGS) {
+      emailed.add(`${status}${tellingSuffix(stageTelling(seen, status))}`);
+    }
+  }
+  report.check('and the email stops at the same telling', emailed.size === 2 * MAX_STAGE_TELLINGS, [...emailed].join(' '));
+}
+
 report.section('the bell and the email agree, over random histories');
 {
   // A fixed seed: the same histories on every run.
@@ -228,7 +256,8 @@ report.section('the bell and the email agree, over random histories');
       // news at all, and if so the key its email goes out under. Decided from
       // the history, step by step, not left to a key the outbox may no longer
       // hold.
-      const emails = status !== 'new' && isNews(history, status);
+      const emails =
+        status !== 'new' && isNews(history, status) && stageTelling(history, status) <= MAX_STAGE_TELLINGS;
       if (emails) emailKeys.add(`${status}${tellingSuffix(stageTelling(history, status))}`);
       const rang = (await told(application)).length > rungBefore;
       if (rang === emails) stepsAgreed += 1;

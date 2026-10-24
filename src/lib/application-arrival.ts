@@ -26,6 +26,17 @@ export function stageTelling(history: readonly string[], status: string): number
 }
 
 /**
+ * The last telling of a stage a candidate is sent, per application.
+ *
+ * Without a bound, an employer flipping one application rejected ↔
+ * shortlisted sent the candidate an email (with the employer's own decision
+ * note in it), a bell and a push on every round. A real pipeline tells a
+ * stage once, twice when a decision is reversed; the third is still told.
+ * The bell stops at the same telling (migration 365), so the two agree.
+ */
+export const MAX_STAGE_TELLINGS = 3;
+
+/**
  * What a telling adds to its key: nothing the first time, so a message keyed
  * before this rule is never sent again under a new name; `:2`, `:3`… after.
  */
