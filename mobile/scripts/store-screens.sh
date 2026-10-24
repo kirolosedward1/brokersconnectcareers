@@ -15,6 +15,9 @@
 #               asks for (6.9-inch)
 #   dark        the same iPhone, the dark appearance chosen in the app
 #   large-text  the same iPhone at the largest accessibility text size
+#   small       the smallest iPhone (an SE, 375 × 667 points) at the largest
+#               accessibility text size: the welcome and Home only
+#               (maestro/small.yaml), every way on the welcome on screen
 #   ipad        the largest iPad, where App Review also opens an iPhone app,
 #               checked by sight (ipad_pass, below)
 #
@@ -73,11 +76,11 @@ while IFS= read -r pair; do envs+=(-e "$pair"); done < <(jq -r 'to_entries[] | "
 job_title=$(jq -r '.JOB_TITLE | gsub("\\\\(?<c>.)"; "\(.c)")' <<<"$live")
 company_name=$(jq -r '.COMPANY_NAME | gsub("\\\\(?<c>.)"; "\(.c)")' <<<"$live")
 
-passes=" ${PASSES:-store dark large-text ipad} "
+passes=" ${PASSES:-store dark large-text small ipad} "
 for wanted in $passes; do
   case "$wanted" in
-    store | dark | large-text | ipad) ;;
-    *) echo "::error::no pass is called $wanted (store, dark, large-text, ipad)"; exit 1 ;;
+    store | dark | large-text | small | ipad) ;;
+    *) echo "::error::no pass is called $wanted (store, dark, large-text, small, ipad)"; exit 1 ;;
   esac
 done
 wants() { [[ "$passes" == *" $1 "* ]]; }
@@ -240,6 +243,19 @@ if wants store || wants dark || wants large-text; then
   if wants large-text; then pass large-text "$phone" accessibility-extra-extra-extra-large store.yaml; fi
   xcrun simctl shutdown "$phone" || true
   xcrun simctl delete "$phone" || true
+fi
+
+# The smallest screen iOS 26 runs on; no larger phone stands in for it.
+if wants small; then
+  if small=$(device_type 'iPhone SE (3rd generation)'); then
+    echo "small $small" | tee -a "$out/devices.txt"
+    little=$(device small "$small")
+    pass small "$little" accessibility-extra-extra-extra-large small.yaml
+    xcrun simctl shutdown "$little" || true
+    xcrun simctl delete "$little" || true
+  else
+    failed+=(small)
+  fi
 fi
 
 # see <simulator> <shot> <phrase>...: waits up to 90 seconds for the iPad's

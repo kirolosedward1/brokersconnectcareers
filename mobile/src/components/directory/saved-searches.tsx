@@ -11,6 +11,7 @@ import { markSearchSeen, saveAgentSearch, savedAgentSearches, type SavedAgentSea
 import { savedSearchParams } from '~/features/directory/filters';
 import { directorySearch } from '~/features/directory/queries';
 import { useListOwner } from '~/features/jobs/recent';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -65,6 +66,7 @@ export function SaveAgentSearch({ filters, label }: { filters: AgentFilters; lab
 }
 
 export function SavedAgentSearches({ current }: { current: string }) {
+  const large = useLargeText();
   const t = useTranslations('app.agentAlerts');
   const locale = useLocale();
   const { colors } = useTheme();
@@ -113,7 +115,7 @@ export function SavedAgentSearches({ current }: { current: string }) {
               })}
             >
               <BellRing size={16} color={saved.fresh ? colors.primary : colors.mutedForeground} />
-              <Text variant="small" weight="medium" numberOfLines={1} style={{ flex: 1 }}>
+              <Text variant="small" weight="medium" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
                 {saved.label}
               </Text>
               {saved.fresh ? (

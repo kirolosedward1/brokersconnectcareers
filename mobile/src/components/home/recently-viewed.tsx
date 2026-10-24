@@ -10,6 +10,7 @@ import { Text } from '~/components/ui/text';
 import { recentJobs, useListOwner, type ViewedJob } from '~/features/jobs/recent';
 import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
 import { useHiddenJobs } from '~/features/moderation/hidden-jobs';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -65,6 +66,7 @@ export function RecentlyViewed() {
 }
 
 function ViewedRow({ job, first }: { job: ViewedJob; first: boolean }) {
+  const large = useLargeText();
   const locale = useLocale();
   const { colors } = useTheme();
   const title = localized(locale, job.title_ar, job.title_en);
@@ -88,10 +90,10 @@ function ViewedRow({ job, first }: { job: ViewedJob; first: boolean }) {
     >
       <CompanyLogo name={company} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
       <View style={{ flex: 1, gap: 2 }}>
-        <Text weight="medium" numberOfLines={1}>
+        <Text weight="medium" numberOfLines={large ? undefined : 1}>
           {title}
         </Text>
-        <Text variant="small" tone="mutedForeground" numberOfLines={1}>
+        <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 1}>
           {`${company} · ${district}`}
         </Text>
       </View>

@@ -16,6 +16,7 @@ import { useTabList } from '~/features/tab-bar';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
+import { useLargeText } from '~/theme/large-text';
 
 /**
  * One box for "somebody wrote to support about X" — the website's
@@ -116,6 +117,7 @@ function useStateLabel(): (kind: AdminSearchKind, state: string) => string {
 }
 
 function ResultRow({ kind, row }: { kind: AdminSearchKind; row: AdminSearchRow }) {
+  const large = useLargeText();
   const t = useTranslations();
   const { colors } = useTheme();
   const stateLabel = useStateLabel();
@@ -138,11 +140,11 @@ function ResultRow({ kind, row }: { kind: AdminSearchKind; row: AdminSearchRow }
       })}
     >
       <View style={{ flex: 1, gap: 2 }}>
-        <Text weight="medium" numberOfLines={1}>
+        <Text weight="medium" numberOfLines={large ? undefined : 1}>
           {label}
         </Text>
         {row.sublabel ? (
-          <Text variant="caption" tone="mutedForeground" numberOfLines={1}>
+          <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1}>
             {row.sublabel}
           </Text>
         ) : null}

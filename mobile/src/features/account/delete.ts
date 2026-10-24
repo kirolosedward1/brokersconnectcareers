@@ -57,8 +57,12 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   // No answer — a connection dropped, the half minute ran out — is not "not
   // deleted": the website deletes the account, then answers. Asked whether it
   // still knows this account, the auth server settles it.
-  if (!result && (await accountGone())) {
-    await forgetHere(user);
+  const gone = result ? false : await accountGone();
+  if (gone) {
+    // What the person kept on this phone goes only when the auth server named
+    // the account as no more; a token it merely refused says too little to
+    // throw away notes nobody could get back.
+    await forgetHere(user, gone === 'certain');
     return null;
   }
   if (!result?.ok) {
@@ -73,41 +77,41 @@ export async function deleteAccountHere(user: User | null | undefined): Promise<
   }
 
   // The account no longer exists (its phones went with it); what is left on this phone goes too.
-  await forgetHere(user);
+  await forgetHere(user, true);
   return null;
 }
 
 /**
- * Signed out, and what the phone kept for the person let go: their lists,
- * reminders and push choices, the Apple ID they signed in with here, and
- * where onboarding was taking them.
+ * Signed out as the Account tab signs out (signOutHere: a sign-out auth-js
+ * answers with an error still leaves nobody signed in), the Apple ID they
+ * signed in with here and where onboarding was taking them let go, and —
+ * `everything` — what the phone kept for the person: their lists, reminders
+ * and push choices.
  */
-async function forgetHere(user: User | null | undefined): Promise<void> {
+async function forgetHere(user: User | null | undefined, everything: boolean): Promise<void> {
   // signOutHere, not a bare signOut: that waits on auth-js's lock with no
   // limit, and a refresh holding it kept Delete spinning after the website had
   // already deleted the account, with the person still signed in here.
   await signOutHere();
   await Promise.all([forgetAppleSignIn(), forgetOnboardingIntent()]);
-  if (user?.id) await forgetPerson(user.id).catch(() => {});
+  if (everything && user?.id) await forgetPerson(user.id).catch(() => {});
 }
 
 /**
  * Whether the auth server says this session's account is no more: refused
  * outright (401, 403, 404, user_not_found), as it answers for a user deleted
  * from under a token. No answer, or the account read back, is not gone.
+ * 'certain' when it named the account as missing (user_not_found, 404);
+ * 'likely' when it only refused the token, which an expired or unverifiable
+ * one is refused with too.
  */
-async function accountGone(): Promise<boolean> {
+async function accountGone(): Promise<'certain' | 'likely' | false> {
   // Bounded for the same lock: no answer in time is not gone.
   const { data, error } = await withTimeout(supabase.auth.getUser(), ACCOUNT_CHECK_TIMEOUT_MS, 'the account check').catch(
     (failure: unknown) => ({ data: { user: null }, error: failure as AuthError }),
   );
   if (error instanceof TimedOut) return false;
   if (data.user || !error || isAuthRetryableFetchError(error)) return false;
-  return (
-    error.status === 401 ||
-    error.status === 403 ||
-    error.status === 404 ||
-    error.code === 'user_not_found' ||
-    error.code === 'session_not_found'
-  );
+  if (error.code === 'user_not_found' || error.status === 404) return 'certain';
+  return error.status === 401 || error.status === 403 || error.code === 'session_not_found' ? 'likely' : false;
 }

@@ -11,6 +11,14 @@ type Kept<T> = {
 
 /** Every list made here, to let go of what each holds in memory for a person (forgetPerson). */
 const lists = new Set<{ forget: (owner: string) => void }>();
+/**
+ * The people forgotten while the app has been running. A change already on
+ * its way when the account was deleted — a saved search's alert checked as
+ * the app opened, a note's Undo, a reminder put back — would otherwise write
+ * their list again after it was removed; for them nothing is read or written
+ * any more. An id is never anybody else's, so this costs nobody anything.
+ */
+const forgotten = new Set<string>();
 
 /**
  * A short list kept on this phone, one per person (`owner`: their user id,
@@ -39,8 +47,10 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
 
   const load = (owner: string): Promise<void> => {
     const store = storeFor(owner);
-    store.loading ??= AsyncStorage.getItem(`${prefix}:${owner}`)
+    store.loading ??= (forgotten.has(owner) ? Promise.resolve(null) : AsyncStorage.getItem(`${prefix}:${owner}`))
       .then((stored) => {
+        // Read before the account was deleted, answered after: nothing of it comes back.
+        if (forgotten.has(owner)) return;
         const parsed = stored ? (JSON.parse(stored) as unknown) : [];
         const read = Array.isArray(parsed) ? parsed.filter(valid) : [];
         // Anything kept while the phone was still answering stays, first.
@@ -56,6 +66,7 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
   };
 
   const save = (owner: string, next: readonly T[]) => {
+    if (forgotten.has(owner)) return;
     const store = storeFor(owner);
     store.items = next.slice(0, max);
     emit(store);
@@ -117,6 +128,8 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
     },
     resetForTests() {
       kept.clear();
+      // A fresh app, as each test expects: nobody forgotten yet.
+      forgotten.clear();
     },
   };
 }
@@ -143,6 +156,7 @@ function scheduledIn(stored: string | null): string[] {
  */
 export async function forgetPerson(userId: string): Promise<void> {
   if (!userId) return;
+  forgotten.add(userId);
   const suffix = `:${userId}`;
   const keys = (await AsyncStorage.getAllKeys().catch(() => [] as readonly string[])).filter((key) => key.endsWith(suffix));
   for (const list of lists) list.forget(userId);

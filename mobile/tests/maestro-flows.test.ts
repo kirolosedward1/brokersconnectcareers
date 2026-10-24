@@ -37,6 +37,8 @@ const KEYS: Record<string, string> = {
   'يتوفر إصدار أحدث من التطبيق': 'app.update.title',
   // The welcome, Home, the tabs and the appearance switch.
   'تخطي': 'app.welcome.skip',
+  'إنشاء حساب': 'nav.signUp',
+  '.*سجّل شركتك': 'app.auth.forCompanies',
   'منصة متخصصة لوظائف العقارات في مصر': 'landingPage.hero.title',
   'الرئيسية': 'app.tabs.home',
   'حسابي': 'app.tabs.account',
