@@ -385,6 +385,7 @@ console.log('\n— tanween sits on the alef');
     'scripts/auth-templates.mjs',
     'supabase/templates/confirmation.html',
     'supabase/templates/recovery.html',
+    'supabase/templates/magic-link.html',
     'supabase/templates/email-change.html',
     'supabase/templates/reauthentication.html',
     'src/lib/actions/account.ts',
