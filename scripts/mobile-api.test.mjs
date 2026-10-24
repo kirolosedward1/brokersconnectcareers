@@ -179,6 +179,22 @@ console.log('\n— the app can reach only what the registry lists');
   );
 }
 
+console.log('\n— the one signed-out write is counted once per address per hour');
+{
+  const counter = readFileSync(new URL('../src/lib/jobs/view-count.ts', import.meta.url), 'utf8');
+  const limited = counter.indexOf('await allow(');
+  const counted = counter.indexOf("rpc('increment_job_view'");
+  is('countJobView asks the limiter before it counts', limited > -1 && counted > limited, true);
+  const action = readFileSync(new URL('../src/lib/actions/jobs.ts', import.meta.url), 'utf8');
+  const body = action.slice(action.indexOf('export async function recordJobView'));
+  is(
+    'recordJobView (a public action) reads the address itself, never from its input',
+    /^export async function recordJobView\(slug: string\): Promise<void> \{\s*await countJobView\(slug, await clientIp\(\)\);/.test(body) &&
+      !action.includes("rpc('increment_job_view'"),
+    true,
+  );
+}
+
 console.log('\n— a mobile route never builds the cookie client');
 {
   const server = readFileSync(new URL('../src/lib/supabase/server.ts', import.meta.url), 'utf8');

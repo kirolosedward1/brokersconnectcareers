@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { logFailure } from '@/lib/observe';
+import { clientIp } from '@/lib/rate-limit';
+import { countJobView } from '@/lib/jobs/view-count';
 
 import type { ActionResult } from '@/lib/action-result';
 import { cleanNote } from '@/lib/saved-note';
@@ -101,25 +102,14 @@ export async function setSavedJobNote(input: unknown): Promise<ActionResult<{ no
 }
 
 /**
- * Bumps the view counter.
+ * Bumps the view counter, for the app's door (a public action).
  *
- * With the service role, on purpose. The function is closed to anon and
- * authenticated since migration 304 — a visitor could call it without limit,
- * and as it turned out could not call it at all, because guard_job_update
- * refuses a view_count change from anyone not acting as admin and every call
- * from a visitor's session had been raising into a discarded promise. The
- * page calls this after the response is on its way, so a slow count never
- * slows a reader.
+ * The address is read here, from the request, so a caller cannot choose the
+ * bucket it is counted in; countJobView allows one view per address per
+ * listing per hour.
  */
 export async function recordJobView(slug: string): Promise<void> {
-  if (!/^[a-z0-9-]{1,200}$/.test(slug)) return;
-  try {
-    const { error } = await createAdminClient().rpc('increment_job_view', { job_slug: slug });
-    if (error) logFailure('jobs', 'view not counted', { slug, code: error.code });
-  } catch {
-    // No service role configured: the count is the one thing this page can do
-    // without.
-  }
+  await countJobView(slug, await clientIp());
 }
 
 /**

@@ -12,7 +12,8 @@ import { EMPTY_FILTERS, getJobBySlug, queryJobs } from '@/lib/queries/jobs';
 import { buildLandingSlug, parseLandingSlug } from '@/lib/taxonomy';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { getDistrictBySlug, getGovernorates } from '@/lib/queries/taxonomy';
-import { recordJobView } from '@/lib/actions/jobs';
+import { countJobView } from '@/lib/jobs/view-count';
+import { clientIp } from '@/lib/rate-limit';
 import { formatEgp, truncate, toPlainText } from '@/lib/utils';
 import type { DistrictRow, JobStatus, JobTrack } from '@/lib/supabase/database.types';
 import type { JobDetail } from '@/lib/queries/jobs';
@@ -207,10 +208,12 @@ export default async function JobOrLandingPage({ params }: { params: Promise<Par
       serverless host the count quietly depended on how fast the rest of the
       page was. `after()` is the sanctioned way to keep work alive past the
       response. A failed increment must still never break the page, hence
-      the catch; recordJobView uses the service role, never cookies, which
-      are gone by the time this runs.
+      the catch; countJobView uses the service role, never cookies, which
+      are gone by the time this runs — and the address it counts by is read
+      now, because headers() cannot be read inside after().
     */
-    after(() => recordJobView(slug).catch(() => {}));
+    const viewer = await clientIp();
+    after(() => countJobView(slug, viewer).catch(() => {}));
   }
 
   // Google matches "jobs near me" on the region, which for Egypt is the
