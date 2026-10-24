@@ -25,6 +25,7 @@ import {
   linkedProject,
   profileFor,
   projectIdFrom,
+  signingArguments,
   updateArguments,
 } from './publish-update.mjs';
 
@@ -284,6 +285,32 @@ is(
   JSON.parse(readFileSync(join(appRoot, 'assets', 'locales', 'ar.json'), 'utf8')).ios.NSFaceIDUsageDescription,
   purpose('expo-local-authentication'),
 );
+
+console.log('\n— signed updates');
+{
+  const repoRoot = '/work/repo';
+  is('nothing to sign while no certificate is committed', signingArguments({}, { certificate: false, expoGo: false, repoRoot }), []);
+  is("Expo Go's channel is never signed", signingArguments({}, { certificate: true, expoGo: true, repoRoot }), []);
+  let refused = '';
+  try {
+    signingArguments({}, { certificate: true, expoGo: false, repoRoot });
+  } catch (error) {
+    refused = error.message;
+  }
+  is('with a certificate, a store publish without the key is refused', /EXPO_UPDATES_PRIVATE_KEY_PATH/.test(refused), true);
+  let inside = '';
+  try {
+    signingArguments({ EXPO_UPDATES_PRIVATE_KEY_PATH: '/work/repo/mobile/keys/private-key.pem' }, { certificate: true, expoGo: false, repoRoot });
+  } catch (error) {
+    inside = error.message;
+  }
+  is('and so is a key inside the repository', /inside the repository/.test(inside), true);
+  is(
+    'a key kept outside is passed to eas update',
+    signingArguments({ EXPO_UPDATES_PRIVATE_KEY_PATH: '/home/me/.keys/bc-updates.pem' }, { certificate: true, expoGo: false, repoRoot }),
+    ['--private-key-path', '/home/me/.keys/bc-updates.pem'],
+  );
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

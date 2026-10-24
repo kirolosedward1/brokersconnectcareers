@@ -42,3 +42,8 @@ example
 /ios
 /android
 dist-js/
+# The update-signing private key never enters the repository (app.config.ts,
+# codeSigning; docs/mobile.md, "Signed updates"). Only certs/certificate.pem is committed.
+keys/
+private-key.pem
+*.p8

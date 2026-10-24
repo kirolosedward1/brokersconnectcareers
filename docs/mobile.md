@@ -994,6 +994,15 @@ Swift package needs Swift tools 6.2, and `@expo/ui`, which `expo-router`
 depends on, uses iOS 26 SwiftUI API. A Mac building locally needs Xcode 26 as
 well.
 
+### Signed updates
+
+A store build can be made to take only over-the-air updates signed with a key you hold (expo-updates code signing), so an update is as trustworthy as that key, not as the Expo account. Set it up once, before the first store build: adding the certificate changes the build's fingerprint, which costs nothing while no store build exists.
+
+1. On your own machine, in `mobile/`: `npx expo-updates codesigning:generate --key-output-directory ~/.brokersconnect/update-keys --certificate-output-directory certs --certificate-validity-duration-years 10 --certificate-common-name "Brokers Connect"`. The private key goes to your home folder, never into the repository (`mobile/.gitignore` refuses `keys/` and `private-key.pem` in case). Back it up somewhere safe: losing it means a new certificate and a new store build.
+2. Commit `mobile/certs/certificate.pem` (public by nature). `app.config.ts` (`codeSigning`) sees it and puts `codeSigningCertificate` and `codeSigningMetadata { keyid: 'main', alg: 'rsa-v1_5-sha256' }` into every store profile's config. Expo Go's channel is unaffected.
+3. Publish store updates with the key's path in the environment: `EXPO_UPDATES_PRIVATE_KEY_PATH=~/.brokersconnect/update-keys/private-key.pem pnpm run ota production --message "…"`. `scripts/publish-update.mjs` passes it as `--private-key-path`, refuses to publish to a store channel without it once the certificate is committed (an unsigned update would be refused by every build), and refuses a key inside the repository.
+4. Keep the Expo account behind two-factor sign-in regardless: it still decides which builds exist.
+
 ## The admin console in the app
 
 An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`),

@@ -28,7 +28,7 @@
  * then be published with too.
  */
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -177,6 +177,29 @@ export function expoGoDeepLink(projectId, sdkVersion, channel = EXPO_GO) {
   return `exp://u.expo.dev/${projectId}?channel-name=${channel}&runtime-version=exposdk:${sdkVersion}`;
 }
 
+/**
+ * What signing adds to a store channel's publish (app.config.ts,
+ * codeSigning): nothing while no certificate is committed; once one is, the
+ * private key's path from EXPO_UPDATES_PRIVATE_KEY_PATH, which must be set
+ * and must not point inside the repository. A store build with the
+ * certificate refuses an unsigned update, so publishing one would only
+ * strand it. Expo Go's channel is never signed.
+ */
+export function signingArguments(env, { certificate, expoGo, repoRoot }) {
+  if (expoGo || !certificate) return [];
+  const key = env.EXPO_UPDATES_PRIVATE_KEY_PATH;
+  if (!key) {
+    throw new Error(
+      'certs/certificate.pem is committed, so store builds take signed updates only. Set EXPO_UPDATES_PRIVATE_KEY_PATH to the private key (kept outside the repository).',
+    );
+  }
+  const absolute = resolve(key);
+  if (repoRoot && (absolute === repoRoot || absolute.startsWith(`${repoRoot}/`))) {
+    throw new Error('EXPO_UPDATES_PRIVATE_KEY_PATH points inside the repository; the private key must live outside it.');
+  }
+  return ['--private-key-path', absolute];
+}
+
 /** The `eas update` command line for a profile, with the options given after it. */
 export function updateArguments(channel, options) {
   const platform = options.some((option) => option === '--platform' || option.startsWith('--platform=') || option === '-p');
@@ -218,7 +241,12 @@ if (isMain) {
       target = profileFor(eas, name);
       console.log(`Publishing to the "${target.channel}" channel, built as the "${name}" profile builds.`);
     }
-    const run = spawnSync('npx', updateArguments(target.channel, options), {
+    const signing = signingArguments(process.env, {
+      certificate: existsSync(join(appRoot, 'certs', 'certificate.pem')),
+      expoGo: name === EXPO_GO,
+      repoRoot: resolve(appRoot, '..'),
+    });
+    const run = spawnSync('npx', [...updateArguments(target.channel, options), ...signing], {
       cwd: appRoot,
       stdio: 'inherit',
       env: { ...process.env, ...target.env },

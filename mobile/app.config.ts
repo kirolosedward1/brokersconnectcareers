@@ -109,11 +109,44 @@ const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
  * waits for the newest update (up to half a minute, then whatever it has), so
  * what is opened is what was last published, not the one before it.
  */
+/**
+ * Signed updates (expo-updates code signing): once certs/certificate.pem is
+ * committed, a store build takes only updates signed by its private key, so
+ * an update is as trustworthy as that key rather than as the Expo account
+ * that publishes it. The key itself never enters the repository; the
+ * certificate is public by nature. Expo Go runs Expo's own native code and
+ * takes Expo Go updates, which this does not apply to.
+ *
+ * Read relative to where the config is evaluated (the app's root, for
+ * `expo` and EAS alike), as `git rev-parse` above is. docs/mobile.md,
+ * "Signed updates", has the steps.
+ */
+export const CODE_SIGNING_CERTIFICATE = './certs/certificate.pem';
+function codeSigning() {
+  if (forExpoGo) return {};
+  let present = false;
+  try {
+    // Node's own, required, as in commitSha: the app's typings have no Node.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { existsSync } = require('node:fs') as { existsSync: (path: string) => boolean };
+    present = existsSync(CODE_SIGNING_CERTIFICATE);
+  } catch {
+    // Evaluated where there is no require (a test importing the file as a
+    // module): no certificate can be read, so none is configured.
+  }
+  if (!present) return {};
+  return {
+    codeSigningCertificate: CODE_SIGNING_CERTIFICATE,
+    codeSigningMetadata: { keyid: 'main', alg: 'rsa-v1_5-sha256' as const },
+  };
+}
+
 const updates = easProjectId
   ? {
       url: `https://u.expo.dev/${easProjectId}`,
       checkAutomatically: 'ON_LOAD' as const,
       fallbackToCacheTimeout: forExpoGo ? 30_000 : 0,
+      ...codeSigning(),
     }
   : { enabled: false };
 
