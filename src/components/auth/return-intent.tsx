@@ -8,7 +8,7 @@ import { safeNext } from '@/lib/safe-next';
 /**
  * Why this person is being asked to sign in.
  *
- * The auth screens open with "أهلاً بيك تاني" whatever brought somebody to
+ * The auth screens open with "مرحباً بعودتك" whatever brought somebody to
  * them, which is fine for a returning user typing the URL and wrong for the
  * one path that matters: tapping Apply on a listing and being interrupted. The
  * destination is preserved and they do land back on the form — but at the

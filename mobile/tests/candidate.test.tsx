@@ -284,7 +284,7 @@ describe('the feed', () => {
     await signedIn();
     const result = await renderRouter(app, { initialUrl: '/notifications' });
 
-    fireEvent.press(await screen.findByText('النيل للوساطة نزّلت وظيفتين جداد'));
+    fireEvent.press(await screen.findByText('النيل للوساطة نشرت وظيفتين جديدتين'));
     await waitFor(() => expect(result.getPathname()).toBe('/companies/nile-brokers'));
     expect(screen.getByText('company page')).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });

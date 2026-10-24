@@ -604,7 +604,7 @@ section('the account deletes itself from the account page');
   await page.goto(`${SITE}/dashboard/account/delete`);
   const remove = page.locator('button').filter({ hasText: 'احذف حسابي نهائياً' });
   check('the delete button waits for the word to be typed', await remove.first().isDisabled());
-  await page.locator('label').filter({ hasText: 'عشان تأكّد' }).locator('input').fill('حذف');
+  await page.locator('label').filter({ hasText: 'للتأكيد' }).locator('input').fill('حذف');
   check('and opens once it is', await remove.first().isEnabled());
   await remove.first().click();
   check('deleting goes back to the home page, signed out', await landsOn(page, /^\/$/, 20000), page.url());

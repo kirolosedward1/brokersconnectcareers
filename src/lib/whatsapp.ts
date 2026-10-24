@@ -17,7 +17,7 @@ export function employerOpener(params: {
     return `Hello ${candidateName}, this is ${companyName}. We received your application for "${jobTitle}" and would like to talk. Is now a good time?`;
   }
 
-  return `أهلاً ${candidateName}، معك ${companyName}. وصلنا طلبك على وظيفة "${jobTitle}" ونحب نتكلم معك. الوقت مناسب دلوقتي؟`;
+  return `مرحباً ${candidateName}، معك ${companyName}. وصلنا طلبك على وظيفة «${jobTitle}» ونود التحدث معك. هل الوقت مناسب الآن؟`;
 }
 
 /** Candidate -> agent opener, used from the gated agent profile. */
@@ -32,7 +32,7 @@ export function employerToAgentOpener(params: {
     return `Hello ${agentName}, this is ${companyName}. We found your profile on the consultant directory and have an opening that may suit you.`;
   }
 
-  return `أهلاً ${agentName}، معك ${companyName}. شفنا ملفك في دليل الاستشاريين وعندنا فرصة ممكن تناسبك.`;
+  return `مرحباً ${agentName}، معك ${companyName}. رأينا ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.`;
 }
 
 /**

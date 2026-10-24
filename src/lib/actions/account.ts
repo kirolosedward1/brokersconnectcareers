@@ -190,7 +190,7 @@ export async function requestAccountDeletion(input: unknown): Promise<ActionResu
     p_key: parsed.data.key,
     p_topic: 'account_deletion',
     // For the operator who picks it up: which company, and why it is not a button.
-    p_message: `طلب حذف حساب من مالك شركة «${company.name_ar}» (${company.id}). حذف الحساب هيحذف الشركة وإعلاناتها وطلبات التقديم عليها، فمصير الشركة يتقرر الأول.`,
+    p_message: `طلب حذف حساب من مالك شركة «${company.name_ar}» (${company.id}). حذف الحساب يحذف الشركة وإعلاناتها وطلبات التقديم عليها، فيُقرَّر مصير الشركة أولاً.`,
     p_route: '/dashboard/account',
     p_client: parsed.data.client ?? null,
   });

@@ -10,7 +10,7 @@ appId: net.brokersconnect.app
 ---
 - tapOn: "حسابي"
 - extendedWaitUntil:
-    visible: "ادخل على حسابك"
+    visible: "سجّل الدخول إلى حسابك"
     timeout: 30000
 - runFlow: checks.yaml
 
@@ -20,7 +20,7 @@ appId: net.brokersconnect.app
     centerElement: true
 - tapOn: "تسجيل الدخول"
 - extendedWaitUntil:
-    visible: "أهلاً بيك تاني"
+    visible: "مرحباً بعودتك"
     timeout: 30000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
@@ -29,9 +29,9 @@ appId: net.brokersconnect.app
 # button: opened as a person opens them.
 - runFlow:
     when:
-      visible: "المتابعة بالإيميل"
+      visible: "المتابعة بالبريد الإلكتروني"
     commands:
-      - tapOn: "المتابعة بالإيميل"
+      - tapOn: "المتابعة بالبريد الإلكتروني"
 
 # The forgotten-password page, from the link under the password.
 - scrollUntilVisible:
@@ -39,7 +39,7 @@ appId: net.brokersconnect.app
     centerElement: true
 - tapOn: "نسيت كلمة المرور؟"
 - extendedWaitUntil:
-    visible: "اكتب إيميلك وهنبعتلك لينك تعمل بيه كلمة مرور جديدة."
+    visible: "اكتب بريدك وسنرسل لك رابطاً لتعيين كلمة مرور جديدة."
     timeout: 30000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
@@ -49,7 +49,7 @@ appId: net.brokersconnect.app
 - openLink: brokersconnect:///sign-up
 - runFlow: confirm-link.yaml
 - extendedWaitUntil:
-    visible: "اعمل حسابك"
+    visible: "أنشئ حسابك"
     timeout: 30000
 - scrollUntilVisible:
     element: "تأكيد كلمة المرور"

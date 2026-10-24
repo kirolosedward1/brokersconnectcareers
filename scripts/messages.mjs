@@ -931,16 +931,16 @@ console.log('\n— a count on the website takes its form');
   expect('a pack’s days', ar, 'billing.days', { count: 30 }, '30 يوماً');
   expect('a short pack', ar, 'billing.days', { count: 7 }, '7 أيام');
   expect('one applicant', en, 'admin.applicantsN', { count: 1 }, '1 applicant');
-  expect('two applicants', ar, 'admin.applicantsN', { count: 2 }, 'متقدمين اتنين');
+  expect('two applicants', ar, 'admin.applicantsN', { count: 2 }, 'متقدمان');
   expect('four applicants', ar, 'admin.applicantsN', { count: 4 }, '4 متقدمين');
   expect('one year', en, 'admin.yearsN', { count: 1 }, '1 yr');
-  expect('three years', ar, 'admin.yearsN', { count: 3 }, '3 سنين');
+  expect('three years', ar, 'admin.yearsN', { count: 3 }, '3 سنوات');
   expect('used once', en, 'admin.inUse', { count: 1 }, 'Used once');
   expect('used twice', ar, 'admin.inUse', { count: 2 }, 'مستخدم مرتين');
   expect('used five times', ar, 'admin.inUse', { count: 5 }, 'مستخدم 5 مرات');
   expect('one open report', en, 'admin.openListingReports', { count: 1 }, '1 open report on its listings');
   expect('three open reports', ar, 'admin.openListingReports', { count: 3 }, '3 بلاغات مفتوحة على إعلاناتها');
-  expect('two reports filed', ar, 'admin.reportsFiledSummary', { count: 2, dismissed: 1 }, 'بلاغين، منهم 1 طلع مفيهوش مخالفة.');
+  expect('two reports filed', ar, 'admin.reportsFiledSummary', { count: 2, dismissed: 1 }, 'بلاغان، و1 دون مخالفة.');
   // Passed as a number now, it is grouped by the message, as formatNumber grouped it.
   expect('a thousand reports filed', en, 'admin.reportsFiledSummary', { count: 1000, dismissed: '12' }, '1,000 filed, 12 found to be no violation.');
 
