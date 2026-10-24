@@ -126,9 +126,11 @@ export function decodeHeicPrimary(lib: HeifLib, bytes: Uint8Array): DecodedHeic 
     const itemId = lib._heif_image_handle_get_item_id(handle) >>> 0;
     const itemIds = [itemId];
     if ((lib._heif_item_get_item_type(context, itemId) >>> 0) === GRID) {
-      const tiling = readTiling(lib, spare, handle);
-      for (let y = 0; y < tiling.rows; y++) {
-        for (let x = 0; x < tiling.columns; x++) itemIds.push(gridTileId(lib, spare, handle, x, y));
+      // Stored tile order. irot and imir do not change which items the file
+      // holds, and the extent check has to see those items.
+      const stored = readTiling(lib, spare, handle, false);
+      for (let y = 0; y < stored.rows; y++) {
+        for (let x = 0; x < stored.columns; x++) itemIds.push(gridTileId(lib, spare, handle, x, y));
       }
     }
 
@@ -141,9 +143,12 @@ export function decodeHeicPrimary(lib: HeifLib, bytes: Uint8Array): DecodedHeic 
     }
 
     if (itemIds.length > 1) {
-      const tiling = readTiling(lib, spare, handle);
-      for (let y = 0; y < tiling.rows; y++) {
-        for (let x = 0; x < tiling.columns; x++) releaseImage(lib, decodeToImage(lib, spare, 'tile', handle, options, colorspace, chroma, x, y));
+      // The tile decode applies irot and imir, so it wants the displayed
+      // grid. A portrait stored 8×6 and shown 6×8 otherwise asks for a tile
+      // the upright picture does not have, and the photograph is refused.
+      const displayed = readTiling(lib, spare, handle, true);
+      for (let y = 0; y < displayed.rows; y++) {
+        for (let x = 0; x < displayed.columns; x++) releaseImage(lib, decodeToImage(lib, spare, 'tile', handle, options, colorspace, chroma, x, y));
       }
     }
 
@@ -201,11 +206,12 @@ function releaseImage(lib: HeifLib, image: number) {
   lib._heif_image_release(image);
 }
 
-function readTiling(lib: HeifLib, spare: number[], handle: number): { columns: number; rows: number } {
+function readTiling(lib: HeifLib, spare: number[], handle: number, displayed: boolean): { columns: number; rows: number } {
   const err = alloc(lib, spare, 16);
   const out = alloc(lib, spare, 80);
   lib.HEAPU8.fill(0, out, out + 80);
-  lib._heif_image_handle_get_image_tiling(err, handle, 0, out);
+  // 1 asks libheif to swap the grid the way irot and imir will show it.
+  lib._heif_image_handle_get_image_tiling(err, handle, displayed ? 1 : 0, out);
   if (view(lib).getInt32(err, true) !== 0) throw new Error('decode');
   const memory = view(lib);
   const columns = memory.getUint32(out + 4, true);

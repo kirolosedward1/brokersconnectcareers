@@ -243,6 +243,96 @@ function gridOf(tile, mode) {
   return new Uint8Array(Buffer.concat([ftyp, meta, box('mdat', Buffer.concat([gridBytes, payload]))]));
 }
 
+/**
+ * A 128×64 picture stored as two tiles. `rotation` is 90 or 270 degrees
+ * counter-clockwise, the way an iPhone keeps a portrait (irot). `mirror` is
+ * the imir axis. `cut` points the second tile past the end of the file.
+ */
+function landscapeGrid(tile, { rotation = 0, mirror = null, cut = false } = {}) {
+  const u16 = (n) => Buffer.from([(n >> 8) & 255, n & 255]);
+  const u32 = (n) => Buffer.from([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+  const box = (type, body) => Buffer.concat([u32(8 + body.length), Buffer.from(type), body]);
+  const full = (type, version, flags, body) => box(type, Buffer.concat([Buffer.from([version, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255]), body]));
+  const infe = (id, type, hidden) => full('infe', 2, hidden ? 1 : 0, Buffer.concat([u16(id), u16(0), Buffer.from(type), Buffer.from([0])]));
+  const hdlr = Buffer.from(tile.subarray(40, 73));
+  const hvcC = Buffer.from(tile.subarray(172, 292));
+  const ispe64 = Buffer.from(tile.subarray(292, 312));
+  const colr = Buffer.from(tile.subarray(312, 331));
+  const pixi = Buffer.from(tile.subarray(331, 347));
+  const payload = Buffer.from(tile.subarray(378, 487));
+  const ispeOut = Buffer.from(ispe64);
+  ispeOut.writeUInt32BE(128, 12);
+  ispeOut.writeUInt32BE(64, 16);
+  const transforms = [];
+  if (rotation) transforms.push(box('irot', Buffer.from([rotation / 90])));
+  if (mirror) transforms.push(box('imir', Buffer.from([mirror === 'horizontal' ? 1 : 0])));
+  const gridBytes = Buffer.from([0x00, 0x00, 0x00, 0x01, 0x00, 0x80, 0x00, 0x40]);
+  const ftyp = Buffer.from(tile.subarray(0, 28));
+  const iinf = full('iinf', 0, 0, Buffer.concat([u16(3), infe(1, 'grid', false), infe(2, 'hvc1', true), infe(3, 'hvc1', true)]));
+  const iref = full('iref', 0, 0, box('dimg', Buffer.concat([u16(1), u16(2), u16(2), u16(3)])));
+  const ipco = box('ipco', Buffer.concat([hvcC, ispe64, colr, pixi, ispeOut, ...transforms]));
+  const assoc = (id, bytes) => Buffer.concat([u16(id), Buffer.from([bytes.length]), Buffer.from(bytes)]);
+  const gridProps = [0x85, 0x04];
+  for (let index = 6; index < 6 + transforms.length; index++) gridProps.push(0x80 | index);
+  const ipma = full('ipma', 0, 0, Buffer.concat([u32(3), assoc(1, gridProps), assoc(2, [0x81, 0x02, 0x03, 0x04]), assoc(3, [0x81, 0x02, 0x03, 0x04])]));
+  const iprp = box('iprp', Buffer.concat([ipco, ipma]));
+  const pitm = full('pitm', 0, 0, u16(1));
+  const ilocSize = 8 + 4 + 2 + 2 + 3 * 14;
+  const metaSize = 8 + 4 + hdlr.length + pitm.length + ilocSize + iinf.length + iref.length + iprp.length;
+  const payloadAt = ftyp.length + metaSize + 8;
+  const tileAt = payloadAt + gridBytes.length;
+  const past = tileAt + payload.length + 80;
+  const ilocBody = Buffer.alloc(2 + 2 + 3 * 14);
+  ilocBody[0] = 0x44;
+  ilocBody.writeUInt16BE(3, 2);
+  const items = [
+    [1, payloadAt, gridBytes.length],
+    [2, tileAt, payload.length],
+    [3, cut ? past : tileAt, payload.length],
+  ];
+  let cursor = 4;
+  for (const [id, offset, length] of items) {
+    ilocBody.writeUInt16BE(id, cursor);
+    ilocBody.writeUInt16BE(1, cursor + 4);
+    ilocBody.writeUInt32BE(offset, cursor + 6);
+    ilocBody.writeUInt32BE(length, cursor + 10);
+    cursor += 14;
+  }
+  const iloc = full('iloc', 0, 0, ilocBody);
+  const meta = full('meta', 0, 0, Buffer.concat([hdlr, pitm, iloc, iinf, iref, iprp]));
+  return new Uint8Array(Buffer.concat([ftyp, meta, box('mdat', Buffer.concat([gridBytes, payload]))]));
+}
+
+function turn(pixels, width, height, rotation, mirror) {
+  let current = pixels;
+  let w = width;
+  let h = height;
+  if (rotation === 90 || rotation === 270) {
+    const next = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const nx = rotation === 90 ? y : h - 1 - y;
+        const ny = rotation === 90 ? w - 1 - x : x;
+        next.set(current.subarray((y * w + x) * 4, (y * w + x) * 4 + 4), (ny * h + nx) * 4);
+      }
+    }
+    current = next;
+    [w, h] = [h, w];
+  }
+  if (mirror) {
+    const next = new Uint8Array(current.length);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const nx = mirror === 'horizontal' ? w - 1 - x : x;
+        const ny = mirror === 'vertical' ? h - 1 - y : y;
+        next.set(current.subarray((y * w + x) * 4, (y * w + x) * 4 + 4), (ny * w + nx) * 4);
+      }
+    }
+    current = next;
+  }
+  return { pixels: current, width: w, height: h };
+}
+
 console.log('\n— a HEIC that is not a whole picture');
 {
   const photo = decodeHeicPrimary(libheif, gradient);
@@ -282,6 +372,57 @@ console.log('\n— a HEIC that is not a whole picture');
   check('a whole grid is the full frame, not one tile', whole.width === 128 && whole.height === 128, `${whole.width}×${whole.height}`);
   const shortGrid = refusal(() => decodeHeicPrimary(libheif, gridOf(gradient, 'cut')));
   check('a grid whose later tiles were cut off is refused by the item check', shortGrid === 'truncated' || shortGrid === 'warning' || shortGrid === 'decode', shortGrid);
+
+  const stored = decodeHeicPrimary(libheif, landscapeGrid(gradient));
+  check('a landscape grid is stored wider than it is tall', stored.width === 128 && stored.height === 64, `${stored.width}×${stored.height}`);
+  for (const rotation of [90, 270]) {
+    const upright = decodeHeicPrimary(libheif, landscapeGrid(gradient, { rotation }));
+    const expected = turn(stored.pixels, stored.width, stored.height, rotation, null);
+    let same = upright.width === expected.width && upright.height === expected.height && upright.pixels.length === expected.pixels.length;
+    if (same) {
+      for (let i = 0; i < upright.pixels.length; i++) {
+        if (upright.pixels[i] !== expected.pixels[i]) {
+          same = false;
+          break;
+        }
+      }
+    }
+    check(
+      `a grid rotated ${rotation}° comes out upright`,
+      upright.height > upright.width && same,
+      `${upright.width}×${upright.height}`,
+    );
+  }
+  const mirrored = decodeHeicPrimary(libheif, landscapeGrid(gradient, { mirror: 'horizontal' }));
+  const mirrorExpected = turn(stored.pixels, stored.width, stored.height, 0, 'horizontal');
+  let mirrorSame = mirrored.width === mirrorExpected.width && mirrored.height === mirrorExpected.height;
+  if (mirrorSame) {
+    for (let i = 0; i < mirrored.pixels.length; i++) {
+      if (mirrored.pixels[i] !== mirrorExpected.pixels[i]) {
+        mirrorSame = false;
+        break;
+      }
+    }
+  }
+  check('a mirrored grid is the same picture, flipped', mirrorSame, `${mirrored.width}×${mirrored.height}`);
+  const turned = decodeHeicPrimary(libheif, landscapeGrid(gradient, { rotation: 90, mirror: 'horizontal' }));
+  const turnedExpected = turn(stored.pixels, stored.width, stored.height, 90, 'horizontal');
+  let turnedSame = turned.width === turnedExpected.width && turned.height === turnedExpected.height;
+  if (turnedSame) {
+    for (let i = 0; i < turned.pixels.length; i++) {
+      if (turned.pixels[i] !== turnedExpected.pixels[i]) {
+        turnedSame = false;
+        break;
+      }
+    }
+  }
+  check(
+    'a portrait grid that is also mirrored comes out upright',
+    turned.height > turned.width && turnedSame,
+    `${turned.width}×${turned.height}`,
+  );
+  const cutTurned = refusal(() => decodeHeicPrimary(libheif, landscapeGrid(gradient, { rotation: 90, cut: true })));
+  check('a rotated grid whose tile was cut off is still refused', cutTurned === 'truncated', cutTurned);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
