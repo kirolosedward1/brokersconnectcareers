@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyHmac } from '@/lib/paymob/hmac';
+import { configuredValue } from '@/lib/env';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,9 @@ export const dynamic = 'force-dynamic';
  * here are a bad signature, an unparseable body, and a failure that is ours.
  */
 export async function POST(request: NextRequest) {
-  const secret = process.env.PAYMOB_HMAC_SECRET;
+  // configuredValue: an unedited REPLACE_ME from the env template is a secret
+  // anyone who reads the template knows, so it counts as no secret at all.
+  const secret = configuredValue(process.env.PAYMOB_HMAC_SECRET);
 
   let body: { obj?: Record<string, unknown> };
   try {

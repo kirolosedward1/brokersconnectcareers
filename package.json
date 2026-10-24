@@ -86,7 +86,7 @@
     "test:images": "node --experimental-strip-types scripts/images.test.mjs",
     "crawl": "node scripts/crawl.mjs",
     "perf:budget": "node scripts/perf-budget.mjs",
-    "test:checkout": "node --experimental-strip-types scripts/checkout-access.test.mjs",
+    "test:checkout": "node --experimental-strip-types scripts/checkout-access.test.mjs && node --experimental-strip-types --no-warnings --import ./scripts/email-harness/register.mjs scripts/paymob-webhook.test.mjs",
     "test:insert-once": "node --experimental-strip-types scripts/insert-once.test.mjs",
     "test:cv": "node --experimental-strip-types scripts/cv-in-use.test.mjs",
     "test:drafts": "node --experimental-strip-types scripts/form-draft.test.mjs",
