@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import type { ErrorUtils } from 'react-native';
+import { scrubText } from '@/lib/telemetry/scrub';
 
 const KEY = 'bc.last-crash.v1';
 
@@ -22,10 +23,14 @@ const FAILURES_KEPT = 5;
  * screen, which says in plain words what did not happen. Kept for this run
  * only, and sent with the report if the app goes down after it; in a
  * development build it is also said in the console.
+ *
+ * Scrubbed as the website scrubs its error reports (telemetry/scrub.ts):
+ * server and database messages quote addresses, numbers, file names and
+ * signed URLs, and this text is kept on the phone and offered for sending.
  */
 export function noteFailure(where: string, failure: unknown) {
   const detail = failure instanceof Error ? failure.message : String(failure ?? '');
-  const line = `${new Date().toISOString()} ${where}: ${detail}`.slice(0, 500);
+  const line = `${new Date().toISOString()} ${where}: ${scrubText(detail, 440)}`.slice(0, 500);
   failures.push(line);
   if (failures.length > FAILURES_KEPT) failures.shift();
   if (__DEV__) console.warn(line);
@@ -52,9 +57,13 @@ export function installCrashLog() {
   handler.setGlobalHandler((error: unknown, fatal?: boolean) => {
     const failure = error instanceof Error ? error : new Error(String(error));
     const crash: Crash = {
-      message: failure.message.slice(0, 500),
+      message: scrubText(failure.message, 500),
       // What failed before it, which the screen said only in plain words.
-      stack: [(failure.stack ?? '').slice(0, 2500), ...(failures.length ? ['', 'Earlier:', ...failures] : [])].join('\n'),
+      // Line by line, so the scrub keeps the stack's shape.
+      stack: [
+        (failure.stack ?? '').slice(0, 2500).split('\n').map((line) => scrubText(line, 300)).join('\n'),
+        ...(failures.length ? ['', 'Earlier:', ...failures] : []),
+      ].join('\n'),
       fatal: Boolean(fatal),
       at: new Date().toISOString(),
       version: Constants.expoConfig?.version ?? '',
@@ -79,6 +88,16 @@ export async function readLastCrash(): Promise<Crash | null> {
 
 export async function forgetLastCrash() {
   await AsyncStorage.removeItem(KEY).catch(() => {});
+}
+
+/**
+ * Everything the log holds, for a person leaving this phone (sign-out,
+ * account deletion): the next person to use it is not shown, or offered to
+ * send, the last one's failures.
+ */
+export async function forgetCrashLog() {
+  failures.length = 0;
+  await forgetLastCrash();
 }
 
 /** The crash as text to send: what, where in the code, when, which version. */

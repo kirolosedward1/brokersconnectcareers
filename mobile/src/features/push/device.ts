@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { forgetCrashLog } from '~/lib/crash-log';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
@@ -210,6 +211,8 @@ export async function signOutHere(): Promise<void> {
   // iOS ending the app midway, not for a person who chose to leave: signed
   // in again, onboarding asks afresh rather than fix the role it was given.
   await forgetOnboardingIntent().catch(() => {});
+  // The last person's failures are not the next person's to read or send.
+  await forgetCrashLog();
   await Promise.race([
     forgetThisPhone().catch(() => {}),
     new Promise((resolve) => setTimeout(resolve, FORGET_TIMEOUT_MS)),

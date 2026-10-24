@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook } from '@testing-library/react-native';
-import { crashReport, forgetLastCrash, installCrashLog, readLastCrash } from '~/lib/crash-log';
+import { crashReport, forgetCrashLog, forgetLastCrash, installCrashLog, noteFailure, notedFailures, readLastCrash } from '~/lib/crash-log';
 import { useSheet } from '~/lib/use-sheet';
 
 /*
@@ -41,6 +41,30 @@ describe('the crash log', () => {
     expect(crash).toMatchObject({ message: 'undefined is not a function', fatal: true });
     expect(crashReport(crash!)).toContain('undefined is not a function');
     await forgetLastCrash();
+    expect(await readLastCrash()).toBeNull();
+  });
+
+  it('keeps no address, number, token or file name of anybody’s', async () => {
+    noteFailure('apply', new Error('duplicate key for sara.ahmed@example.com, phone +20 100 123 4567, file CV-Sara-Ahmed.pdf'));
+    const crash = new Error(
+      'request to https://x.supabase.co/storage/v1/object/sign/cvs/u1/cv.pdf?token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJlLXZhbHVl failed for 01001234567',
+    );
+    current(crash, true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const report = crashReport((await readLastCrash())!);
+    for (const kept of [notedFailures().join(' '), report]) {
+      expect(kept).not.toMatch(/sara\.ahmed|example\.com|1234567|Sara-Ahmed|eyJhbGci|token=/);
+    }
+    expect(report).toContain('<email>');
+    expect(report).toContain('<number>');
+  });
+
+  it('forgets everything it holds for a person leaving the phone', async () => {
+    noteFailure('apply', 'a failure');
+    current(new Error('gone'), true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await forgetCrashLog();
+    expect(notedFailures()).toHaveLength(0);
     expect(await readLastCrash()).toBeNull();
   });
 

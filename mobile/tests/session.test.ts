@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { authSession, authUser, profile } from './auth-fixtures';
 
@@ -81,6 +82,8 @@ describe('signing out', () => {
     const { supabase, SESSION_KEY, signOutHere } = fresh();
     store().set(SESSION_KEY, JSON.stringify(expired()));
     network(offline);
+    // The last crash on this phone was the person's; it goes with them.
+    await AsyncStorage.setItem('bc.last-crash.v1', JSON.stringify({ message: 'theirs', stack: '', fatal: true, at: '', version: '' }));
     const events: string[] = [];
     supabase.auth.onAuthStateChange((event) => {
       events.push(event);
@@ -96,6 +99,7 @@ describe('signing out', () => {
     await done;
 
     expect(store().has(SESSION_KEY)).toBe(false);
+    expect(await AsyncStorage.getItem('bc.last-crash.v1')).toBeNull();
     expect(events).toContain('SIGNED_OUT');
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
