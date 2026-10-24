@@ -21,6 +21,7 @@ import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * The website's bookmarks, follows and "tell me when there's a new one": each
@@ -149,6 +150,8 @@ export function SaveSearchButton({ query, defaultLabel }: { query: string; defau
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState(defaultLabel);
   const [error, setError] = useState<string | null>(null);
+  // Said to VoiceOver too: a live region is Android's alone.
+  useAnnounce(t('saved'), save.isSuccess);
 
   const signedIn = Boolean(session && viewer?.profile);
   if (signedIn && !canSaveJobs(actor)) return null;

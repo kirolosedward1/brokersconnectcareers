@@ -49,11 +49,14 @@ export function ApplicationTimeline({
     .filter((step) => step.state === 'done' || step.state === 'stopped')
     .map((step) => name(step))
     .join(' · ');
+  // And where it waits now: the steps reached alone never said which one that is.
+  const current = steps.find((step) => step.state === 'current');
+  const now = current ? `. ${t('app.applications.timelineNow', { step: name(current) })}` : '';
 
   return (
     <View
       accessible
-      accessibilityLabel={`${t('myApplications.timeline')}: ${spoken}`}
+      accessibilityLabel={`${t('myApplications.timeline')}: ${spoken}${now}`}
       testID="application-timeline"
       style={{ flexDirection: 'row' }}
     >
@@ -68,7 +71,7 @@ export function ApplicationTimeline({
               ? colors.success
               : step.state === 'current'
                 ? colors.primary
-                : colors.border;
+                : colors.input;
         return (
           <View key={step.key} style={{ flex: 1, alignItems: 'center', gap: 4 }} testID={`step-${step.key}-${step.state}`}>
             <View style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center' }}>

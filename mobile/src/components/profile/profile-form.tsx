@@ -387,7 +387,7 @@ export function ProfileForm({
         </View>
       </Field>
 
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+      {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
         <Button label={t('common.save')} size="lg" loading={save.isPending} onPress={submit} />

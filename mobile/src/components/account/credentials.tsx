@@ -19,6 +19,7 @@ import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * Change the email address — the website's CredentialsSettings, through
@@ -105,6 +106,7 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
   const [error, setError] = useState<string | null>(null);
   useErrorFeedback(error);
   const [done, setDone] = useState(false);
+  useAnnounce(t('account.passwordSaved'), done);
   const [pending, setPending] = useState(false);
   // The return key moves on to the second password, and from there saves.
   const confirmField = useRef<TextInputInstance>(null);

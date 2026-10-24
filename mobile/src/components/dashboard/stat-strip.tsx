@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslations } from 'use-intl';
 import { TrendingDown, TrendingUp } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
@@ -57,6 +58,7 @@ export function StatStrip({ cells, label }: { cells: StatCell[]; label: string }
 }
 
 function Cell({ cell }: { cell: StatCell }) {
+  const t = useTranslations();
   const { colors } = useTheme();
   // `figure`, not `value`: Reanimated's Babel plugin takes `x.value` inside a style for a shared value.
   const tone = {
@@ -76,7 +78,11 @@ function Cell({ cell }: { cell: StatCell }) {
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={[`${cell.label}: ${cell.value}`, moved ? `${moved.value} ${cell.hint ?? ''}`.trim() : null]
+      // Which way it moved is said, not only drawn: the arrow alone told VoiceOver nothing.
+      accessibilityLabel={[
+        `${cell.label}: ${cell.value}`,
+        moved ? `${t(moved.direction === 'down' ? 'app.dashboard.trendDown' : 'app.dashboard.trendUp', { value: moved.value })} ${cell.hint ?? ''}`.trim() : null,
+      ]
         .filter(Boolean)
         .join('، ')}
       onPress={cell.onPress}

@@ -308,7 +308,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       </View>
 
       {/* A refusal, where a refused save leaves the screen: at the top. */}
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+      {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
       {similar && step > 0 ? (
         <Notice tone="warning" title={t('employer.duplicateTitle')} icon={<TriangleAlert size={16} color={colors.warning} />}>

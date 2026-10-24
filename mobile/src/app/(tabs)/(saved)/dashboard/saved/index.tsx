@@ -25,6 +25,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { Scale, UserRound } from '~/components/ui/lucide';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * What the candidate kept — the website's /dashboard/saved: the bookmarked
@@ -67,6 +68,8 @@ export default function SavedScreen() {
   const [picked, setPicked] = useState<string[]>([]);
   const canCompare = open.length >= COMPARE_MIN;
   const choosing = comparing && canCompare;
+  // Said as choosing starts: a live region is Android's alone.
+  useAnnounce(t.markup('app.saved.compare.choose', { max: COMPARE_MAX, ...markupTags }), choosing);
   // A choice taken off the list since (unsaved, hidden, closed) is no longer one.
   const chosen = picked.filter((id) => open.some((job) => job.id === id));
   const stopComparing = () => {

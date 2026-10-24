@@ -56,18 +56,17 @@ export type CvEntry =
  * picked from a sheet rather than typed.
  */
 export function CvEntrySheet({ agentId, entry, onClose }: { agentId: string; entry: CvEntry | null; onClose: () => void }) {
-  // Whether the form has been typed in: the sheet pulled down asks first then.
-  const dirty = useRef(false);
-  const onDirty = useCallback((value: boolean) => {
-    dirty.current = value;
-  }, []);
+  // Whether the form has been typed in: the sheet pulled down then stays and
+  // asks first (iOS hands the attempt to onRequestClose).
+  const [dirty, setDirty] = useState(false);
+  const onDirty = useCallback((value: boolean) => setDirty(value), []);
   const confirm = useConfirmDiscard();
-  const close = () => (dirty.current ? confirm(onClose) : onClose());
+  const close = () => (dirty ? confirm(onClose) : onClose());
   // Shown once no other sheet is still closing.
   const gate = useGatedModal(entry !== null, onClose);
   const fence = useSheetFence();
   return (
-    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal={!dirty} onRequestClose={close}>
       <KeyboardRoom>
         {/* The sheet keeps its touches from the screen it is drawn in (sheet-fence.ts). */}
         <View style={{ flex: 1, direction: appDirection }} {...fence}>
@@ -353,7 +352,7 @@ function EntryForm({
           </>
         )}
 
-        {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+        {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
         <Button label={t('common.save')} size="lg" loading={save.isPending} onPress={submit} />
       </ScrollView>
     </View>

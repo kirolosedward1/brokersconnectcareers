@@ -3,6 +3,7 @@ import { Appear } from '~/components/motion/appear';
 import type { LucideIcon } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, motion, space } from '~/theme/tokens';
 import type { StatTone } from './stat-strip';
@@ -24,14 +25,18 @@ export type StatRowCell = {
  * state takes the circle's colour and the figure's, never colour alone: the
  * word under it says what is counted, VoiceOver reads the full name.
  * They arrive a beat apart, from the side the reading starts on.
+ *
+ * At the accessibility text sizes the words are not shrunk to fit a quarter
+ * of the row: the cells stack, each a line of its own (large-text.ts).
  */
 export function StatRow({ cells, label }: { cells: StatRowCell[]; label: string }) {
   const { colors, shadow } = useTheme();
+  const large = useLargeText();
   return (
     <View
       accessibilityLabel={label}
       style={{
-        flexDirection: 'row',
+        flexDirection: large ? 'column' : 'row',
         paddingVertical: space[3],
         paddingHorizontal: space[1],
         ...corner('xl'),
@@ -40,15 +45,15 @@ export function StatRow({ cells, label }: { cells: StatRowCell[]; label: string 
       }}
     >
       {cells.map((cell, index) => (
-        <Appear key={cell.label} delay={index * motion.stagger} from="below" distance={8} style={{ flex: 1 }}>
-          <Cell cell={cell} />
+        <Appear key={cell.label} delay={index * motion.stagger} from="below" distance={8} style={large ? undefined : { flex: 1 }}>
+          <Cell cell={cell} large={large} />
         </Appear>
       ))}
     </View>
   );
 }
 
-function Cell({ cell }: { cell: StatRowCell }) {
+function Cell({ cell, large }: { cell: StatRowCell; large: boolean }) {
   const { colors } = useTheme();
   // `ink`, not `value`: Reanimated's Babel plugin takes `x.value` inside a style for a shared value.
   const tone = {
@@ -66,9 +71,11 @@ function Cell({ cell }: { cell: StatRowCell }) {
       accessibilityLabel={`${cell.label}: ${cell.value}`}
       onPress={cell.onPress}
       style={({ pressed }) => ({
+        flexDirection: large ? 'row' : 'column',
         alignItems: 'center',
-        gap: space[1],
+        gap: large ? space[3] : space[1],
         paddingVertical: space[1],
+        paddingHorizontal: large ? space[2] : 0,
         marginHorizontal: 2,
         ...corner('lg'),
         backgroundColor: pressed ? colors.muted : 'transparent',
@@ -83,19 +90,17 @@ function Cell({ cell }: { cell: StatRowCell }) {
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.7}
-        maxFontSizeMultiplier={1.3}
-        style={{ color: tone.figure, fontVariant: ['tabular-nums'], marginTop: 2 }}
+        maxFontSizeMultiplier={2}
+        style={{ color: tone.figure, fontVariant: ['tabular-nums'], marginTop: large ? 0 : 2 }}
       >
         {cell.value}
       </Text>
       <Text
         variant="label"
         tone="mutedForeground"
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.75}
-        maxFontSizeMultiplier={1.3}
-        style={{ textAlign: 'center', marginTop: -4 }}
+        numberOfLines={2}
+        maxFontSizeMultiplier={2}
+        style={large ? { flex: 1, textAlign: 'left' } : { textAlign: 'center', marginTop: -4 }}
       >
         {cell.short}
       </Text>
