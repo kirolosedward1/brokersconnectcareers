@@ -137,7 +137,7 @@ function storeConfig(env = process.env) {
       // The App Store version the listing is for: the build's own (app.config.ts),
       // or App Store Connect opens 1.0 and offers it no 1.0.0 build.
       version: '1.0.0',
-      copyright: `2026 ${OPERATOR}`,
+      copyright: '© 2026 TOP SUITE DIGITAL MARKETING L.L.C',
       categories: ['BUSINESS'],
       info: {
         'ar-SA': {
@@ -149,7 +149,7 @@ function storeConfig(env = process.env) {
           keywords: ['سمسار', 'استشاري عقاري', 'تسويق عقاري', 'مبيعات', 'توظيف', 'عقارات'],
           promoText: 'وظائف البيع والتسويق العقاري في كل مصر. كل إعلان يوضح من يوفّر العملاء.',
           marketingUrl: SITE,
-          supportUrl: SITE,
+          supportUrl: `${SITE}/support`,
           privacyPolicyUrl: `${SITE}/privacy`,
           privacyChoicesUrl: `${SITE}/account-deletion`,
         },
@@ -160,7 +160,7 @@ function storeConfig(env = process.env) {
           keywords: ['real estate', 'jobs', 'property consultant', 'sales', 'Egypt', 'hiring', 'careers', 'New Cairo', 'Sheikh Zayed', 'commission'],
           promoText: 'Real estate sales jobs across Egypt. Every listing says who supplies the leads.',
           marketingUrl: SITE,
-          supportUrl: SITE,
+          supportUrl: `${SITE}/support?lang=en`,
           privacyPolicyUrl: `${SITE}/privacy?lang=en`,
           privacyChoicesUrl: `${SITE}/account-deletion?lang=en`,
         },
