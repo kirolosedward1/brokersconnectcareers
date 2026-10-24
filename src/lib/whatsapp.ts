@@ -32,7 +32,7 @@ export function employerToAgentOpener(params: {
     return `Hello ${agentName}, this is ${companyName}. We found your profile on the consultant directory and have an opening that may suit you.`;
   }
 
-  return `مرحبًا ${agentName}، معك ${companyName}. اطلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.`;
+  return `مرحبًا ${agentName}، معك ${companyName}. اطّلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.`;
 }
 
 /**

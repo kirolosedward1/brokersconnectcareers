@@ -88,7 +88,7 @@ describe('one name for one thing', () => {
 
   it('opens a WhatsApp chat from the directory by its name', () => {
     const opener = employerToAgentOpener({ agentName: 'سارة', companyName: 'نايل بروكرز', locale: 'ar' });
-    expect(opener).toBe('مرحبًا سارة، معك نايل بروكرز. اطلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.');
+    expect(opener).toBe('مرحبًا سارة، معك نايل بروكرز. اطّلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.');
     expect(employerToAgentOpener({ agentName: 'Sara', companyName: 'Nile', locale: 'en' })).toContain('consultant directory');
   });
 

@@ -910,7 +910,7 @@ console.log('\n— the email copy has two halves too');
   check(
     'employer WhatsApp openers are MSA',
     applicantOpener === 'مرحبًا سارة، معك نايل بروكرز. وصلنا طلبك على وظيفة «مستشار مبيعات» ونود التحدث معك. هل الوقت مناسب الآن؟' &&
-      agentOpener === 'مرحبًا سارة، معك نايل بروكرز. اطلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.' &&
+      agentOpener === 'مرحبًا سارة، معك نايل بروكرز. اطّلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.' &&
       !dialect.test(applicantOpener) &&
       !dialect.test(agentOpener),
     `${applicantOpener} || ${agentOpener}`,
