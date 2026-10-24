@@ -28,6 +28,7 @@ import type {
   ReportReason,
   ReportStatus,
 } from '@/lib/supabase/database.types';
+import { safeHttpUrl } from '@/lib/security/sanitize';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
@@ -178,8 +179,8 @@ export default async function AdminCompanyPage({
                   { label: t('district'), value: company.district ? localized(locale, company.district.name_ar, company.district.name_en) : '—' },
                   {
                     label: t('website'),
-                    value: company.website ? (
-                      <a href={company.website} target="_blank" rel="noreferrer nofollow" dir="ltr" className="break-all text-primary hover:underline">
+                    value: safeHttpUrl(company.website) ? (
+                      <a href={safeHttpUrl(company.website)!} target="_blank" rel="noreferrer nofollow" dir="ltr" className="break-all text-primary hover:underline">
                         {company.website}
                       </a>
                     ) : null,

@@ -67,7 +67,15 @@ function fileName(slug: string, locale: Locale) {
   return `${slug}.${locale}.md`;
 }
 
+/**
+ * A slug is a post's file name and nothing else: the page's [slug] arrives
+ * from the URL, and `..%2Flegal%2Fprivacy` joined onto BLOG_DIR read a file
+ * from elsewhere under content/ and served it as a post.
+ */
+const SLUG = /^[a-z0-9][a-z0-9-]{0,119}$/;
+
 function readPost(slug: string, locale: Locale): Post | null {
+  if (!SLUG.test(slug)) return null;
   let raw: string;
   try {
     raw = readFileSync(join(BLOG_DIR, fileName(slug, locale)), 'utf8');
