@@ -5,6 +5,7 @@ import { forgetOnboardingIntent } from '~/features/auth/kept-intent';
 import { appleAuthorizationCode } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
 import { forgetPerson } from '~/lib/local-list';
+import { forgetHiddenOnThisPhone } from '~/features/moderation/hidden-store';
 import { supabase } from '~/lib/supabase';
 import { signOutHere } from '~/features/push/device';
 import { TimedOut, withTimeout } from '~/lib/timeout';
@@ -87,7 +88,7 @@ async function forgetHere(user: User | null | undefined): Promise<void> {
   // limit, and a refresh holding it kept Delete spinning after the website had
   // already deleted the account, with the person still signed in here.
   await signOutHere();
-  await Promise.all([forgetAppleSignIn(), forgetOnboardingIntent()]);
+  await Promise.all([forgetAppleSignIn(), forgetOnboardingIntent(), forgetHiddenOnThisPhone()]);
   if (user?.id) await forgetPerson(user.id).catch(() => {});
 }
 

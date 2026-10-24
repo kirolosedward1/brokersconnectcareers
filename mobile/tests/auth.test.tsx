@@ -703,6 +703,8 @@ describe('onboarding', () => {
   it('lets an account that changed its mind go, without agreeing to anything first', async () => {
     profileRow = null;
     jest.mocked(Alert.alert).mockClear();
+    // A consultant this phone hid, by name: it goes with the account.
+    await AsyncStorage.setItem('bc.hidden-agents.v1', JSON.stringify([{ id: 'a1', name: 'منى علي', slug: null }]));
     await signedIn();
     await renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.onboarding.leaveDelete);
@@ -720,6 +722,7 @@ describe('onboarding', () => {
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
     expect(await screen.findByText('home screen')).toBeTruthy();
+    expect(await AsyncStorage.getItem('bc.hidden-agents.v1')).toBeNull();
   });
 
   it('stays, and says so, when the account could not be deleted', async () => {

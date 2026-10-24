@@ -1,7 +1,7 @@
 import { Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, render, screen } from '@testing-library/react-native';
-import { createHiddenStore, totalShown } from '~/features/moderation/hidden-store';
+import { createHiddenStore, forgetHiddenOnThisPhone, totalShown } from '~/features/moderation/hidden-store';
 
 /*
   What the reader hides on this phone (hidden-store.ts): the ids every list
@@ -32,6 +32,14 @@ it('reads a list kept before names were, keeps the names given since, and skips 
 
   act(() => store.unhide('named'));
   expect(screen.getByText('old,new|-,منى علي')).toBeTruthy();
+});
+
+it('empties every hidden list for an account deleted here', async () => {
+  act(() => store.hide('someone', { name: 'منى علي', slug: null }));
+  await forgetHiddenOnThisPhone();
+  render(<Probe />);
+  expect(await screen.findByText('|')).toBeTruthy();
+  expect(await AsyncStorage.getItem(KEY)).toBeNull();
 });
 
 it('counts a list without what this phone hides, never below what is shown', () => {

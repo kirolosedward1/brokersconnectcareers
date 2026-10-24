@@ -11,6 +11,19 @@ export type HiddenEntry = { id: string; name: string | null; slug: string | null
  * hidden under, so Account → "Hidden on this phone" can list them without
  * asking anyone; a list written before names were kept (a bare id) still reads.
  */
+const stores: { forget: () => Promise<void> }[] = [];
+
+/**
+ * Every hidden list on this phone, emptied: for an account being deleted
+ * here. The lists are the phone's rather than an account's (they work signed
+ * in or out), so signing out keeps them; but an employer's hidden consultants
+ * are kept with the names they were hidden under, and a deleted account
+ * leaves nothing of what it did on a shared phone (forgetPerson).
+ */
+export async function forgetHiddenOnThisPhone(): Promise<void> {
+  await Promise.all(stores.map((store) => store.forget()));
+}
+
 export function createHiddenStore(key: string) {
   let entries: readonly HiddenEntry[] = [];
   let ids: ReadonlySet<string> = new Set();
@@ -63,6 +76,14 @@ export function createHiddenStore(key: string) {
       listeners.delete(listener);
     };
   };
+
+  stores.push({
+    forget: async () => {
+      set([]);
+      emit();
+      await AsyncStorage.removeItem(key).catch(() => {});
+    },
+  });
 
   return {
     hide(id: string, about: { name?: string | null; slug?: string | null } = {}) {
