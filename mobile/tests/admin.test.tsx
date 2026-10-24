@@ -556,6 +556,15 @@ describe('the door', () => {
     expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
   });
 
+  it('opens when the deployment has not said, which is the switch left unset', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig());
+    await signIn({ aal: 'aal1', factor: false });
+    await renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
+    expect(screen.queryByText(ar.app.admin.door.enrolTitle)).toBeNull();
+  });
+
   it('asks for the code from an admin whose authenticator has not been used this session', async () => {
     await signIn({ aal: 'aal1', factor: true });
     const result = await renderRouter(app, { initialUrl: '/admin' });

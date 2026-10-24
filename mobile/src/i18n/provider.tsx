@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { IntlProvider } from 'use-intl';
 import { intlFormats } from '@/lib/format';
 import { defaultLocale, type Locale } from '@/lib/locale';
+import { setDrawnLocale } from '~/lib/direction';
 import { loadIntlLocale } from '~/lib/intl-polyfills';
 import webAr from '../../../messages/ar.json';
 import webEn from '../../../messages/en.json';
@@ -29,6 +30,10 @@ export type Messages = (typeof catalogues)['ar'];
 export const TIME_ZONE = 'Africa/Cairo';
 
 export function I18nProvider({ locale = defaultLocale, children }: { locale?: Locale; children: ReactNode }) {
+  // Read while the screen draws, before effects: a label's alignment is the
+  // language of this render, including the first one.
+  setDrawnLocale(locale);
+  useEffect(() => () => setDrawnLocale(defaultLocale), []);
   // The Intl polyfills carry the app's opening language only; another one's
   // dates and numbers are loaded the first time the app is drawn in it.
   loadIntlLocale(locale);
