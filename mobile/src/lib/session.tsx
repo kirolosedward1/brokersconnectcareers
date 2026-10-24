@@ -285,6 +285,26 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (known) rememberActor(actorOf(known));
   }, [known]);
 
+  /*
+    An admin who is no longer one keeps nothing of the console in memory.
+
+    Signing out and switching accounts already empty the cache (above). A role
+    taken away on the same session — demoted from the website, or on another
+    phone — did not: the overview's summary stays mounted under the tab bar
+    with no garbage collection, and the rest of the console's reads sat in
+    memory for their gcTime. The database refuses the account anything new
+    (is_admin()), so this is about what is already on the phone. Only on a
+    profile actually read: a viewer still loading or unreadable is no answer.
+  */
+  const confirmedRole =
+    viewerQuery.data && !viewerQuery.data.profileUnreadable ? (viewerQuery.data.profile?.role ?? null) : undefined;
+  useEffect(() => {
+    if (confirmedRole === undefined || confirmedRole === 'admin') return;
+    queryClient.removeQueries({
+      predicate: (query) => query.queryKey[0] === 'admin' || query.queryKey[0] === 'admin-door',
+    });
+  }, [confirmedRole, queryClient]);
+
   const value = useMemo<SessionState>(() => {
     // A failed re-read keeps the last answer (TanStack keeps `data` beside the error).
     const viewer = session
