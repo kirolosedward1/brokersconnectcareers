@@ -32,18 +32,12 @@ export const GET = withMobileAuth<Context>(
       getSimilarJobs(job),
       salaryReference(job.track, job.district.governorate_id),
     ]);
-    // The listing's company is read whole for the website's server render;
-    // over the wire it goes without the owner, the credit balance and the
-    // moderation fields, as /companies/<slug> does.
-    const {
-      owner_id: _owner,
-      post_credits: _credits,
-      version: _version,
-      suspended_at: _suspendedAt,
-      suspension_reason: _suspensionReason,
-      ...company
-    } = job.company;
-    const shared = { ...job, company } as unknown as JobDetailResponse['job'];
+    // The company arrives with its public columns only (COMPANY_PUBLIC_COLUMNS).
+    // The listing's own row is read whole for the website's render; over the
+    // wire it goes without the retry key it was written with and the old
+    // moderation note (null since migration 347, not on older rows).
+    const { idempotency_key: _retryKey, rejection_note: _note, ...listing } = job;
+    const shared = listing as unknown as JobDetailResponse['job'];
     return mobileJson({ job: shared, similar, reference } satisfies JobDetailResponse);
   },
   { optional: true },

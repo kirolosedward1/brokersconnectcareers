@@ -5,9 +5,12 @@ import { queryWords } from '@/lib/search/arabic';
 import { logFailure } from '@/lib/observe';
 import type { CompanyRow, DistrictRow, VerificationStatus } from '@/lib/supabase/database.types';
 import { LIST_SELECT, type JobListItem } from './jobs';
+import { COMPANY_PUBLIC_COLUMNS } from '@/lib/job-list';
 import type { CompanyListItem, CompanyProfile } from '@/lib/read-types';
 
 export const COMPANIES_PER_PAGE = 24;
+
+
 
 export type { CompanyListItem, CompanyProfile } from '@/lib/read-types';
 
@@ -61,7 +64,7 @@ export async function queryCompanies({
     .from('companies')
     .select(
       `
-      *,
+      ${COMPANY_PUBLIC_COLUMNS},
       district:districts (id, governorate_id, name_ar, name_en, slug),
       open_roles:jobs!inner (id)
     `,
@@ -181,7 +184,7 @@ export const getCompanyBySlug = cache(async function getCompanyBySlug(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('companies')
-    .select('*, district:districts (id, governorate_id, name_ar, name_en, slug)')
+    .select(`${COMPANY_PUBLIC_COLUMNS}, district:districts (id, governorate_id, name_ar, name_en, slug)`)
     .eq('slug', slug)
     .maybeSingle();
 

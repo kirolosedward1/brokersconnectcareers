@@ -6,7 +6,7 @@
  * can type the board it receives from /api/mobile/v1/jobs with the very shape
  * the website's query produces. queries/jobs.ts re-exports all of it.
  */
-import type { CompanyRow, DistrictRow, JobRow } from '@/lib/supabase/database.types';
+import type { CompanyRow, DistrictRow, JobRow, PublicCompanyRow } from '@/lib/supabase/database.types';
 
 /**
  * The columns a listing needs to be drawn in a list: the card, the ranking
@@ -48,7 +48,16 @@ export const LIST_SELECT = `
 
 /** One listing as its page draws it: the row, its company, its district, its developers. */
 export type JobDetail = JobRow & {
-  company: CompanyRow & { district: DistrictRow | null };
+  company: PublicCompanyRow & { district: DistrictRow | null };
   district: DistrictRow;
   job_developers: { developer: { id: number; name_ar: string; name_en: string; slug: string } }[];
 };
+
+/**
+ * The columns of PublicCompanyRow, for every read anybody may make: named,
+ * not `*`, so a column added to companies is private until somebody decides
+ * otherwise, and the owner, the credit balance and the suspension reason are
+ * never in a public answer (the app's door returns these reads as they are).
+ */
+export const COMPANY_PUBLIC_COLUMNS =
+  'id, name_ar, name_en, slug, logo_url, about_ar, about_en, website, headcount_band, company_type, district_id, verification_status, verified_at, suspended_at, created_at';

@@ -155,6 +155,15 @@ export type CompanyRow = Timestamped & {
   search_name?: string;
 };
 
+/**
+ * A company as anybody may read it: the board, the directory, a company's
+ * page, a listing's company, the app's public door. Leaves out who owns it,
+ * its credit balance, the reviewer's suspension reason, the edit counter and
+ * the search key — readable by its members and by admins (CompanyRow), and
+ * never selected by a public read (COMPANY_PUBLIC_COLUMNS).
+ */
+export type PublicCompanyRow = Omit<CompanyRow, 'owner_id' | 'post_credits' | 'suspension_reason' | 'version' | 'search_name'>;
+
 export type CompanyDocumentRow = Timestamped & {
   id: string;
   company_id: string;

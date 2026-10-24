@@ -5,16 +5,16 @@
  * mobile app — which receives exactly these shapes from /api/mobile/v1 — could
  * not name them. The query modules import them from here and re-export them.
  */
-import type { CompanyRow, CompanyType, DistrictRow, JobTrack } from '@/lib/supabase/database.types';
+import type { CompanyType, PublicCompanyRow, DistrictRow, JobTrack } from '@/lib/supabase/database.types';
 
 /** A company in the directory list, with its district and its live-listing count. */
-export type CompanyListItem = CompanyRow & {
+export type CompanyListItem = PublicCompanyRow & {
   district: DistrictRow | null;
   open_roles: { count: number }[];
 };
 
 /** A company's own page. */
-export type CompanyProfile = CompanyRow & { district: DistrictRow | null };
+export type CompanyProfile = PublicCompanyRow & { district: DistrictRow | null };
 
 /** How many live listings sit behind each way of browsing the board. */
 export type BrowseCounts = {

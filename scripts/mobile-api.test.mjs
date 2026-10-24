@@ -179,6 +179,29 @@ console.log('\n— the app can reach only what the registry lists');
   );
 }
 
+console.log('\n— a public read names the company columns it returns');
+{
+  const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+  const list = read('../src/lib/job-list.ts');
+  const columns = list.slice(list.indexOf('export const COMPANY_PUBLIC_COLUMNS'));
+  const named = columns.slice(columns.indexOf("'") + 1, columns.indexOf("';")).split(',').map((c) => c.trim());
+  is(
+    'the public column list leaves out the owner, the credits, the suspension reason, the edit counter and the search key',
+    ['owner_id', 'post_credits', 'suspension_reason', 'version', 'search_name'].filter((c) => named.includes(c)),
+    [],
+  );
+  const companies = read('../src/lib/queries/companies.ts');
+  for (const fn of ['export async function queryCompanies', 'export const getCompanyBySlug']) {
+    const start = companies.indexOf(fn);
+    const body = companies.slice(start, companies.indexOf('\nexport ', start + 1));
+    is(`${fn.split(' ').pop()} selects COMPANY_PUBLIC_COLUMNS, not *`, body.includes('${COMPANY_PUBLIC_COLUMNS}') && !/select\(\s*['`]\s*\*/.test(body), true);
+  }
+  const jobs = read('../src/lib/queries/jobs.ts');
+  is("a listing's company is embedded by its public columns", !/companies!inner \(\*/.test(jobs) && jobs.includes('companies!inner (${COMPANY_PUBLIC_COLUMNS}'), true);
+  const route = read('../src/app/api/mobile/v1/jobs/[slug]/route.ts');
+  is("the app's listing goes without its retry key and old moderation note", /idempotency_key: _retryKey, rejection_note: _note/.test(route), true);
+}
+
 console.log('\n— the one signed-out write is counted once per address per hour');
 {
   const counter = readFileSync(new URL('../src/lib/jobs/view-count.ts', import.meta.url), 'utf8');
