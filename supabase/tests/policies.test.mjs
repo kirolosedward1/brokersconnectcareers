@@ -2824,6 +2824,24 @@ report.section('a note the candidate never reads');
   const edit = await as(employerVerified, `update application_notes set body = 'اتغيّر' where application_id = '${app.id}' returning id`);
   report.check('and nobody can edit it', edit.ok && edit.rows.length === 0, JSON.stringify(edit.rows));
 
+  // Migration 368: only while they still work the listing. A suspended
+  // author (or one who has left the company) does not erase the notes the
+  // team kept on its applicants.
+  await db.exec('begin');
+  let leaver;
+  try {
+    await db.exec(`update profiles set approval_status = 'rejected' where id = '${employerVerified}'`);
+    await db.exec('set local role authenticated;');
+    await db.exec(`set local request.jwt.claim.sub = '${employerVerified}';`);
+    await db.exec(`set local request.jwt.claims = '{"role":"authenticated","sub":"${employerVerified}"}';`);
+    // Bare, as PostgREST sends an unfiltered DELETE: a WHERE or a RETURNING
+    // would read the rows and bring the select policy in, hiding the hole.
+    leaver = (await db.query(`delete from application_notes`)).affectedRows;
+  } finally {
+    await db.exec('rollback');
+  }
+  report.check('its author cannot while suspended', leaver === 0, `${leaver} deleted`);
+
   const byAuthor = await as(employerVerified, `delete from application_notes where application_id = '${app.id}' returning id`);
   report.check('its author can', byAuthor.ok && byAuthor.rows.length === 1, byAuthor.error);
 
