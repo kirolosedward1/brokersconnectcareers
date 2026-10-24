@@ -207,7 +207,7 @@ function CompanyRow({ company }: { company: CompanyListItem }) {
         ),
         locale,
       )}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] + 2 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3.5] }}
     >
       <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} />
       <View style={{ flex: 1, gap: 2 }}>

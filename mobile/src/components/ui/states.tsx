@@ -253,6 +253,22 @@ export function SkeletonList({
   );
 }
 
+/**
+ * A list screen on its way, under its own bars: the cards that will fill it,
+ * placed where the list will start (below a large title), not scrollable.
+ */
+export function SkeletonScreen({ count = 4, compact = true }: { count?: number; compact?: boolean }) {
+  return (
+    <ScrollView
+      scrollEnabled={false}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ padding: gutter }}
+    >
+      <SkeletonList count={count} compact={compact} inset={false} />
+    </ScrollView>
+  );
+}
+
 export function EmptyState({
   title,
   body,

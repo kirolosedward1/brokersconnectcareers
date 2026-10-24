@@ -44,7 +44,7 @@ import { markupTags } from '~/i18n/rich';
 import { useNextPage } from '~/lib/use-next-page';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /**
  * Reports — the website's /admin/reports, every view and filter of it.
@@ -370,7 +370,11 @@ function CaseCard({ item }: { item: ReportCase }) {
         )}
         {item.target_type === 'job' && item.company_name_ar ? (
           item.company_id && live ? (
-            <Pressable accessibilityRole="link" onPress={() => openPath(targetPath('company', item.company_id as string))}>
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => openPath(targetPath('company', item.company_id as string))}
+              style={{ minHeight: hitTarget, justifyContent: 'center' }}
+            >
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, item.company_name_ar, item.company_name_en)}
               </Text>

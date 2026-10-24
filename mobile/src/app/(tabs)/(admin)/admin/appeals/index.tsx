@@ -20,7 +20,7 @@ import { useTabList } from '~/features/tab-bar';
 import { useNextPage } from '~/lib/use-next-page';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /** The appellant's note may run to a thousand characters (the action's cap), twice a reason's. */
 const NOTE_MAX = 1000;
@@ -146,7 +146,11 @@ function AppealCard({ row }: { row: Appeal }) {
         <Text variant="caption" tone="mutedForeground">
           {t(`admin.appealSubject.${row.subject_type}`)}
         </Text>
-        <Pressable accessibilityRole="link" onPress={() => router.navigate(subjectPath(row.subject_type, row.subject_id) as Href)}>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.navigate(subjectPath(row.subject_type, row.subject_id) as Href)}
+          style={{ minHeight: hitTarget, justifyContent: 'center' }}
+        >
           <Text weight="semibold" tone="primary">
             {label}
           </Text>
@@ -180,6 +184,7 @@ function AppealCard({ row }: { row: Appeal }) {
           <Pressable
             accessibilityRole="link"
             onPress={() => router.push({ pathname: '/admin/users/[id]', params: { id: (row.appellant as { id: string }).id } })}
+            style={{ minHeight: hitTarget, justifyContent: 'center' }}
           >
             <Text variant="caption" tone="primary">
               {row.appellant.full_name}

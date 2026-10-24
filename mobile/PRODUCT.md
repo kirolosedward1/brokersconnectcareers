@@ -10,7 +10,7 @@ ios
 
 - **Candidates** (primary): real-estate sales consultants and brokers in Egypt, Cairo first — primary sales, resale, leasing and commercial — looking for their next role, often on the phone between site visits. They browse and filter listings, apply with a CV, follow where each application stands, save listings, and keep a directory profile and CV that companies can find.
 - **Employers**: brokerages and developers that post listings, review and move applicants through stages, and (once approved) search the consultant directory and shortlist people.
-- **Admins** moderate on the website only; the app has no admin console.
+- **Admins** moderate from the app's Admin tab — the website's admin console for the phone: reports and appeals, companies and their verification, listings, users, applications and consultants — and from the website, which keeps the rest of the console.
 
 ## Product Purpose
 
@@ -22,7 +22,7 @@ Every listing states its basic salary and its commission as numbers, and who bri
 
 ## Operating Context
 
-- Arabic first and right to left everywhere, in plain Egyptian Arabic; English exists behind a flag. Light and dark.
+- Arabic first and right to left everywhere, in plain Egyptian Arabic; English exists behind a flag. Light and dark, following the iPhone's own setting unless the person picks one in Account.
 - The iOS app (Expo / React Native, in `mobile/`) shares the website's database, permissions and logic; every write goes through the website's own actions, so emails, upload checks and limits behave the same.
 - The owner tries each change in Expo Go on an iPhone; App Store release is being prepared.
 
@@ -41,7 +41,7 @@ Every listing states its basic salary and its commission as numbers, and who bri
 
 ## Evidence on Hand
 
-- Real listings and demo jobs on production for browsing; the official logo (a 450 px mark — a 1024 px version is still needed for the App Store icon).
+- Real listings and demo jobs on production for browsing; the official logo, and the 1024 px App Store icon made from it (`assets/images/icon.png`).
 - Privacy, terms, cookies, refunds and deletion pages exist on the website.
 - No testimonials, customer counts, press or case studies exist: none may be invented.
 

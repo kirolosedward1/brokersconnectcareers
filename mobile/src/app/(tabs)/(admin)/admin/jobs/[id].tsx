@@ -105,7 +105,7 @@ function Review({ id }: { id: string | undefined }) {
     >
       <View style={{ gap: space[2] }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header" style={{ flex: 1 }}>
+          <Text variant="title" weight="semibold" accessibilityRole="header" style={{ flex: 1 }}>
             {title}
           </Text>
           <Badge variant={STATUS_VARIANT[shown]} label={t(`jobStatus.${shown}`)} />

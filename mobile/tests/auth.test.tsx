@@ -1,3 +1,4 @@
+import { shownToast, toast } from '~/components/feedback/toast';
 import { AccessibilityInfo, Alert, BackHandler, Linking, Platform, Text } from 'react-native';
 import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -101,6 +102,8 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+  // A toast from the test before is not this one's.
+  toast.hide();
   user = authUser();
   profileRow = profile;
   companyId = null;
@@ -712,7 +715,7 @@ describe('onboarding', () => {
     await act(async () => yes?.onPress?.());
 
     await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
     expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
@@ -1516,7 +1519,7 @@ describe('deleting the account', () => {
     await press(ar.account.deleteCta);
 
     await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
   });
@@ -1557,7 +1560,7 @@ describe('deleting the account', () => {
     fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
     await press(ar.account.deleteCta);
 
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
     expect(screen.queryByText(ar.account.deleteUnavailable)).toBeNull();
     expect((await supabase.auth.getSession()).data.session).toBeNull();
   });
@@ -1573,7 +1576,7 @@ describe('deleting the account', () => {
     await press(ar.account.deleteCta);
 
     expect(await screen.findByText(ar.account.deleteUnavailable)).toBeTruthy();
-    expect(Alert.alert).not.toHaveBeenCalledWith(ar.app.account.deleted);
+    expect(shownToast()?.message).not.toBe(ar.app.account.deleted);
     expect((await supabase.auth.getSession()).data.session).not.toBeNull();
   });
 
@@ -1621,7 +1624,7 @@ describe('deleting the account', () => {
 
       await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/deleteMyAccount')).toEqual({ input: {} }));
       expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
-      await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.deleted));
+      await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
     } finally {
       os.restore();
     }

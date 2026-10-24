@@ -16,6 +16,7 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { NAME_MAX, SLUG_MAX, taxonomyProblem, type Governorate, type TaxonomyEntry } from '~/features/admin/taxonomy';
 import { appDirection } from '~/lib/direction';
+import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
 import { gutter, hitTarget, space } from '~/theme/tokens';
@@ -68,6 +69,11 @@ export function TaxonomyForm({
   const adding = entry === null;
   const title = adding ? t('app.admin.taxonomy.newEntry') : t('app.admin.taxonomy.renameTitle', { name: entry.name_ar });
   const dirty = adding || nameAr !== entry.name_ar || nameEn !== entry.name_en || governorateId !== entry.governorate_id;
+  // Something typed (a new entry counts only once a name or slug is): pulled
+  // down then, the sheet stays and asks first, as iOS hands the attempt to onRequestClose.
+  const typed = adding ? nameAr.trim() !== '' || nameEn.trim() !== '' || slug.trim() !== '' : dirty;
+  const confirmDiscard = useConfirmDiscard();
+  const requestClose = () => (typed ? confirmDiscard(onClose) : onClose());
 
   const submit = () => {
     const draft = {
@@ -105,7 +111,7 @@ export function TaxonomyForm({
   };
 
   return (
-    <Modal visible={visible} onDismiss={onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} onDismiss={onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal={!typed} onRequestClose={requestClose}>
       <KeyboardRoom>
         <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View

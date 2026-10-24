@@ -203,7 +203,7 @@ describe("an employer's home", () => {
     expect(await screen.findByText('3 متقدمين بانتظارك')).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statApplicantsNew}: 3`)).toBeTruthy();
     // Six this week against four the week before: up by half.
-    expect(screen.getByLabelText(`${ar.dashboard.statApplicants7d}: 6، 50% ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.dashboard.statApplicants7d}: 6، ${ar.app.dashboard.trendUp.replace('{value}', '50%')} ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statVerification}: ${ar.companies.verified}`)).toBeTruthy();
     // The month, and how each listing converts.
     expect(await screen.findByText(ar.dashboard.trendApplicationsTitle)).toBeTruthy();
