@@ -354,8 +354,8 @@ describe('the board', () => {
     fireEvent.press(screen.getByRole('button', { name: 'رتّب حسب: الأحدث' }));
     expect(screen.getByLabelText('رتّب حسب').props.accessibilityRole).toBe('radiogroup');
     expect(screen.getByRole('radio', { name: 'الأحدث' }).props.accessibilityState).toMatchObject({ checked: true });
-    expect(screen.getByRole('radio', { name: 'الأعلى راتباً' }).props.accessibilityState).toMatchObject({ checked: false });
-    fireEvent.press(screen.getByText('الأعلى راتباً'));
+    expect(screen.getByRole('radio', { name: 'الأعلى راتبًا' }).props.accessibilityState).toMatchObject({ checked: false });
+    fireEvent.press(screen.getByText('الأعلى راتبًا'));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ sort: 'salary' }));
   });
 });

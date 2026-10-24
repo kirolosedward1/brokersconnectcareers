@@ -87,9 +87,9 @@ export default async function SignInPage({
 
   return (
     <AuthShell>
-      <div className="mx-auto w-full max-w-sm">
-        <h1 className="text-3xl font-bold">{t('signInTitle')}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <h1 className="w-full whitespace-nowrap text-center text-3xl font-bold">{t('signInTitle')}</h1>
+      <div className="mx-auto mt-2 w-full max-w-sm">
+        <p className="text-sm text-muted-foreground">
           {t('noAccount')}{' '}
           {/* Carries `next` across. This is where Apply sends a signed-out
               reader, and most of them have no account yet: without it they

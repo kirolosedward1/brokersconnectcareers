@@ -50,10 +50,10 @@ const KEYS: Record<string, string> = {
   // signed-out.yaml: Account's card, its sign-in button, the sheet and its email button, the forgotten password, sign-up.
   'سجّل الدخول إلى حسابك': 'app.account.signedOutTitle',
   'تسجيل الدخول': 'nav.signIn',
-  'مرحباً بعودتك': 'auth.signInTitle',
+  'مرحبًا بعودتك': 'auth.signInTitle',
   'المتابعة بالبريد الإلكتروني': 'app.auth.continueWithEmail',
   'نسيت كلمة المرور؟': 'auth.forgotPassword',
-  'اكتب بريدك وسنرسل لك رابطاً لتعيين كلمة مرور جديدة.': 'auth.forgotBody',
+  'اكتب بريدك وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.': 'auth.forgotBody',
   'أنشئ حسابك': 'auth.signUpTitle',
   'تأكيد كلمة المرور': 'auth.passwordConfirm',
 };

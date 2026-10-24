@@ -20,7 +20,7 @@ appId: net.brokersconnect.app
     centerElement: true
 - tapOn: "تسجيل الدخول"
 - extendedWaitUntil:
-    visible: "مرحباً بعودتك"
+    visible: "مرحبًا بعودتك"
     timeout: 30000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
@@ -39,7 +39,7 @@ appId: net.brokersconnect.app
     centerElement: true
 - tapOn: "نسيت كلمة المرور؟"
 - extendedWaitUntil:
-    visible: "اكتب بريدك وسنرسل لك رابطاً لتعيين كلمة مرور جديدة."
+    visible: "اكتب بريدك وسنرسل لك رابطًا لتعيين كلمة مرور جديدة."
     timeout: 30000
 - waitForAnimationToEnd
 - runFlow: checks.yaml

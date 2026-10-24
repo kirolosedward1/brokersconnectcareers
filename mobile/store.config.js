@@ -54,7 +54,7 @@ const descriptionAr = `بروكرز كونكت منصة وظائف ودليل ا
 • أضف زملاءك ليديروا الإعلانات والمتقدمين معك.
 
 الأمان
-• تُزال الإعلانات التي تطلب من المتقدمين مالاً، أو بيانات بطاقة أو حساب بنكي قبل المقابلة.
+• تُزال الإعلانات التي تطلب من المتقدمين مالًا، أو بيانات بطاقة أو حساب بنكي قبل المقابلة.
 • يمكنك البلاغ عن أي إعلان أو شركة أو ملف من داخل التطبيق.`;
 
 const descriptionEn = `Brokers Connect is a job board and consultant directory for real estate sales in Egypt. The app is in Arabic.
@@ -99,7 +99,7 @@ USER-GENERATED CONTENT
 • A new account agrees to the Terms, and confirms being 18 or over, before it can go on (sign up with an address you can receive mail at to see it). The two review accounts have already agreed.
 
 DELETING THE ACCOUNT
-«حسابي» > «حذف الحساب» (Delete account): type «حذف», or the English word delete, then tap «احذف حسابي نهائياً» (Delete my account permanently). Please try it last: deleting the candidate deletes its applications, which are the employer's applicants. The employer account owns the review company, so for it the same screen sends a deletion request instead: deleting it would delete other people's applications to the company's listings.
+«حسابي» > «حذف الحساب» (Delete account): type «حذف», or the English word delete, then tap «احذف حسابي نهائيًا» (Delete my account permanently). Please try it last: deleting the candidate deletes its applications, which are the employer's applicants. The employer account owns the review company, so for it the same screen sends a deletion request instead: deleting it would delete other people's applications to the company's listings.
 
 Nothing is sold in the app.`;
 }

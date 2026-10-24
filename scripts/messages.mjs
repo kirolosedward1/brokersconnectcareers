@@ -928,7 +928,7 @@ console.log('\n— a count on the website takes its form');
   expect('the bulk pack', ar, 'billing.seatsUpTo', { count: 15 }, 'حتى 15 وظيفة خالية');
   expect('the single pack', en, 'billing.seatsUpTo', { count: 3 }, 'Up to 3 seats');
   expect('a pack of one', en, 'billing.seatsUpTo', { count: 1 }, 'Up to 1 seat');
-  expect('a pack’s days', ar, 'billing.days', { count: 30 }, '30 يوماً');
+  expect('a pack’s days', ar, 'billing.days', { count: 30 }, '30 يومًا');
   expect('a short pack', ar, 'billing.days', { count: 7 }, '7 أيام');
   expect('one applicant', en, 'admin.applicantsN', { count: 1 }, '1 applicant');
   expect('two applicants', ar, 'admin.applicantsN', { count: 2 }, 'متقدمان');
