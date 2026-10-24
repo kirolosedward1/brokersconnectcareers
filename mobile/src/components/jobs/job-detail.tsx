@@ -42,6 +42,7 @@ import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { shareJobLink } from '~/features/jobs/share';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
@@ -85,6 +86,7 @@ export function JobDetail({
   const tCompanies = useTranslations('companies');
   const tLanding = useTranslations('landing');
   const tApply = useTranslations('apply');
+  const shrink = useShrinkingTabBar();
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
 
@@ -128,9 +130,11 @@ export function JobDetail({
   // Where the step's foot is in the page, and whether the page is scrolled past it.
   const [stepEnd, setStepEnd] = useState<number | null>(null);
   const [pastStep, setPastStep] = useState(false);
+  // The tab bar growing smaller as the page goes down, and — with something to pin — the pinned bar.
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    shrink.onScroll(event);
     // Set only when it changes way: the same answer draws nothing again.
-    setPastStep(stepEnd !== null && event.nativeEvent.contentOffset.y > stepEnd);
+    if (pinnable) setPastStep(stepEnd !== null && event.nativeEvent.contentOffset.y > stepEnd);
   };
 
   const shareLink = () => shareJobLink({ slug: job.slug, title });
@@ -193,8 +197,8 @@ export function JobDetail({
       <ScrollView
         testID="job-detail"
         contentInsetAdjustmentBehavior="automatic"
-        onScroll={pinnable ? onScroll : undefined}
-        scrollEventThrottle={32}
+        onScroll={onScroll}
+        scrollEventThrottle={shrink.scrollEventThrottle}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         // Room at the foot for the pinned bar, so the page's last lines are not under it.
         contentContainerStyle={{ padding: gutter, paddingBottom: pinnable ? space[12] + PINNED : space[12], gap: space[6] }}
