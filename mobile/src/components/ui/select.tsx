@@ -80,7 +80,7 @@ export function Select<T extends string | number>({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: space[2],
-          paddingHorizontal: space[4] - 2,
+          paddingHorizontal: space[3.5],
           ...corner('lg'),
           borderWidth: 1,
           borderColor: error ? colors.destructive : colors.input,

@@ -1,18 +1,16 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 
 /**
  * The first thing Home shows: a deep sapphire panel falling to midnight, a
- * line in champagne above the headline, the headline and its promise, and
- * whatever the screen puts beneath (the search, its button); compact, a
- * dashboard's greeting in the same panel, with what stands beside it at its
- * end (`aside`: the reader's photo) — in Arabic, the left. Fine champagne
- * arcs open from its far corner, the way a plan's sightlines do; they are
- * drawing, not content, and are hidden from VoiceOver.
+ * quiet line above the headline, the headline and its promise, and whatever
+ * the screen puts beneath (the search, its button); compact, a dashboard's
+ * greeting in the same panel, with what stands beside it at its end
+ * (`aside`: the reader's photo) — in Arabic, the left. No champagne in the
+ * panel but its button's: gold is for what is earned, not for ornament.
  */
 export function Hero({
   eyebrow,
@@ -36,7 +34,7 @@ export function Hero({
   const words = (
     <>
       {eyebrow ? (
-        <Text variant="label" weight="semibold" style={{ color: colors.champagne }}>
+        <Text variant="label" weight="semibold" style={{ color: colors.onHeroMuted }}>
           {eyebrow}
         </Text>
       ) : null}
@@ -63,20 +61,6 @@ export function Hero({
           gap,
         }}
       >
-        <View
-          accessible={false}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-          style={{ position: 'absolute', top: -160, end: -160, width: 320, height: 320 }}
-        >
-          <Svg width={320} height={320}>
-            {[70, 105, 140].map((r) => (
-              <Circle key={r} cx={160} cy={160} r={r} stroke={colors.champagne} strokeOpacity={0.22} strokeWidth={1} fill="none" />
-            ))}
-          </Svg>
-        </View>
-
         {aside ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
             <View style={{ flex: 1, gap }}>{words}</View>

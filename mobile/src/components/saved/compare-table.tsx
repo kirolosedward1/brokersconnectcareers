@@ -193,7 +193,7 @@ function Cell({ job, width, main, sub, best }: { job: JobListItem; width: number
         width,
         gap: 2,
         paddingHorizontal: space[3],
-        paddingVertical: space[2] + 2,
+        paddingVertical: space[2.5],
         ...corner('lg'),
         borderWidth: StyleSheet.hairlineWidth * 2,
         borderColor: best ? 'transparent' : colors.border,

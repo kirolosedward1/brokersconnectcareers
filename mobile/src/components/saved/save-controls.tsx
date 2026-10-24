@@ -97,7 +97,7 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
         justifyContent: 'center',
       }}
     >
-      <Pop key={save.jobId} trigger={save.saves} burst={colors.gold}>
+      <Pop key={save.jobId} trigger={save.saves}>
         {save.saved ? (
           <Bookmark size={20} color={colors.primary} fill={colors.primary} />
         ) : (
@@ -126,7 +126,7 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
       accessibilityState={{ selected: save.saved, busy: save.pending, disabled: save.pending }}
       disabled={save.pending}
       icon={
-        <Pop key={jobId} trigger={save.saves} burst={colors.gold}>
+        <Pop key={jobId} trigger={save.saves}>
           {save.saved ? <Bookmark size={18} color={colors.primary} fill={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
         </Pop>
       }

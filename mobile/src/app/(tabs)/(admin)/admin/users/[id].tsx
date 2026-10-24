@@ -109,7 +109,7 @@ function File({ id }: { id: string | undefined }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
         <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" />
         <View style={{ flex: 1, gap: space[1] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {profile.full_name}
           </Text>
           <Text variant="small" tone="mutedForeground">

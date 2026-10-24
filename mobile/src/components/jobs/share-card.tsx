@@ -54,7 +54,7 @@ export function JobShareCard({ job }: { job: ShareableJob }) {
         overflow: 'hidden',
       }}
     >
-      {/* The Home panel's sightlines, in champagne, behind the words. */}
+      {/* Sightlines, in champagne, behind the words: the card is a thing earned and sent on. */}
       <Svg width={CARD.width} height={CARD.height} style={StyleSheet.absoluteFill} pointerEvents="none">
         {[150, 210, 270].map((r, index) => (
           <Circle key={r} cx={CARD.width} cy={0} r={r} stroke={colors.champagne} strokeOpacity={[0.35, 0.22, 0.12][index]} fill="none" />

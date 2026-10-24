@@ -75,7 +75,7 @@ function LicenseRow({ row }: { row: Row }) {
   switch (row.kind) {
     case 'heading':
       return (
-        <Text variant="title" weight="bold" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[2] }}>
+        <Text variant="title" weight="semibold" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[2] }}>
           {row.title}
         </Text>
       );

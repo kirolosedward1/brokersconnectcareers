@@ -280,7 +280,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
         wrapped — with the step's name under it.
       */}
       <View style={{ gap: space[2] }}>
-        <View style={{ flexDirection: 'row', gap: space[1] + 2 }}>
+        <View style={{ flexDirection: 'row', gap: space[1.5] }}>
           {STEPS.map((name, index) => (
             <Pressable
               key={name}

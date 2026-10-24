@@ -117,7 +117,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >
         <View style={{ gap: space[2] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {t('title', { track: trackName, district: districtName })}
           </Text>
           <Text tone="mutedForeground">{t('subtitle', { track: trackName, district: districtName })}</Text>

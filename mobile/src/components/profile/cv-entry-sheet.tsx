@@ -282,7 +282,7 @@ function EntryForm({
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: gutter, paddingVertical: space[4], gap: space[3] }}>
-        <Text variant="title" weight="bold" accessibilityRole="header" style={{ flex: 1 }}>
+        <Text variant="title" weight="semibold" accessibilityRole="header" style={{ flex: 1 }}>
           {heading}
         </Text>
         <Pressable

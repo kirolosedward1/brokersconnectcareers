@@ -727,7 +727,7 @@ function OnboardingForm({
 function StepHeading({ title, body }: { title: string; body?: string | null }) {
   return (
     <View style={{ gap: space[2] }}>
-      <Text variant="title" weight="bold" accessibilityRole="header">
+      <Text variant="title" weight="semibold" accessibilityRole="header">
         {title}
       </Text>
       {body ? <Text tone="mutedForeground">{body}</Text> : null}

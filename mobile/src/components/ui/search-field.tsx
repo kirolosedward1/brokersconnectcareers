@@ -62,7 +62,7 @@ export function SearchField({
           flexDirection: 'row',
           alignItems: 'center',
           gap: space[2],
-          paddingStart: space[3] + 2,
+          paddingStart: space[3.5],
           ...corner('full'),
           borderWidth: 1,
           borderColor: focused ? colors.primary : colors.border,

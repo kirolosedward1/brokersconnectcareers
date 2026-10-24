@@ -145,7 +145,7 @@ export default function AccountScreen() {
               ) : null}
               <View style={{ flex: 1, gap: space[1] }}>
                 {viewer?.profile?.full_name ? (
-                  <Text variant="title" weight="bold">
+                  <Text variant="title" weight="semibold">
                     {viewer.profile.full_name}
                   </Text>
                 ) : null}
@@ -174,7 +174,7 @@ export default function AccountScreen() {
         ) : (
           <View style={{ gap: space[3] }}>
             <View style={{ gap: space[1] }}>
-              <Text variant="title" weight="bold" accessibilityRole="header">
+              <Text variant="title" weight="semibold" accessibilityRole="header">
                 {t('app.account.signedOutTitle')}
               </Text>
               <Text tone="mutedForeground">{t('app.account.signedOutBody')}</Text>

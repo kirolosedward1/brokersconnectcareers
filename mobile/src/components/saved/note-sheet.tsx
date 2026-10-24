@@ -116,7 +116,7 @@ export function NoteSheet({
           direction: appDirection,
           justifyContent: 'flex-start',
           paddingTop: insets.top + space[2],
-          backgroundColor: 'rgba(5, 10, 25, 0.5)',
+          backgroundColor: colors.scrim,
         }}
         testID="note-sheet-room"
         {...fence}
