@@ -541,19 +541,51 @@ section('the owner is told once when a listing is approved, and once when a cand
       const approved = renderPreview('job_approved_owner', locale, 'default');
       const withdrew = renderPreview('candidate_withdrew', locale, 'default');
       const bare = renderPreview('candidate_withdrew', locale, 'minimal');
-      const tApproved = copyFor(locale).jobApproved;
-      const tWithdrew = copyFor(locale).candidateWithdrew;
+      const tApproved = copyFor(locale).jobApprovedOwner;
       const job = locale === 'ar' ? 'مستشار عقاري أول' : 'Senior Property Consultant';
       const name = locale === 'ar' ? 'أحمد محمود' : 'Ahmed Mahmoud';
-      ok(`${locale} approval subject`, approved.subject === tApproved.subject(job), approved.subject);
+      const exactApproved =
+        locale === 'ar'
+          ? {
+              subject: 'تمت الموافقة على «مستشار عقاري أول»',
+              heading: 'تمت الموافقة على إعلانك',
+              body: '«مستشار عقاري أول» ظاهر للمرشحين الآن. ستصلك رسالة عند كل تقديم جديد.',
+            }
+          : {
+              subject: '"Senior Property Consultant" is approved',
+              heading: 'Your listing is approved',
+              body: '"Senior Property Consultant" is visible to candidates now. You will receive an email for each new application.',
+            };
+      const exactWithdrew =
+        locale === 'ar'
+          ? {
+              subject: 'انسحب مرشح من «مستشار عقاري أول»',
+              heading: 'انسحب مرشح',
+              body: 'انسحب أحمد محمود من «مستشار عقاري أول». لم يعد هذا التقديم قائماً.',
+              unnamed: 'انسحب مرشح من «مستشار عقاري أول». لم يعد هذا التقديم قائماً.',
+            }
+          : {
+              subject: 'A candidate withdrew from "Senior Property Consultant"',
+              heading: 'A candidate withdrew',
+              body: 'Ahmed Mahmoud withdrew from "Senior Property Consultant". This application is no longer active.',
+              unnamed: 'A candidate withdrew from "Senior Property Consultant". This application is no longer active.',
+            };
+      ok(`${locale} approval subject`, approved.subject === exactApproved.subject, approved.subject);
+      ok(`${locale} approval heading`, approved.text.startsWith(exactApproved.heading) && approved.html.includes(exactApproved.heading));
+      ok(`${locale} approval body`, approved.text.includes(exactApproved.body));
+      ok(`${locale} approval button`, approved.html.includes(locale === 'ar' ? 'عرض الإعلان' : 'View the listing'));
+      ok(`${locale} approval is one language`, locale === 'ar' ? !approved.html.includes('Your listing is approved') : !approved.html.includes('تمت الموافقة على إعلانك'));
       ok(`${locale} approval is Arabic-first RTL when Arabic`, locale !== 'ar' || (approved.html.includes('lang="ar"') && approved.html.includes('dir="rtl"')));
       ok(`${locale} approval is left to right in English`, locale !== 'en' || approved.html.includes('dir="ltr"'));
       ok(`${locale} approval has no unsubscribe`, !approved.html.includes('/unsubscribe') && approved.unsubscribeUrl == null);
       ok(`${locale} approval names support`, approved.html.includes('mailto:info@topsuite.net'));
-      ok(`${locale} approval body`, approved.text.includes(tApproved.body(job)));
-      ok(`${locale} withdrawal subject`, withdrew.subject === tWithdrew.subject(job), withdrew.subject);
-      ok(`${locale} withdrawal names the candidate`, withdrew.text.includes(tWithdrew.bodyNamed(name, job)));
-      ok(`${locale} withdrawal without a name does not invent one`, bare.text.includes(tWithdrew.body(job)) && !bare.text.includes(name));
+      ok(`${locale} approval matches its own copy`, approved.subject === tApproved.subject(job) && approved.text.includes(tApproved.body(job)));
+      ok(`${locale} withdrawal subject`, withdrew.subject === exactWithdrew.subject, withdrew.subject);
+      ok(`${locale} withdrawal heading`, withdrew.text.startsWith(exactWithdrew.heading) && withdrew.html.includes(exactWithdrew.heading));
+      ok(`${locale} withdrawal body`, withdrew.text.includes(exactWithdrew.body));
+      ok(`${locale} withdrawal button`, withdrew.html.includes(locale === 'ar' ? 'عرض المتقدمين' : 'View applicants'));
+      ok(`${locale} withdrawal without a name`, bare.subject === exactWithdrew.subject && bare.text.includes(exactWithdrew.unnamed) && !bare.text.includes(name));
+      ok(`${locale} withdrawal is one language`, locale === 'ar' ? !withdrew.html.includes('A candidate withdrew') : !withdrew.html.includes('انسحب مرشح'));
       ok(`${locale} withdrawal has no unsubscribe`, bare.unsubscribeUrl == null && !bare.html.includes('/unsubscribe'));
       ok(
         `${locale} withdrawal copy is not Egyptian`,
@@ -613,7 +645,14 @@ section('the owner is told once when a listing is approved, and once when a cand
     ok('the job title cannot become markup', ownerMail[0].html.includes('مستشار &lt;أول&gt;') && !ownerMail[0].html.includes('<أول>'));
     ok('approval is rtl arabic', ownerMail[0].html.includes('lang="ar"') && ownerMail[0].html.includes('dir="rtl"'));
     ok('approval is not optional', ownerMail[0].unsubscribe == null && !ownerMail[0].html.includes('/unsubscribe'));
-    ok('approval subject', ownerMail[0].subject === copyFor('ar').jobApproved.subject('مستشار <أول>'));
+    ok('approval subject', ownerMail[0].subject === 'تمت الموافقة على «مستشار <أول>»');
+    ok(
+      'approval heading and body',
+      ownerMail[0].text.includes('تمت الموافقة على إعلانك') &&
+        ownerMail[0].text.includes('«مستشار <أول>» ظاهر للمرشحين الآن. ستصلك رسالة عند كل تقديم جديد.'),
+    );
+    const preference = renderPreview('job_approved', 'ar', 'default');
+    ok('the shared approval mail still says it was published', preference.subject === 'تم نشر «مستشار عقاري أول»' && preference.text.includes('تم نشر إعلانك'));
 
     await notifyEmployerOfModeration('J', true);
     ok(

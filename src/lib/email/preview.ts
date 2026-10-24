@@ -340,7 +340,7 @@ const BUILDERS: Record<string, Builder> = {
 
   job_approved_owner: (f) => {
     const w = words(f);
-    const t = copyFor(f.locale).jobApproved;
+    const t = copyFor(f.locale).jobApprovedOwner;
     const expires = optional(f, day(f));
     return {
       subject: t.subject(w.job),

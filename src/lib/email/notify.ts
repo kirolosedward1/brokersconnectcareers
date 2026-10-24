@@ -1221,7 +1221,7 @@ export async function notifyBrokerOfJobApproval(
 
     const to = await recipient(admin, ownerId, null);
     const audience = to ? audienceOf(to, null) : { locale: 'ar' as const };
-    const t = copyFor(audience.locale).jobApproved;
+    const t = copyFor(audience.locale).jobApprovedOwner;
     const title = localized(audience.locale, job.title_ar, job.title_en);
     const envelope = buildEnvelope({
       audience,

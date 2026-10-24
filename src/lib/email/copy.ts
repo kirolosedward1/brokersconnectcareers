@@ -191,16 +191,17 @@ export const emailCopy = {
     },
 
     candidateWithdrew: {
-      // To the listing's owner. The name is the one the applicants page still
-      // shows after a withdrawal; the phone, the email and the CV are not.
-      subject: (job: string) => `انسحب متقدم من «${job}»`,
-      preheader: 'انسحب أحد المتقدمين من إعلانك.',
-      heading: 'انسحب متقدم',
-      body: (job: string) => `انسحب أحد المتقدمين من التقديم على وظيفة «${job}».`,
-      bodyNamed: (name: string, job: string) => `انسحب ${name} من التقديم على وظيفة «${job}».`,
+      // To the listing's owner, in the owner's language only. The name is the
+      // one the applicants page still shows; the phone, the email and the CV
+      // are not in this message.
+      subject: (job: string) => `انسحب مرشح من «${job}»`,
+      preheader: 'لم يعد هذا التقديم قائماً.',
+      heading: 'انسحب مرشح',
+      body: (job: string) => `انسحب مرشح من «${job}». لم يعد هذا التقديم قائماً.`,
+      bodyNamed: (name: string, job: string) => `انسحب ${name} من «${job}». لم يعد هذا التقديم قائماً.`,
       cta: 'عرض المتقدمين',
-      labelJob: 'الوظيفة',
-      labelApplicant: 'المتقدم',
+      labelJob: 'الإعلان',
+      labelApplicant: 'المرشح',
     },
 
     // -----------------------------------------------------------------------
@@ -229,6 +230,19 @@ export const emailCopy = {
       labelJob: 'الوظيفة',
       labelPublished: 'تاريخ النشر',
       labelExpires: 'ينتهي في',
+    },
+
+    // The owner's receipt. A different message from jobApproved, which the
+    // preference mail to other members still uses.
+    jobApprovedOwner: {
+      subject: (job: string) => `تمت الموافقة على «${job}»`,
+      preheader: 'إعلانك ظاهر للمرشحين الآن.',
+      heading: 'تمت الموافقة على إعلانك',
+      body: (job: string) => `«${job}» ظاهر للمرشحين الآن. ستصلك رسالة عند كل تقديم جديد.`,
+      cta: 'عرض الإعلان',
+      labelJob: 'الإعلان',
+      labelPublished: 'تاريخ النشر',
+      labelExpires: 'تاريخ الانتهاء',
     },
 
     jobRejected: {
@@ -523,13 +537,13 @@ export const emailCopy = {
 
     candidateWithdrew: {
       subject: (job: string) => `A candidate withdrew from "${job}"`,
-      preheader: 'An applicant withdrew from your listing.',
+      preheader: 'This application is no longer active.',
       heading: 'A candidate withdrew',
-      body: (job: string) => `A candidate withdrew an application for "${job}".`,
-      bodyNamed: (name: string, job: string) => `${name} withdrew an application for "${job}".`,
+      body: (job: string) => `A candidate withdrew from "${job}". This application is no longer active.`,
+      bodyNamed: (name: string, job: string) => `${name} withdrew from "${job}". This application is no longer active.`,
       cta: 'View applicants',
-      labelJob: 'Role',
-      labelApplicant: 'Applicant',
+      labelJob: 'Listing',
+      labelApplicant: 'Candidate',
     },
 
     jobSubmitted: {
@@ -554,6 +568,18 @@ export const emailCopy = {
       labelJob: 'Role',
       labelPublished: 'Published',
       labelExpires: 'Expires',
+    },
+
+    jobApprovedOwner: {
+      subject: (job: string) => `"${job}" is approved`,
+      preheader: 'Candidates can see your listing now.',
+      heading: 'Your listing is approved',
+      body: (job: string) =>
+        `"${job}" is visible to candidates now. You will receive an email for each new application.`,
+      cta: 'View the listing',
+      labelJob: 'Listing',
+      labelPublished: 'Published',
+      labelExpires: 'Closes',
     },
 
     jobRejected: {
