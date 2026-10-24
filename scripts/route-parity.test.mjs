@@ -48,6 +48,7 @@ const WEBSITE_ONLY = new Map([
   ...LEGAL_SLUGS.map((slug) => [`/${slug}`, 'a legal document, opened in the in-app browser']),
   ['/blog', 'the blog, opened in the in-app browser'],
   ['/blog/[slug]', 'the blog, opened in the in-app browser'],
+  ['/support', 'the public help page, and the App Store support URL'],
   ['/employers', "the website's landing page for companies"],
   ['/unsubscribe', "an email's one-tap link"],
   ['/[...rest]', "the website's 404"],
