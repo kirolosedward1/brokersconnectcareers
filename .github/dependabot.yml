@@ -1,0 +1,54 @@
+# Dependency updates, grouped and weekly, so a week's bumps arrive as a few
+# pull requests rather than dozens. Each runs the same CI as any other change
+# (web.yml, mobile.yml, security.yml).
+#
+# Security updates are not held to this schedule: GitHub opens those as soon
+# as an advisory is published, once "Dependabot security updates" is on in
+# Settings → Code security.
+#
+# The app (mobile/) moves with Expo's SDK: React Native, expo and expo-* are
+# aligned by `npx expo install --fix`, not by version ranges, so they are left
+# out here and bumped by hand with the SDK (docs/mobile.md).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      website-minor-and-patch:
+        update-types: [minor, patch]
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native/*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
+    groups:
+      app-minor-and-patch:
+        update-types: [minor, patch]
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']

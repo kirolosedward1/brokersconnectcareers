@@ -1,0 +1,13 @@
+# gitleaks configuration for CI's secret scan (.github/workflows/security.yml).
+#
+# The default rules, plus one allowance: the Supabase *publishable* key is
+# public by design (it ships in every page and in the app, eas.json and the
+# workflows set it in the open) and is the one key-shaped string this
+# repository is meant to contain. Everything else gitleaks finds fails CI,
+# except the reviewed fixtures in .github/gitleaks-baseline.json.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Supabase publishable key (public by design)"
+regexes = ['''sb_publishable_[A-Za-z0-9_-]{20,}''']
