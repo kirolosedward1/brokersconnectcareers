@@ -379,7 +379,7 @@ function ApplyForm({
     >
       <DraftNotice draft={kept} />
       <View style={{ gap: space[1] }}>
-        <Text variant="title" weight="bold" accessibilityRole="header">
+        <Text variant="title" weight="semibold" accessibilityRole="header">
           {t('apply.title', { job: title })}
         </Text>
         <Text variant="small" tone="mutedForeground">
@@ -635,7 +635,7 @@ function Sent({ job }: { job: JobDetail; at?: Date }) {
           <DrawnCheck size={72} />
         </Appear>
         <Confetti />
-        <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
+        <Text variant="title" weight="semibold" accessibilityRole="header" style={{ textAlign: 'center' }}>
           {t('apply.success')}
         </Text>
         <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>

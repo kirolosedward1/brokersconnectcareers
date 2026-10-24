@@ -8,6 +8,7 @@ import { Pulse } from '~/components/motion/pulse';
 import { Check, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
+import { motion } from '~/theme/tokens';
 
 import { timelineSteps, type TimelineStep } from '@/lib/application-stages';
 
@@ -61,7 +62,7 @@ export function ApplicationTimeline({
         const tint =
           step.state === 'stopped'
             ? application.status === 'withdrawn'
-              ? '#5B6475'
+              ? colors.mutedForeground
               : colors.destructive
             : reached
               ? colors.success
@@ -73,7 +74,7 @@ export function ApplicationTimeline({
             <View style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.line, { backgroundColor: index === 0 ? 'transparent' : step.state === 'ahead' ? colors.border : tint }]} />
               {/* Reached steps fill in one after another; the one it waits at breathes. */}
-              <Appear from="none" scale={reached ? 0.4 : 1} delay={index * 140} duration={360}>
+              <Appear from="none" scale={reached ? 0.4 : 1} delay={index * motion.stagger}>
                 <Breathing on={step.state === 'current'}>
                   <View
                     style={{

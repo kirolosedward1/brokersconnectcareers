@@ -165,7 +165,7 @@ describe('a mark that answers a tap', () => {
         <Text>★</Text>
       </Pop>,
     );
-    expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1.28, useNativeDriver: true }));
+    expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1.15, useNativeDriver: true }));
   });
 
   it('is never left swollen: stopped part-way, it is put back at its own size', () => {

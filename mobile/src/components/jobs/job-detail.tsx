@@ -161,8 +161,8 @@ export function JobDetail({
         <View style={{ gap: space[4] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
             <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[2], rowGap: 2 }}>
+            <View style={{ flex: 1, gap: space[0.5] }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[2], rowGap: space[0.5] }}>
                 <Text
                   variant="small"
                   weight="semibold"
@@ -178,7 +178,7 @@ export function JobDetail({
                   </VerifiedMark>
                 ) : null}
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
                 <MapPin size={13} color={colors.mutedForeground} />
                 <Text variant="small" tone="mutedForeground">
                   {districtName}
@@ -187,7 +187,7 @@ export function JobDetail({
             </View>
           </View>
 
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {title}
           </Text>
 
@@ -204,7 +204,7 @@ export function JobDetail({
               router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
             }
             hitSlop={8}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[0.5], alignSelf: 'flex-start', opacity: pressed ? 0.6 : 1 })}
           >
             <Text variant="small" weight="medium" tone="primary">
               {tLanding('title', { track: tTrack(job.track), district: districtName })}
@@ -285,7 +285,7 @@ export function JobDetail({
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[4], rowGap: space[1] }}>
           {job.published_at ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <CalendarClock size={13} color={colors.mutedForeground} />
               <Text variant="caption" tone="mutedForeground">
                 {t('postedOn', { date: formatDate(job.published_at, locale) })}
@@ -297,7 +297,7 @@ export function JobDetail({
               {t(open ? 'expiresOn' : 'endedOn', { date: formatDate(job.expires_at, locale) })}
             </Text>
           ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
             <Eye size={13} color={colors.mutedForeground} />
             <Text variant="caption" tone="mutedForeground">
               {t('views', { count: job.view_count })}
@@ -379,7 +379,7 @@ function Fact({ icon, children }: { icon?: React.ReactNode; children: string }) 
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: space[1],
         paddingHorizontal: space[3],
         paddingVertical: space[1],
         ...corner('full'),

@@ -335,7 +335,7 @@ function HeroPhoto({ profile, completeness }: { profile: ProfileRow; completenes
   // How complete the profile is, round the photo; a tap opens it at what is missing.
   if (completeness !== null) {
     return (
-      <CompletenessRing percent={completeness} size={64} radius={18} onPress={() => router.navigate('/account/profile')}>
+      <CompletenessRing percent={completeness} size={64} radius={18} onHero onPress={() => router.navigate('/account/profile')}>
         {photo}
       </CompletenessRing>
     );

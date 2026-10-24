@@ -29,7 +29,7 @@ export function UpdateGate({ children }: { children: ReactNode }) {
   // Scrolls at the largest text sizes, where the button under the words must stay reachable.
   return (
     <CenteredScroll padding={space[6]} style={{ backgroundColor: colors.background }}>
-      <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
+      <Text variant="title" weight="semibold" accessibilityRole="header" style={{ textAlign: 'center' }}>
         {t('title')}
       </Text>
       <Text tone="mutedForeground" style={{ textAlign: 'center' }}>

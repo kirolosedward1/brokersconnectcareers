@@ -113,7 +113,7 @@ function File({ id }: { id: string | undefined }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
         <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
         <View style={{ flex: 1, gap: space[1] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {name}
           </Text>
           <Text variant="small" tone="mutedForeground">

@@ -50,7 +50,7 @@ export function AuthHeading({ title, body }: { title: string; body?: string | nu
       <View style={{ marginBottom: space[3] }}>
         <BrandLogo size="form" />
       </View>
-      <Text variant="display" weight="bold" accessibilityRole="header" style={styles.title}>
+      <Text variant="title" weight="semibold" accessibilityRole="header" style={styles.centred}>
         {title}
       </Text>
       {body ? (
@@ -76,5 +76,4 @@ export function AuthSwitch({ question, action, onPress }: { question?: string; a
 
 const styles = StyleSheet.create({
   centred: { textAlign: 'center' },
-  title: { textAlign: 'center', fontSize: 26, lineHeight: 38 },
 });

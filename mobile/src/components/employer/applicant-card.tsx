@@ -225,18 +225,7 @@ export function ApplicantCard({
           </Text>
         </View>
         {withdrawn ? (
-          <View
-            style={{
-              backgroundColor: WITHDRAWN_BADGE.background,
-              borderRadius: WITHDRAWN_BADGE.radius,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <Text style={{ color: WITHDRAWN_BADGE.color, fontSize: WITHDRAWN_BADGE.fontSize }} weight="medium">
-              {t('applicationStatus.withdrawn')}
-            </Text>
-          </View>
+          <Badge label={t('applicationStatus.withdrawn')} />
         ) : (
           <Badge variant={STAGE_TONE[status]} label={t(`applicationStatus.${status}`)} />
         )}

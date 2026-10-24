@@ -58,7 +58,7 @@ export const TextField = forwardRef<
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[2],
-        paddingHorizontal: space[4] - 2,
+        paddingHorizontal: space[3.5],
         ...corner('lg'),
         borderWidth: 1,
         borderColor: focused ? ring : error ? colors.destructive : colors.input,

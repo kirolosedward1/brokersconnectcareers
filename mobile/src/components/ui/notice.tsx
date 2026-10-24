@@ -60,7 +60,7 @@ export function Notice({
       style={{
         gap: space[1],
         paddingHorizontal: space[4],
-        paddingVertical: space[3] + 2,
+        paddingVertical: space[3.5],
         ...corner('lg'),
         borderWidth: tone === 'muted' ? StyleSheet.hairlineWidth * 2 : 0,
         borderColor: palette.border,

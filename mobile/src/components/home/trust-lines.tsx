@@ -51,7 +51,7 @@ export function TrustLines({ lines }: { lines: string[] }) {
 
   const line = (text: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-      <Check size={16} color={colors.champagne} strokeWidth={2.5} />
+      <Check size={16} color={colors.onHeroMuted} strokeWidth={2.5} />
       <Text variant="small" style={{ color: colors.onHeroMuted, flexShrink: 1 }}>
         {text}
       </Text>

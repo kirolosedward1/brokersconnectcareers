@@ -4,7 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
-import { STAGE_TONE, WITHDRAWN_BADGE, canWithdraw } from '@/lib/application-stages';
+import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -185,21 +185,21 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: space[0.5] }}>
           <Pressable
             accessibilityRole="link"
             onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
           >
             <Text weight="semibold">{title}</Text>
           </Pressable>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: 2 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: space[0.5] }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <Building2 size={14} color={colors.mutedForeground} />
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, job.company.name_ar, job.company.name_en)}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <MapPin size={14} color={colors.mutedForeground} />
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, job.district.name_ar, job.district.name_en)}
@@ -208,18 +208,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
           </View>
         </View>
         {application.status === 'withdrawn' ? (
-          <View
-            style={{
-              backgroundColor: WITHDRAWN_BADGE.background,
-              borderRadius: WITHDRAWN_BADGE.radius,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <Text style={{ color: WITHDRAWN_BADGE.color, fontSize: WITHDRAWN_BADGE.fontSize }} weight="medium">
-              {t('applicationStatus.withdrawn')}
-            </Text>
-          </View>
+          <Badge label={t('applicationStatus.withdrawn')} />
         ) : (
           <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
         )}
@@ -293,6 +282,6 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 /** A sentence about the row it sits in: a rule down its leading edge, no box. */
 function Aside({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <View style={{ borderStartWidth: 2, borderStartColor: color, paddingStart: space[3], gap: 2 }}>{children}</View>
+    <View style={{ borderStartWidth: 2, borderStartColor: color, paddingStart: space[3], gap: space[0.5] }}>{children}</View>
   );
 }
