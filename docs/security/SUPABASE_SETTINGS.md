@@ -10,7 +10,7 @@ Nothing here can be applied from a migration. Each item is a dashboard setting o
 | **Rate limits → Token refresh / sign-in per IP** | Keep defaults or lower (30 per 5 min) | GoTrue's own brute-force protection, keyed on the client's real IP. |
 | **Rate limits → Emails sent per hour** | 30 (custom SMTP is configured) | Bounds reset/confirmation mail from one project; the app's own reset limiter is telemetry only. |
 | **Leaked password protection** | On (Pro plan) | Refuses passwords found in breach corpora at sign-up and change. **Off on production as of 2026-10-22** (Supabase security advisor, `auth_leaked_password_protection`). |
-| **Minimum password length** | 10 | Forms enforce 8; raising the server side does not change the UI copy — update `validation.passwordShort` in `messages/*.json` when you raise it. |
+| **Minimum password length** | 10 | The forms ask 10 for a new password on both clients since 2026-10-24 (`src/lib/auth/password.ts`), and sign-in asks no length, so raising the server to 10 locks out no older password. |
 
 Confirm: `curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" -H "apikey: $ANON" -H "content-type: application/json" -d '{"email":"nobody@example.com","password":"x"}'` must answer `captcha verification process failed` once the toggle is on.
 
@@ -34,7 +34,7 @@ Then, as each admin: `/dashboard/account` → *Two-step verification* → set up
 
 ## Authentication → URL configuration
 
-Site URL = production origin. Redirect allow-list = `https://www.brokersconnect.net/auth/callback` (and the preview pattern if previews need sign-in). Nothing else — the callback validates `next` internally.
+Site URL = production origin. Redirect allow-list = `https://www.brokersconnect.net/auth/callback`, `https://www.brokersconnect.net/auth/confirm` and the app's `brokersconnect://auth/callback` (and the preview pattern if previews need sign-in). Nothing else — no `localhost`, no `exp://` — the callback validates `next` internally.
 
 ## Database → Settings
 

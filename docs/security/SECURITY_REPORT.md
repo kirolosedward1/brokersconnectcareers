@@ -1,5 +1,7 @@
 # Brokers Connect — Security, anti-abuse, privacy and scale hardening: final report
 
+> **Superseded for the verdict by `SECURITY_REPORT-2026-10-24.md`** (and `PRODUCTION_GATE-2026-10-24.md`). This report stays as the record of the September round; §12's `companies_select_public` and "remove CV" items are closed there.
+
 _September 2026. Branch `claude/blissful-wright-cjgxbt`. Covers the audit of the platform as deployed and the changes in security migrations 303–313 plus the application code that accompanies them. The branch also carries main's migrations 202–204 and 302._
 
 **Verdict: NOT SECURITY READY FOR PRODUCTION — until the five operator actions in §15 are done.** The code, schema, tests and build are ready. What is outstanding cannot be done from a repository: dashboard settings on Supabase (Turnstile CAPTCHA, TOTP), environment variables and firewall rules on Vercel, alert wiring, and one rehearsed restore. Each is a short, specific task; together they are the difference between "the defences exist" and "the defences are on".
