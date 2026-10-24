@@ -59,10 +59,26 @@ is('a bad password is not that', appleProviderDisabled({ message: 'Invalid login
 
 console.log('— button');
 const ar = JSON.parse(read('messages/ar.json'));
+const en = JSON.parse(read('messages/en.json'));
 const button = read('src/components/auth/apple-sign-in-button.tsx');
 const form = read('src/components/auth/auth-form.tsx');
 is('the Arabic label is Apple\'s', ar.auth.continueWithApple, 'تسجيل الدخول باستخدام Apple');
 is('the form uses that label', form.includes("t('continueWithApple')"), true);
+is('sign-up says التسجيل باستخدام Apple', ar.auth.signUpWithApple, 'التسجيل باستخدام Apple');
+is('sign-in says تسجيل الدخول باستخدام Google', ar.auth.signInWithGoogle, 'تسجيل الدخول باستخدام Google');
+is('sign-up says التسجيل باستخدام Google', ar.auth.signUpWithGoogle, 'التسجيل باستخدام Google');
+is('the form picks the label for the page', form.includes("t('signUpWithApple')") && form.includes("t('signInWithGoogle')") && form.includes("t('signUpWithGoogle')"), true);
+is(
+  'the line under the button, in MSA',
+  ar.auth.appleSameEmail,
+  'لديك حساب بالفعل؟ سجّل الدخول بالبريد الإلكتروني نفسه أولًا.',
+);
+is(
+  'and in English',
+  en.auth.appleSameEmail,
+  'Already have an account? Sign in with the same email first.',
+);
+is('the form shows that line', form.includes("t('appleSameEmail')"), true);
 is('the button is not hidden until the provider is on', !/appleEnabled \? \(/.test(form), true);
 is('a switched-off provider is said in the catalogue', form.includes("t('appleUnavailable')"), true);
 is('the official white sheet', button.includes('/brand/apple-sign-in/left-white-logo-medium.svg'), true);
@@ -73,13 +89,20 @@ is(
     button.includes('w-full') &&
     button.includes('max-w-full') &&
     button.includes('min-w-0') &&
-    button.includes('whitespace-normal') &&
+    button.includes('px-3') &&
+    button.includes('min-[360px]:px-6') &&
     button.includes('h-12'),
   true,
 );
 is(
   'the Google button is held to the same width',
-  form.includes('w-full max-w-full min-w-0 whitespace-normal'),
+  form.includes('w-full max-w-full min-w-0 whitespace-nowrap px-3 min-[360px]:px-6'),
+  true,
+);
+is('the Apple label can shrink', button.includes('className="min-w-0 whitespace-nowrap"'), true);
+is(
+  'the linking note is 13px and does not wrap',
+  form.includes('whitespace-nowrap text-center text-[13px] leading-[18px] text-muted-foreground'),
   true,
 );
 is('black on light, white in the dark theme', button.includes('bg-[#000000]') && button.includes('dark:bg-[#ffffff]'), true);

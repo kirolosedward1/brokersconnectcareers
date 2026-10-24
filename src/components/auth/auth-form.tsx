@@ -435,21 +435,33 @@ export function AuthForm({
       <>
           <div className="space-y-2">
             <AppleSignInButton
-              label={t('continueWithApple')}
+              label={mode === 'sign-up' ? t('signUpWithApple') : t('continueWithApple')}
               disabled={pending}
               onClick={() => signInWith('apple')}
             />
+            {/*
+              One line at 13px. The sentence is wider than the column at 320,
+              so it is taken out of the flow and centred: it uses the page's
+              side padding and does not stretch the column.
+            */}
+            <p className="relative h-[18px] w-full min-w-0">
+              <span className="absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap text-center text-[13px] leading-[18px] text-muted-foreground">
+                {t('appleSameEmail')}
+              </span>
+            </p>
             {googleEnabled ? (
               <Button
                 type="button"
                 variant="outline"
-                className="w-full max-w-full min-w-0 whitespace-normal"
+                className="w-full max-w-full min-w-0 whitespace-nowrap px-3 min-[360px]:px-6"
                 size="lg"
                 onClick={() => signInWith('google')}
                 disabled={pending}
               >
                 <GoogleMark />
-                <span className="min-w-0 whitespace-normal">{t('continueWithGoogle')}</span>
+                <span className="min-w-0 whitespace-nowrap">
+                  {mode === 'sign-up' ? t('signUpWithGoogle') : t('signInWithGoogle')}
+                </span>
               </Button>
             ) : null}
           </div>
