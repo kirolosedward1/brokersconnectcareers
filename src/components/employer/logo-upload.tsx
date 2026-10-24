@@ -8,9 +8,25 @@ import { Button } from '@/components/ui/button';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { saveCompanyLogo } from '@/lib/actions/company';
 import { uploadImage } from '@/lib/actions/uploads';
+import { imageFailureCopy } from '@/lib/image-upload';
+import { IMAGE_ACCEPT, prepareUploadImage } from '@/lib/prepare-upload-image';
 import { reach } from '@/lib/reach';
-import { fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
+
+function described(
+  tValidation: (key: 'imageType' | 'imageTooLarge' | 'uploadRateLimited' | 'storageError') => string,
+  tCommon: (key: 'errorBody') => string,
+  error: string,
+  detail?: string,
+) {
+  return imageFailureCopy(error, detail, {
+    imageType: tValidation('imageType'),
+    imageTooLarge: tValidation('imageTooLarge'),
+    uploadRateLimited: tValidation('uploadRateLimited'),
+    storageError: tValidation('storageError'),
+    generic: tCommon('errorBody'),
+  });
+}
 
 /**
  * The other half of a feature that shipped with only its rendering.
@@ -23,22 +39,13 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * The bytes go to the server, which checks that they are a picture, decodes
  * it and writes a fresh WebP into the company's folder — and records the URL
  * through the caller's own session, so only a company admin's upload sticks.
- */
-const MAX_BYTES = 2 * 1024 * 1024;
-/**
- * No SVG, deliberately.
+ * A HEIC, and a file over the bucket's 2 MB, are reduced in the browser first.
  *
- * The logo renders through next/image everywhere it appears, and next/image
- * refuses an SVG source unless `dangerouslyAllowSVG` is set — it answers 400.
- * So an SVG logo was accepted by this form, accepted by the bucket, stored,
- * and then broken on the board, the directory and every listing.
- *
- * The fix is to stop accepting it rather than to set that flag. The flag is
- * named the way it is because an SVG is a document that can carry script, and
- * these are uploaded by anybody who registers a company. PNG, JPEG and WebP
- * cover every real logo.
+ * No SVG, deliberately. The logo renders through next/image everywhere it
+ * appears, and next/image refuses an SVG source unless `dangerouslyAllowSVG`
+ * is set — it answers 400. An SVG is also a document that can carry script,
+ * and these are uploaded by anybody who registers a company.
  */
-const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function LogoUpload({
   companyId,
@@ -68,35 +75,22 @@ export function LogoUpload({
     event.target.value = '';
     if (!file) return;
 
-    if (file.size > MAX_BYTES) {
-      setError(tValidation('fileTooLarge'));
-      return;
-    }
-    // The browser's guess, with the extension standing in when it has none;
-    // the server checks the bytes either way.
-    if (!TYPES.includes(fileType(file))) {
-      setError(tValidation('fileType'));
-      return;
-    }
-
     startTransition(async () => {
+      const prepared = await prepareUploadImage(file, 'logo');
+      if (!prepared.ok) {
+        setError(described(tValidation, tCommon, prepared.error));
+        return;
+      }
+
       const form = new FormData();
       form.set('kind', 'logo');
       form.set('companyId', companyId);
-      form.set('file', file);
+      form.set('file', prepared.file);
 
       const result = await reach(uploadImage(form));
       if (recoverSession(result)) return;
       if (!result.ok) {
-        setError(
-          result.error === 'file_type'
-            ? tValidation('fileType')
-            : result.error === 'too_large'
-              ? tValidation('fileTooLarge')
-              : result.error === 'rate_limited'
-                ? tValidation('uploadRateLimited')
-                : tCommon('errorBody'),
-        );
+        setError(described(tValidation, tCommon, result.error, 'detail' in result ? result.detail : undefined));
         return;
       }
 
@@ -150,7 +144,7 @@ export function LogoUpload({
             {logoUrl ? t('logoReplace') : t('logoUpload')}
             <input
               type="file"
-              accept={TYPES.join(',')}
+              accept={IMAGE_ACCEPT}
               onChange={onPick}
               disabled={pending}
               className="sr-only"

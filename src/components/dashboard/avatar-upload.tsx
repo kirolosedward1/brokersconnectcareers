@@ -8,9 +8,25 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { saveAvatar } from '@/lib/actions/account';
 import { uploadImage } from '@/lib/actions/uploads';
+import { imageFailureCopy } from '@/lib/image-upload';
+import { IMAGE_ACCEPT, prepareUploadImage } from '@/lib/prepare-upload-image';
 import { reach } from '@/lib/reach';
-import { fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
+
+function described(
+  tValidation: (key: 'imageType' | 'imageTooLarge' | 'uploadRateLimited' | 'storageError') => string,
+  tCommon: (key: 'errorBody') => string,
+  error: string,
+  detail?: string,
+) {
+  return imageFailureCopy(error, detail, {
+    imageType: tValidation('imageType'),
+    imageTooLarge: tValidation('imageTooLarge'),
+    uploadRateLimited: tValidation('uploadRateLimited'),
+    storageError: tValidation('storageError'),
+    generic: tCommon('errorBody'),
+  });
+}
 
 /**
  * The other half of a feature that shipped with only its rendering — the same
@@ -25,15 +41,11 @@ import { useSessionRecovery } from '@/lib/session-expired';
  *
  * The bytes go to the server, which decodes the picture and writes a fresh
  * WebP with nothing else in it — no EXIF, no trailing payload — into a folder
- * named for the account. The checks below are a courtesy to the person, so a
- * wrong file is refused before it is sent; the server makes them again from
- * the bytes rather than from the browser's guess.
+ * named for the account. A HEIC from an iPhone, and a picture larger than the
+ * bucket's 2 MB, are converted in the browser first. The server checks the
+ * bytes again. An SVG is still refused: it is a document that can carry
+ * script, and anybody who signs up can send one.
  */
-const MAX_BYTES = 2 * 1024 * 1024;
-
-/** No SVG, for the reason spelled out on the logo uploader: it is a document
- *  that can carry script, and anybody who signs up can send one. */
-const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function AvatarUpload({
   name,
@@ -59,34 +71,21 @@ export function AvatarUpload({
     event.target.value = '';
     if (!file) return;
 
-    if (file.size > MAX_BYTES) {
-      setError(tValidation('fileTooLarge'));
-      return;
-    }
-    // The browser's guess, with the extension standing in when it has none;
-    // the server checks the bytes either way.
-    if (!TYPES.includes(fileType(file))) {
-      setError(tValidation('fileType'));
-      return;
-    }
-
     startTransition(async () => {
+      const prepared = await prepareUploadImage(file, 'avatar');
+      if (!prepared.ok) {
+        setError(described(tValidation, tCommon, prepared.error));
+        return;
+      }
+
       const form = new FormData();
       form.set('kind', 'avatar');
-      form.set('file', file);
+      form.set('file', prepared.file);
 
       const result = await reach(uploadImage(form));
       if (recoverSession(result)) return;
       if (!result.ok) {
-        setError(
-          result.error === 'file_type'
-            ? tValidation('fileType')
-            : result.error === 'too_large'
-              ? tValidation('fileTooLarge')
-              : result.error === 'rate_limited'
-                ? tValidation('uploadRateLimited')
-                : tCommon('errorBody'),
-        );
+        setError(described(tValidation, tCommon, result.error, 'detail' in result ? result.detail : undefined));
         return;
       }
 
@@ -137,7 +136,7 @@ export function AvatarUpload({
             {avatarUrl ? t('photoReplace') : t('photoUpload')}
             <input
               type="file"
-              accept={TYPES.join(',')}
+              accept={IMAGE_ACCEPT}
               onChange={onPick}
               disabled={pending}
               className="sr-only"

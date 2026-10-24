@@ -95,5 +95,43 @@ console.log('\n— what is refused');
   check('nothing', (await reencodeImage(new Uint8Array())) === null);
 }
 
+const { isHeicBytes, isHeicFile, compressionSteps, storageDetail, imageFailureCopy } = await import(
+  '../src/lib/image-upload.ts'
+);
+const { fileType } = await import('../src/lib/file-type.ts');
+
+console.log('\n— a picture chosen on the phone, before it is sent');
+{
+  const heic = new Uint8Array(12);
+  heic.set([0x00, 0x00, 0x00, 0x18], 0);
+  heic.set([...'ftyp'].map((c) => c.charCodeAt(0)), 4);
+  heic.set([...'heic'].map((c) => c.charCodeAt(0)), 8);
+  check('a HEIC ftyp box is a HEIC', isHeicBytes(heic));
+  check('a JPEG is not a HEIC', !isHeicBytes(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])));
+  check('IMG.HEIC is named as one', isHeicFile({ name: 'IMG.HEIC', type: '' }) && fileType({ name: 'IMG.HEIC', type: '' }) === 'image/heic');
+  check('image/heic is named as one', isHeicFile({ name: 'photo', type: 'image/heic' }));
+  check('a PNG is not', !isHeicFile({ name: 'logo.png', type: 'image/png' }) && fileType({ name: 'logo.png', type: '' }) === 'image/png');
+  const steps = compressionSteps(4000, 1600);
+  check('reduction starts at the cap', steps[0].edge === 1600);
+  check(
+    'and each later edge is smaller',
+    steps.map((step) => step.edge).filter((edge, index, edges) => edges.indexOf(edge) === index).every((edge, index, edges) => index === 0 || edge < edges[index - 1]),
+  );
+  check('a storage sentence is one short line', storageDetail('  new   row \n violates  ') === 'new row violates');
+  check('and it stops at 300 characters', storageDetail('x'.repeat(400)).length === 300);
+  check('an empty storage sentence stays empty', storageDetail('   ') === '');
+  const copy = {
+    imageType: 'type',
+    imageTooLarge: 'large',
+    uploadRateLimited: 'rate',
+    storageError: 'storage:',
+    generic: 'generic',
+  };
+  check('the storage sentence is kept whole', imageFailureCopy('storage', 'new row violates row-level security policy', copy) === 'storage: new row violates row-level security policy');
+  check('a picture of the wrong kind says so', imageFailureCopy('file_type', undefined, copy) === 'type');
+  check('one that will not shrink says so', imageFailureCopy('too_large', undefined, copy) === 'large');
+  check('anything else stays generic', imageFailureCopy('unavailable', undefined, copy) === 'generic');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

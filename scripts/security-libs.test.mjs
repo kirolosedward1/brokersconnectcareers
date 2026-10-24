@@ -236,6 +236,10 @@ console.log('\n— who writes a photo or a logo');
     "the caller's own session only without it",
     /if \(!configuredValue\(process\.env\.SUPABASE_SERVICE_ROLE_KEY\)\) return session\.storage;/.test(chooser),
   );
+  check(
+    'a storage refusal keeps the storage message',
+    /uploadError\.message/.test(action) && /error: 'storage'/.test(action),
+  );
 }
 
 console.log('\n— secrets');
