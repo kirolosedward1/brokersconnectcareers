@@ -575,9 +575,10 @@ report.section("369 — a company's owner, credits and suspension reason are its
   const none = await as(candidate, 'select id from public.my_company() union all select id from public.my_owned_company()');
   report.check('a candidate has neither', none.ok && none.rows.length === 0, none.error ?? JSON.stringify(none.rows));
 
-  const notAdmin = await as(employerVerified, `select id from public.admin_company('${unverifiedCompany}')
-                                              union all select id from public.admin_companies_owned_by(array['${employerUnverified}']::uuid[])`);
-  report.check("another company's employer reads no other company through the admin doors", notAdmin.ok && notAdmin.rows.length === 0, notAdmin.error ?? JSON.stringify(notAdmin.rows));
+  const notAdmin = await as(employerVerified, `select id from public.admin_company('${unverifiedCompany}')`);
+  const notAdminOwners = await as(employerVerified, `select id from public.admin_companies_owned_by(array['${employerUnverified}']::uuid[])`);
+  report.check("another company's employer is refused at both admin doors", !notAdmin.ok && /forbidden/.test(notAdmin.error ?? '') && !notAdminOwners.ok && /forbidden/.test(notAdminOwners.error ?? ''),
+    `${notAdmin.error ?? JSON.stringify(notAdmin.rows)} / ${notAdminOwners.error ?? JSON.stringify(notAdminOwners.rows)}`);
   const asAdmin = await as(admin, `select post_credits from public.admin_company('${unverifiedCompany}')`);
   report.check('an admin reads any company whole', asAdmin.ok && asAdmin.rows.length === 1, asAdmin.error);
   const owners = await as(admin, `select id, owner_id from public.admin_companies_owned_by(array['${employerVerified}']::uuid[])`);

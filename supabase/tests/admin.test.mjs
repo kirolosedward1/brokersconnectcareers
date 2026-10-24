@@ -640,6 +640,31 @@ report.section('the overview answers for an admin with real counts');
 }
 
 // ---------------------------------------------------------------------------
+report.section('every admin_* function refuses everyone but an admin');
+{
+  /*
+    Read from the live schema, so a lever added later is covered without
+    anybody remembering to add it here. Called with nulls: what is checked is
+    that the caller is turned away (forbidden from admin_begin(), or no
+    execute grant at all), never what the function would have done.
+  */
+  const functions = (await db.query(`
+    select p.proname, p.pronargs
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname like 'admin\\_%'
+     order by p.proname`)).rows;
+  report.check(`found the admin functions (${functions.length})`, functions.length >= 30, String(functions.length));
+  for (const [label, id, role] of [['a candidate', candidate, 'authenticated'], ['a verified employer', employerVerified, 'authenticated'], ['a visitor', null, 'anon']]) {
+    const let_through = [];
+    for (const fn of functions) {
+      const args = Array(fn.pronargs).fill('null').join(', ');
+      const r = await as(id, `select * from public.${fn.proname}(${args})`, role);
+      if (r.ok || !/forbidden|permission denied/.test(r.error ?? '')) let_through.push(`${fn.proname}: ${r.ok ? 'answered' : r.error}`);
+    }
+    report.check(`${label} is refused by every one of them`, let_through.length === 0, let_through.join('; '));
+  }
+}
+
 report.section('accounts managed from one place (migration 355)');
 {
   const levers = [

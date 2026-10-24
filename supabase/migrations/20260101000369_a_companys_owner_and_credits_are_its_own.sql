@@ -85,24 +85,36 @@ $$;
 
 create or replace function public.admin_company(p_company uuid)
 returns setof companies
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select c.* from companies c where c.id = p_company and public.is_admin();
+begin
+  -- Refused out loud, as every other admin_* function is, not answered empty.
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  return query select c.* from companies c where c.id = p_company;
+end;
 $$;
 
 create or replace function public.admin_companies_owned_by(p_users uuid[])
 returns table (id uuid, name_ar text, owner_id uuid)
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select c.id, c.name_ar, c.owner_id from companies c
-   where c.owner_id = any (p_users) and public.is_admin()
-   limit 500;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+  return query
+    select c.id, c.name_ar, c.owner_id from companies c
+     where c.owner_id = any (p_users)
+     limit 500;
+end;
 $$;
 
 revoke execute on function public.my_company(), public.my_owned_company(),
