@@ -6,11 +6,12 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useLocale, useTranslations } from 'use-intl';
-import { SocialCircles } from '~/components/auth/social-sign-in';
+import { AppleSignInButton } from '~/components/auth/apple-sign-in-button';
+import { SocialCircles, runProvider, useSocialProviders } from '~/components/auth/social-sign-in';
 import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
 import { toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
-import { Button, GLASS } from '~/components/ui/button';
+import { Button, GLASS, buttonHeight } from '~/components/ui/button';
 import { ForwardChevron, SignInMark } from '~/components/ui/icons';
 import { CircleAlert, UserRoundPlus } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
@@ -18,7 +19,7 @@ import { Text } from '~/components/ui/text';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { intentFromParams } from '~/features/auth/intent';
 import { useLand } from '~/features/auth/land';
-import type { ProviderOutcome } from '~/features/auth/providers';
+import { signInWithApple, type ProviderOutcome } from '~/features/auth/providers';
 import { welcomeDrawn } from '~/features/welcome';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
@@ -50,10 +51,11 @@ const AT = {
  * out leads (src/components/navigation/welcome-gate.tsx): the website's hero
  * photograph across the whole screen under a deep sapphire veil, darkening to
  * midnight where the words are — the logo and what the board is in one line —
- * and the ways on: create an account, sign in — with Google's or Apple's
- * round button beside it, one tap, where they are offered — or skip and
- * look around without one, which the App Store asks an app to allow wherever
- * an account is not needed. A company has its own way in, to the employer's
+ * and the ways on: create an account, Sign in with Apple (Apple's own button,
+ * the same size as that one, where it is offered), sign in — with Google's
+ * round button beside it, one tap, where it is offered — or skip and look
+ * around without one, which the App Store asks an app to allow wherever an
+ * account is not needed. A company has its own way in, to the employer's
  * sign-up.
  *
  * Dark in either appearance, as the website's hero is, so its words are white
@@ -74,6 +76,7 @@ export default function WelcomeScreen() {
   const land = useLand();
   const errorText = useAuthErrorText();
   const [busy, setBusy] = useState(false);
+  const { apple } = useSocialProviders();
 
   // Signed in with one tap: on as the sign-in sheet goes on (onboarding, the code, or the app), the welcome closed.
   async function afterProvider(outcome: ProviderOutcome) {
@@ -83,6 +86,10 @@ export default function WelcomeScreen() {
     }
     if (!outcome.cancelled) toast.show({ message: errorText(outcome.error), icon: CircleAlert, tone: 'destructive' });
   }
+
+  const pressApple = () => {
+    runProvider(signInWithApple, setBusy, afterProvider).catch(() => {});
+  };
 
   // Closed by fading away onto Home, as it opened.
   useEffect(() => {
@@ -116,6 +123,7 @@ export default function WelcomeScreen() {
   // A short phone (an SE) keeps the headline in view above the buttons: a
   // smaller headline, smaller buttons, the photograph a little shorter.
   const compact = window.height < 740;
+  const button = compact ? buttonHeight.default : buttonHeight.lg;
   const photo = Math.round(window.height * (compact ? 0.6 : 0.68));
 
   return (
@@ -179,7 +187,9 @@ export default function WelcomeScreen() {
           disabled={busy}
           onPress={() => router.push('/sign-up')}
         />
-        {/* Sign in, and beside it at its end the one-tap ways, round: Google's mark, Apple's. */}
+        {/* Apple's own button, white on this dark photograph, the same height and width as Create account. */}
+        {apple ? <AppleSignInButton disabled={busy} height={button} onDark onPress={pressApple} /> : null}
+        {/* Sign in, and beside it at its end Google's mark, where Google is offered. */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
           <Button
             label={t('nav.signIn')}
@@ -190,7 +200,7 @@ export default function WelcomeScreen() {
             onPress={() => router.push('/sign-in')}
             style={{ flex: 1 }}
           />
-          <SocialCircles size={compact ? 48 : 56} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
+          <SocialCircles size={button} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
         </View>
         <Text variant="small" style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
           {`${t('app.welcome.employer')} `}

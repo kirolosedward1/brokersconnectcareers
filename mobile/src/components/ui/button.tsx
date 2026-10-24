@@ -25,6 +25,16 @@ export const GLASS = {
 } as const;
 
 /**
+ * Heights of `Button`, so a control this file does not draw (Apple's own
+ * button) can match one exactly and never come out shorter.
+ */
+export const buttonHeight = {
+  sm: 36,
+  default: hitTarget + 4,
+  lg: 56,
+} as const;
+
+/**
  * A capsule, never smaller than a finger: 48 points by default, 56 for the
  * one thing a screen is for, 36 (with slop to 44) beside other controls.
  * Primary is ink-blue in light and champagne in dark; champagne is champagne
@@ -44,7 +54,7 @@ export function Button({
   ...props
 }: Props) {
   const { colors, lift, scheme } = useTheme();
-  const height = size === 'sm' ? 36 : size === 'lg' ? 56 : hitTarget + 4;
+  const height = buttonHeight[size];
 
   const fill = {
     primary: { background: colors.primary, pressed: colors.primaryPressed, text: colors.primaryForeground, border: 'transparent' },

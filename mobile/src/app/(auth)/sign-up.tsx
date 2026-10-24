@@ -191,7 +191,7 @@ export default function SignUpScreen() {
     <AuthScroll>
       <AuthHeading title={title} body={preselected} />
 
-      <SocialSignIn mode="sign-up" disabled={pending} onBusy={setPending} onOutcome={afterProvider} />
+      <SocialSignIn disabled={pending} onBusy={setPending} onOutcome={afterProvider} />
 
       <View style={{ gap: space[4] }}>
         <Field label={t('auth.email')}>

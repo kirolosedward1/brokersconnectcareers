@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { appleAvailable, offerGoogle } from '~/features/auth/providers';
 
@@ -29,6 +30,13 @@ it('is not offered in Expo Go', async () => {
 it('is offered in the app itself, where the phone has it', async () => {
   mockEnvironment.current = 'standalone';
   await expect(appleAvailable()).resolves.toBe(true);
+});
+
+it('is not a system sheet on Android', async () => {
+  mockEnvironment.current = 'standalone';
+  const os = jest.replaceProperty(Platform, 'OS', 'android');
+  await expect(appleAvailable()).resolves.toBe(false);
+  os.restore();
 });
 
 describe('Google on an iPhone', () => {

@@ -6,6 +6,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
 import { BadgeCheck, Briefcase, Check, Eye, EyeOff, MailCheck, Search, type LucideProps } from '~/components/ui/lucide';
+import { isApplePrivateRelay, suggestedDisplayName } from '@/lib/auth/suggested-name';
 import type { OnboardingInput } from '@/lib/mobile-api/contract';
 import { formatNumber } from '@/lib/format';
 import { localized, type Locale } from '@/lib/locale';
@@ -185,14 +186,25 @@ function OnboardingForm({
   const districts = useDistricts();
 
   const metadata = (session.user.user_metadata ?? {}) as Record<string, unknown>;
-  const suggestedName =
-    (typeof metadata.full_name === 'string' && metadata.full_name) ||
-    (typeof metadata.name === 'string' && metadata.name) ||
-    (session.user.email ? session.user.email.split('@')[0] : '');
+  const providers = [
+    ...(((session.user.app_metadata as { providers?: string[] } | undefined)?.providers) ?? []),
+    ...(session.user.identities ?? []).map((identity) => identity.provider),
+  ];
+  /*
+    Apple's name, kept at sign-in, or the address's own first part. Never the
+    token in a Hide My Email address: that field stays empty and this step asks.
+  */
+  const suggestedName = suggestedDisplayName({ metadata, email: session.user.email, providers });
+  const privateRelay = isApplePrivateRelay(session.user.email);
   const settledRole = intent.role ?? asRole(metadata.role);
 
   const [role, setRole] = useState<Role>(settledRole ?? 'candidate');
-  const [fullName, setFullName] = useState(suggestedName);
+  // Null until the person edits the field, including clearing it. Until then
+  // the field follows the name Apple (or the address) offered, including one
+  // that lands after this screen — written onto the session once the sheet
+  // has closed.
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const fullName = nameDraft ?? suggestedName;
   const [whatsapp, setWhatsapp] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [companyWebsite, setCompanyWebsite] = useState('');
@@ -474,7 +486,7 @@ function OnboardingForm({
                 <Field ref={inView.place('fullName')} label={t('onboarding.fullName')} error={errors.fullName}>
                   <TextField
                     value={fullName}
-                    onChangeText={setFullName}
+                    onChangeText={setNameDraft}
                     accessibilityLabel={t('onboarding.fullName')}
                     autoComplete="name"
                     textContentType="name"
@@ -484,6 +496,11 @@ function OnboardingForm({
                     onSubmitEditing={() => whatsappField.current?.focus()}
                   />
                 </Field>
+                {privateRelay ? (
+                  <Text variant="caption" tone="mutedForeground">
+                    {t('app.onboarding.appleRelayHint')}
+                  </Text>
+                ) : null}
 
                 <Field ref={inView.place('whatsapp')} label={t('onboarding.whatsapp')} error={errors.whatsapp}>
                   <TextField

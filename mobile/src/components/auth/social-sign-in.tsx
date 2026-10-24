@@ -1,23 +1,24 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { SymbolView } from 'expo-symbols';
 import { useTranslations } from 'use-intl';
 import { useMobileConfig } from '~/features/config';
 import { appleAvailable, offerGoogle, signInWithApple, signInWithGoogle, type ProviderOutcome } from '~/features/auth/providers';
-import { Button } from '~/components/ui/button';
+import { Button, buttonHeight } from '~/components/ui/button';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
+import { AppleSignInButton } from './apple-sign-in-button';
 import { GoogleMark } from './google-mark';
 
 /**
  * Which one-tap sign-ins this phone is offered today: each only when the auth
  * server will accept it (/api/mobile/v1/config asks GoTrue, as the website's
- * pages do), Apple's only where it can work, and Google on an iPhone only
- * beside Apple (providers.ts, offerGoogle). `settled` once both the server and
- * the phone have answered: until then, what is not yet known is not offered.
+ * pages do). On iOS, Apple's is the system sheet, and only where that sheet
+ * can work. On Android it is the same browser sign-in Google already uses.
+ * Google on an iPhone is offered only beside Apple (providers.ts, offerGoogle).
+ * `settled` once both the server and the phone have answered: until then, what
+ * is not yet known is not offered.
  */
 export function useSocialProviders(): { apple: boolean; google: boolean; settled: boolean } {
   const config = useMobileConfig();
@@ -33,7 +34,10 @@ export function useSocialProviders(): { apple: boolean; google: boolean; settled
     };
   }, []);
 
-  const apple = Boolean(config.data?.providers.apple) && appleHere === true;
+  const configApple = Boolean(config.data?.providers.apple);
+  // iOS: the system sheet. Anywhere else: the browser, once we know the sheet
+  // is not the way (appleAvailable has answered, and on Android it is false).
+  const apple = configApple && (Platform.OS === 'ios' ? appleHere === true : appleHere !== null);
   const google = offerGoogle({ google: Boolean(config.data?.providers.google), apple, ios: Platform.OS === 'ios' });
   return { apple, google, settled: !config.isPending && appleHere !== null };
 }
@@ -59,23 +63,23 @@ export function runProvider(
 }
 
 /**
- * "Continue with Apple" and "Continue with Google", each shown only when it is
+ * "Sign in with Apple" and "Continue with Google", each shown only when it is
  * offered (useSocialProviders) — above the form with the website's "or" under
  * them, or (`separator={false}`) as the ways in themselves, with another of the
  * same kind after them (`children`: "Continue with email").
  *
- * Apple's is Apple's own button, drawn by iOS in the phone's language, as the
- * App Store asks; black in the light theme and white in the dark.
+ * Apple's is Apple's own button on iOS, drawn by the phone in its language
+ * (SIGN_IN: «تسجيل الدخول باستخدام Apple» on an Arabic phone), black in the
+ * light theme and white in the dark, and the same height and width as the
+ * Google button under it.
  */
 export function SocialSignIn({
-  mode,
   disabled,
   onBusy,
   onOutcome,
   separator = true,
   children,
 }: {
-  mode: 'sign-in' | 'sign-up';
   disabled: boolean;
   onBusy: (busy: boolean) => void;
   /** Awaited: the buttons stay busy until whatever follows a sign-in has run. */
@@ -84,7 +88,6 @@ export function SocialSignIn({
   children?: ReactNode;
 }) {
   const t = useTranslations('auth');
-  const { scheme } = useTheme();
   const { apple, google } = useSocialProviders();
   if (!apple && !google && !children) return null;
 
@@ -94,24 +97,7 @@ export function SocialSignIn({
     <View style={{ gap: space[4] }}>
       <View style={{ gap: space[3] }}>
         {apple ? (
-          <View pointerEvents={disabled ? 'none' : 'auto'} style={{ opacity: disabled ? 0.5 : 1 }}>
-            <AppleAuthentication.AppleAuthenticationButton
-              buttonType={
-                mode === 'sign-up'
-                  ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
-                  : AppleAuthentication.AppleAuthenticationButtonType.CONTINUE
-              }
-              buttonStyle={
-                scheme === 'dark'
-                  ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                  : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-              }
-              // The same capsule as the Google button under it: 56 high, round ends.
-              cornerRadius={28}
-              style={{ height: 56 }}
-              onPress={() => run(signInWithApple)}
-            />
-          </View>
+          <AppleSignInButton disabled={disabled} height={buttonHeight.lg} onPress={() => run(signInWithApple)} />
         ) : null}
         {google ? (
           <Button
@@ -146,13 +132,11 @@ function Separator() {
 }
 
 /**
- * The one-tap sign-ins as round buttons, the mark alone on white: for beside
- * another button over a dark picture (the welcome's Sign in), where a full
- * "Continue with Google" would not fit. Each only when it is offered
- * (useSocialProviders), Google's first and Apple's after it, the same size —
- * Apple's no less prominent than Google's (App Review 4.8). White under
- * Apple's mark, as Apple asks of its button on a dark ground. Busy, the one
- * pressed turns while the rest wait.
+ * Google as a round button, the mark alone on white: beside Sign in over a
+ * dark picture (the welcome), where a full "Continue with Google" would not
+ * fit. Shown only when Google is offered (useSocialProviders). Apple is not
+ * drawn here — it is Apple's own button, full width, the same size as Sign in
+ * (AppleSignInButton). Busy, the one pressed turns.
  */
 export function SocialCircles({
   size,
@@ -166,48 +150,32 @@ export function SocialCircles({
   onOutcome: (outcome: ProviderOutcome) => void | Promise<void>;
 }) {
   const t = useTranslations();
-  const { apple, google } = useSocialProviders();
-  const [running, setRunning] = useState<'apple' | 'google' | null>(null);
+  const { google } = useSocialProviders();
+  const [running, setRunning] = useState(false);
+  if (!google) return null;
 
-  const run = (which: 'apple' | 'google', provider: () => Promise<ProviderOutcome>) => {
-    setRunning(which);
+  const run = () => {
+    setRunning(true);
     const busy = (now: boolean) => {
       onBusy(now);
-      if (!now) setRunning(null);
+      if (!now) setRunning(false);
     };
-    // A sign-in that throws past its outcome is not left to the console: the buttons come back.
-    runProvider(provider, busy, onOutcome).catch(() => {});
+    // A sign-in that throws past its outcome is not left to the console: the button comes back.
+    runProvider(signInWithGoogle, busy, onOutcome).catch(() => {});
   };
 
   return (
-    <>
-      {google ? (
-        <ProviderCircle
-          testID="welcome-google"
-          size={size}
-          label={t('auth.continueWithGoogle')}
-          hint={t('app.welcome.signInGoogleHint')}
-          disabled={disabled}
-          busy={running === 'google'}
-          onPress={() => run('google', signInWithGoogle)}
-        >
-          <GoogleMark size={Math.round(size * 0.42)} />
-        </ProviderCircle>
-      ) : null}
-      {apple ? (
-        <ProviderCircle
-          testID="welcome-apple"
-          size={size}
-          label={t('auth.continueWithApple')}
-          hint={t('app.welcome.signInAppleHint')}
-          disabled={disabled}
-          busy={running === 'apple'}
-          onPress={() => run('apple', signInWithApple)}
-        >
-          <SymbolView name="applelogo" size={Math.round(size * 0.44)} tintColor="#000000" />
-        </ProviderCircle>
-      ) : null}
-    </>
+    <ProviderCircle
+      testID="welcome-google"
+      size={size}
+      label={t('auth.continueWithGoogle')}
+      hint={t('app.welcome.signInGoogleHint')}
+      disabled={disabled}
+      busy={running}
+      onPress={run}
+    >
+      <GoogleMark size={Math.round(size * 0.42)} />
+    </ProviderCircle>
   );
 }
 

@@ -153,6 +153,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     infoPlist: {
       CFBundleDevelopmentRegion: 'ar',
       CFBundleLocalizations: ['ar', 'en'],
+      // The Sign in with Apple button is the system's, and it speaks the
+      // phone's language. On an Arabic phone the SIGN_IN button reads
+      // «تسجيل الدخول باستخدام Apple».
+      CFBundleAllowMixedLocalizations: true,
     },
     /*
       The app's own privacy manifest. No tracking, and no analytics or

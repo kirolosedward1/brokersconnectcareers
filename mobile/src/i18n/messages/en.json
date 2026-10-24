@@ -91,7 +91,8 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "continueWithEmail": "Continue with email",
-    "otherWays": "Other ways to sign in"
+    "otherWays": "Other ways to sign in",
+    "signInWithApple": "Sign in with Apple"
   },
   "onboarding": {
     "choose": "Choose",
@@ -101,7 +102,8 @@
     "detailsBody": "Your name, and the WhatsApp number companies will reach you on.",
     "detailsBodyEmployer": "Your name and WhatsApp number, and the company details we review before your first listing.",
     "finishTitle": "One last step",
-    "finishBody": "Choose your language and agree to the terms, and your account is ready."
+    "finishBody": "Choose your language and agree to the terms, and your account is ready.",
+    "appleRelayHint": "Apple hid your real email. Messages from the platform go to that private address. If the name field is empty, enter the name you want shown."
   },
   "moderation": {
     "hide": "Hide this company",

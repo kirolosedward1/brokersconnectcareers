@@ -84,10 +84,14 @@ jest.mock('react-native-webview', () => {
 });
 
 // Sign in with Apple is the system's sheet. Unavailable unless a test says
-// otherwise, and its button a plain one a test can press.
+// otherwise, and its button a plain one a test can press. The label is what
+// iOS writes for that button type when the phone is Arabic — SIGN_IN is
+// «تسجيل الدخول باستخدام Apple», not Continue's «المتابعة باستخدام Apple».
 jest.mock('expo-apple-authentication', () => {
   const React = jest.requireActual('react');
   const { Pressable } = jest.requireActual('react-native');
+  const labelFor = (buttonType: number) =>
+    buttonType === 2 ? 'إنشاء حساب باستخدام Apple' : buttonType === 1 ? 'المتابعة باستخدام Apple' : 'تسجيل الدخول باستخدام Apple';
   return {
     isAvailableAsync: jest.fn(async () => false),
     signInAsync: jest.fn(),
@@ -100,8 +104,24 @@ jest.mock('expo-apple-authentication', () => {
     AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
     AppleAuthenticationButtonType: { SIGN_IN: 0, CONTINUE: 1, SIGN_UP: 2 },
     AppleAuthenticationButtonStyle: { WHITE: 0, WHITE_OUTLINE: 1, BLACK: 2 },
-    AppleAuthenticationButton: ({ onPress }: { onPress: () => void }) =>
-      React.createElement(Pressable, { accessibilityRole: 'button', accessibilityLabel: 'Sign in with Apple', onPress }),
+    AppleAuthenticationButton: ({
+      onPress,
+      buttonType,
+      ...rest
+    }: {
+      onPress: () => void;
+      buttonType?: number;
+      buttonStyle?: number;
+      cornerRadius?: number;
+      style?: object;
+    }) =>
+      React.createElement(Pressable, {
+        ...rest,
+        buttonType,
+        accessibilityRole: 'button',
+        accessibilityLabel: labelFor(buttonType ?? 0),
+        onPress,
+      }),
   };
 });
 

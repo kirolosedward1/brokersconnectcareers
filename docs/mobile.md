@@ -420,9 +420,15 @@ they are in, instead of the round trip through the sign-in page.
 - **Sign-up** keeps the door's role in user metadata and asks GoTrue for the
   website's own confirmation redirect (`/auth/callback?next=/onboarding…`, with
   the destination nested), so the email works the same opened anywhere.
-- **Apple** is the system sheet: a SHA-256 of a random nonce goes to Apple, the
-  nonce itself to `signInWithIdToken`, and the name Apple gives only once is
-  kept in `user_metadata.full_name`. The Apple ID it signed in with is kept on
+- **Apple** on iOS is the system sheet (`AppleAuthenticationButton`, type
+  SIGN_IN, so an Arabic phone labels it «تسجيل الدخول باستخدام Apple»): a
+  SHA-256 of a random nonce goes to Apple, the nonce itself to
+  `signInWithIdToken`, and the name Apple gives only once is kept in
+  `user_metadata.full_name`. Onboarding writes that name onto the profile; a
+  Hide My Email address is never used as the name, and with no name the
+  onboarding field stays empty and asks. Android has no system sheet, so
+  Apple there is the same browser sign-in as Google. The Apple ID it signed
+  in with is kept on
   the phone, and iOS is asked about it at launch and each time the app comes
   back: once the person turns Sign in with Apple off for the app in Settings,
   Apple revokes it, or the website did while deleting the account (and the

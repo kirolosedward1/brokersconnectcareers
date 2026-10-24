@@ -241,7 +241,7 @@ export default function SignInScreen() {
         </Appear>
       ) : (
         <View style={{ gap: space[4] }}>
-          <SocialSignIn mode="sign-in" separator={false} disabled={busy} onBusy={setPending} onOutcome={afterProvider}>
+          <SocialSignIn separator={false} disabled={busy} onBusy={setPending} onOutcome={afterProvider}>
             <Button
               label={t('app.auth.continueWithEmail')}
               variant="outline"

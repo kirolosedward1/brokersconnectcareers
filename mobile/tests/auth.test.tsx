@@ -889,7 +889,7 @@ describe('one-tap sign-in', () => {
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
-    await press('Sign in with Apple');
+    await press(ar.app.auth.signInWithApple);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     const nonce = 'ab'.repeat(32);
@@ -899,6 +899,77 @@ describe('one-tap sign-in', () => {
     expect(bodyOf('/auth/v1/user')).toMatchObject({ data: { full_name: 'Sara Adel' } });
     // The Apple ID it was made with, asked about at each launch (tests/apple-credential.test.tsx).
     expect(JSON.parse((await AsyncStorage.getItem('auth:apple-sign-in')) ?? 'null')).toEqual({ userId: USER_ID, appleUser: 'apple-user' });
+  });
+
+  it('writes Apple’s name onto the profile at onboarding, and never a private-relay address', async () => {
+    const relay = 'xq7k2m9p4t@privaterelay.appleid.com';
+    user = authUser({
+      email: relay,
+      app_metadata: { provider: 'apple', providers: ['apple'] },
+      identities: [{ id: USER_ID, user_id: USER_ID, provider: 'apple', identity_data: { email: relay } }],
+    });
+    profileRow = null;
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: false, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    jest.mocked(AppleAuthentication.signInAsync).mockResolvedValue({
+      user: 'apple-user',
+      state: null,
+      identityToken: 'apple-identity-token',
+      authorizationCode: 'apple-code',
+      fullName: { givenName: 'Sara', familyName: 'Adel', middleName: null, namePrefix: null, nameSuffix: null, nickname: null },
+      email: relay,
+      realUserStatus: 1,
+    });
+    await renderRouter(app, { initialUrl: '/account' });
+    await press(ar.nav.signIn);
+    await press(ar.app.auth.signInWithApple);
+
+    expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+    await onward();
+    await waitFor(() => expect(screen.getByLabelText(ar.onboarding.fullName).props.value).toBe('Sara Adel'));
+    expect(screen.getByText(ar.app.onboarding.appleRelayHint)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    await onward();
+    fireEvent.press(await screen.findByRole('radio', { name: HIDDEN }));
+    await onward();
+    fireEvent.press(await screen.findByRole('checkbox'));
+    await press(ar.onboarding.submit);
+
+    expect(await screen.findByText(profile.full_name)).toBeTruthy();
+    expect(bodyOf('/api/mobile/v1/actions/completeOnboarding')).toMatchObject({ input: { fullName: 'Sara Adel' } });
+    const nameWrites = server.asked('/auth/v1/user').filter((request) => request.method === 'PUT');
+    expect(nameWrites.map((request) => (request.body as { data?: { full_name?: string } }).data?.full_name)).toEqual(['Sara Adel']);
+  });
+
+  it('leaves the name blank when Apple shares none, including a relay token stored as a name', async () => {
+    const relay = 'xq7k2m9p4t@privaterelay.appleid.com';
+    user = authUser({
+      email: relay,
+      app_metadata: { provider: 'apple', providers: ['apple'] },
+      user_metadata: { full_name: 'xq7k2m9p4t' },
+      identities: [{ id: USER_ID, user_id: USER_ID, provider: 'apple', identity_data: { email: relay } }],
+    });
+    profileRow = null;
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: false, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    jest.mocked(AppleAuthentication.signInAsync).mockResolvedValue({
+      user: 'apple-user',
+      state: null,
+      identityToken: 'apple-identity-token',
+      authorizationCode: null,
+      fullName: null,
+      email: relay,
+      realUserStatus: 1,
+    });
+    await renderRouter(app, { initialUrl: '/account' });
+    await press(ar.nav.signIn);
+    await press(ar.app.auth.signInWithApple);
+
+    expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+    await onward();
+    expect((await screen.findByLabelText(ar.onboarding.fullName)).props.value).toBe('');
+    expect(screen.queryByDisplayValue('xq7k2m9p4t')).toBeNull();
+    expect(screen.getByText(ar.app.onboarding.appleRelayHint)).toBeTruthy();
   });
 
   it('Google: the system browser, the code back to the app, and PKCE', async () => {
@@ -924,8 +995,31 @@ describe('one-tap sign-in', () => {
     expect(exchange?.body).toMatchObject({ auth_code: 'google-code' });
   });
 
+  it('Apple on Android: the same browser sign-in as Google, not the system sheet', async () => {
+    const os = jest.replaceProperty(Platform, 'OS', 'android');
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.signInAsync).mockClear();
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({
+      type: 'success',
+      url: 'brokersconnect://auth/callback?code=apple-code',
+    });
+    await renderRouter(app, { initialUrl: '/sign-in' });
+    await press(ar.app.auth.signInWithApple);
+
+    expect(AppleAuthentication.signInAsync).not.toHaveBeenCalled();
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    const [authorize, returnTo] = jest.mocked(WebBrowser.openAuthSessionAsync).mock.calls[0];
+    const url = new URL(authorize);
+    expect(url.pathname).toBe('/auth/v1/authorize');
+    expect(url.searchParams.get('provider')).toBe('apple');
+    expect(url.searchParams.get('scopes')).toBe('name email');
+    expect(url.searchParams.get('redirect_to')).toBe('brokersconnect://auth/callback');
+    expect(returnTo).toBe('brokersconnect://auth/callback');
+    os.restore();
+  });
+
   it('Google on Android: the return also arrives as a link, and the code is exchanged once', async () => {
-    // Android has no Apple button: Google stands on its own there.
+    // Apple is off at the auth server here, so Google stands on its own.
     const os = jest.replaceProperty(Platform, 'OS', 'android');
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
     const back = 'brokersconnect://auth/callback?code=google-code';
@@ -1018,7 +1112,11 @@ describe('one-tap sign-in, as App Review asks', () => {
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
     expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeTruthy();
+    const apple = screen.getByRole('button', { name: ar.app.auth.signInWithApple });
+    expect(apple.props.buttonType).toBe(AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN);
+    expect(apple.props.buttonStyle).toBe(AppleAuthentication.AppleAuthenticationButtonStyle.BLACK);
+    expect(apple.props.cornerRadius).toBe(28);
+    expect(apple.props.style).toMatchObject({ height: 56, width: '100%' });
   });
 
   it('keeps the email and password behind a button of their own beside them, and goes back to them', async () => {
@@ -1093,8 +1191,12 @@ describe('one-tap sign-in, as App Review asks', () => {
     await renderRouter(app, { initialUrl: '/welcome' });
     const google = await screen.findByRole('button', { name: ar.auth.continueWithGoogle });
     expect(google.props.accessibilityHint).toBe(ar.app.welcome.signInGoogleHint);
-    // Apple's beside Google's, no less to hand.
-    expect(screen.getByRole('button', { name: ar.auth.continueWithApple }).props.accessibilityHint).toBe(ar.app.welcome.signInAppleHint);
+    // Apple's own button, white on the photograph, as tall as Sign up and the full width of the column.
+    const apple = screen.getByRole('button', { name: ar.app.auth.signInWithApple });
+    expect(apple.props.buttonType).toBe(AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN);
+    expect(apple.props.buttonStyle).toBe(AppleAuthentication.AppleAuthenticationButtonStyle.WHITE);
+    expect(apple.props.style).toMatchObject({ height: 56, width: '100%' });
+    expect(apple.props.cornerRadius).toBe(28);
 
     fireEvent.press(google);
     expect(await screen.findByText('home screen')).toBeTruthy();
