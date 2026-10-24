@@ -60,6 +60,7 @@ import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * Applying to a listing — the website's /jobs/<slug>/apply, at the same path
@@ -507,7 +508,7 @@ function ApplyForm({
 
       <WhoSees />
 
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+      {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
       {editing ? <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} /> : null}
     </ScrollView>
@@ -613,7 +614,8 @@ function Sent({ job }: { job: JobDetail; at?: Date }) {
   const t = useTranslations();
   const { colors } = useTheme();
   const next = useNextRoles(job.id, true);
-
+  // Said to VoiceOver as it comes up: a live region is Android's alone.
+  useAnnounce(`${t('apply.success')}. ${t('apply.successBody')}`);
 
   return (
     <ScrollView

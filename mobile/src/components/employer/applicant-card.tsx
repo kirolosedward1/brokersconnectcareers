@@ -167,8 +167,9 @@ export function ApplicantCard({
     !withdrawn && status === 'new'
       ? {
           label: t('applicationStatus.shortlisted'),
-          icon: <UserRoundCheck size={20} color="#FFFFFF" />,
+          icon: <UserRoundCheck size={20} color={colors.successForeground} />,
           color: colors.success,
+          ink: colors.successForeground,
           onPress: () => moveTo('shortlisted'),
         }
       : undefined;
@@ -176,8 +177,9 @@ export function ApplicantCard({
     !withdrawn && status !== 'rejected' && status !== 'hired'
       ? {
           label: t('applicationStatus.rejected'),
-          icon: <UserRoundX size={20} color="#FFFFFF" />,
+          icon: <UserRoundX size={20} color={colors.destructiveForeground} />,
           color: colors.destructive,
+          ink: colors.destructiveForeground,
           onPress: () =>
             dialog.alert(t('app.applicants.rejectConfirm'), name, [
               { text: t('common.cancel'), style: 'cancel' },

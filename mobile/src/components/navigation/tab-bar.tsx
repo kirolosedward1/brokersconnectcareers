@@ -554,8 +554,6 @@ function TabButton({ name, label, badge, testID, focused, lensed, tint, icon, ic
           variant="label"
           weight={focused ? 'semibold' : 'medium'}
           numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
           allowFontScaling={false}
           style={{ color: tint, fontSize: 11, lineHeight: NAME, textAlign: 'center' }}
         >

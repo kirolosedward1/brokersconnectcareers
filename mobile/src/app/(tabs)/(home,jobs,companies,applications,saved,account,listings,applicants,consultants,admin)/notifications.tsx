@@ -222,6 +222,7 @@ export default function NotificationsScreen() {
             label: t('app.notificationsFeed.delete'),
             icon: <Trash2 size={18} color={colors.destructiveForeground} />,
             color: colors.destructive,
+            ink: colors.destructiveForeground,
             onPress: () => deleteOne(item),
           };
           return (

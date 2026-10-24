@@ -36,7 +36,7 @@ import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
 import { useSheet } from '~/lib/use-sheet';
 
@@ -204,7 +204,7 @@ export function JobDetail({
               router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
             }
             hitSlop={8}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', minHeight: hitTarget, opacity: pressed ? 0.6 : 1 })}
           >
             <Text variant="small" weight="medium" tone="primary">
               {tLanding('title', { track: tTrack(job.track), district: districtName })}

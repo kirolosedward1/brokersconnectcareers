@@ -133,7 +133,12 @@
   },
   "applications": {
     "activeHeading": "طلبات لسه شغّالة",
-    "decidedHeading": "طلبات اتحسمت"
+    "decidedHeading": "طلبات اتحسمت",
+    "timelineNow": "دلوقتي: {step}"
+  },
+  "dashboard": {
+    "trendUp": "طالع {value}",
+    "trendDown": "نازل {value}"
   },
   "apply": {
     "pickCv": "اختار ملف",

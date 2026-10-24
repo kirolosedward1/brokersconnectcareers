@@ -176,7 +176,7 @@ export function ShareCardSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={onClose} onDismiss={onDismiss}>
       <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
         <View style={styles.header}>
           <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>

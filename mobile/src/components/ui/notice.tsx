@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CheckCircle2, CircleAlert, TriangleAlert } from '~/components/ui/lucide';
 import { Appear } from '~/components/motion/appear';
+import { useAnnounce } from '~/lib/use-announce';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { Text } from './text';
@@ -10,7 +11,10 @@ import { Text } from './text';
  * A boxed message — the website's success and error panels: a soft tint of
  * its meaning rather than an outline in it, the meaning carried by the title
  * and the icon too, never by the colour alone. `destructive` is announced as
- * it appears, the way the website's role="alert" is.
+ * it appears, the way the website's role="alert" is: to VoiceOver by
+ * `useAnnounce`, a live region being Android's alone. A form whose
+ * refusal useErrorsInView says already passes `announce={false}`, so it is
+ * not heard twice.
  *
  * A success, warning or error without an icon of its own gets its tone's, in
  * the tone's colour: the tint alone is barely darker than the page (1.1:1),
@@ -21,13 +25,16 @@ export function Notice({
   title,
   children,
   icon,
+  announce = true,
 }: {
   tone: 'success' | 'destructive' | 'warning' | 'muted';
   title?: string;
   children?: ReactNode;
   icon?: ReactNode;
+  announce?: boolean;
 }) {
   const { colors } = useTheme();
+  useAnnounce([title, typeof children === 'string' ? children : null].filter(Boolean).join('. '), announce && tone === 'destructive');
   const palette = {
     success: { background: colors.successMuted, border: 'transparent', text: colors.foreground },
     destructive: { background: colors.destructiveMuted, border: 'transparent', text: colors.foreground },

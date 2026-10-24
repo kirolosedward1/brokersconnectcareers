@@ -133,7 +133,12 @@
   },
   "applications": {
     "activeHeading": "Still in progress",
-    "decidedHeading": "Decided"
+    "decidedHeading": "Decided",
+    "timelineNow": "Now: {step}"
+  },
+  "dashboard": {
+    "trendUp": "Up {value}",
+    "trendDown": "Down {value}"
   },
   "apply": {
     "pickCv": "Choose a file",

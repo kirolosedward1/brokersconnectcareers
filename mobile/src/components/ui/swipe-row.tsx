@@ -5,7 +5,8 @@ import { useReduceMotion } from '~/theme/reduce-motion';
 import { corner, motion, space } from '~/theme/tokens';
 import { Text } from './text';
 
-export type SwipeAction = { label: string; icon: ReactNode; color: string; onPress: () => void };
+/** `color` is the action's fill, `ink` the label drawn on it (the theme's matching foreground, which keeps contrast in dark too). */
+export type SwipeAction = { label: string; icon: ReactNode; color: string; ink: string; onPress: () => void };
 
 /** How far the row opens to show an action, and how far a drag must go to leave it open. */
 const OPEN = 104;
@@ -99,7 +100,7 @@ function Action({ action, side, visible, onPress }: { action: SwipeAction; side:
       }}
     >
       {action.icon}
-      <Text variant="caption" weight="semibold" numberOfLines={2} style={{ color: '#FFFFFF', textAlign: 'center' }}>
+      <Text variant="caption" weight="semibold" numberOfLines={2} style={{ color: action.ink, textAlign: 'center' }}>
         {action.label}
       </Text>
     </Pressable>

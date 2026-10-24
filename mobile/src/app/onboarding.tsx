@@ -695,7 +695,7 @@ function OnboardingForm({
             </>
           ) : null}
 
-          {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+          {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
           <Button
             label={last ? t('onboarding.submit') : t('jobForm.next')}

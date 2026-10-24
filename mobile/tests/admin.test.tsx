@@ -582,7 +582,7 @@ describe('the overview', () => {
     expect(screen.getByLabelText(`${ar.dashboard.statExpiring}: 2`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.statNoApplicants}: 5`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.statExpired}: 2`)).toBeTruthy();
-    expect(screen.getByLabelText(`${ar.admin.statApplications7d}: 6، 2 ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statApplications7d}: 6، ${ar.app.dashboard.trendUp.replace('{value}', '2')} ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.statUnopened}: 2`)).toBeTruthy();
     // The people and the companies: the directory counts the public and gated profiles, the hidden ones said beside.
     expect(screen.getByText(ar.admin.population)).toBeTruthy();

@@ -212,7 +212,7 @@ function Overview() {
       <View style={{ gap: space[2] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
           <SectionTitle>{t('admin.recentActivity')}</SectionTitle>
-          <Pressable accessibilityRole="link" onPress={go('/admin/audit')} hitSlop={8} style={{ paddingHorizontal: space[1] }}>
+          <Pressable accessibilityRole="link" onPress={go('/admin/audit')} hitSlop={8} style={{ paddingHorizontal: space[1], minHeight: hitTarget, justifyContent: 'center' }}>
             <Text variant="caption" weight="medium" tone="primary">
               {t('admin.auditLog')}
             </Text>
