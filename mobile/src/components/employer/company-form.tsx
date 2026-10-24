@@ -196,6 +196,8 @@ export function CompanyForm({
           value={nameAr}
           onChangeText={setNameAr}
           accessibilityLabel={t('companies.nameAr')}
+          autoComplete="organization"
+          textContentType="organizationName"
           maxLength={160}
           returnKeyType="next"
           submitBehavior="submit"
@@ -208,6 +210,9 @@ export function CompanyForm({
           value={nameEn}
           onChangeText={setNameEn}
           accessibilityLabel={t('companies.nameEn')}
+          autoComplete="organization"
+          textContentType="organizationName"
+          autoCorrect={false}
           maxLength={160}
           ltr
           returnKeyType="next"

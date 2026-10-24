@@ -8,7 +8,7 @@ import { Appear } from '~/components/motion/appear';
 import { ProgressBar } from '~/components/motion/progress-bar';
 import { Button } from '~/components/ui/button';
 import { BackChevron, ForwardChevron } from '~/components/ui/icons';
-import { UserRoundCheck, UserRoundX, X } from '~/components/ui/lucide';
+import { CircleAlert, UserRoundCheck, UserRoundX, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { MovedAlready, useSetApplicationStatus, type Applicant } from '~/features/employer/applicants';
 import { markupTags } from '~/i18n/rich';
@@ -101,21 +101,37 @@ export function ApplicantReview({
     if (!applicant) return;
     const name = applicant.candidate?.full_name ?? '—';
     const from = applicant.status;
+    const applicationId = applicant.id;
     // Answered even after the review has closed (the last one decided closes it).
-    move
-      .mutateAsync({ applicationId: applicant.id, status, decisionNote: '', from })
-      .then(() => {
-        setMoved((current) => new Map([...current, [applicant.id, { from, to: status }]]));
-        haptic.success();
-        toast.show({
-          message: t(status === 'shortlisted' ? 'app.review.shortlisted' : 'app.review.rejected', { name }),
-          icon: status === 'shortlisted' ? UserRoundCheck : UserRoundX,
-          tone: status === 'shortlisted' ? 'success' : 'default',
+    const send = () =>
+      move
+        .mutateAsync({ applicationId, status, decisionNote: '', from })
+        .then(() => {
+          setMoved((current) => new Map([...current, [applicationId, { from, to: status }]]));
+          // A shortlist is the good news; a turn-down is a choice made, not a success.
+          if (status === 'shortlisted') haptic.success();
+          else haptic.selection();
+          toast.show({
+            message: t(status === 'shortlisted' ? 'app.review.shortlisted' : 'app.review.rejected', { name }),
+            icon: status === 'shortlisted' ? UserRoundCheck : UserRoundX,
+            tone: status === 'shortlisted' ? 'success' : 'default',
+          });
+        })
+        .catch((failure: unknown) => {
+          // A colleague's move is news, not a failure: nothing to try again.
+          if (failure instanceof MovedAlready) {
+            toast.show({ message: t('app.review.moved'), icon: UserRoundX });
+            return;
+          }
+          haptic.error();
+          toast.show({
+            message: t('app.review.failed', { name }),
+            icon: CircleAlert,
+            tone: 'destructive',
+            action: { label: t('common.retry'), onPress: () => void send() },
+          });
         });
-      })
-      .catch((failure: unknown) =>
-        toast.show({ message: failure instanceof MovedAlready ? t('app.review.moved') : t('common.errorBody'), icon: UserRoundX }),
-      );
+    void send();
     // Decided: the next one comes in while the move is on its way.
     go(1);
   };

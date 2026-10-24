@@ -272,6 +272,22 @@ function OnboardingForm({
     return missing;
   }
 
+  /**
+   * A number or an address checked as the reader leaves its field, once
+   * something is typed in it: said under it then, not only after Continue.
+   * Put right, the error goes.
+   */
+  function checkOnLeave(field: 'whatsapp' | 'companyWebsite', typed: string) {
+    const problem = typed.trim() ? problems()[field] : undefined;
+    setErrors((current) => {
+      if ((current[field] ?? undefined) === problem) return current;
+      const next = { ...current };
+      if (problem) next[field] = problem;
+      else delete next[field];
+      return next;
+    });
+  }
+
   /** The refusals given, shown on the first step that asks one of them. */
   function refuseWhereAsked(next: Record<string, string>) {
     const first = steps.findIndex((name) => Object.keys(next).some((field) => FIELD_STEP[field] === name));
@@ -496,6 +512,7 @@ function OnboardingForm({
                     autoComplete="tel"
                     textContentType="telephoneNumber"
                     placeholder={t('onboarding.whatsappPlaceholder')}
+                    onBlur={() => checkOnLeave('whatsapp', whatsapp)}
                   />
                 </Field>
 
@@ -545,6 +562,7 @@ function OnboardingForm({
                         textContentType="URL"
                         placeholder="https://"
                         maxLength={200}
+                        onBlur={() => checkOnLeave('companyWebsite', companyWebsite)}
                       />
                     </Field>
                     <Field label={t('onboarding.companyDistrict')}>

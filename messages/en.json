@@ -1343,7 +1343,7 @@
     "notFoundBody": "That link is wrong, or the content is no longer available.",
     "goHome": "Back to home",
     "error": "Something went wrong",
-    "errorBody": "We could not complete that. Please try again.",
+    "errorBody": "That didn't go through. Try again.",
     "errorReference": "Error reference",
     "retry": "Try again",
     "saveSuccess": "Saved",

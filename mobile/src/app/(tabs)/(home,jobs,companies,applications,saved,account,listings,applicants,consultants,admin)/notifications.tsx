@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation, type Href } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'use-intl';
-import { Bell, CheckCheck, Trash2, UserRound } from '~/components/ui/lucide';
+import { Bell, CheckCheck, CircleAlert, Trash2, UserRound } from '~/components/ui/lucide';
+import { STAY_WITH_ACTION_MS, toast } from '~/components/feedback/toast';
 import { SwipeRow } from '~/components/ui/swipe-row';
 import { canAccessCandidateArea } from '@/lib/permissions';
 import type { NotificationRow } from '@/lib/supabase/database.types';
@@ -12,7 +13,7 @@ import { NotificationItem } from '~/components/notifications/notification-item';
 import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
 import { PageFooter } from '~/components/ui/page-footer';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { markReadLocally, useDeleteNotifications, useMarkAllRead, useNotificationFeed, useUnreadCount } from '~/features/notifications/queries';
 import { dialog } from '~/lib/dialog';
@@ -77,7 +78,28 @@ export default function NotificationsScreen() {
   const [opening, setOpening] = useState<string | null>(null);
   const [notice, setNotice] = useState<LinkNotice>(() => linkNotice(link));
 
-  const rows = feed.data?.pages.flatMap((page) => page.rows) ?? [];
+  // Swiped away and waiting out their Undo: off the list at once, deleted once the toast has gone.
+  const [deferred, setDeferred] = useState<ReadonlySet<string>>(new Set());
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const failed = useCallback(() => {
+    haptic.error();
+    toast.show({ message: t('app.notificationsFeed.deleteFailed'), icon: CircleAlert, tone: 'destructive' });
+  }, [t]);
+  // Leaving the feed does not undo a delete: what is still waiting goes now.
+  // (A mutation's mutate stays the same function from render to render.)
+  const { mutate: deleteNow } = remove;
+  useEffect(() => {
+    const waiting = timers.current;
+    return () => {
+      for (const [id, timer] of waiting) {
+        clearTimeout(timer);
+        deleteNow({ id }, { onError: failed });
+      }
+      waiting.clear();
+    };
+  }, [deleteNow, failed]);
+
+  const rows = (feed.data?.pages.flatMap((page) => page.rows) ?? []).filter((row) => !deferred.has(row.id));
   // "Mark all read" is bounded by the newest row this screen has shown.
   const newestShown = rows[0]?.created_at ?? null;
 
@@ -120,9 +142,38 @@ export default function NotificationsScreen() {
   // The swipe that reveals Delete is toward the reading's end, as Mail's is:
   // dragged left in English (the action at the right), right in Arabic.
   const deleteSide: 'left' | 'right' = appDirection === 'rtl' ? 'left' : 'right';
+  const settle = (id: string) => {
+    timers.current.delete(id);
+    setDeferred((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  };
+  // Mail's way: gone from the list at once, with Undo while the toast stays;
+  // only then is it deleted (a delete cannot be put back).
   const deleteOne = (row: NotificationRow) => {
     haptic.tap();
-    remove.mutate({ id: row.id });
+    const id = row.id;
+    setDeferred((current) => new Set(current).add(id));
+    timers.current.set(
+      id,
+      setTimeout(() => {
+        timers.current.delete(id);
+        remove.mutate({ id }, { onError: failed, onSettled: () => settle(id) });
+      }, STAY_WITH_ACTION_MS),
+    );
+    toast.show({
+      message: t('app.notificationsFeed.deleted'),
+      icon: Trash2,
+      action: {
+        label: t('app.toast.undo'),
+        onPress: () => {
+          clearTimeout(timers.current.get(id));
+          settle(id);
+        },
+      },
+    });
   };
   const clearAll = () => {
     if (!newestShown || remove.isPending) return;
@@ -133,7 +184,7 @@ export default function NotificationsScreen() {
         style: 'destructive',
         onPress: () => {
           haptic.tap();
-          remove.mutate({ upTo: newestShown });
+          remove.mutate({ upTo: newestShown }, { onError: failed });
         },
       },
     ]);
@@ -173,7 +224,6 @@ export default function NotificationsScreen() {
       ) : null}
 
       {markAll.isError ? <Notice tone="destructive">{t('common.errorBody')}</Notice> : null}
-      {remove.isError ? <Notice tone="destructive">{t('app.notificationsFeed.deleteFailed')}</Notice> : null}
       {notice === 'gone' ? <Notice tone="muted">{t('notifications.linkGone')}</Notice> : null}
       {notice === 'unavailable' ? <Notice tone="muted">{t('notifications.linkUnavailable')}</Notice> : null}
       {notice === 'failed' ? <Notice tone="destructive">{t('common.errorBody')}</Notice> : null}
@@ -190,7 +240,7 @@ export default function NotificationsScreen() {
         action={<Button label={t('nav.signIn')} onPress={() => router.push('/sign-in')} />}
       />
     );
-  } else if (feed.isPending) body = <LoadingState />;
+  } else if (feed.isPending) body = <SkeletonScreen count={5} />;
   else if (feed.isError && rows.length === 0) body = <ErrorState error={feed.error} onRetry={() => feed.refetch()} />;
   else if (rows.length === 0) {
     // A quiet feed is the expected state most days, so it says so and points
@@ -199,7 +249,7 @@ export default function NotificationsScreen() {
       <EmptyState
         icon={Bell}
         illustration="updates"
-        title={t('notifications.empty')}
+        title={t('app.notificationsFeed.empty')}
         body={t('notifications.emptyHint')}
         action={
           canAccessCandidateArea(actor) ? (

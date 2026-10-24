@@ -251,11 +251,11 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field ref={inView.place('yearsExperience')} label={t('filters.experienceBand')} error={errors.yearsExperience}>
+      <Field ref={inView.place('yearsExperience')} label={t('app.profile.yearsLabel')} error={errors.yearsExperience}>
         <TextField
           value={years}
           onChangeText={(value) => form.set({ years: value })}
-          accessibilityLabel={t('filters.experienceBand')}
+          accessibilityLabel={t('app.profile.yearsLabel')}
           ltr
           keyboardType="number-pad"
           maxLength={2}

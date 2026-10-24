@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, View, type ScrollViewInstance } from 'react-native';
+import { Pressable, ScrollView, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Scale, TriangleAlert } from '~/components/ui/lucide';
@@ -237,19 +237,36 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     });
   };
 
+  // A single line's return key moves on to the field given after it.
+  const nextField = (next: React.RefObject<TextInputInstance | null>) => ({
+    returnKeyType: 'next' as const,
+    submitBehavior: 'submit' as const,
+    onSubmitEditing: () => next.current?.focus(),
+  });
+  // The return key on the Arabic title moves on to the English one.
+  const titleEnField = useRef<TextInputInstance>(null);
+
   const text = (
     key: 'titleAr' | 'titleEn' | 'commissionNoteAr' | 'descriptionAr' | 'descriptionEn' | 'requirementsAr',
     label: string,
     max: number,
-    options: { hint?: string; ltr?: boolean; lines?: number } = {},
+    options: {
+      hint?: string;
+      ltr?: boolean;
+      lines?: number;
+      input?: React.Ref<TextInputInstance>;
+      next?: React.RefObject<TextInputInstance | null>;
+    } = {},
   ) => (
     <Field ref={inView.place(key)} label={label} hint={options.hint} error={errors[key]}>
       <TextField
+        ref={options.input}
         value={values[key]}
         onChangeText={set(key)}
         accessibilityLabel={label}
         maxLength={max}
         ltr={options.ltr}
+        {...(options.next ? nextField(options.next) : null)}
         multiline={Boolean(options.lines)}
         style={options.lines ? { minHeight: options.lines * 22, paddingVertical: space[2], textAlignVertical: 'top' } : undefined}
       />
@@ -263,6 +280,25 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     return value === null || Number.isNaN(value) ? null : value;
   };
   const commission = decimalNumber(values.commissionValue);
+  // A figure typed is read back as money, so a zero too many shows before it is sent.
+  const asEgp = (raw: string) => {
+    const value = amount(raw);
+    return value ? t.markup('app.jobs.amountEgp', { amount: formatEgp(value, locale), ...markupTags }) : undefined;
+  };
+  // The range checked as the employer leaves either end, not only at Next.
+  const checkSalaryOrder = () => {
+    const min = amount(values.basicSalaryMin);
+    const max = amount(values.basicSalaryMax);
+    const wrong = min !== null && max !== null && max < min;
+    setErrors((current) => {
+      const said = current.basicSalaryMax === say('salaryOrder');
+      if (wrong === said) return current;
+      const next = { ...current };
+      if (wrong) next.basicSalaryMax = say('salaryOrder');
+      else delete next.basicSalaryMax;
+      return next;
+    });
+  };
 
   return (
     <ScrollView
@@ -329,8 +365,8 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
 
       {step === 0 ? (
         <View style={{ gap: space[4] }}>
-          {text('titleAr', t('jobForm.titleAr'), 160)}
-          {text('titleEn', t('jobForm.titleEn'), 160, { hint: t('jobForm.titleEnHint'), ltr: true })}
+          {text('titleAr', t('jobForm.titleAr'), 160, { next: titleEnField })}
+          {text('titleEn', t('jobForm.titleEn'), 160, { hint: t('jobForm.titleEnHint'), ltr: true, input: titleEnField })}
           <Field label={t('jobForm.track')}>
             <Select
               label={t('jobForm.track')}
@@ -389,7 +425,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
           <Field
             ref={inView.place('basicSalaryMin')}
             label={t('jobForm.basicSalaryMin')}
-            hint={t('jobForm.salaryHint')}
+            hint={asEgp(values.basicSalaryMin) ?? t('jobForm.salaryHint')}
             error={errors.basicSalaryMin}
           >
             <TextField
@@ -399,9 +435,15 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               ltr
               keyboardType="number-pad"
               maxLength={11}
+              onBlur={checkSalaryOrder}
             />
           </Field>
-          <Field ref={inView.place('basicSalaryMax')} label={t('jobForm.basicSalaryMax')} error={errors.basicSalaryMax}>
+          <Field
+            ref={inView.place('basicSalaryMax')}
+            label={t('jobForm.basicSalaryMax')}
+            hint={asEgp(values.basicSalaryMax)}
+            error={errors.basicSalaryMax}
+          >
             <TextField
               value={values.basicSalaryMax}
               onChangeText={set('basicSalaryMax')}
@@ -409,6 +451,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               ltr
               keyboardType="number-pad"
               maxLength={11}
+              onBlur={checkSalaryOrder}
             />
           </Field>
           {/* What listings like this one pay — only when the board has five to say so. */}

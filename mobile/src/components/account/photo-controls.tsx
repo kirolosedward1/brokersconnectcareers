@@ -48,7 +48,7 @@ export function PhotoControls({ hasPhoto }: { hasPhoto: boolean }) {
   };
 
   const confirmRemove = () =>
-    dialog.alert(t('account.photo'), undefined, [
+    dialog.alert(t('app.account.photoDeleteTitle'), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),

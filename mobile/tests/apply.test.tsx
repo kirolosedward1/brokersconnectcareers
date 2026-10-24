@@ -556,7 +556,7 @@ describe('who gets the form', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.app.apply.quickSend }));
     expect(await screen.findByText(ar.apply.success)).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: ar.jobs.title }));
+    fireEvent.press(screen.getByRole('button', { name: ar.nav.browseJobs }));
     await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
     // The same board, the listing and the confirmation gone from above it: nothing to go Back to.
     expect(router.canGoBack()).toBe(false);

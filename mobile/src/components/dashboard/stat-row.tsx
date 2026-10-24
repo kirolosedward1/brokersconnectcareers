@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { Appear } from '~/components/motion/appear';
+import { Pulse } from '~/components/motion/pulse';
 import type { LucideIcon } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
@@ -100,5 +101,37 @@ function Cell({ cell }: { cell: StatRowCell }) {
         {cell.short}
       </Text>
     </PressableScale>
+  );
+}
+
+/**
+ * The row before its figures are read: the same card, each cell's circle and
+ * two bars in the page's muted tone, breathing — where the figures will land,
+ * rather than a spinner. Said as "loading" to VoiceOver.
+ */
+export function StatRowPlaceholder({ count, label }: { count: number; label: string }) {
+  const { colors, shadow } = useTheme();
+  return (
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+      style={{
+        flexDirection: 'row',
+        paddingVertical: space[4],
+        paddingHorizontal: space[1],
+        ...corner('xl'),
+        backgroundColor: colors.card,
+        boxShadow: shadow.card,
+      }}
+    >
+      {Array.from({ length: count }, (_, index) => (
+        <Pulse key={index} phase={index * 140} style={{ flex: 1, alignItems: 'center', gap: space[2] }}>
+          <View style={{ width: 38, height: 38, ...corner('full'), backgroundColor: colors.muted }} />
+          <View style={{ width: 24, height: 14, borderRadius: 7, backgroundColor: colors.muted }} />
+          <View style={{ width: 36, height: 8, borderRadius: 4, backgroundColor: colors.muted }} />
+        </Pulse>
+      ))}
+    </View>
   );
 }

@@ -38,6 +38,7 @@ function signInThenReturn(next: string) {
 export function useSaveJob(jobId: string) {
   const t = useTranslations('jobs');
   const tToast = useTranslations('app.toast');
+  const tCommon = useTranslations('common');
   const { actor } = useSession();
   const { ids, known } = useSavedJobIds();
   const saved = ids.has(jobId);
@@ -57,14 +58,23 @@ export function useSaveJob(jobId: string) {
       haptic.tap();
       if (!saved) setSaves((count) => count + 1);
       // Said at once, as the bookmark changes; a refusal says so after (and the bookmark goes back).
-      const failed = () => toast.show({ message: tToast('saveFailed'), icon: CircleAlert });
-      toggle.mutate({ jobId, saved }, { onError: failed });
+      // Refused: the bookmark goes back, and the same change can be tried again.
+      const failed = (wasSaved: boolean) => () => {
+        haptic.error();
+        toast.show({
+          message: tToast('saveFailed'),
+          icon: CircleAlert,
+          tone: 'destructive',
+          action: { label: tCommon('retry'), onPress: () => toggle.mutate({ jobId, saved: wasSaved }, { onError: failed(wasSaved) }) },
+        });
+      };
+      toggle.mutate({ jobId, saved }, { onError: failed(saved) });
       toast.show(
         saved
           ? {
               message: tToast('unsaved'),
               icon: Bookmark,
-              action: { label: tToast('undo'), onPress: () => toggle.mutate({ jobId, saved: false }, { onError: failed }) },
+              action: { label: tToast('undo'), onPress: () => toggle.mutate({ jobId, saved: false }, { onError: failed(false) }) },
             }
           : {
               message: tToast('saved'),

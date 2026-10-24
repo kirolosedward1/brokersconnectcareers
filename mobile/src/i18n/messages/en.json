@@ -42,7 +42,8 @@
     "mfaDisableBody": "Signing in will ask for your password only.",
     "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow.",
     "notifications": "Notifications",
-    "messages": "Messages"
+    "messages": "Messages",
+    "photoDeleteTitle": "Delete your photo?"
   },
   "jobs": {
     "loadMore": "Load more",
@@ -62,7 +63,8 @@
     "suggestKindTrack": "Track",
     "suggestKindTitle": "Job",
     "suggestKindCompany": "Company",
-    "seenDivider": "Posted before you last looked"
+    "seenDivider": "Posted before you last looked",
+    "amountEgp": "EGP <v>{amount}</v>"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -84,7 +86,7 @@
     "linkUsedBody": "It has been used already or has expired. You are signed in as {email}, so there is nothing more to do.",
     "resetLinkFailed": "That link has expired or has already been used. You are signed in as {email}, so you can set a new password for it in Sign-in and security.",
     "emailChangeLinkFailed": "That link has expired or has already been used, and the change has not gone through: your account’s address is still {email}. You can ask for the change again in Sign-in and security.",
-    "configFailed": "We could not get signing in ready. Check your connection and try again.",
+    "configFailed": "Signing in didn't get ready. Check your connection and try again.",
     "configRetry": "Try again",
     "appleRevokedTitle": "You have been signed out",
     "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time.",
@@ -144,7 +146,8 @@
     "quickTitle": "Ready to apply with these details",
     "quickSend": "Apply with your saved details",
     "quickEdit": "Edit the details or add a note",
-    "quickNoCv": "Without a CV"
+    "quickNoCv": "Without a CV",
+    "cvUploadFailed": "The file didn't upload. Check your connection and try again, or apply without a CV."
   },
   "profile": {
     "edit": "Edit",
@@ -163,11 +166,13 @@
     "chooseUpTo": "Choose up to <v>{count}</v>.",
     "ringLabel": "Your profile is <v>{percent}%</v> complete",
     "ringHint": "Opens your profile at what is missing",
-    "notFuture": "That date has not come yet. Pick a month up to today."
+    "notFuture": "That date has not come yet. Pick a month up to today.",
+    "yearsLabel": "Years of experience"
   },
   "applicants": {
     "cvLimit": "You have opened a lot of CVs this hour. Try again shortly.",
-    "rejectConfirm": "Turn this applicant down?"
+    "rejectConfirm": "Turn this applicant down?",
+    "empty": "No applicants yet"
   },
   "push": {
     "title": "Notifications on this phone",
@@ -176,8 +181,7 @@
     "hintEmployer": "When someone applies to one of your listings — everything the bell tells you, as it happens.",
     "denied": "Notifications for Brokers Connect are turned off in your phone’s settings.",
     "openSettings": "Open Settings",
-    "failed": "We could not turn notifications on. Try again.",
-    "promptTitle": "Hear about it the moment it happens",
+    "failed": "Notifications didn't turn on. Try again.",
     "promptCandidate": "Turn on notifications and we will tell you as soon as a company answers your application.",
     "promptEmployer": "Turn on notifications and we will tell you as soon as someone applies to your listings.",
     "turnOn": "Turn on notifications",
@@ -196,7 +200,9 @@
     "accountEmployer": "Your account and listings",
     "accountEmployerHint": "A listing published, rejected or ending, your company’s verification, decisions about your account, support replies.",
     "quiet": "Quiet at night",
-    "quietHint": "Anything after 11 pm waits until 8 am, Cairo time."
+    "quietHint": "Anything after 11 pm waits until 8 am, Cairo time.",
+    "promptTitleCandidate": "Know When a Company Replies",
+    "promptTitleEmployer": "Know When Someone Applies"
   },
   "leave": {
     "title": "Leave without saving?",
@@ -211,7 +217,8 @@
     "docCamera": "Take a photo of it",
     "docPhotos": "A photo from your library",
     "docFile": "A file (PDF or image)",
-    "cameraDenied": "Allow the camera for this app in Settings to photograph the paper."
+    "cameraDenied": "Allow the camera for this app in Settings to photograph the paper.",
+    "logoDeleteTitle": "Delete the logo?"
   },
   "licenses": {
     "intro": "This app is built on open-source software, written by many people and published for anyone to use. Here is every package in it, with its version, its licence and its copyright holders, and at the end the text of each licence."
@@ -292,7 +299,8 @@
     "notifyTitle": "{count, plural, one {A new consultant matches your search} other {# new consultants match your search}}"
   },
   "cv": {
-    "current": "Current"
+    "current": "Current",
+    "deleteEntryTitle": "Delete this entry?"
   },
   "crash": {
     "title": "The app closed unexpectedly last time",
@@ -347,7 +355,8 @@
     "done": "All reviewed",
     "shortlisted": "{name} shortlisted",
     "rejected": "{name} turned down",
-    "moved": "A colleague moved them first"
+    "moved": "A colleague moved them first",
+    "failed": "Couldn't save the decision for {name}."
   },
   "week": {
     "title": "Your week",
@@ -385,7 +394,7 @@
       "cancelled": "Reminder cancelled",
       "denied": "Notifications are off for the app, so we can't remind you. Turn them on in Settings.",
       "tooLate": "This listing closes within the hour: too late for a reminder",
-      "failed": "We couldn't set the reminder. Try again.",
+      "failed": "The reminder wasn't set. Try again.",
       "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
       "notifyBody": "{job} at {company}. Apply before it closes."
     }
@@ -398,7 +407,8 @@
     "clearAllBody": "Every notification shown here will be deleted, and can't be brought back.",
     "clearAllConfirm": "Clear all",
     "cancel": "Cancel",
-    "deleteFailed": "We couldn't delete it. Try again."
+    "deleteFailed": "The notification wasn't deleted. Try again.",
+    "empty": "Nothing yet"
   },
   "admin": {
     "door": {

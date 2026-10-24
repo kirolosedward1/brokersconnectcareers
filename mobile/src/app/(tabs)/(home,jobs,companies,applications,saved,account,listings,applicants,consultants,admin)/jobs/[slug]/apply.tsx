@@ -29,7 +29,8 @@ import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
 import { Appear } from '~/components/motion/appear';
-import { Confetti, DrawnCheck } from '~/components/motion/celebration';
+import { DrawnCheck } from '~/components/motion/celebration';
+import { PushPrompt } from '~/components/push/push-prompt';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
@@ -49,6 +50,7 @@ import { pickCv, type PickedCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { useAgentProfile } from '~/features/profile/queries';
 import { ApiError } from '~/lib/api';
+import { noteFailure } from '~/lib/crash-log';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
@@ -143,7 +145,7 @@ function Apply({ job }: { job: JobDetail }) {
         icon={CalendarX2}
         title={t('jobs.expired')}
         body={t('jobs.expiredBody')}
-        action={hasBoard ? <Button label={t('jobs.title')} onPress={toBoard} /> : null}
+        action={hasBoard ? <Button label={t('nav.browseJobs')} onPress={toBoard} /> : null}
       />
     );
   }
@@ -346,8 +348,9 @@ function ApplyForm({
           if (reason === 'not_open') return showErrors({ form: t('apply.notOpen') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
           if (reason === 'upload' || reason === 'invalid_cv_path') {
-            const detail = failure instanceof ApplyRefused ? failure.detail : undefined;
-            return showErrors({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+            // What went wrong underneath is for the crash report; the reader is told what to do.
+            noteFailure('apply.cv', failure);
+            return showErrors({ cv: t('app.apply.cvUploadFailed') });
           }
           const fields = failure instanceof ApplyRefused ? failure.fieldErrors : undefined;
           if (reason === 'invalid' && fields && Object.keys(fields).length) {
@@ -359,10 +362,9 @@ function ApplyForm({
               ...(fields.note || fields.jobId ? { form: t('common.errorBody') } : {}),
             });
           }
-          // What went wrong underneath, in brackets: "something went wrong" alone told nobody anything.
-          // The website's own answers (offline, unavailable) are said as they always were.
-          const detail = failure instanceof Error && !(failure instanceof ApiError) && failure.message ? failure.message : '';
-          showErrors({ form: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          // What went wrong underneath goes to the crash report, not on the screen.
+          if (!(failure instanceof ApiError)) noteFailure('apply', failure);
+          showErrors({ form: t('common.errorBody') });
         },
       },
     );
@@ -634,7 +636,6 @@ function Sent({ job }: { job: JobDetail; at?: Date }) {
         <Appear from="none" scale={0.6} delay={motion.stagger}>
           <DrawnCheck size={72} />
         </Appear>
-        <Confetti />
         <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
           {t('apply.success')}
         </Text>
@@ -645,8 +646,11 @@ function Sent({ job }: { job: JobDetail; at?: Date }) {
 
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />
-        <Button label={t('jobs.title')} variant="outline" onPress={toBoard} />
+        <Button label={t('nav.browseJobs')} variant="outline" onPress={toBoard} />
       </View>
+
+      {/* The moment the reason to hear back is plain: the phone's question, until answered. */}
+      <PushPrompt audience="candidate" />
 
       {next.roles.length ? (
         <View style={{ gap: space[3] }}>
