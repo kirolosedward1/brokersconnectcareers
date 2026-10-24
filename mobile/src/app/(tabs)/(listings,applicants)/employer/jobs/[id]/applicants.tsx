@@ -18,7 +18,6 @@ import {
   useListingApplicants,
   useMarkSeen,
 } from '~/features/employer/applicants';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
@@ -53,7 +52,6 @@ export default function ListingApplicantsScreen() {
   useMarkSeen(viewer?.company?.suspended_at ? undefined : applicants);
   // A new applicant, or a colleague's move, reaches the pipeline with a pull.
   const pull = usePullRefresh(() => Promise.all([pipeline.refetch(), applicants?.length ? notes.refetch() : null]));
-  const shrink = useShrinkingTabBar();
 
   const job = pipeline.data?.job ?? null;
   const title = job ? localized(locale, job.title_ar, job.title_en) : t('employer.jobs');
@@ -102,7 +100,6 @@ export default function ListingApplicantsScreen() {
     const rows = pipeline.data.applicants;
     body = (
       <ScrollView
-        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"

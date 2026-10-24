@@ -19,7 +19,6 @@ import { Text } from '~/components/ui/text';
 import { TextLink } from '~/components/ui/text-link';
 import { recordAgentView, useAgentPage } from '~/features/directory/queries';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
@@ -44,7 +43,6 @@ export function AgentProfile({ handle }: { handle: string }) {
   const { session, viewer, actor } = useSession();
   const page = useAgentPage(handle);
   const pull = usePullRefresh(() => page.refetch());
-  const shrink = useShrinkingTabBar();
   const districts = useDistricts().data;
   const developers = useDevelopers().data;
   const districtMap = useMemo(() => new Map((districts ?? []).map((row) => [row.id, row])), [districts]);
@@ -103,7 +101,6 @@ export function AgentProfile({ handle }: { handle: string }) {
     <>
       {header}
       <ScrollView
-        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />

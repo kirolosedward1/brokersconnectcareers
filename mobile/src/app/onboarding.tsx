@@ -45,6 +45,7 @@ import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * The step that makes an account a profile — the website's onboarding
@@ -138,7 +139,8 @@ export default function OnboardingScreen() {
               return refusal;
             }
             close();
-            dialog.alert(t('app.account.deleted'));
+            // Said in passing, not in an alert to dismiss: the welcome is opening as it is said (HIG, Alerts).
+            toast.show({ message: t('app.account.deleted'), tone: 'success' });
             return null;
           }}
         />

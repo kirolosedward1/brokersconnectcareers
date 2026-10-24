@@ -12,7 +12,7 @@ import { Platform, type ViewStyle } from 'react-native';
  *
  * Every text colour holds 4.5:1 on every surface it is drawn on, in both
  * schemes; icons that carry meaning and the borders of fields hold 3:1.
- * Light is the default whatever the phone's setting, as on the website.
+ * The phone's own Light or Dark setting is the default (theme/provider.tsx).
  */
 export const palette = {
   light: {

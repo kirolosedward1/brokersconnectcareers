@@ -18,7 +18,6 @@ import { markReadLocally, useDeleteNotifications, useMarkAllRead, useNotificatio
 import { dialog } from '~/lib/dialog';
 import { appDirection } from '~/lib/direction';
 import { haptic } from '~/lib/haptics';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
@@ -68,7 +67,6 @@ export default function NotificationsScreen() {
     Promise.all([feed.refetch(), queryClient.invalidateQueries({ queryKey: ['notifications', 'unread'] })]),
   );
   const unread = useUnreadCount().data ?? 0;
-  const shrink = useShrinkingTabBar();
   const markAll = useMarkAllRead();
   const remove = useDeleteNotifications();
   const navigation = useNavigation();
@@ -211,7 +209,6 @@ export default function NotificationsScreen() {
   } else {
     body = (
       <FlashList
-        {...shrink}
         data={rows}
         keyExtractor={(row) => row.id}
         contentInsetAdjustmentBehavior="automatic"
