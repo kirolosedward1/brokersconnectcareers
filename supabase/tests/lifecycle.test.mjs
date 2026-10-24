@@ -248,6 +248,22 @@ report.section('replacing a CV that an application still uses');
   report.check('once the last reference goes, it is queued again', requeued.outcome === null && requeued.done_at === null);
 }
 
+report.section('removing the CV from a profile, the account kept');
+
+{
+  // The profile form's "remove CV" (removeCv in saveAgentProfile, on both
+  // clients): the path is cleared and the file is queued for deletion, with
+  // nothing else of the account touched.
+  await db.exec(`update agent_profiles set cv_path = null where user_id = '${CAND}'`);
+  const queued = await one(`select reason from storage_gc_queue where bucket = 'cvs' and path = '${CAND}/profile-v2.pdf'`);
+  report.check('a CV taken off a profile is queued for deletion', Boolean(queued), JSON.stringify(queued));
+  await db.exec(`update storage_gc_queue set not_before = now() - interval '1 minute' where path = '${CAND}/profile-v2.pdf'`);
+  const claimed = await q(`select * from public.claim_storage_gc(100) where path = '${CAND}/profile-v2.pdf'`);
+  report.check('and handed to the sweep once its grace is over, nothing else pointing at it', claimed.length === 1, JSON.stringify(claimed));
+  const kept = await one(`select count(*)::int as n from agent_profiles where user_id = '${CAND}'`);
+  report.check('the profile itself stays', kept.n === 1);
+}
+
 report.section('replacing a profile photo');
 
 {
