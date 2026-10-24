@@ -46,6 +46,7 @@
     "photoDeleteTitle": "Delete your photo?"
   },
   "jobs": {
+    "searchLabel": "Search jobs",
     "loadMore": "Load more",
     "endOfList": "That is every matching job.",
     "wizardStep": "Step <v>{current}</v> of <v>{total}</v>",
@@ -107,17 +108,11 @@
   },
   "moderation": {
     "hide": "Hide this company",
-    "hideTitle": "Hide {company}?",
-    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back at any time from “Hidden on this phone” in Account.",
-    "hideConfirm": "Hide it",
     "hidden": "You have hidden this company, so its listings do not appear for you in the app.",
     "unhide": "Show this company again",
     "hideAgent": "Hide this consultant",
-    "hideAgentTitle": "Hide {name}?",
-    "hideAgentBody": "You will not see them in the consultant directory or your shortlist on this phone again. You can bring them back at any time from “Hidden on this phone” in Account.",
     "hiddenAgent": "You have hidden this consultant, so they do not appear for you in the directory or your shortlist.",
     "unhideAgent": "Show this consultant again",
-    "hideAgentConfirm": "Hide them",
     "hiddenList": "Hidden on this phone",
     "hiddenListLede": "The listings, companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
     "hiddenCompanies": "Companies",
@@ -311,7 +306,7 @@
     "title": "The app closed unexpectedly last time",
     "body": "Something closed the app. Send us the details so we can fix it.",
     "send": "Send the details",
-    "dismiss": "OK"
+    "dismiss": "Not now"
   },
   "toast": {
     "saved": "Saved",
@@ -321,6 +316,7 @@
     "saveFailed": "Could not save it. Try again.",
     "jobHidden": "You won't see this listing again",
     "companyHidden": "You won't see {company}'s listings again",
+    "agentHidden": "You won't see {name} again",
     "changesSaved": "Changes saved",
     "withdrawn": "Application withdrawn",
     "following": "You'll hear about every new job at {company}",

@@ -56,14 +56,11 @@ export function FilterSheet({
   filters,
   onClose,
   onApply,
-  focusSearch = false,
 }: {
   visible: boolean;
   filters: JobFilters;
   onClose: () => void;
   onApply: (next: JobFilters) => void;
-  /** Opened to search (the Jobs tab pressed again at the top): the keyboard comes up in the words. */
-  focusSearch?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -125,7 +122,6 @@ export function FilterSheet({
         </Text>
         <TextField
           value={words}
-          autoFocus={focusSearch}
           onChangeText={setWords}
           onEndEditing={() => setDraft(typed)}
           // The keyboard's Search key searches: the board, for what is chosen and typed.

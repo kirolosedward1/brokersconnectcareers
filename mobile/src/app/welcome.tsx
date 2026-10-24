@@ -19,7 +19,7 @@ import { useAuthErrorText } from '~/features/auth/errors';
 import { intentFromParams } from '~/features/auth/intent';
 import { useLand } from '~/features/auth/land';
 import type { ProviderOutcome } from '~/features/auth/providers';
-import { welcomeDrawn } from '~/features/welcome';
+import { rememberWelcomeSkipped, welcomeDrawn } from '~/features/welcome';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
 
@@ -29,8 +29,8 @@ const PHOTO = require('../../assets/images/welcome-photo.jpg');
 /**
  * When the screen's parts arrive, after the first frame: the screen fades in
  * over the launch curtain or the tabs (the root layout), and its parts follow
- * it in. Skip first — it opens at every launch with nobody signed in, and
- * someone who has seen it before is not kept waiting for the way past it
+ * it in. Skip first — it opens again after every sign-out, and someone who
+ * has seen it before is not kept waiting for the way past it
  * (iOS takes no taps on what has not begun to show) — with the photograph
  * settling behind it; then the logo, the words and the ways on.
  */
@@ -46,8 +46,8 @@ const AT = {
 };
 
 /**
- * The first screen of every launch with nobody signed in, and where signing
- * out leads (src/components/navigation/welcome-gate.tsx): the website's hero
+ * The first screen of the first launch with nobody signed in, and where
+ * signing out leads (src/components/navigation/welcome-gate.tsx): the website's hero
  * photograph across the whole screen under a deep sapphire veil, darkening to
  * midnight where the words are — the logo and what the board is in one line —
  * and the ways on: create an account, sign in — with Google's or Apple's
@@ -60,7 +60,7 @@ const AT = {
  * and the status bar's light over it.
  *
  * Over the tabs, already drawn underneath — Home, at a launch: skipping fades
- * it away onto them until the app is next started. Signing in closes it with
+ * it away onto them, and later launches open on them (src/features/welcome.ts). Signing in closes it with
  * the sign-in sheet (useCloseFlow, which counts it among the flow's screens).
  */
 export default function WelcomeScreen() {
@@ -108,7 +108,9 @@ export default function WelcomeScreen() {
   }, [shown]);
 
   // This screen's own Back, whatever has been opened since.
+  // Remembered, so the next launch opens on Home (src/features/welcome.ts).
   const skip = () => {
+    rememberWelcomeSkipped();
     if (navigation.canGoBack()) navigation.goBack();
     else router.replace('/');
   };

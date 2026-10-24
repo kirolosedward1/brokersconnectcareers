@@ -12,7 +12,6 @@ import { MoveHorizontal, TrendingUp } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { bestOf } from '~/features/saved/compare';
-import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
@@ -56,7 +55,6 @@ export function CompareTable({ jobs }: { jobs: JobListItem[] }) {
   const { width } = useWindowDimensions();
   const large = useLargeText();
   const best = bestOf(jobs);
-  const shrink = useShrinkingTabBar();
 
   const room = width - gutter * 2;
   const least = large ? LEAST_COLUMN_LARGE : LEAST_COLUMN;
@@ -94,7 +92,6 @@ export function CompareTable({ jobs }: { jobs: JobListItem[] }) {
 
   return (
     <ScrollView
-      {...shrink}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{ paddingTop: space[4], paddingBottom: space[10], gap: space[4] }}
     >

@@ -21,14 +21,13 @@ import { Appear } from '~/components/motion/appear';
 import type { LucideProps } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
-import { setTabBarSmall, useTabBarSmall } from '~/features/tab-bar';
 import { env } from '~/lib/env';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { useReduceTransparency } from '~/theme/reduce-transparency';
-import { corner, gutter, motion, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 
 /** The bar's height at rest: an icon over its name. */
 const BAR = 56;
@@ -37,12 +36,6 @@ const INSET = 3;
 const ICON = 24;
 const NAME = 16;
 const GAP = 2;
-/** Its size while a list scrolls down, against its own. */
-const SMALL = 0.8;
-/** The icons' size then, against their own: they shrink less than the bar does. */
-const SMALL_ICON = 0.9;
-/** How far the icons move down to the middle of the bar once the names have gone. */
-const DROP = (GAP + NAME) / 2;
 /** How far above its band the page fades into it. */
 const FADE = 20;
 /** How far a finger on the bar moves sideways before it is dragging the lens rather than pressing a tab. */
@@ -88,12 +81,9 @@ type Frame = { x: number; width: number };
  * the tab it is over. With Reduce Motion on, the pill goes straight to its
  * tab and nothing stretches or swells.
  *
- * As a list scrolls down (useShrinkingTabBar, src/features/tab-bar.ts) it
- * grows smaller and the names go, leaving the icons, the way Instagram's bar
- * does; scrolling back up, reaching the top, or another screen coming into
- * view brings it back whole. Every tab stays in it, and keeps its name for
- * VoiceOver. It moves on the native thread, so a list busy drawing does not
- * stutter it; with Reduce Motion on it keeps its size and only the names fade.
+ * It stays whole however a list scrolls: every tab, each with its name, as
+ * Apple asks of a tab bar (HIG, Tab bars: "Include tab labels") — no growing
+ * smaller and dropping the names on the way down a list (src/features/tab-bar.ts).
  *
  * Its band is part of the layout, the screens ending above it, so no screen
  * needs room made under its last line; the band is the page's own colour, the
@@ -111,29 +101,9 @@ type Frame = { x: number; width: number };
 export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { colors, scheme, shadow } = useTheme();
   const locale = useLocale();
-  const small = useTabBarSmall();
   const reduceMotion = useReduceMotion();
   const reduceTransparency = useReduceTransparency();
   const glass = GLASS && !reduceTransparency;
-  const [progress] = useState(() => new Animated.Value(small ? 1 : 0));
-
-  useEffect(() => {
-    const animation = Animated.timing(progress, {
-      toValue: small ? 1 : 0,
-      duration: reduceMotion ? motion.fade : motion.bars,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    });
-    animation.start();
-    return () => animation.stop();
-  }, [small, reduceMotion, progress]);
-
-  // Another screen in view — another tab, or one opened or closed in this
-  // one — starts with the bar whole, wherever the last one left it.
-  const inView = focusedKey(state);
-  useEffect(() => {
-    setTabBarSmall(false);
-  }, [inView]);
 
   // Where the bar and each of its tabs are, as laid out: where the pill goes.
   // The tabs are known by their names, not their routes' keys: a tab not yet
@@ -169,21 +139,12 @@ export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: B
     openName,
     slots,
     bar,
-    scale: small && !reduceMotion ? SMALL : 1,
     pill,
     reduceMotion,
     onLens: setLensed,
     onChoose: openTab,
   });
 
-  const barMoves = reduceMotion ? undefined : [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, SMALL] }) }];
-  const iconMoves: IconMoves | undefined = reduceMotion
-    ? undefined
-    : [
-        { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, DROP] }) },
-        { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, SMALL_ICON / SMALL] }) },
-      ];
-  const nameShows = progress.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0], extrapolate: 'clamp' });
   const width = open?.width ?? 0;
 
   return (
@@ -212,7 +173,6 @@ export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: B
           glass ? styles.glassBar : { backgroundColor: colors.card },
           // Its edge and its shadow either way: on glass too, the capsule stands off the page.
           { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth, boxShadow: shadow.raised },
-          { transform: barMoves },
         ]}
       >
         {glass ? (
@@ -259,8 +219,6 @@ export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: B
               lensed={lensed === route.name}
               tint={focused || lensed === route.name ? colors.primary : colors.mutedForeground}
               icon={options.tabBarIcon}
-              iconMoves={iconMoves}
-              nameShows={nameShows}
               onLayout={(event) => placeTab(route.name, event)}
               onPress={() => openTab(route.name)}
               onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
@@ -357,8 +315,6 @@ type ScrubOptions = {
   openName: string | undefined;
   slots: Record<string, Slot>;
   bar: Frame | null;
-  /** The bar's size as drawn, against its own (smaller while a list scrolls down). */
-  scale: number;
   pill: PillMotion;
   reduceMotion: boolean;
   onLens: (name: string | null) => void;
@@ -392,11 +348,9 @@ function useScrub(options: ScrubOptions) {
 
     /** Where a finger at `pageX` on the screen is along the bar, in the bar's own points. */
     const along = (pageX: number): number | null => {
-      const { bar, scale } = latest.current;
+      const { bar } = latest.current;
       if (!bar) return null;
-      // The bar grows smaller about the middle of its foot: its left edge moves in by half what it loses.
-      const left = bar.x + (bar.width * (1 - scale)) / 2;
-      return (pageX - left) / scale;
+      return pageX - bar.x;
     };
 
     /** The tab at a point along the bar, or the nearest at either end. */
@@ -462,8 +416,6 @@ function useScrub(options: ScrubOptions) {
   return responder;
 }
 
-type IconMoves = [{ translateY: Animated.AnimatedInterpolation<number> }, { scale: Animated.AnimatedInterpolation<number> }];
-
 /** Where the finger now on the bar first came down, on the screen. */
 function startOf(event: GestureResponderEvent): number | null {
   // The responder system's record of the touches, which PanResponder reads too.
@@ -483,9 +435,6 @@ type TabButtonProps = {
   lensed: boolean;
   tint: string;
   icon: BottomTabBarProps['descriptors'][string]['options']['tabBarIcon'];
-  /** The icon's own moves as the bar grows smaller: down to the middle, and less small than the bar. */
-  iconMoves: IconMoves | undefined;
-  nameShows: Animated.AnimatedInterpolation<number>;
   onLayout: (event: LayoutChangeEvent) => void;
   onPress: () => void;
   onLongPress: () => void;
@@ -496,7 +445,7 @@ type TabButtonProps = {
  * iOS's own tab icons do; under the lens a finger draws along the bar it grows
  * a little, as if seen through it. Neither with Reduce Motion on.
  */
-function TabButton({ name, label, badge, testID, focused, lensed, tint, icon, iconMoves, nameShows, onLayout, onPress, onLongPress }: TabButtonProps) {
+function TabButton({ name, label, badge, testID, focused, lensed, tint, icon, onLayout, onPress, onLongPress }: TabButtonProps) {
   const reduceMotion = useReduceMotion();
   const [bump] = useState(() => new Animated.Value(0));
   const [magnify] = useState(() => new Animated.Value(0));
@@ -545,11 +494,11 @@ function TabButton({ name, label, badge, testID, focused, lensed, tint, icon, ic
       onLongPress={onLongPress}
       style={styles.tab}
     >
-      <Animated.View style={{ transform: [...(iconMoves ?? []), ...own] }}>
+      <Animated.View style={{ transform: own }}>
         {icon?.({ focused, color: tint, size: ICON })}
         {badge ? <TabBadge text={badge} /> : null}
       </Animated.View>
-      <Animated.View style={{ opacity: nameShows, transform: iconMoves ? [iconMoves[0]] : undefined }}>
+      <View>
         <Text
           variant="label"
           weight={focused ? 'semibold' : 'medium'}
@@ -559,7 +508,7 @@ function TabButton({ name, label, badge, testID, focused, lensed, tint, icon, ic
         >
           {name}
         </Text>
-      </Animated.View>
+      </View>
     </PressableScale>
   );
 }
@@ -658,20 +607,6 @@ function OwnPhoto({ focused, color, size, otherwise }: TabIconProps & { otherwis
       />
     </View>
   );
-}
-
-type NavigationLevel = { index?: number; routes: { key: string; state?: unknown }[] };
-
-/** The screen in view, as the keys of the routes down to it: changes whenever another one is. */
-function focusedKey(state: NavigationLevel): string {
-  const keys: string[] = [];
-  let level: NavigationLevel | undefined = state;
-  while (level && typeof level.index === 'number' && level.routes[level.index]) {
-    const route: NavigationLevel['routes'][number] = level.routes[level.index];
-    keys.push(route.key);
-    level = route.state as NavigationLevel | undefined;
-  }
-  return keys.join('>');
 }
 
 const styles = StyleSheet.create({

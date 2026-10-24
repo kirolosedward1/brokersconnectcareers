@@ -23,7 +23,6 @@ import { ActionMenu, type MenuItem } from '~/components/ui/action-menu';
 import { shareJobLink } from '~/features/jobs/share';
 import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
 import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
-import { dialog } from '~/lib/dialog';
 import { haptic } from '~/lib/haptics';
 import { useSheet } from '~/lib/use-sheet';
 import { useFewerLikeThis } from './fewer-like-this';
@@ -100,22 +99,15 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
       action: { label: t('app.toast.undo'), onPress: () => unhideJob(job.id) },
     });
   };
-  const hideTheCompany = () =>
-    dialog.alert(t('app.moderation.hideTitle', { company }), t('app.moderation.hideBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('app.moderation.hideConfirm'),
-        style: 'destructive',
-        onPress: () => {
-          hideCompany(job.company.id, { name: company, slug: job.company.slug });
-          toast.show({
-            message: t('app.toast.companyHidden', { company }),
-            icon: Ban,
-            action: { label: t('app.toast.undo'), onPress: () => unhideCompany(job.company.id) },
-          });
-        },
-      },
-    ]);
+  // At once, as hiding the one listing is: Undo is the way back, not a question first.
+  const hideTheCompany = () => {
+    hideCompany(job.company.id, { name: company, slug: job.company.slug });
+    toast.show({
+      message: t('app.toast.companyHidden', { company }),
+      icon: Ban,
+      action: { label: t('app.toast.undo'), onPress: () => unhideCompany(job.company.id) },
+    });
+  };
   const share = () => shareJobLink({ slug: job.slug, title });
   const fewer = useFewerLikeThis(job);
 

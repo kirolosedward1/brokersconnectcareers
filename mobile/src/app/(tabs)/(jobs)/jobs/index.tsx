@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type Ref } from 'react';
+import { ScrollView, StyleSheet, View, type TextInputInstance } from 'react-native';
 import { router, Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
@@ -30,6 +30,7 @@ import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
 import { PressableScale } from '~/components/ui/pressable-scale';
+import { SearchField } from '~/components/ui/search-field';
 import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
@@ -92,13 +93,11 @@ export default function BoardScreen() {
   // The order's card, kept here rather than in the header, which is drawn afresh as the first listings arrive.
   const sortSheet = useSheet();
   const sortOptions = useSortOptions();
-  // Opened from the Jobs tab pressed again at the top: straight into the words.
-  const [searchFirst, setSearchFirst] = useState(false);
+  // The Jobs tab pressed again at the top: straight into the words, in the
+  // search field over the board.
+  const searchField = useRef<TextInputInstance>(null);
   const list = useTabList<FlashListRef<JobListItem>>({
-    onPressAtTop: () => {
-      setSearchFirst(true);
-      setSheetOpen(true);
-    },
+    onPressAtTop: () => searchField.current?.focus(),
   });
   const hidden = useHiddenCompanies();
   const read = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
@@ -136,19 +135,20 @@ export default function BoardScreen() {
     if (next.q !== filters.q) rememberSearch(owner, next.q);
     router.setParams(filtersToParams(next));
   };
-  const openFilters = () => {
-    setSearchFirst(false);
-    setSheetOpen(true);
-  };
+  const openFilters = () => setSheetOpen(true);
 
-  // No search bar over the board: the words are searched from the filter
-  // sheet, as on the website's panel, and shown as a chip like any filter.
+  // The words are searched from a field at the top of the board's header —
+  // search is how most people start here, so it is in sight rather than a
+  // tap into the filter sheet (HIG, Searching: "give it a primary
+  // position"). It is the same `q` as the sheet's own field and the website's
+  // panel, applied the same way (apply: kept for Recent searches too), on the
+  // keyboard's Search key as the companies directory's is, and shown as a
+  // chip like any filter.
   const header = <Stack.Screen options={{ title: t('jobs.title'), headerRight: bell }} />;
 
   const sheet = (
     <FilterSheet
       visible={sheetOpen}
-      focusSearch={searchFirst}
       filters={filters}
       onClose={() => setSheetOpen(false)}
       onApply={(next) => {
@@ -186,6 +186,7 @@ export default function BoardScreen() {
             filters={filters}
             first={undefined}
             apply={apply}
+            searchRef={searchField}
             onFilters={openFilters}
             onSort={sortSheet.show}
             hasResults={false}
@@ -216,6 +217,7 @@ export default function BoardScreen() {
             filters={filters}
             first={undefined}
             apply={apply}
+            searchRef={searchField}
             onFilters={openFilters}
             onSort={sortSheet.show}
             hasResults={false}
@@ -259,6 +261,7 @@ export default function BoardScreen() {
             first={first}
             total={rolled}
             apply={apply}
+            searchRef={searchField}
             onFilters={openFilters}
             onSort={sortSheet.show}
             hasResults={jobs.length > 0}
@@ -374,6 +377,7 @@ function BoardHeader({
   first,
   total = 0,
   apply,
+  searchRef,
   onFilters,
   onSort,
   hasResults,
@@ -385,6 +389,8 @@ function BoardHeader({
   /** How many listings there are, without those of the companies this phone hides. */
   total?: number;
   apply: (next: JobFilters) => void;
+  /** The search field, for the screen to put the cursor in. */
+  searchRef: Ref<TextInputInstance>;
   onFilters: () => void;
   /** Opens the order's card, which the screen keeps (BoardScreen). */
   onSort: () => void;
@@ -401,9 +407,19 @@ function BoardHeader({
   const company = first?.company;
   const inSheet = sheetFilterCount(filters);
   const searchLabel = useSearchLabel(filters, first);
+  const tAll = useTranslations();
 
   return (
     <View style={{ gap: space[3], marginBottom: space[4] }}>
+      <SearchField
+        inputRef={searchRef}
+        value={filters.q}
+        // Not the sheet's own field's name: VoiceOver tells the two apart.
+        label={tAll('app.jobs.searchLabel')}
+        placeholder={tAll('filters.searchPlaceholder')}
+        onSearch={(q) => apply({ ...filters, q })}
+      />
+
       {/* One line: how many there are, then the order and the filters, small, at its end. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
         {loading ? (

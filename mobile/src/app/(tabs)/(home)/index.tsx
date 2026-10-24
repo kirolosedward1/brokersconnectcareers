@@ -8,6 +8,7 @@ import { canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions
 import { CandidateHome } from '~/components/home/candidate-home';
 import { EmployerHome } from '~/components/home/employer-home';
 import { HomeFrame } from '~/components/home/home-frame';
+import { CrashNotice } from '~/components/navigation/crash-notice';
 import { Hero } from '~/components/home/hero';
 import { TrustLines } from '~/components/home/trust-lines';
 import { JobBrowse } from '~/components/home/job-browse';
@@ -63,6 +64,8 @@ export default function HomeScreen() {
       {/* Its own header (HomeFrame), not the stack's: the name stays the title for Back and VoiceOver. */}
       <Stack.Screen options={{ title: t('meta.siteName'), headerShown: false }} />
       <HomeFrame>
+        {/* After the app closed on an error of its own: said here, over whichever Home this is. */}
+        <CrashNotice />
         {canAccessEmployerArea(actor) ? (
           <EmployerHome profile={viewer?.profile ?? null} company={viewer?.company ?? null} />
         ) : canAccessCandidateArea(actor) ? (

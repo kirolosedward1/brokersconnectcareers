@@ -260,11 +260,26 @@ describe('the board', () => {
     await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
-  it('has no search bar over it: the words are searched from the filter sheet, as on the website', async () => {
+  it('has a search field over it, the same words as the filter sheet’s, searched with the Search key', async () => {
     const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?track=primary' });
     await screen.findByText(listing.title_ar);
-    expect(screen.UNSAFE_root.findAll((node) => node.props.placeholder === ar.filters.searchPlaceholder)).toHaveLength(0);
+    // In sight at the top of the board, not only a tap into the sheet.
+    const field = screen.getByLabelText(ar.app.jobs.searchLabel);
+    expect(field.props.placeholder).toBe(ar.filters.searchPlaceholder);
+    fireEvent.changeText(field, '  مدير مبيعات  ');
+    fireEvent(field, 'submitEditing');
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'مدير مبيعات', track: 'primary' }));
+    // The field says what the board is searched by.
+    await waitFor(() => expect(screen.getByLabelText(ar.app.jobs.searchLabel).props.value).toBe('مدير مبيعات'));
+    // A chip like any filter's, which takes the words off again, and out of the field.
+    fireEvent.press(await screen.findByLabelText(ar.jobs.removeFilter.replace('{name}', '«مدير مبيعات»')));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.app.jobs.searchLabel).props.value).toBe(''));
+  });
 
+  it('still searches the words from the filter sheet, as on the website', async () => {
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?track=primary' });
+    await screen.findByText(listing.title_ar);
     fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 1' }));
     const sheet = within(screen.UNSAFE_getByType(Modal));
     const field = sheet.getByLabelText(ar.filters.search);
@@ -272,9 +287,6 @@ describe('the board', () => {
     // Applied as typed, even with the keyboard still up.
     fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'مدير مبيعات', track: 'primary' }));
-    // A chip like any filter's, which takes the words off again.
-    fireEvent.press(await screen.findByLabelText(ar.jobs.removeFilter.replace('{name}', '«مدير مبيعات»')));
-    await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
   it('offers the one filter to drop when nothing matches', async () => {
