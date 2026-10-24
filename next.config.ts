@@ -31,6 +31,8 @@ function storageHost(): string | null {
 }
 
 const nextConfig: NextConfig = {
+  // Says nothing about the stack to whoever asks.
+  poweredByHeader: false,
   /**
    * `pnpm build` and `pnpm dev` share .next by default, so running a
    * production build while the dev server is up deletes the chunks the dev
@@ -180,8 +182,22 @@ const nextConfig: NextConfig = {
             Vercel sets this on its own domains; stated here so a deployment
             behind any other edge is not silently without it. Two years, and
             subdomains with it — every host under this domain is TLS.
+
+            `preload` says the domain may be put on the browsers' built-in
+            list; it does nothing until somebody submits it at
+            hstspreload.org, which is a one-way door for every subdomain
+            (docs/security/PRODUCTION_GATE-2026-10-24.md says what to check
+            first).
           */
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          /*
+            A page opened by another site cannot reach back into this one
+            through window.opener, nor this one into it. allow-popups, not
+            same-origin: the admin's document link opens its own tab and
+            sends it on to Supabase's signed URL (document-link.tsx), and the
+            sign-in providers redirect rather than open windows.
+          */
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           // Referrers leak paths, and a path here can name a job, a company or
           // a candidate's profile slug.

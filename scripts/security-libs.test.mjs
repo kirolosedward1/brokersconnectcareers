@@ -248,6 +248,16 @@ console.log('\n— secrets');
   check('bearer parsing', bearerToken('Bearer tok') === 'tok' && bearerToken('bearer tok') === 'tok' && bearerToken('Basic x') === null);
 }
 
+console.log('\n— the headers every page is sent');
+{
+  const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
+  check('HSTS: two years, subdomains, preload-ready', config.includes("value: 'max-age=63072000; includeSubDomains; preload'"));
+  check('a page opened by another site cannot reach back (COOP)', config.includes("key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups'"));
+  check('frames: nobody (CSP frame-ancestors and X-Frame-Options)', config.includes("`frame-ancestors 'none'`") && config.includes("key: 'X-Frame-Options', value: 'DENY'"));
+  check('no X-Powered-By', /poweredByHeader: false/.test(config));
+  check('no browser source maps in production', !/productionBrowserSourceMaps:\s*true/.test(config));
+}
+
 console.log('\n— a GET that spends something, started by another site');
 {
   const from = (site) => new Headers(site ? { 'sec-fetch-site': site } : {});
