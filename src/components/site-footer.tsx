@@ -8,8 +8,11 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
-import { actorOf, getViewer } from '@/lib/auth';
 import { siteNavFor } from '@/lib/permissions';
+import { VisitorOnly } from '@/components/session/visitor-only';
+import { LiveAgentsLink } from '@/components/session/header-account';
+import { PopularLandings } from '@/components/jobs/popular-landings';
+import type { Locale } from '@/i18n/routing';
 import { env } from '@/lib/env';
 import { OPERATOR } from '@/lib/business';
 import { FooterYear } from '@/components/footer-year';
@@ -69,8 +72,6 @@ export async function SiteFooter({ locale }: { locale: string }) {
     Cached per request and already read by SiteHeader above, so this costs
     nothing.
   */
-  const viewer = await getViewer();
-
   const t = await getTranslations('footer');
   const tNav = await getTranslations('nav');
   const tTrack = await getTranslations('track');
@@ -110,7 +111,7 @@ export async function SiteFooter({ locale }: { locale: string }) {
             segmented control, so a reader who scrolled past it meets the same
             choice here — and the landing page makes the same swap, showing a
             signed-in reader their own dashboard instead of the pitch. */}
-        {viewer ? null : (
+        <VisitorOnly>
           /* Two lines, not two cards. Each door was a bordered panel with an
              icon tile, a heading, a paragraph and a button, above the footer
              of every public page — a second call to action under whatever the
@@ -157,7 +158,7 @@ export async function SiteFooter({ locale }: { locale: string }) {
               </span>
             </Link>
           </div>
-        )}
+        </VisitorOnly>
 
         {/* The index. Two groups to a row on a phone, four on a desktop. The
             top border is the doors' bottom edge when they are there and the
@@ -168,13 +169,14 @@ export async function SiteFooter({ locale }: { locale: string }) {
             {/* The same list the header draws, so the directory appears here
                 for exactly the people it appears there for. */}
             <ul className="lg:mt-2">
-              {siteNavFor(actorOf(viewer)).map((item) => (
+              {siteNavFor(null).map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className={linkClass}>
                     {tNav(item.key)}
                   </Link>
                 </li>
               ))}
+              <LiveAgentsLink label={tNav('agents')} className={linkClass} />
             </ul>
           </FooterGroup>
 
@@ -227,6 +229,14 @@ export async function SiteFooter({ locale }: { locale: string }) {
             </ul>
           </FooterGroup>
         </div>
+
+        {/* Indexable track × district pages, not only the filtered board links above. */}
+        <PopularLandings
+          locale={locale as Locale}
+          limit={8}
+          id="footer-landings"
+          className="border-t border-border py-6"
+        />
       </div>
 
       <div className="border-t border-border py-5">

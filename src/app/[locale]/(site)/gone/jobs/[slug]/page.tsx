@@ -7,7 +7,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, localized, localeHref } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { JobCard } from '@/components/jobs/job-card';
-import { getJobBySlug, getSimilarJobs } from '@/lib/queries/jobs';
+import { getJobBySlug, getOtherCompanyJobs, getSimilarJobs } from '@/lib/queries/jobs';
 import type { JobDetail, JobListItem } from '@/lib/queries/jobs';
 
 type Params = { locale: string; slug: string };
@@ -53,6 +53,7 @@ export default async function GoneJobPage({ params }: { params: Promise<Params> 
 
   const district = job?.district?.slug ? job.district : null;
   let similar: JobListItem[] = [];
+  let companyJobs: JobListItem[] = [];
   if (job?.id && job.track && district) {
     try {
       similar = await getSimilarJobs(job);
@@ -60,6 +61,14 @@ export default async function GoneJobPage({ params }: { params: Promise<Params> 
       similar = [];
     }
   }
+  if (job?.id && job.company_id) {
+    try {
+      companyJobs = await getOtherCompanyJobs(job.company_id, job.id);
+    } catch {
+      companyJobs = [];
+    }
+  }
+  const companyName = job ? localized(locale, job.company.name_ar, job.company.name_en) : null;
 
   const title = job ? localized(locale, job.title_ar, job.title_en) : null;
   const action = localeHref(locale, '/jobs');
@@ -108,6 +117,19 @@ export default async function GoneJobPage({ params }: { params: Promise<Params> 
           ) : null}
         </div>
       </div>
+
+      {companyJobs.length > 0 && companyName ? (
+        <section className="mt-12">
+          <h2 className="mb-4 text-lg font-bold">{t('otherAtCompany', { company: companyName })}</h2>
+          <ul className="space-y-3">
+            {companyJobs.map((item) => (
+              <li key={item.id}>
+                <JobCard job={item} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {similar.length > 0 ? (
         <section className="mt-12">

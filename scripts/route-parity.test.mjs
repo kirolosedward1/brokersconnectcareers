@@ -54,6 +54,12 @@ const WEBSITE_ONLY = new Map([
   // An expired listing is rewritten here with status 410. The app shows that
   // listing on its own job screen; this address is not one iOS opens.
   ['/gone/jobs/[slug]', "the website's 410 for an expired listing"],
+  // A rewrite of `/` for a signed-in reader, so the public landing can be cached.
+  ['/signed-home', "the signed-in home, reached only by a rewrite of /"],
+  // A rewrite of `/jobs?…`, so the unfiltered board can be cached.
+  ['/board', "a filtered board, reached only by a rewrite of /jobs"],
+  // A rewrite of `/jobs/<slug>` for a listing, so the landing on that segment can be cached.
+  ['/listing/[slug]', 'a job ad, reached only by a rewrite of /jobs/:slug'],
 ]);
 /** A section that is the website's alone, with every page under it. */
 const WEBSITE_ONLY_SECTIONS = new Map([['/admin', 'the operations console (docs/mobile.md)']]);

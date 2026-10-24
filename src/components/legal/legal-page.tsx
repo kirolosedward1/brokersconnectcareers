@@ -36,12 +36,38 @@ export function legalPage(slug: LegalSlug) {
     const lang = documentLanguage(locale, (await searchParams).lang);
     const doc = getLegalDoc(slug, lang);
     const alternates = alternatesFor(path, locale);
+    const tMeta = await getTranslations({ locale, namespace: 'meta' });
+    // Absolute, so the layout template does not append the site name a second
+    // time — these strings already end with it, and they are sized for the
+    // result line. The document's own H1 stays the short title.
+    const title =
+      slug === 'privacy'
+        ? tMeta('privacyTitle')
+        : slug === 'terms'
+          ? tMeta('termsTitle')
+          : slug === 'cookies'
+            ? tMeta('cookiesTitle')
+            : slug === 'refunds'
+              ? tMeta('refundsTitle')
+              : tMeta('accountDeletionTitle');
+    const description =
+      slug === 'privacy'
+        ? tMeta('privacyDescription')
+        : slug === 'terms'
+          ? tMeta('termsDescription')
+          : slug === 'cookies'
+            ? tMeta('cookiesDescription')
+            : slug === 'refunds'
+              ? tMeta('refundsDescription')
+              : tMeta('accountDeletionDescription');
+    // Refunds and account deletion stay reachable (the footer and the app
+    // store link to them) and out of the index. They are also left out of
+    // the sitemap, which only advertises pages a crawler may index.
+    const indexable = slug !== 'refunds' && slug !== 'account-deletion';
     return {
-      title: doc?.title,
-      // Indexable, unlike the placeholders that stood here. A real privacy
-      // policy is a trust signal search engines look for from a business
-      // handling CVs.
-      robots: { index: true, follow: true },
+      title: { absolute: title },
+      description,
+      robots: { index: indexable, follow: true },
       alternates: doc && doc.lang !== locale ? { canonical: `${alternates.canonical}?lang=${doc.lang}` } : alternates,
     };
   }

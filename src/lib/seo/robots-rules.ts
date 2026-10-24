@@ -30,6 +30,15 @@ export const PRIVATE = [
   '/onboarding',
   '/auth',
   '/api',
+  // The signed-in home is a rewrite of `/`. It is not a URL to crawl, and it
+  // must not be indexed beside the public landing.
+  '/signed-home',
+  // Filtered boards are rewritten here so `/jobs` itself can be cached. The
+  // public URL stays `/jobs?…`, which is already noindex.
+  '/board',
+  // Job ads are rewritten here so `/jobs/<track>-<district>` can be cached.
+  // The public URL stays `/jobs/<slug>`.
+  '/listing',
 ];
 
 /**

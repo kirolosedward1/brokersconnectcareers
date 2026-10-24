@@ -11,6 +11,7 @@ import { SaveJobToggle } from '@/components/jobs/save-job-toggle';
 import { cn, formatNumber, formatRelativeDay } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
 import { jobIsLive } from '@/lib/job-state';
+import { useJobMarks } from '@/components/jobs/job-marks';
 
 export function JobCard({
   job,
@@ -38,6 +39,10 @@ export function JobCard({
    */
   savable?: boolean;
 }) {
+  const marks = useJobMarks();
+  const showApplied = applied || marks.applied.has(job.id);
+  const showSaved = saved || marks.saved.has(job.id);
+  const canSave = savable || marks.savable;
   const t = useTranslations('jobs');
   const tCompanies = useTranslations('companies');
   const tTrack = useTranslations('track');
@@ -135,12 +140,12 @@ export function JobCard({
               </Badge>
             ) : null}
 
-            {applied ? (
+            {showApplied ? (
               <Badge variant="success">
                 <CheckCheck aria-hidden />
                 {t('applied')}
               </Badge>
-            ) : saved && !savable ? (
+            ) : showSaved && !canSave ? (
               /* Only where there is no toggle. When the bookmark is on the
                  card, it already shows the state, and a badge saying the same
                  word beside it is the card repeating itself. */
@@ -204,10 +209,10 @@ export function JobCard({
               {formatRelativeDay(job.published_at, locale)}
             </time>
           ) : null}
-          {savable ? (
+          {canSave ? (
             <SaveJobToggle
               jobId={job.id}
-              initialSaved={saved}
+              initialSaved={showSaved}
               labels={{ save: t('save'), remove: t('removeSaved') }}
             />
           ) : null}

@@ -228,3 +228,38 @@ export async function recordState(
   if (answers.includes('unknown')) return 'unknown';
   return 'missing';
 }
+
+/**
+ * Whether `/jobs/<slug>` is a track-in-district landing.
+ *
+ * True only when the slug parses as one and that district row exists. Null
+ * when the lookup could not be answered, so the caller can fail open. A
+ * listing whose title happens to parse as a landing is a listing: false here,
+ * and the page that prefers the landing never sees it.
+ */
+export async function isLandingDistrict(
+  path: string,
+  parseLandingSlug: ParseLanding,
+  fetcher: typeof fetch = fetch,
+): Promise<boolean | null> {
+  const match = path.match(/^\/jobs\/([^/]+)$/);
+  if (!match) return false;
+  const slug = readSlug(match[1]);
+  if (!slug) return false;
+  const landing = parseLandingSlug(slug);
+  if (!landing) return false;
+
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!base || !key || base.startsWith('REPLACE_ME') || key.startsWith('REPLACE_ME')) return null;
+
+  const state = await lookup(
+    { table: 'districts', column: 'slug', value: landing.districtSlug },
+    base,
+    key,
+    null,
+    fetcher,
+  );
+  if (state === 'unknown') return null;
+  return state === 'exists';
+}
