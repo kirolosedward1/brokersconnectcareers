@@ -65,5 +65,15 @@ for (const key of titles) {
 }
 check('back office is إداريين', JSON.parse(readFileSync('messages/ar.json', 'utf8')).track.back_office === 'إداريين');
 
+console.log('— job card marks stay on the client');
+{
+  const card = readFileSync('src/components/jobs/job-card.tsx', 'utf8');
+  const marks = readFileSync('src/components/jobs/job-card-marks.tsx', 'utf8');
+  check('the server card does not call useJobMarks', !card.includes('useJobMarks'));
+  check('the server card is not a client module', !card.includes("'use client'"));
+  check('the marks child is a client module', marks.startsWith("'use client'"));
+  check('the marks child reads useJobMarks', marks.includes('useJobMarks()'));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
