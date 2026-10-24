@@ -248,6 +248,12 @@ console.log('\n— the HEIC decoder’s worker');
   check("the worker policy names blob", /worker-src 'self' blob:/.test(config));
   const scriptSrc = /`script-src[^`]*`/.exec(config)?.[0] ?? '';
   check('script-src is left without blob', scriptSrc.length > 0 && !scriptSrc.includes('blob:'));
+  check(
+    'wasm compiles without opening eval to the page',
+    /script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'/.test(config),
+  );
+  const withoutDev = config.replace(/\$\{dev \? `'unsafe-eval'` : ''\}/g, '');
+  check('eval stays on the development build only', !withoutDev.includes("'unsafe-eval'"));
 }
 
 console.log('\n— secrets');

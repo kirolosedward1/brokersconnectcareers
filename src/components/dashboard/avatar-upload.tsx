@@ -10,17 +10,19 @@ import { saveAvatar } from '@/lib/actions/account';
 import { uploadImage } from '@/lib/actions/uploads';
 import { imageFailureCopy } from '@/lib/image-upload';
 import { IMAGE_ACCEPT, prepareUploadImage } from '@/lib/prepare-upload-image';
+import { usePreparingImage } from '@/lib/use-preparing-image';
 import { reach } from '@/lib/reach';
 import { useSessionRecovery } from '@/lib/session-expired';
 
 function described(
-  tValidation: (key: 'imageType' | 'imageTooLarge' | 'uploadRateLimited' | 'storageError') => string,
+  tValidation: (key: 'imageType' | 'imageUnreadable' | 'imageTooLarge' | 'uploadRateLimited' | 'storageError') => string,
   tCommon: (key: 'errorBody') => string,
   error: string,
   detail?: string,
 ) {
   return imageFailureCopy(error, detail, {
     imageType: tValidation('imageType'),
+    imageUnreadable: tValidation('imageUnreadable'),
     imageTooLarge: tValidation('imageTooLarge'),
     uploadRateLimited: tValidation('uploadRateLimited'),
     storageError: tValidation('storageError'),
@@ -64,6 +66,7 @@ export function AvatarUpload({
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
   const busy = converting || pending;
+  const preparing = usePreparingImage(converting);
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
@@ -83,7 +86,7 @@ export function AvatarUpload({
       try {
         prepared = await prepareUploadImage(file, 'avatar');
       } catch {
-        prepared = { ok: false, error: 'file_type' };
+        prepared = { ok: false, error: 'unreadable' };
       }
       setConverting(false);
       if (!prepared.ok) {
@@ -135,7 +138,7 @@ export function AvatarUpload({
 
           {converting ? (
             <p role="status" className="mt-2 text-sm text-muted-foreground">
-              {tCommon('loading')}
+              {preparing ? tCommon('preparingImage') : tCommon('loading')}
             </p>
           ) : null}
           {error ? (

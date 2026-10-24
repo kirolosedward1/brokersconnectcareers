@@ -22,8 +22,14 @@ const HEIC_BRANDS = new Set(['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'he
 
 const RASTERS = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
-/** What the file picker offers, including a HEIC the browser may only know by its suffix. */
-export const IMAGE_ACCEPT = 'image/png,image/jpeg,image/webp,image/heic,image/heif,.heic,.heif';
+/**
+ * What the file picker offers.
+ *
+ * JPEG, PNG and WebP only. An iPhone's Safari then converts a HEIC to JPEG
+ * itself before the file ever reaches us. A HEIC that still arrives — a drop
+ * from a desktop, a browser that ignores `accept` — is decoded separately.
+ */
+export const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp';
 
 /** A HEIF `ftyp` box: the brand sits at byte 8. JPEG and PNG never look like this. */
 export function isHeicBytes(bytes: Uint8Array): boolean {
@@ -67,15 +73,44 @@ export function compressionSteps(longestSide: number, maxEdge: number): { edge: 
 }
 
 /**
- * A storage client's own sentence, safe to show and to log: one line, and
- * short. An empty message stays empty, and the caller keeps the generic
- * "try again" rather than a blank one.
- */
-/**
  * The HEIC decoder's own limit. Past this the form stops waiting and says
- * the file type is not supported, instead of sitting there with no answer.
+ * the picture could not be read, instead of sitting there with no answer.
  */
 export const HEIC_TIMEOUT_MS = 20_000;
+
+/**
+ * How long a conversion may run before the status line says it is still
+ * working. The first moments stay the ordinary "one moment".
+ */
+export const PREPARING_IMAGE_AFTER_MS = 3_000;
+
+export type HeicFrame = {
+  primary: boolean;
+  width: number;
+  height: number;
+};
+
+/**
+ * The photograph inside a HEIC, not the small preview stored beside it.
+ *
+ * libheif lists every top-level image and flags the primary. The preview is
+ * not usually in that list; when a file does list one, it is the small frame.
+ * The primary is the photograph unless it is far smaller than another frame,
+ * which is the preview wearing the flag — the last failure stored 384×512
+ * from a 4032×3024 picture.
+ */
+export function pickHeicFrame<T extends HeicFrame>(frames: readonly T[]): T | null {
+  if (frames.length === 0) return null;
+  let largest = frames[0]!;
+  let primary: T | null = null;
+  for (const frame of frames) {
+    if (frame.primary) primary = frame;
+    if (frame.width * frame.height > largest.width * largest.height) largest = frame;
+  }
+  if (!primary) return largest;
+  if (primary.width * primary.height * 4 < largest.width * largest.height) return largest;
+  return primary;
+}
 
 /**
  * Resolves with `work`, or rejects once `ms` has passed.
@@ -99,12 +134,18 @@ export function deadline<T>(work: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+/**
+ * A storage client's own sentence, safe to show and to log: one line, and
+ * short. An empty message stays empty, and the caller keeps the generic
+ * "try again" rather than a blank one.
+ */
 export function storageDetail(message: string | null | undefined): string {
   return (message ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
 }
 
 export type ImageFailureCopy = {
   imageType: string;
+  imageUnreadable: string;
   imageTooLarge: string;
   uploadRateLimited: string;
   storageError: string;
@@ -120,6 +161,7 @@ export type ImageFailureCopy = {
  */
 export function imageFailureCopy(error: string, detail: string | undefined, copy: ImageFailureCopy): string {
   if (error === 'file_type') return copy.imageType;
+  if (error === 'unreadable') return copy.imageUnreadable;
   if (error === 'too_large') return copy.imageTooLarge;
   if (error === 'rate_limited') return copy.uploadRateLimited;
   if (error === 'storage' && detail) return `${copy.storageError} ${detail}`;

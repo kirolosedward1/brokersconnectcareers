@@ -95,7 +95,7 @@ console.log('\n— what is refused');
   check('nothing', (await reencodeImage(new Uint8Array())) === null);
 }
 
-const { isHeicBytes, isHeicFile, compressionSteps, storageDetail, imageFailureCopy, deadline, HEIC_TIMEOUT_MS } = await import(
+const { isHeicBytes, isHeicFile, compressionSteps, storageDetail, imageFailureCopy, deadline, HEIC_TIMEOUT_MS, PREPARING_IMAGE_AFTER_MS, IMAGE_ACCEPT, pickHeicFrame } = await import(
   '../src/lib/image-upload.ts'
 );
 const { fileType } = await import('../src/lib/file-type.ts');
@@ -111,6 +111,14 @@ console.log('\n— a picture chosen on the phone, before it is sent');
   check('IMG.HEIC is named as one', isHeicFile({ name: 'IMG.HEIC', type: '' }) && fileType({ name: 'IMG.HEIC', type: '' }) === 'image/heic');
   check('image/heic is named as one', isHeicFile({ name: 'photo', type: 'image/heic' }));
   check('a PNG is not', !isHeicFile({ name: 'logo.png', type: 'image/png' }) && fileType({ name: 'logo.png', type: '' }) === 'image/png');
+  check('the picker offers jpeg, png and webp only', IMAGE_ACCEPT === 'image/jpeg,image/png,image/webp');
+  const full = { primary: true, width: 4032, height: 3024 };
+  const preview = { primary: false, width: 384, height: 512 };
+  check('the primary frame is kept, not the preview', pickHeicFrame([preview, full]) === full);
+  check('a preview wearing the primary flag loses to the full frame', pickHeicFrame([{ ...preview, primary: true }, { ...full, primary: false }])?.width === 4032);
+  check('with no flag, the largest frame is the photograph', pickHeicFrame([{ ...preview, primary: false }, { ...full, primary: false }])?.width === 4032);
+  check('a single primary frame is that frame', pickHeicFrame([full]) === full);
+  check('the status line waits about three seconds', PREPARING_IMAGE_AFTER_MS === 3_000);
   const steps = compressionSteps(4000, 1600);
   check('reduction starts at the cap', steps[0].edge === 1600);
   check(
@@ -122,6 +130,7 @@ console.log('\n— a picture chosen on the phone, before it is sent');
   check('an empty storage sentence stays empty', storageDetail('   ') === '');
   const copy = {
     imageType: 'type',
+    imageUnreadable: 'unreadable',
     imageTooLarge: 'large',
     uploadRateLimited: 'rate',
     storageError: 'storage:',
@@ -129,6 +138,7 @@ console.log('\n— a picture chosen on the phone, before it is sent');
   };
   check('the storage sentence is kept whole', imageFailureCopy('storage', 'new row violates row-level security policy', copy) === 'storage: new row violates row-level security policy');
   check('a picture of the wrong kind says so', imageFailureCopy('file_type', undefined, copy) === 'type');
+  check('a picture that could not be read says so', imageFailureCopy('unreadable', undefined, copy) === 'unreadable');
   check('one that will not shrink says so', imageFailureCopy('too_large', undefined, copy) === 'large');
   check('anything else stays generic', imageFailureCopy('unavailable', undefined, copy) === 'generic');
   check('a HEIC conversion is given about 20 seconds', HEIC_TIMEOUT_MS === 20_000);

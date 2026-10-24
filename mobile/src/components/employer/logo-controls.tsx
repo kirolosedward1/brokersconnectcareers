@@ -44,6 +44,7 @@ export function LogoControls({
     if (!(failure instanceof PhotoRefused)) return t('common.errorBody');
     return imageFailureCopy(failure.reason, failure.detail, {
       imageType: t('validation.imageType'),
+      imageUnreadable: t('validation.imageUnreadable'),
       imageTooLarge: t('validation.imageTooLarge'),
       uploadRateLimited: t('validation.uploadRateLimited'),
       storageError: t('validation.storageError'),

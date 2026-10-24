@@ -4,14 +4,15 @@
  * Turn a chosen photo or logo into a file the upload action can accept.
  *
  * A PNG, JPEG or WebP that is already within 2 MB is sent unchanged. Anything
- * larger is drawn smaller and compressed until it fits. A HEIC or HEIF — what
- * an iPhone saves — is converted to JPEG first (libheif in the browser, and
- * the browser's own decoder when that cannot). The server still decodes the
- * result and stores a WebP; this only gets a picture across the limit the
- * bucket and the action both enforce before that decode.
+ * larger is drawn smaller and compressed until it fits. A HEIC or HEIF that
+ * still arrives — the picker does not offer it, so an iPhone's Safari has
+ * usually already turned it into JPEG — is decoded to a JPEG of the primary
+ * frame, at that frame's own size, before any of this scaling. The server
+ * still decodes the result and stores a WebP; this only gets a picture across
+ * the limit the bucket and the action both enforce before that decode.
  *
- * Loaded by the two upload forms only. `heic2any` is imported when the file
- * is actually a HEIC, so the rest of the site does not carry the decoder.
+ * Loaded by the two upload forms only. The decoder is a worker imported when
+ * the file is actually a HEIC, so the rest of the site does not carry it.
  */
 import {
   AVATAR_MAX_EDGE,
@@ -29,7 +30,7 @@ import { fileType } from '@/lib/file-type';
 
 export { IMAGE_ACCEPT };
 
-export type PreparedUpload = { ok: true; file: File } | { ok: false; error: 'too_large' | 'file_type' };
+export type PreparedUpload = { ok: true; file: File } | { ok: false; error: 'too_large' | 'file_type' | 'unreadable' };
 
 type Kind = 'avatar' | 'logo';
 
@@ -43,10 +44,10 @@ export async function prepareUploadImage(file: File, kind: Kind): Promise<Prepar
       if (jpeg.size <= MAX_IMAGE_BYTES) return { ok: true, file: jpeg };
       return await compress(jpeg, kind, jpeg.name, 'image/jpeg');
     } catch {
-      // A refused worker, a decoder that never answers, or a file that is
-      // not a picture. The form says the type is unsupported and clears the
+      // The worker was refused, the decoder never answered, or the file is
+      // not a picture. The form says it could not be read and clears the
       // picker; it does not keep waiting.
-      return { ok: false, error: 'file_type' };
+      return { ok: false, error: 'unreadable' };
     }
   }
 
@@ -66,25 +67,87 @@ async function isHeic(file: File): Promise<boolean> {
   return isHeicBytes(head);
 }
 
+type HeicWorkerResponse = { width: number; height: number; pixels: ArrayBuffer; error?: undefined } | { error: string; pixels?: undefined };
+
 async function heicToJpeg(file: File): Promise<File> {
   try {
-    const { default: convert } = await import('heic2any');
-    const converted = await convert({ blob: file, toType: 'image/jpeg', quality: 0.92 });
-    const blob = Array.isArray(converted) ? converted[0] : converted;
-    if (blob && blob.size > 0) return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
+    const image = await decodeHeic(file);
+    // A result this small is the embedded preview. A browser that can decode
+    // the file itself may still have the full frame; use that when it is
+    // plainly the larger picture. Otherwise keep what libheif returned.
+    if (image.width * image.height < 1024 * 1024) {
+      const bitmap = await decode(file);
+      if (bitmap && bitmap.width * bitmap.height > image.width * image.height * 4) {
+        try {
+          const blob = await encode(bitmap, Math.max(bitmap.width, bitmap.height), 0.92, 'image/jpeg');
+          if (blob) return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
+        } finally {
+          bitmap.close();
+        }
+      } else {
+        bitmap?.close();
+      }
+    }
+    return imageDataToJpeg(image, file.name);
   } catch {
-    // The worker was refused, or this browser can decode a HEIC on its own.
+    // libheif could not start. Safari can decode some HEIC files on its own.
+    const bitmap = await decode(file);
+    if (!bitmap) throw new Error('heic');
+    try {
+      const blob = await encode(bitmap, Math.max(bitmap.width, bitmap.height), 0.92, 'image/jpeg');
+      if (!blob) throw new Error('heic');
+      return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
+    } finally {
+      bitmap.close();
+    }
   }
+}
 
-  const bitmap = await decode(file);
-  if (!bitmap) throw new Error('heic');
-  try {
-    const blob = await encode(bitmap, Math.max(bitmap.width, bitmap.height), 0.92, 'image/jpeg');
-    if (!blob) throw new Error('heic');
-    return new File([blob], renamed(file.name, 'jpg'), { type: 'image/jpeg' });
-  } finally {
-    bitmap.close();
-  }
+function decodeHeic(file: File): Promise<ImageData> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./heic-decode.worker.ts', import.meta.url));
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new Error('timeout'));
+    }, HEIC_TIMEOUT_MS);
+
+    const fail = (error: Error) => {
+      clearTimeout(timer);
+      worker.terminate();
+      reject(error);
+    };
+
+    worker.onmessage = (event: MessageEvent<HeicWorkerResponse>) => {
+      clearTimeout(timer);
+      worker.terminate();
+      const data = event.data;
+      if (!data || data.error || !data.pixels || data.width < 1 || data.height < 1) {
+        reject(new Error(data?.error || 'heic'));
+        return;
+      }
+      resolve(new ImageData(new Uint8ClampedArray(data.pixels), data.width, data.height));
+    };
+    worker.onerror = () => fail(new Error('worker'));
+    void file.arrayBuffer().then(
+      (buffer) => worker.postMessage({ buffer }, [buffer]),
+      () => fail(new Error('read')),
+    );
+  });
+}
+
+function imageDataToJpeg(image: ImageData, name: string): Promise<File> {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext('2d');
+  if (!context) return Promise.reject(new Error('canvas'));
+  context.putImageData(image, 0, 0);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob || blob.size === 0) reject(new Error('encode'));
+      else resolve(new File([blob], renamed(name, 'jpg'), { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.92);
+  });
 }
 
 async function compress(source: Blob, kind: Kind, name: string, preferred: 'image/jpeg' | 'image/webp'): Promise<PreparedUpload> {
