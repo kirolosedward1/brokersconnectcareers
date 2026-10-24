@@ -15,6 +15,7 @@ import { cleanText, clean, safeHttpUrl } from '../src/lib/security/sanitize.ts';
 import { sniffKind, isOwnedPath } from '../src/lib/security/magic.ts';
 import { secretsMatch, bearerToken } from '../src/lib/security/secrets.ts';
 import { isPaymentPage } from '../src/lib/paymob/checkout-url.ts';
+import { startedByAnotherSite } from '../src/lib/security/fetch-site.ts';
 
 let pass = 0;
 let fail = 0;
@@ -245,6 +246,25 @@ console.log('\n— secrets');
   check('an empty expected never matches', !secretsMatch('', '') && !secretsMatch('x', ''));
   check('an unset header never matches', !secretsMatch(null, 'x'));
   check('bearer parsing', bearerToken('Bearer tok') === 'tok' && bearerToken('bearer tok') === 'tok' && bearerToken('Basic x') === null);
+}
+
+console.log('\n— a GET that spends something, started by another site');
+{
+  const from = (site) => new Headers(site ? { 'sec-fetch-site': site } : {});
+  check('another site is refused', startedByAnotherSite(from('cross-site')));
+  check('a sibling subdomain is refused', startedByAnotherSite(from('same-site')));
+  check('this site is not', !startedByAnotherSite(from('same-origin')));
+  check('a typed URL or a bookmark is not', !startedByAnotherSite(from('none')));
+  check('no header (the app, curl) is judged by its credentials', !startedByAnotherSite(from(null)));
+
+  const http = readFileSync(new URL('../src/lib/mobile-api/http.ts', import.meta.url), 'utf8');
+  const wrapper = http.slice(http.indexOf('export function withOptionalBearer'));
+  const cookieBranch = wrapper.slice(wrapper.indexOf("bearer.kind === 'none'"), wrapper.indexOf('return handler(request, context)'));
+  check('the cookie branch of withOptionalBearer refuses another site', cookieBranch.includes('startedByAnotherSite(request.headers)'));
+  for (const route of ['agent-cv/[handle]', 'cv/[applicationId]', 'account/export']) {
+    const source = readFileSync(new URL(`../src/app/api/${route}/route.ts`, import.meta.url), 'utf8');
+    check(`/api/${route} is served through it`, /export const GET = withOptionalBearer\(handle\)/.test(source));
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

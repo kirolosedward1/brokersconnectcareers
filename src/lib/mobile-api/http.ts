@@ -6,6 +6,7 @@ import { logFailure } from '@/lib/observe';
 import { createClient } from '@/lib/supabase/server';
 import { secondFactorDue } from '@/lib/auth/second-factor';
 import { sessionOwesSecondFactor } from '@/lib/auth/second-factor-server';
+import { startedByAnotherSite } from '@/lib/security/fetch-site';
 import { challenge, readBearer, tokenRefused } from './bearer';
 import { mobileScope, runAsMobile, type MobileSession } from './context';
 
@@ -152,6 +153,12 @@ export function withOptionalBearer<C>(handler: RouteHandler<C>): RouteHandler<C>
     if (bearer.kind === 'none') {
       // The website's cookie session, held to the rule the middleware applies
       // to pages — which never sees these routes (its matcher skips /api).
+      // Every route here spends something (a reveal, a download, an export)
+      // on a GET, and a cookie rides along on another site's navigation
+      // (fetch-site.ts): only this site, or the address bar, may start one.
+      if (startedByAnotherSite(request.headers)) {
+        return NextResponse.json({ error: 'cross_site' }, { status: 403, headers: { 'cache-control': 'no-store' } });
+      }
       if (await cookieSecondFactorDue()) return secondFactorRequired();
       return handler(request, context);
     }
