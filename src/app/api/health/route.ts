@@ -150,6 +150,7 @@ export async function GET(request: Request) {
     'job-alerts': 8 * 24 * 60 * 60 * 1000,
     'new-jobs': 26 * 60 * 60 * 1000,
     'security-watch': 30 * 60 * 1000,
+    lifecycle: 26 * 60 * 60 * 1000,
   };
 
   /*

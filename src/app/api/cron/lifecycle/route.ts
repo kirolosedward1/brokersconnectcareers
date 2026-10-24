@@ -1,6 +1,5 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
-import { cronAuthorised } from '@/lib/jobs/run';
+import type { NextRequest } from 'next/server';
+import { runScheduledJob } from '@/lib/jobs/run';
 import { logFailure } from '@/lib/observe';
 
 export const dynamic = 'force-dynamic';
@@ -31,114 +30,113 @@ const BATCH = 100;
 const MAX_BATCHES = 5;
 
 export async function GET(request: NextRequest) {
-  // The check every other cron route makes (runScheduledJob): this one
-  // compared the raw header with `!==` — not in constant time — and took an
-  // unedited REPLACE_ME from the import file as a secret.
-  if (!cronAuthorised(request)) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch {
-    console.error('[cron] lifecycle cannot run: SUPABASE_SERVICE_ROLE_KEY is not configured');
-    return NextResponse.json({ error: 'unavailable', reason: 'service_role_missing' }, { status: 503 });
-  }
-
-  const { data: maintenance, error } = await admin.rpc('run_lifecycle_maintenance');
-  if (error) {
-    logFailure('lifecycle', 'maintenance failed', { code: error.code });
-    // A code, never the database's words: they can quote a value.
-    return NextResponse.json({ error: 'maintenance_failed', code: error.code ?? null }, { status: 500 });
-  }
-
-  // ------------------------------------------------------------ retention --
-  // The privacy policy's periods (migration 338): applications a year after
-  // they were sent, verification papers a year after verification ended, and
-  // the logs. Before the file sweep, so what it releases is queued with the
-  // rest. pg_cron runs the same function daily where the database has it; its
-  // lock lets one of the two run. A database without it answers PGRST202,
-  // which is not a failure.
-  const { data: retention, error: retentionError } = await admin.rpc('run_privacy_retention', { p_limit: 500 });
-  if (retentionError && retentionError.code !== 'PGRST202' && retentionError.code !== '42883') {
-    logFailure('lifecycle', 'retention failed', { code: retentionError.code });
-  }
-  // A period it could not apply is reported in the answer, not raised, so the
-  // others still run — which also means a part that fails every night (a
-  // trigger change that makes its delete raise) looked like a clean run.
-  // Which parts, never the database's words: those can quote a value.
-  const retentionErrors = (retention as { errors?: unknown } | null)?.errors;
-  if (Array.isArray(retentionErrors) && retentionErrors.length > 0) {
-    logFailure('lifecycle', 'retention incomplete', {
-      count: retentionErrors.length,
-      parts: retentionErrors.map((entry) => String(entry).split(':')[0]).join(','),
-    });
-  }
-
-  // ---------------------------------------------------------------- files --
-  let removed = 0;
-  let failed = 0;
-
-  for (let batch = 0; batch < MAX_BATCHES; batch += 1) {
-    const { data: claimed, error: claimError } = await admin.rpc('claim_storage_gc', { p_limit: BATCH });
-    if (claimError) {
-      logFailure('lifecycle', 'storage claim failed', { code: claimError.code });
-      break;
-    }
-    if (!claimed?.length) break;
-
-    const byBucket = new Map<string, string[]>();
-    for (const row of claimed) {
-      byBucket.set(row.bucket, [...(byBucket.get(row.bucket) ?? []), row.path]);
-    }
-
-    for (const [bucket, paths] of byBucket) {
-      const { data: gone, error: removeError } = await admin.storage.from(bucket).remove(paths);
-
-      if (removeError) {
-        // The whole call failed: every path goes back with the error, keeps
-        // its spent attempt, and is claimable again once the lease is lifted.
-        failed += paths.length;
-        logFailure('lifecycle', 'storage remove failed', { bucket, count: paths.length });
-        await admin.rpc('finish_storage_gc', {
-          p_bucket: bucket,
-          p_removed: [],
-          p_failed: paths,
-          p_error: removeError.message.slice(0, 300),
+  /*
+    Through runScheduledJob, as every other cron route: the same constant-time
+    check of the cron secret, and a row in job_runs per run with a start and
+    an end in the log. This one ran outside it and logged only its failures,
+    so a night it never ran looked exactly like a night it ran clean — and
+    this is the job that applies the privacy policy's retention periods and
+    deletes the files nothing points at. /api/health now counts it stale
+    after a day and a bit.
+  */
+  return runScheduledJob(request, {
+    job: 'lifecycle',
+    maxDurationSeconds: maxDuration,
+    work: async ({ admin }) => {
+      const { data: maintenance, error } = await admin.rpc('run_lifecycle_maintenance');
+      if (error) {
+        // A code, never the database's words: they can quote a value.
+        throw new Error(`run_lifecycle_maintenance failed (${error.code ?? 'unknown'})`);
+      }
+      // ------------------------------------------------------------ retention --
+      // The privacy policy's periods (migration 338): applications a year after
+      // they were sent, verification papers a year after verification ended, and
+      // the logs. Before the file sweep, so what it releases is queued with the
+      // rest. pg_cron runs the same function daily where the database has it; its
+      // lock lets one of the two run. A database without it answers PGRST202,
+      // which is not a failure.
+      const { data: retention, error: retentionError } = await admin.rpc('run_privacy_retention', { p_limit: 500 });
+      if (retentionError && retentionError.code !== 'PGRST202' && retentionError.code !== '42883') {
+        logFailure('lifecycle', 'retention failed', { code: retentionError.code });
+      }
+      // A period it could not apply is reported in the answer, not raised, so the
+      // others still run — which also means a part that fails every night (a
+      // trigger change that makes its delete raise) looked like a clean run.
+      // Which parts, never the database's words: those can quote a value.
+      const retentionErrors = (retention as { errors?: unknown } | null)?.errors;
+      if (Array.isArray(retentionErrors) && retentionErrors.length > 0) {
+        logFailure('lifecycle', 'retention incomplete', {
+          count: retentionErrors.length,
+          parts: retentionErrors.map((entry) => String(entry).split(':')[0]).join(','),
         });
-        continue;
       }
 
-      /*
-        The Storage API answers with the objects it deleted. A path missing
-        from that list was already gone, which is the outcome asked for, so it
-        counts as removed — claim_storage_gc only hands out paths it saw in
-        storage.objects, and the next claim would close it as missing anyway.
-      */
-      removed += gone?.length ?? 0;
-      await admin.rpc('finish_storage_gc', { p_bucket: bucket, p_removed: paths });
-    }
-  }
+      // ---------------------------------------------------------------- files --
+      let removed = 0;
+      let failed = 0;
 
-  // ------------------------------------------------- abandoned signups -----
-  // Lists nothing until retention_policies.abandoned_signups is given a
-  // period; see docs/data-lifecycle.md. Deleted through the Auth API so
-  // GoTrue's own tables stay consistent.
-  let signupsRemoved = 0;
-  const { data: abandoned, error: abandonedError } = await admin.rpc('abandoned_signups', { p_limit: 50 });
-  if (abandonedError) logFailure('lifecycle', 'abandoned signups not listed', { code: abandonedError.code });
-  for (const row of abandoned ?? []) {
-    const { error: deleteError } = await admin.auth.admin.deleteUser(row.user_id);
-    if (deleteError) logFailure('lifecycle', 'abandoned signup not removed', { user: row.user_id });
-    else signupsRemoved += 1;
-  }
+      for (let batch = 0; batch < MAX_BATCHES; batch += 1) {
+        const { data: claimed, error: claimError } = await admin.rpc('claim_storage_gc', { p_limit: BATCH });
+        if (claimError) {
+          logFailure('lifecycle', 'storage claim failed', { code: claimError.code });
+          break;
+        }
+        if (!claimed?.length) break;
 
-  return NextResponse.json({
-    maintenance,
-    retention: retention ?? null,
-    storage: { removed, failed },
-    signups_removed: signupsRemoved,
-    at: new Date().toISOString(),
+        const byBucket = new Map<string, string[]>();
+        for (const row of claimed) {
+          byBucket.set(row.bucket, [...(byBucket.get(row.bucket) ?? []), row.path]);
+        }
+
+        for (const [bucket, paths] of byBucket) {
+          const { data: gone, error: removeError } = await admin.storage.from(bucket).remove(paths);
+
+          if (removeError) {
+            // The whole call failed: every path goes back with the error, keeps
+            // its spent attempt, and is claimable again once the lease is lifted.
+            failed += paths.length;
+            logFailure('lifecycle', 'storage remove failed', { bucket, count: paths.length });
+            await admin.rpc('finish_storage_gc', {
+              p_bucket: bucket,
+              p_removed: [],
+              p_failed: paths,
+              p_error: removeError.message.slice(0, 300),
+            });
+            continue;
+          }
+
+          /*
+            The Storage API answers with the objects it deleted. A path missing
+            from that list was already gone, which is the outcome asked for, so it
+            counts as removed — claim_storage_gc only hands out paths it saw in
+            storage.objects, and the next claim would close it as missing anyway.
+          */
+          removed += gone?.length ?? 0;
+          await admin.rpc('finish_storage_gc', { p_bucket: bucket, p_removed: paths });
+        }
+      }
+
+      // ------------------------------------------------- abandoned signups -----
+      // Lists nothing until retention_policies.abandoned_signups is given a
+      // period; see docs/data-lifecycle.md. Deleted through the Auth API so
+      // GoTrue's own tables stay consistent.
+      let signupsRemoved = 0;
+      const { data: abandoned, error: abandonedError } = await admin.rpc('abandoned_signups', { p_limit: 50 });
+      if (abandonedError) logFailure('lifecycle', 'abandoned signups not listed', { code: abandonedError.code });
+      for (const row of abandoned ?? []) {
+        const { error: deleteError } = await admin.auth.admin.deleteUser(row.user_id);
+        if (deleteError) logFailure('lifecycle', 'abandoned signup not removed', { user: row.user_id });
+        else signupsRemoved += 1;
+      }
+
+      return {
+        maintenance: typeof maintenance === 'object' && maintenance !== null ? 'ran' : String(maintenance ?? 'none'),
+        retention_ran: Boolean(retention),
+        retention_errors: Array.isArray(retentionErrors) ? retentionErrors.length : 0,
+        files_removed: removed,
+        files_failed: failed,
+        signups_removed: signupsRemoved,
+      };
+    },
   });
 }

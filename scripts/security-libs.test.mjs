@@ -248,6 +248,23 @@ console.log('\n— secrets');
   check('bearer parsing', bearerToken('Bearer tok') === 'tok' && bearerToken('bearer tok') === 'tok' && bearerToken('Basic x') === null);
 }
 
+console.log('\n— every scheduled job asks for the cron secret and leaves a record');
+{
+  const { readdirSync } = await import('node:fs');
+  const jobs = readdirSync(new URL('../src/app/api/cron/', import.meta.url));
+  const health = readFileSync(new URL('../src/app/api/health/route.ts', import.meta.url), 'utf8');
+  const fresh = health.slice(health.indexOf('const FRESH_WITHIN_MS'), health.indexOf('};', health.indexOf('const FRESH_WITHIN_MS')));
+  for (const job of jobs) {
+    const route = readFileSync(new URL(`../src/app/api/cron/${job}/route.ts`, import.meta.url), 'utf8');
+    check(`${job}: through runScheduledJob (cron secret, job_runs, a log line per run)`, new RegExp(`runScheduledJob\\(request, \\{\\s*job: '${job}'`).test(route));
+    // push runs every five minutes and is watched by its own outcome (a
+    // failed send stays in the queue); every other job is on the health list.
+    if (job !== 'push') {
+      check(`${job}: /api/health says when it stops`, fresh.includes(`'${job}':`) || fresh.includes(`${job}:`));
+    }
+  }
+}
+
 console.log('\n— the headers every page is sent');
 {
   const config = readFileSync(new URL('../next.config.ts', import.meta.url), 'utf8');
