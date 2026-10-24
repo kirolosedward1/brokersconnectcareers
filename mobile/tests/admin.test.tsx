@@ -556,6 +556,15 @@ describe('the door', () => {
     expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
   });
 
+  it('opens when the deployment has not said, which is the switch left unset', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig());
+    await signIn({ aal: 'aal1', factor: false });
+    await renderRouter(app, { initialUrl: '/admin' });
+
+    expect(await screen.findByText(ar.admin.needsAttention)).toBeTruthy();
+    expect(screen.queryByText(ar.app.admin.door.enrolTitle)).toBeNull();
+  });
+
   it('asks for the code from an admin whose authenticator has not been used this session', async () => {
     await signIn({ aal: 'aal1', factor: true });
     const result = await renderRouter(app, { initialUrl: '/admin' });
@@ -582,7 +591,7 @@ describe('the overview', () => {
     expect(screen.getByLabelText(`${ar.dashboard.statExpiring}: 2`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.statNoApplicants}: 5`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.statExpired}: 2`)).toBeTruthy();
-    expect(screen.getByLabelText(`${ar.admin.statApplications7d}: 6، 2 ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.admin.statApplications7d}: 6، ${ar.app.dashboard.trendUp.replace('{value}', '2')} ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.admin.statUnopened}: 2`)).toBeTruthy();
     // The people and the companies: the directory counts the public and gated profiles, the hidden ones said beside.
     expect(screen.getByText(ar.admin.population)).toBeTruthy();

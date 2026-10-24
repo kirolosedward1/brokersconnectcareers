@@ -144,12 +144,13 @@ this, and every server call went on being refused with the old key).
   `textAlign` for text it lays out, not for what is typed into a field.
 - **Design.** The brand set in a quieter key for the phone
   (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
-  near-black with champagne in dark, champagne kept for what has been checked
-  (a verified company); every text pair 4.5:1, marks and field borders 3:1.
+  near-black with champagne in dark (which there is also the controls' colour),
+  champagne otherwise kept for what has been checked (a verified company); every text pair 4.5:1, marks and field borders 3:1.
   Cards raised with a hairline and a soft shadow, continuous corners, capsule
   buttons and chips, a gentle press (none with Reduce Motion), a few haptics
-  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
-  default with light / dark / system as on the site, 44-point touch targets.
+  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, the iPhone's
+  own light or dark by default, with system / light / dark to pick from as on
+  the site (whose default is light), 44-point touch targets.
 - **The logo** is the website's own artwork, `public/brand/logo-ar.png`: in
   Home's bar, above the sign-in forms, and its wordmark on the welcome. The app
   has it in two parts, the wordmark and the mark, cut at the gap between them,
@@ -185,20 +186,17 @@ this, and every server call went on being refused with the old key).
   a group all tabs share, so they open inside the tab the reader is in. The
   tab bar is the app's own (`mobile/src/components/navigation/tab-bar.tsx`), a
   capsule floating at the foot of the screen with every tab the reader has,
-  each an icon over its name. As a list scrolls down it grows smaller and the
-  names go, every tab kept, the way Instagram's does; scrolling back up,
-  reaching the top, or another screen coming into view brings it back whole
-  (`useTabList` and `useShrinkingTabBar` in `mobile/src/features/tab-bar.ts`,
-  on each tab's list and the pages opened inside a tab). iOS 26's own bar
+  each an icon over its name. It keeps its size and its names however a list
+  scrolls, as Apple asks of a tab bar ("Include tab labels"); iOS 26's own bar
   shrinks to the open tab alone instead. Pressing the open tab again goes back
-  to its first screen, then to the top of that screen's list. Its band is part
+  to its first screen, then to the top of that screen's list (`useTabList` in
+  `mobile/src/features/tab-bar.ts`). Its band is part
   of the layout, so screens end above it and need no room made under their
   last line. The Account tab shows the reader's own photo once they have put
   one on their account. Home has a header of its own
   (`mobile/src/components/home/home-frame.tsx`), slimmer than iOS's: the logo
-  at its start (in Arabic, the right) and the bell at its end; it slides away
-  under the status bar as the list scrolls down and comes back as it scrolls
-  up, on the tab bar's signal. No screen has iOS's large title:
+  at its start (in Arabic, the right) and the bell at its end; it stays put as
+  the page scrolls. No screen has iOS's large title:
   on iOS 26 one under a painted bar is not drawn until the screen is
   scrolled, and on a clear bar it is drawn mirrored at the left edge wherever
   iOS runs left to right (Expo Go, an iPhone not set to Arabic) under the bar
@@ -296,8 +294,9 @@ this, and every server call went on being refused with the old key).
   the top of the screen (`mobile/src/components/ui/search-field.tsx`): iOS's
   header search bar is laid out by the phone's language, not the app's, so it
   ran left to right under the Arabic on a phone set to English and in Expo Go.
-  The board has no search bar: its words are the filter sheet's first field,
-  as they head the website's filter panel. **A consultant's page**
+  The board has the same field at the top of its list, searching the same
+  words as the filter sheet's first field (which heads the website's filter
+  panel); the Jobs tab pressed again at the top puts the cursor in it. **A consultant's page**
   (`/agents/<slug>`, or `/agents/<id>` for a locked card) reads
   `get_agent_card()` and the CV under the employer's own session, so the
   database decides what shows; the number and the CV are asked for with
@@ -438,7 +437,7 @@ they are in, instead of the round trip through the sign-in page.
   in the admin console until October 2026; signing out is the way out for
   someone without the phone. The database asks it of admins only
   (docs/security/THREAT_MODEL.md, section 5).
-- **The welcome** (`mobile/src/app/welcome.tsx`) opens every launch with
+- **The welcome** (`mobile/src/app/welcome.tsx`) opens the first launch with
   nobody signed in, under the splash screen: the website's own hero photograph
   (`mobile/assets/images/welcome-photo.jpg`, the same file as
   `public/media/hero-poster.jpg`, which `tests/brand.test.ts` holds equal)
@@ -446,11 +445,13 @@ they are in, instead of the round trip through the sign-in page.
   white the logo, the headline, and the ways on —
   create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
-  Skip closes it until the app is next started; signing in closes it with the
+  Skip closes it, and is remembered on the phone (`bc-welcome-skipped`) so
+  later launches open on Home — the Account tab is where to sign in; signing in closes it with the
   sign-in sheet; a launch by a link never shows it, and goes where the link
   leads. Signing out opens it again, faded in over the tabs once whatever was
-  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`).
-  Nothing about it is kept on the phone (`mobile/src/features/welcome.ts`).
+  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`),
+  and forgets the skip, so the next launch opens on it too until it is skipped
+  again (`mobile/src/features/welcome.ts`).
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
   to each other. It asks in short steps, with a progress bar and a way back:
@@ -1038,7 +1039,7 @@ inside the Admin tab (`(consultants,admin)` in the routes).
 - **The second factor** is asked of the app as the website asks it: the door
   (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
   server) opens only for a session that gave its authenticator's code, or —
-  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
+  where `ADMIN_MFA_REQUIRED` is not exactly `true` (unset is off; the
   app reads it from `/config`) — for an admin without one. An admin without
   an authenticator sets one up on the phone (`mfa-enrol`), then is asked for
   the code by the app's own second-factor screen. The server refuses the levers

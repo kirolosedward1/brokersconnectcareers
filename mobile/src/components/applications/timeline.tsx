@@ -8,6 +8,7 @@ import { Pulse } from '~/components/motion/pulse';
 import { Check, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
+import { motion } from '~/theme/tokens';
 
 import { timelineSteps, type TimelineStep } from '@/lib/application-stages';
 
@@ -38,7 +39,9 @@ export function ApplicationTimeline({
           ? t('applicationStatus.hired')
           : application.status === 'rejected'
             ? t('applicationStatus.rejected')
-            : t('myApplications.stepDecision');
+            : application.status === 'withdrawn'
+              ? t('applicationStatus.withdrawn')
+              : t('myApplications.stepDecision');
     }
   };
 
@@ -46,23 +49,35 @@ export function ApplicationTimeline({
     .filter((step) => step.state === 'done' || step.state === 'stopped')
     .map((step) => name(step))
     .join(' · ');
+  // And where it waits now: the steps reached alone never said which one that is.
+  const current = steps.find((step) => step.state === 'current');
+  const now = current ? `. ${t('app.applications.timelineNow', { step: name(current) })}` : '';
 
   return (
     <View
       accessible
-      accessibilityLabel={`${t('myApplications.timeline')}: ${spoken}`}
+      accessibilityLabel={`${t('myApplications.timeline')}: ${spoken}${now}`}
       testID="application-timeline"
       style={{ flexDirection: 'row' }}
     >
       {steps.map((step, index) => {
         const reached = step.state === 'done' || step.state === 'stopped';
-        const tint = step.state === 'stopped' ? colors.destructive : reached ? colors.success : step.state === 'current' ? colors.primary : colors.border;
+        const tint =
+          step.state === 'stopped'
+            ? application.status === 'withdrawn'
+              ? colors.mutedForeground
+              : colors.destructive
+            : reached
+              ? colors.success
+              : step.state === 'current'
+                ? colors.primary
+                : colors.input;
         return (
           <View key={step.key} style={{ flex: 1, alignItems: 'center', gap: 4 }} testID={`step-${step.key}-${step.state}`}>
             <View style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.line, { backgroundColor: index === 0 ? 'transparent' : step.state === 'ahead' ? colors.border : tint }]} />
               {/* Reached steps fill in one after another; the one it waits at breathes. */}
-              <Appear from="none" scale={reached ? 0.4 : 1} delay={index * 140} duration={360}>
+              <Appear from="none" scale={reached ? 0.4 : 1} delay={index * motion.stagger}>
                 <Breathing on={step.state === 'current'}>
                   <View
                     style={{

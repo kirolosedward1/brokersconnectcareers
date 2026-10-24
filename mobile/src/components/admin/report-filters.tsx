@@ -89,7 +89,7 @@ export function ReportFilterSheet({
   };
 
   return (
-    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={onClose}>
       <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
         <View
           style={{

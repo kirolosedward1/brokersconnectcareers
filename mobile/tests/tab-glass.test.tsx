@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { resetTabBarForTests, useTabList } from '~/features/tab-bar';
+import { useTabList } from '~/features/tab-bar';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { haptic } from '~/lib/haptics';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -56,7 +56,6 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
-  resetTabBarForTests();
   jest.mocked(useReduceMotion).mockReturnValue(false);
   jest.mocked(useReduceTransparency).mockReturnValue(false);
   spring = jest.spyOn(Animated, 'spring');

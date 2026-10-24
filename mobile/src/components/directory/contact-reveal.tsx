@@ -9,6 +9,7 @@ import { openAgentCv, RevealRefused, useRevealContact, type RevealedContact } fr
 import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * The button that asks for a number — the website's ContactReveal. Nothing of
@@ -25,6 +26,7 @@ export function ContactReveal({ handle, hasCv }: { handle: string; hasCv: boolea
   const reveal = useRevealContact();
   const [revealed, setRevealed] = useState<RevealedContact | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  useAnnounce(message);
 
   const ask = () => {
     setMessage(null);

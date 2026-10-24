@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { NotificationRow } from '@/lib/supabase/database.types';
+import { shownToast, STAY_WITH_ACTION_MS } from '~/components/feedback/toast';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { HeaderBell, useHeaderBell } from '~/components/notifications/header-bell';
@@ -223,7 +224,7 @@ describe('the bell', () => {
 
     fireEvent.press(bell);
     await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
-    expect(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة')).toBeTruthy();
+    expect(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة')).toBeTruthy();
     expect(screen.getByText('وصل طلبك على «مستشار مبيعات»')).toBeTruthy();
   });
 
@@ -241,7 +242,7 @@ describe('the feed', () => {
   it('asks for the newest page, without the applicants folded into another row', async () => {
     await signedIn();
     await renderRouter(app, { initialUrl: '/notifications' });
-    await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة');
+    await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة');
 
     const page = server.asked('/rest/v1/notifications').find((request) => request.method === 'GET');
     expect(page?.url.searchParams.get('user_id')).toBe(`eq.${USER_ID}`);
@@ -258,13 +259,13 @@ describe('the feed', () => {
         : feed,
     );
     await renderRouter(app, { initialUrl: '/notifications' });
-    expect(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة')).toBeTruthy();
+    expect(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة')).toBeTruthy();
   });
 
   it('follows a notification to where it points, through the website', async () => {
     await signedIn();
     const result = await renderRouter(app, { initialUrl: '/notifications' });
-    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    fireEvent.press(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة'));
 
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
@@ -284,7 +285,7 @@ describe('the feed', () => {
     await signedIn();
     const result = await renderRouter(app, { initialUrl: '/notifications' });
 
-    fireEvent.press(await screen.findByText('النيل للوساطة نزّلت وظيفتين جداد'));
+    fireEvent.press(await screen.findByText('النيل للوساطة نشرت وظيفتين جديدتين'));
     await waitFor(() => expect(result.getPathname()).toBe('/companies/nile-brokers'));
     expect(screen.getByText('company page')).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/openNotification')).toEqual({ input: { id: feed[0].id } });
@@ -295,7 +296,7 @@ describe('the feed', () => {
     const result = await renderRouter(app, { initialUrl: '/dashboard/applications' });
     await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
     act(() => router.push('/notifications'));
-    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    fireEvent.press(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة'));
 
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     // One screen in the tab: Back does not show the feed again.
@@ -310,7 +311,7 @@ describe('the feed', () => {
     const result = await renderRouter(app, { initialUrl: '/dashboard/applications' });
     await waitFor(() => expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']));
     act(() => router.push('/notifications'));
-    fireEvent.press(await screen.findByText('طلبك في مستشار مبيعات بقى: قائمة مختصرة'));
+    fireEvent.press(await screen.findByText('طلبك على مستشار مبيعات أصبح: قائمة مختصرة'));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(1));
 
     // A slow answer: the reader goes back and opens a listing meanwhile.
@@ -352,7 +353,7 @@ describe('the feed', () => {
     await waitFor(() => expect(screen.queryByText(ar.notifications.markAllRead) === null).toBe(true));
   });
 
-  it('deletes one row from VoiceOver, and puts it back when the database refuses', async () => {
+  it('deletes one row from VoiceOver once its Undo has gone, and puts it back when the database refuses', async () => {
     let refuse = true;
     server.on('DELETE /rest/v1/notifications', (url) => {
       if (refuse) return { status: 500, body: { message: 'down' } };
@@ -370,15 +371,40 @@ describe('the feed', () => {
       act(() => row.props.onAccessibilityAction({ nativeEvent: { actionName: name } }));
     };
 
-    action(0);
-    expect(await screen.findByText(ar.app.notificationsFeed.deleteFailed)).toBeTruthy();
+    const deletes = () => server.asked('/rest/v1/notifications').filter((request) => request.method === 'DELETE');
+    // Off the list at once, with Undo; nothing is deleted while the Undo is offered.
+    const swipe = (index: number) => {
+      jest.useFakeTimers();
+      action(index);
+    };
+    const waitOut = () => {
+      act(() => jest.advanceTimersByTime(STAY_WITH_ACTION_MS));
+      jest.useRealTimers();
+    };
+
+    swipe(0);
+    expect(rows().length).toBe(1);
+    expect(shownToast()?.message).toBe(ar.app.notificationsFeed.deleted);
+    expect(deletes()).toHaveLength(0);
+    // Undone: back, and never sent.
+    act(() => shownToast()?.action?.onPress());
+    waitOut();
+    expect(rows().length).toBe(2);
+    expect(deletes()).toHaveLength(0);
+
+    // Left to go, it is deleted; refused, it comes back and the toast says so.
+    swipe(0);
+    waitOut();
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.notificationsFeed.deleteFailed));
+    expect(shownToast()?.tone).toBe('destructive');
     await waitFor(() => expect(rows().length).toBe(2));
-    const asked = server.asked('/rest/v1/notifications').filter((request) => request.method === 'DELETE');
-    expect(String(asked[0].url)).toContain(`id=eq.${feed[0].id}`);
-    expect(String(asked[0].url)).toContain('user_id=eq.');
+    expect(String(deletes()[0].url)).toContain(`id=eq.${feed[0].id}`);
+    expect(String(deletes()[0].url)).toContain('user_id=eq.');
 
     refuse = false;
-    action(0);
+    swipe(0);
+    waitOut();
+    await waitFor(() => expect(deletes()).toHaveLength(2));
     await waitFor(() => expect(rows().length).toBe(1));
   });
 
@@ -397,7 +423,7 @@ describe('the feed', () => {
     await waitFor(() => expect(server.asked('/rest/v1/notifications').some((request) => request.method === 'DELETE')).toBe(true));
     const asked = server.asked('/rest/v1/notifications').find((request) => request.method === 'DELETE');
     expect(decodeURIComponent(String(asked?.url))).toContain('created_at=lte.2026-09-27');
-    expect(await screen.findByText(ar.notifications.empty)).toBeTruthy();
+    expect(await screen.findByText(ar.app.notificationsFeed.empty)).toBeTruthy();
     alert.mockRestore();
   });
 
@@ -405,7 +431,7 @@ describe('the feed', () => {
     feed = [];
     await signedIn();
     await renderRouter(app, { initialUrl: '/notifications' });
-    expect(await screen.findByText(ar.notifications.empty)).toBeTruthy();
+    expect(await screen.findByText(ar.app.notificationsFeed.empty)).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.notifications.emptyCtaCandidate })).toBeTruthy();
   });
 });

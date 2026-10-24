@@ -18,6 +18,7 @@ import { useErrorFeedback } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { gutter, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * Delete the account — the website's section, through its action
@@ -91,7 +92,8 @@ export default function DeleteAccountScreen() {
     // This screen's own Back: the app's would take whatever is in front if the
     // person moved on while the account was being deleted.
     if (navigation.canGoBack()) navigation.goBack();
-    dialog.alert(t('app.account.deleted'));
+    // Said in passing, not in an alert to dismiss: the welcome is opening as it is said (HIG, Alerts).
+    toast.show({ message: t('app.account.deleted'), tone: 'success' });
   }
 
   // Reached from a link with nobody signed in: there is no account here to delete.

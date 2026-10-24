@@ -184,7 +184,8 @@ async function notifyAll(
     const { count, error } = await admin
       .from('applications')
       .select('id', { count: 'exact', head: true })
-      .eq('job_id', job.id);
+      .eq('job_id', job.id)
+      .neq('status', 'withdrawn');
 
     // Not sent rather than sent wrong. "Nobody applied" to an employer who
     // had forty applicants is worse than a notice a night late — and this

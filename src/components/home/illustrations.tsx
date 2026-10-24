@@ -26,9 +26,9 @@ const COPY = {
   ar: {
     track: 'أوف بلان',
     district: 'التجمع الخامس',
-    years: '7 سنين خبرة',
+    years: '7 سنوات خبرة',
     everyone: 'ظاهر للجميع',
-    verified: 'للموثّقين بس',
+    verified: 'للموثّقين فقط',
     hidden: 'مخفي',
   },
   en: {

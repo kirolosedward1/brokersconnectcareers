@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react';
-import { Linking, Modal, RefreshControl, Text } from 'react-native';
+import { Linking, Modal, RefreshControl, StyleSheet, Text } from 'react-native';
 import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createTranslator } from 'use-intl';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
+import { shownToast } from '~/components/feedback/toast';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
+import { LRI, PDI } from '~/i18n/rich';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -46,6 +49,7 @@ jest.mock('~/lib/session-storage', () => {
 jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn(async () => ({ type: 'opened' })) }));
 
 const ar = catalogues.ar;
+const tAr = createTranslator({ locale: 'ar', messages: catalogues.ar });
 const server = fakeServer();
 const PASSWORD = 'correct-horse';
 const user = authUser();
@@ -136,6 +140,10 @@ beforeEach(async () => {
     // The inbox's second read counts the stages; everything else is the rows.
     if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
     return { body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } };
+  });
+  server.on('HEAD /rest/v1/applications', (url: URL) => {
+    const standing = url.searchParams.get('status') === 'neq.withdrawn' ? rows.filter((row) => row.status !== 'withdrawn') : rows;
+    return { body: null, headers: { 'content-range': `*/${standing.length}` } };
   });
   server.on('GET /rest/v1/application_notes', notes);
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
@@ -546,11 +554,85 @@ describe("a listing's applicants", () => {
   it('takes in the first applicant with a pull on the empty listing', async () => {
     rows = [];
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
-    expect(await screen.findByText(ar.employer.noApplicants)).toBeTruthy();
+    expect(await screen.findByText(ar.app.applicants.empty)).toBeTruthy();
 
     rows = [layla];
     await pull();
     expect(await screen.findByText('ليلى محمود')).toBeTruthy();
+  });
+
+  it('asks for a standing count, so a withdrawal is not an applicant', async () => {
+    rows = [
+      ...rows,
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        created_at: '2026-09-30T10:00:00Z',
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+    const head = server.asked('/rest/v1/applications').find((request) => request.method === 'HEAD');
+    expect(head?.url.searchParams.get('status')).toBe('neq.withdrawn');
+    expect(head?.url.searchParams.get('job_id')).toBe(`eq.${JOB_ID}`);
+    // Two standing applications. The withdrawal is on the page and not in the count.
+    expect(screen.getByText(`${LRI}2${PDI} متقدمين`)).toBeTruthy();
+  });
+
+  it('draws no action row on a withdrawn card, even when a CV is still on it', async () => {
+    rows = [
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        note: null,
+        decision_note: null,
+        cv_path: `${USER_ID}/withdrawn.pdf`,
+        candidate: {
+          full_name: 'نورا سليم',
+          whatsapp_phone: '+201112223334',
+          avatar_url: null,
+          agent_profiles: {
+            slug: 'nora-a1b2',
+            headline_ar: 'مستشارة',
+            headline_en: null,
+            years_experience: 4,
+            tracks: ['primary'],
+            district_ids: [newCairo.id],
+            units_closed: null,
+            volume_egp: null,
+          },
+        },
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const header = await screen.findByRole('header', { name: 'نورا سليم' });
+    expect(screen.getAllByText(ar.applicationStatus.withdrawn).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: `${ar.employer.whatsappCandidate}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.app.replies.open}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.employer.downloadCv}: نورا سليم` })).toBeNull();
+    expect(screen.queryByText(ar.employer.noCv)).toBeNull();
+    expect(screen.queryByRole('button', { name: new RegExp(ar.employer.moveTo) })).toBeNull();
+    expect(screen.getByHintText(ar.agents.viewProfile)).toBeTruthy();
+
+    // The card's own padding is 16. The action row is the one that wraps.
+    // Drawing it empty would still take the card's gap under the last line.
+    let node: ReturnType<typeof screen.getByRole> | null = header;
+    let card: ReturnType<typeof screen.getByRole> | null = null;
+    while (node) {
+      if (StyleSheet.flatten(node.props.style)?.padding === 16) {
+        card = node;
+        break;
+      }
+      node = node.parent;
+    }
+    expect(card).not.toBeNull();
+    expect(StyleSheet.flatten(card?.props.style)?.padding).toBe(16);
+    const actionRow = (card?.children ?? []).filter(
+      (child) => typeof child !== 'string' && StyleSheet.flatten(child.props.style)?.flexWrap === 'wrap',
+    );
+    expect(actionRow).toHaveLength(0);
   });
 
   it("is not found when the listing is not the company's", async () => {
@@ -586,6 +668,12 @@ describe('the inbox', () => {
     });
     await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
+    const main = server.asked('/rest/v1/applications').find(
+      (request) => request.method === 'GET' && !request.url.searchParams.get('select')?.startsWith('status,'),
+    );
+    // Withdrawn last in the query, before the cap — not sorted into place afterwards.
+    expect(main?.url.searchParams.get('order')).toBe('withdrawn_at.asc.nullsfirst,created_at.desc');
+    expect(main?.url.searchParams.get('limit')).toBe('200');
 
     // Moved elsewhere — on the listing's pipeline, or by a colleague — and read again here.
     rows = rows.map((row) => (row.id === sara.id ? { ...row, status: 'shortlisted' } : row));
@@ -621,6 +709,33 @@ describe('the inbox', () => {
     expect((await screen.findAllByText(rows[1].candidate?.full_name ?? '')).length).toBeGreaterThan(1);
     fireEvent.press(screen.getAllByRole('button', { name: ar.app.review.done }).pop()!);
     await waitFor(() => expect(screen.queryByRole('header', { name: ar.app.review.title })).toBeNull(), { timeout: 2000 });
+  });
+
+  it('says whose decision did not go through, and sends the same one again from the toast', async () => {
+    const moves: { applicationId: string; status: string; from: string }[] = [];
+    let refuse = true;
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; from: string } }).input;
+      moves.push(move);
+      if (refuse) return { ok: false, error: 'failed' };
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
+      return { ok: true };
+    });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+    const first = rows[0];
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.shortlist }));
+
+    const name = first.candidate?.full_name ?? '';
+    await waitFor(() => expect(shownToast()?.message).toBe(tAr('app.review.failed', { name })));
+    expect(shownToast()).toMatchObject({ tone: 'destructive', action: { label: ar.common.retry } });
+
+    refuse = false;
+    act(() => shownToast()?.action?.onPress());
+    await waitFor(() => expect(moves).toHaveLength(2));
+    expect(moves[1]).toMatchObject({ applicationId: first.id, status: 'shortlisted', from: 'new' });
+    await waitFor(() => expect(shownToast()?.message).toBe(tAr('app.review.shortlisted', { name })));
   });
 
   it('shows one shortlisted in a review of the new as shortlisted when stepped back to, though the list no longer holds them', async () => {

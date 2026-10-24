@@ -99,6 +99,7 @@ export { default as Search } from 'lucide-react-native/icons/search';
 export { default as SearchX } from 'lucide-react-native/icons/search-x';
 export { default as Send } from 'lucide-react-native/icons/send';
 export { default as SendHorizontal } from 'lucide-react-native/icons/send-horizontal';
+export { default as Share } from 'lucide-react-native/icons/share';
 export { default as Share2 } from 'lucide-react-native/icons/share-2';
 export { default as ShieldAlert } from 'lucide-react-native/icons/shield-alert';
 export { default as ShieldCheck } from 'lucide-react-native/icons/shield-check';

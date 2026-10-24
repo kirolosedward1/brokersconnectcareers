@@ -18,7 +18,6 @@ import { AppError, ScreenError } from '~/components/navigation/error-boundaries'
 import { PendingPath } from '~/components/navigation/pending-path';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
 import { AppLock } from '~/components/navigation/app-lock';
-import { CrashNotice } from '~/components/navigation/crash-notice';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
@@ -171,7 +170,6 @@ function AppStack() {
       <PendingPath />
       <PushBridge />
       <AppleCredentialWatch />
-      <CrashNotice />
       <HomeShortcuts />
       <VerifiedExplainerHost />
       <NoteSheetHost />

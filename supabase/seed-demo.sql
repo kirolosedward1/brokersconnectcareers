@@ -414,9 +414,11 @@ begin
   from ordered o
   where o.id = j.id;
 
-  -- A month of arrivals rather than thirty at once. `on conflict do nothing`
-  -- because a candidate can only apply to a listing once and the pipeline
-  -- inserted above already claimed some of these pairs.
+  -- A month of arrivals rather than thirty at once. The conflict target is
+  -- unnamed: before 362 the unique key is (job_id, candidate_id), and after
+  -- it the partial index that leaves withdrawn rows out. Naming either one
+  -- makes this seed fail on the other database. The pipeline inserted above
+  -- already claimed some of these pairs.
   insert into applications (job_id, candidate_id, status, experience_band, created_at)
   select j.id,
          c.id,
@@ -438,7 +440,7 @@ begin
                  where role = 'candidate'
                    and id in (select value::uuid from jsonb_each_text(u))) c
    where (j.rn * 3 + c.rn * 5) % 4 = 0
-  on conflict (job_id, candidate_id) do nothing;
+  on conflict do nothing;
 
   -- The hand-written pipeline still carries this second. Spread it over the
   -- last week so the recent end of the chart is not a single tall bar.

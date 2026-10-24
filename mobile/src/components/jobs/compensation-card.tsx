@@ -121,7 +121,7 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
 
 function Label({ icon, children }: { icon: ReactNode; children: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] + 2 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1.5] }}>
       {icon}
       <Text variant="caption" weight="medium" tone="mutedForeground">
         {children}

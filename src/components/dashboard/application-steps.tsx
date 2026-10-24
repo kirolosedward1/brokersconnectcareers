@@ -34,14 +34,24 @@ export async function ApplicationSteps({
       case 'shortlisted':
         return application.status === 'interview' ? tStatus('interview') : tStatus('shortlisted');
       case 'decision':
-        return application.status === 'hired' || application.status === 'rejected' ? tStatus(application.status) : t('stepDecision');
+        return application.status === 'hired' || application.status === 'rejected' || application.status === 'withdrawn'
+          ? tStatus(application.status)
+          : t('stepDecision');
     }
   };
 
   const reached = (step: TimelineStep) => step.state === 'done' || step.state === 'stopped';
   /** The colour a line takes towards a step: the step's own once it is reached or waited at. */
   const lineTo = (step: TimelineStep) =>
-    step.state === 'ahead' ? 'bg-border' : step.state === 'stopped' ? 'bg-destructive' : step.state === 'current' ? 'bg-primary' : 'bg-success';
+    step.state === 'ahead'
+      ? 'bg-border'
+      : step.state === 'stopped'
+        ? application.status === 'withdrawn'
+          ? 'bg-[#5B6475]'
+          : 'bg-destructive'
+        : step.state === 'current'
+          ? 'bg-primary'
+          : 'bg-success';
 
   return (
     <ol className="mt-3 flex" aria-label={t('timeline')}>
@@ -53,7 +63,8 @@ export async function ApplicationSteps({
               className={cn(
                 'grid size-5 shrink-0 place-items-center rounded-full motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:fill-mode-both',
                 step.state === 'done' && 'bg-success text-white',
-                step.state === 'stopped' && 'bg-destructive text-white',
+                step.state === 'stopped' && application.status === 'withdrawn' && 'bg-[#5B6475] text-white',
+                step.state === 'stopped' && application.status !== 'withdrawn' && 'bg-destructive text-white',
                 step.state === 'current' && 'border-2 border-primary bg-card motion-safe:animate-pulse',
                 step.state === 'ahead' && 'border-2 border-border bg-card',
               )}

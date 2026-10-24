@@ -115,7 +115,7 @@ export function MonthField({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: space[2],
-          paddingHorizontal: space[4] - 2,
+          paddingHorizontal: space[3.5],
           ...corner('lg'),
           borderWidth: 1,
           borderColor: colors.input,
@@ -128,7 +128,7 @@ export function MonthField({
         <Calendar size={18} color={colors.mutedForeground} />
       </Pressable>
 
-      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
+      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={() => setOpen(false)}>
         <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background, paddingBottom: insets.bottom + space[4] }} {...fence}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text variant="headline" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>

@@ -12,9 +12,9 @@ import type { ApplicationStatus } from '@/lib/supabase/database.types';
  * script that generates the Supabase Auth templates has to be able to load it
  * outside Next.
  *
- * Modern Standard Arabic on the Arabic side. The website and the app stay in
- * Egyptian (messages/ar.json); these emails are the surface that uses MSA.
- * Subjects stay literal and unexcited: what happened, and to which listing.
+ * Modern Standard Arabic on the Arabic side, the same register as the website
+ * and the app (messages/ar.json). Subjects stay literal and unexcited: what
+ * happened, and to which listing.
  */
 
 type Locale = 'ar' | 'en';
@@ -25,7 +25,7 @@ const arabicPlural = new Intl.PluralRules('ar');
  * A count in Arabic. One and two have forms of their own, three to ten take
  * the plural, eleven and up the singular again. `#` is the number. The
  * categories are the same ones the bell uses in messages/ar.json; the words
- * here are MSA, which these emails use, while the bell stays Egyptian. Until
+ * here are MSA, as the bell is too. Until
  * the categories were split, every number but one took the plural:
  * «فاضل 2 أيام», «11 وظائف جديدة».
  */
@@ -177,13 +177,31 @@ export const emailCopy = {
     },
 
     applicationWithdrawn: {
-      subject: (job: string) => `سحبت طلبك على وظيفة ${job}`,
-      preheader: 'أُزيل الطلب من لدى الشركة.',
+      // The subject names the listing, as the other subjects do. The short
+      // line is the inbox preview: the row stays, and the company sees it
+      // as withdrawn.
+      subject: (job: string) => `سُحب طلبك على وظيفة ${job}، وستظهر للشركة حالة الانسحاب`,
+      preheader: 'سُحب طلبك، وستظهر للشركة حالة الانسحاب',
       heading: 'تم سحب طلبك',
       body: (job: string) =>
-        `أزلنا طلبك على وظيفة «${job}»، ولم يعد ظاهراً للشركة. يمكنك التقديم مجدداً في أي وقت ما دام الإعلان قائماً.`,
+        `تم سحب طلبك على وظيفة «${job}»، وسيظهر للشركة أنك انسحبت من التقديم.`,
+      reapply: 'يمكنك التقديم مرة أخرى ما دام الإعلان متاحاً.',
       cta: 'تصفّح الوظائف',
       labelJob: 'الوظيفة',
+    },
+
+    candidateWithdrew: {
+      // To the listing's owner, in the owner's language only. The name is the
+      // one the applicants page still shows; the phone, the email and the CV
+      // are not in this message.
+      subject: (job: string) => `انسحب مرشح من «${job}»`,
+      preheader: 'لم يعد هذا التقديم قائماً.',
+      heading: 'انسحب مرشح',
+      body: (job: string) => `انسحب مرشح من «${job}». لم يعد هذا التقديم قائماً.`,
+      bodyNamed: (name: string, job: string) => `انسحب ${name} من «${job}». لم يعد هذا التقديم قائماً.`,
+      cta: 'عرض المتقدمين',
+      labelJob: 'الإعلان',
+      labelApplicant: 'المرشح',
     },
 
     // -----------------------------------------------------------------------
@@ -212,6 +230,19 @@ export const emailCopy = {
       labelJob: 'الوظيفة',
       labelPublished: 'تاريخ النشر',
       labelExpires: 'ينتهي في',
+    },
+
+    // The owner's receipt. A different message from jobApproved, which the
+    // preference mail to other members still uses.
+    jobApprovedOwner: {
+      subject: (job: string) => `تمت الموافقة على «${job}»`,
+      preheader: 'إعلانك ظاهر للمرشحين الآن.',
+      heading: 'تمت الموافقة على إعلانك',
+      body: (job: string) => `«${job}» ظاهر للمرشحين الآن. ستصلك رسالة عند كل تقديم جديد.`,
+      cta: 'عرض الإعلان',
+      labelJob: 'الإعلان',
+      labelPublished: 'تاريخ النشر',
+      labelExpires: 'تاريخ الانتهاء',
     },
 
     jobRejected: {
@@ -363,6 +394,7 @@ export const emailCopy = {
       interview: 'مقابلة',
       hired: 'تم القبول',
       rejected: 'غير مناسب',
+      withdrawn: 'انسحب المتقدم',
     } satisfies Record<ApplicationStatus, string>,
   },
 
@@ -494,12 +526,24 @@ export const emailCopy = {
 
     applicationWithdrawn: {
       subject: (job: string) => `You withdrew your application for ${job}`,
-      preheader: 'The company no longer sees it.',
+      preheader: 'The company can see that you withdrew.',
       heading: 'Application withdrawn',
       body: (job: string) =>
-        `Your application for "${job}" has been withdrawn and the company can no longer see it. You can apply again at any time while the listing is open.`,
+        `Your application for "${job}" has been withdrawn, and the company can see that.`,
+      reapply: 'You can apply again at any time while the listing is open.',
       cta: 'Browse roles',
       labelJob: 'Role',
+    },
+
+    candidateWithdrew: {
+      subject: (job: string) => `A candidate withdrew from "${job}"`,
+      preheader: 'This application is no longer active.',
+      heading: 'A candidate withdrew',
+      body: (job: string) => `A candidate withdrew from "${job}". This application is no longer active.`,
+      bodyNamed: (name: string, job: string) => `${name} withdrew from "${job}". This application is no longer active.`,
+      cta: 'View applicants',
+      labelJob: 'Listing',
+      labelApplicant: 'Candidate',
     },
 
     jobSubmitted: {
@@ -524,6 +568,18 @@ export const emailCopy = {
       labelJob: 'Role',
       labelPublished: 'Published',
       labelExpires: 'Expires',
+    },
+
+    jobApprovedOwner: {
+      subject: (job: string) => `"${job}" is approved`,
+      preheader: 'Candidates can see your listing now.',
+      heading: 'Your listing is approved',
+      body: (job: string) =>
+        `"${job}" is visible to candidates now. You will receive an email for each new application.`,
+      cta: 'View the listing',
+      labelJob: 'Listing',
+      labelPublished: 'Published',
+      labelExpires: 'Closes',
     },
 
     jobRejected: {
@@ -662,6 +718,7 @@ export const emailCopy = {
       interview: 'Interview',
       hired: 'Hired',
       rejected: 'Not selected',
+      withdrawn: 'Withdrawn',
     } satisfies Record<ApplicationStatus, string>,
   },
 } as const;

@@ -33,7 +33,7 @@ export function WithdrawButton({
   const t = useTranslations('myApplications');
   const [asking, setAsking] = useState(false);
   const router = useRouter();
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
 
@@ -69,12 +69,12 @@ export function WithdrawButton({
               disabled={pending}
               onClick={() =>
                 startTransition(async () => {
-                  setFailed(false);
+                  setFailure(null);
                   const result = await reach(withdrawApplication(applicationId));
                   setAsking(false);
                   if (recoverSession(result)) return;
                   if (!result.ok) {
-                    setFailed(true);
+                    setFailure(result.error === 'unavailable' ? t('withdrawUnavailable') : tCommon('errorBody'));
                     return;
                   }
                   router.refresh();
@@ -90,9 +90,9 @@ export function WithdrawButton({
         </div>
       </Dialog>
 
-      {failed ? (
+      {failure ? (
         <span role="alert" className="text-xs text-destructive">
-          {tCommon('errorBody')}
+          {failure}
         </span>
       ) : null}
     </span>

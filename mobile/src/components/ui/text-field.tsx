@@ -57,7 +57,7 @@ export const TextField = forwardRef<
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[2],
-        paddingHorizontal: space[4] - 2,
+        paddingHorizontal: space[3.5],
         ...corner('lg'),
         borderWidth: 1,
         borderColor: focused ? ring : error ? colors.destructive : colors.input,
@@ -89,6 +89,9 @@ export const TextField = forwardRef<
         style={[
           {
             flex: 1,
+            // The web's default min width is the text's own width, so a long
+            // field pushes the eye past the screen (the input wider than the row).
+            minWidth: 0,
             minHeight: hitTarget,
             fontFamily: font.regular,
             fontSize: scale.body.fontSize,

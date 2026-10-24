@@ -175,10 +175,10 @@
     "none": "No commission"
   },
   "companyType": {
-    "brokerage": "Brokerage",
-    "developer": "Developer",
-    "brokerage_jobs": "Jobs at brokerages",
-    "developer_jobs": "Jobs at developers"
+    "brokerage": "Brokerage firms",
+    "developer": "Real estate developers",
+    "brokerage_jobs": "Jobs at brokerage firms",
+    "developer_jobs": "Jobs at real estate developers"
   },
   "benefits": {
     "social_insurance": "Social insurance",
@@ -331,6 +331,7 @@
     "passwordUpdated": "Your password has been changed.",
     "backToSignIn": "Back to sign in",
     "linkExpired": "That link has expired or has already been used. Ask for a new one.",
+    "emailConfirmed": "Your email is confirmed. Sign in to continue.",
     "sessionExpired": "Your session ended. Sign in again and we will take you back to the same page.",
     "checkEmailTitle": "We sent you a confirmation email",
     "checkEmailSpam": "If it has not arrived within a minute, check your spam folder.",
@@ -496,7 +497,8 @@
     "shortlisted": "Shortlisted",
     "interview": "Interview",
     "hired": "Hired",
-    "rejected": "Not a fit"
+    "rejected": "Not a fit",
+    "withdrawn": "Withdrawn"
   },
   "apply": {
     "title": "Apply for {job}",
@@ -1271,7 +1273,7 @@
       "record": "Record and notes"
     },
     "makeAdmin": "Make an admin",
-    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. The website asks them to set up two-step sign-in before it opens. Nobody is emailed — tell them yourself.",
+    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. Two-step sign-in is optional unless the platform requires it. Nobody is emailed — tell them yourself.",
     "removeAdmin": "Remove admin access",
     "removeAdminBody": "They become a {role} again. Everything else about the account stays as it is. You cannot remove your own access.",
     "blockSignIn": "Block sign-in",
@@ -1341,7 +1343,7 @@
     "notFoundBody": "That link is wrong, or the content is no longer available.",
     "goHome": "Back to home",
     "error": "Something went wrong",
-    "errorBody": "We could not complete that. Please try again.",
+    "errorBody": "That didn't go through. Try again.",
     "errorReference": "Error reference",
     "retry": "Try again",
     "saveSuccess": "Saved",
@@ -1755,7 +1757,7 @@
     "suspendedTitle": "Your account is suspended",
     "suspendedBody": "An administrator has suspended this account. You will not be able to use the platform until it is reviewed. If you think this is a mistake, get in touch.",
     "mfaTitle": "Two-step verification",
-    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for any account, required for admin accounts.",
+    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for all accounts. An admin who has set it up is always asked for the code, and the platform may require it for other admins.",
     "mfaSetup": "Set up two-step verification",
     "mfaScan": "Scan this code with your authenticator app, then enter the number it shows.",
     "mfaQrAlt": "QR code for your authenticator app",
@@ -2058,6 +2060,7 @@
     "stepSeen": "Seen",
     "stepDecision": "Decision",
     "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will no longer see it. This cannot be undone."
+    "withdrawBody": "The company will see that you withdrew. You can apply again while the listing is open.",
+    "withdrawUnavailable": "Withdrawal is not available right now, so your application was left as it is."
   }
 }

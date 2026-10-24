@@ -8,6 +8,7 @@ import { resetLaunchForTests } from '~/features/launch';
 import { resetWelcomeForTests } from '~/features/welcome';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { useSheet } from '~/lib/use-sheet';
+import { type } from '~/theme/tokens';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
@@ -175,34 +176,59 @@ it('never scrolls, and sets the words smaller when they do not fit', async () =>
   layout('welcome-words', 400);
   layout('welcome-words-content', 300);
   await act(async () => {});
-  expect(size()).toBe(32);
+  expect(size()).toBe(type.display.fontSize);
 
   // Taller than its space (the largest text sizes): a step smaller, and again until it fits.
   layout('welcome-words-content', 520);
   await act(async () => {});
-  expect(size()).toBe(22);
+  expect(size()).toBe(type.title.fontSize);
   layout('welcome-words-content', 450);
   await act(async () => {});
-  expect(size()).toBe(18);
+  expect(size()).toBe(type.headline.fontSize);
   layout('welcome-words-content', 380);
   await act(async () => {});
-  expect(size()).toBe(18);
+  expect(size()).toBe(type.headline.fontSize);
   expect(headline().props.maxFontSizeMultiplier).toBe(1.3);
 });
 
-it('closes onto Home when the reader skips it, until the app is next started', async () => {
+it('closes onto Home when the reader skips it, and later launches open on Home', async () => {
   await launch();
   await drawn();
   fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.skip }));
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
   expect(screen.getByText('home-screen')).toBeTruthy();
-  // Nothing about it is kept on the phone.
-  expect((await AsyncStorage.getAllKeys()).filter((key) => key.includes('welcome'))).toEqual([]);
+  // The skip is kept on the phone.
+  expect(await AsyncStorage.getItem('bc-welcome-skipped')).toBe('1');
 
-  // The next launch, still signed out, opens on it again.
+  // The next launch, still signed out, opens on Home: the welcome is not shown again.
   screen.unmount();
   resetWelcomeForTests();
+  resetLaunchForTests();
+  await launch();
+  expect(await screen.findByText('home-screen')).toBeTruthy();
+  await act(async () => {
+    jest.advanceTimersByTime(2000);
+  });
+  expect(screen.queryByTestId('welcome')).toBeNull();
+});
+
+it('opens again after a sign-out, at once and at the next launch, though it was skipped before', async () => {
+  await AsyncStorage.setItem('bc-welcome-skipped', '1');
+  signedIn();
+  await launch();
+  expect(await screen.findByText('home-screen')).toBeTruthy();
+  await act(async () => {});
+  expect(screen.queryByTestId('welcome')).toBeNull();
+
+  await signOut();
+  expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
+  await waitFor(async () => expect(await AsyncStorage.getItem('bc-welcome-skipped')).toBeNull());
+
+  // Not skipped this time: the next launch welcomes them again.
+  screen.unmount();
+  resetWelcomeForTests();
+  resetLaunchForTests();
   await launch();
   expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
 });

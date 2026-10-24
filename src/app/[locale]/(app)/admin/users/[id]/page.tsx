@@ -16,7 +16,7 @@ import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
 import { UUID_RE, oneOf, param, type SearchParams } from '@/lib/admin/params';
 import { formatDate, formatList, formatNumber } from '@/lib/utils';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { PIPELINE_STAGES } from '@/lib/application-stages';
 import type {
   AdminAuditRow,
   AdminUserActivity,
@@ -436,7 +436,7 @@ async function ActivityTab({
           ) : (
             <div className="space-y-3">
               <Breakdown
-                items={APPLICATION_STAGES.filter((stage) => activity.applications.by_status[stage]).map((stage) => ({
+                items={PIPELINE_STAGES.filter((stage) => activity.applications.by_status[stage]).map((stage) => ({
                   key: stage,
                   label: tApplication(stage),
                   count: n(activity.applications.by_status[stage] ?? 0),

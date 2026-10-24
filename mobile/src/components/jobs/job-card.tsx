@@ -17,13 +17,12 @@ import { useJobMatch } from '~/features/jobs/match';
 import { markupTags } from '~/i18n/rich';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { iconSize, space } from '~/theme/tokens';
 import { toast } from '~/components/feedback/toast';
 import { ActionMenu, type MenuItem } from '~/components/ui/action-menu';
 import { shareJobLink } from '~/features/jobs/share';
 import { hideCompany, unhideCompany } from '~/features/moderation/hidden-companies';
 import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
-import { dialog } from '~/lib/dialog';
 import { haptic } from '~/lib/haptics';
 import { useSheet } from '~/lib/use-sheet';
 import { useFewerLikeThis } from './fewer-like-this';
@@ -33,10 +32,12 @@ import { ZoomLink } from './zoom-link';
 /**
  * A listing in a list — the website's JobCard, the same facts set as a card
  * to be read in one look: who is hiring and where, then what it pays — the
- * salary first and largest, the commission and where the clients come from
- * beside it — and under a hairline the kind of role, the experience asked
- * for, the seats and how fresh it is. A candidate can bookmark it from here
- * without opening it (the website's card toggle).
+ * salary on a line of its own and the largest thing on the card, where the
+ * clients come from under it (the commission rate is the listing's) — then
+ * what is true of it (sponsored, closed, applied to, how well it fits), and
+ * under a hairline the kind of role, the experience asked for, the seats and
+ * how fresh it is. A candidate can bookmark it from here without opening it
+ * (the website's card toggle).
  *
  * Held, it offers what can be done with it without opening it: save, share,
  * hide it or everything from its company. On the board (`swipeable`) it is
@@ -63,28 +64,26 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const district = localized(locale, job.district.name_ar, job.district.name_en);
   const salary = pay.salary(job, locale);
   const companyLeads = job.leads_source === 'company_provided';
-  const leadsTone = companyLeads ? colors.primary : colors.mutedForeground;
   const flags = job.is_featured || closed || applied || match;
-  const commission = job.commission_type === 'percentage' && job.commission_value != null ? pay.commission(job, locale) : null;
   const facts = [
     t(`track.${job.track}`),
     t(`experienceBand.${job.experience_band}`),
     `${formatNumber(job.seats, locale)} ${t('jobs.seatsLabel', { count: job.seats })}`,
   ].join(' · ');
 
-  // One element to VoiceOver, so it says everything the card shows: who and
-  // where, then what is true of it (featured, closed, applied to), what it
-  // pays and the rest — a closed listing read as an open one was the cost.
+  // One element to VoiceOver, so it says everything the card shows, in the
+  // order it shows it: who and where, what it pays and who brings the
+  // clients, then what is true of it (featured, closed, applied to) and the
+  // rest — a closed listing read as an open one was the cost.
   const spoken = [
     formatList([title, company, district], locale),
     job.company.verification_status === 'verified' ? t('companies.verified') : null,
+    salary.perMonth ? `${salary.amount} ${salary.perMonth}` : salary.amount,
+    t(`leadsSource.${job.leads_source}_short`),
     job.is_featured ? t('jobs.featured') : null,
     closed ? t('jobs.closedShort') : null,
     applied ? t('jobs.applied') : null,
     match ? t.markup('app.jobs.match', { percent: match.percent, ...markupTags }) : null,
-    salary.perMonth ? `${salary.amount} ${salary.perMonth}` : salary.amount,
-    commission,
-    t(`leadsSource.${job.leads_source}_short`),
     facts,
     job.published_at ? formatRelativeDay(job.published_at, locale) : null,
   ]
@@ -100,22 +99,15 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
       action: { label: t('app.toast.undo'), onPress: () => unhideJob(job.id) },
     });
   };
-  const hideTheCompany = () =>
-    dialog.alert(t('app.moderation.hideTitle', { company }), t('app.moderation.hideBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('app.moderation.hideConfirm'),
-        style: 'destructive',
-        onPress: () => {
-          hideCompany(job.company.id, { name: company, slug: job.company.slug });
-          toast.show({
-            message: t('app.toast.companyHidden', { company }),
-            icon: Ban,
-            action: { label: t('app.toast.undo'), onPress: () => unhideCompany(job.company.id) },
-          });
-        },
-      },
-    ]);
+  // At once, as hiding the one listing is: Undo is the way back, not a question first.
+  const hideTheCompany = () => {
+    hideCompany(job.company.id, { name: company, slug: job.company.slug });
+    toast.show({
+      message: t('app.toast.companyHidden', { company }),
+      icon: Ban,
+      action: { label: t('app.toast.undo'), onPress: () => unhideCompany(job.company.id) },
+    });
+  };
   const share = () => shareJobLink({ slug: job.slug, title });
   const fewer = useFewerLikeThis(job);
 
@@ -152,7 +144,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
       <View style={{ flexDirection: 'row', gap: space[3] }}>
         <CompanyLogo name={company} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
 
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: space[0.5] }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2] }}>
             <Text
               variant="headline"
@@ -166,7 +158,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
             {save.savable ? <SaveJobIcon save={save} /> : null}
           </View>
 
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[1], rowGap: 2 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[1], rowGap: space[0.5] }}>
             <Text variant="small" weight="medium" numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
               {company}
             </Text>
@@ -180,44 +172,46 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
         </View>
       </View>
 
+      {/* The pay, on a line of its own and the largest thing on the card — what
+          a broker weighs a listing by — with who brings the clients under it.
+          No commission rate: the listing states it with its terms, as on the
+          website's card. In ink, not the brand colour: the brand colour is
+          for what can be pressed. */}
+      <View style={{ marginTop: space[3], gap: space[0.5] }}>
+        <Text variant="title">
+          <Text variant="title" weight="semibold" tone={salary.perMonth ? 'foreground' : 'mutedForeground'}>
+            {salary.amount}
+          </Text>
+          {salary.perMonth ? (
+            <Text variant="caption" weight="regular" tone="mutedForeground">{` ${salary.perMonth}`}</Text>
+          ) : null}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+          <Target size={iconSize.caption} color={colors.mutedForeground} />
+          <Text variant="small" weight={companyLeads ? 'medium' : 'regular'} tone="mutedForeground" style={{ flexShrink: 1 }}>
+            {t(`leadsSource.${job.leads_source}_short`)}
+          </Text>
+        </View>
+      </View>
+
       {flags ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1], marginTop: space[3] }}>
           {job.is_featured ? (
-            <Badge variant="primary" label={t('jobs.featured')} icon={<Star size={11} color={colors.primary} />} />
+            <Badge variant="primary" label={t('jobs.featured')} icon={<Star size={iconSize.label} color={colors.primary} />} />
           ) : null}
           {closed ? (
-            <Badge label={t('jobs.closedShort')} icon={<CircleSlash size={11} color={colors.mutedForeground} />} />
+            <Badge label={t('jobs.closedShort')} icon={<CircleSlash size={iconSize.label} color={colors.mutedForeground} />} />
           ) : null}
           {applied ? <Badge variant="success" label={t('jobs.applied')} /> : null}
           {match ? (
             <Badge
-              variant="accent"
+              variant="primary"
               label={t.markup('app.jobs.match', { percent: match.percent, ...markupTags })}
-              icon={<Sparkles size={11} color={colors.accentForeground} />}
+              icon={<Sparkles size={iconSize.label} color={colors.primary} />}
             />
           ) : null}
         </View>
       ) : null}
-
-      <View style={{ marginTop: space[3], gap: 2 }}>
-        <Text variant="body">
-          <Text weight="semibold">{salary.amount}</Text>
-          {salary.perMonth ? <Text variant="small" tone="mutedForeground">{` ${salary.perMonth}`}</Text> : null}
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[3], rowGap: 2 }}>
-          {commission ? (
-            <Text variant="small" weight="medium">
-              {commission}
-            </Text>
-          ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Target size={13} color={leadsTone} />
-            <Text variant="small" weight={companyLeads ? 'medium' : 'regular'} style={{ color: leadsTone }}>
-              {t(`leadsSource.${job.leads_source}_short`)}
-            </Text>
-          </View>
-        </View>
-      </View>
 
       <View
         style={{
@@ -225,7 +219,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
           flexWrap: 'wrap',
           alignItems: 'center',
           columnGap: space[3],
-          rowGap: 2,
+          rowGap: space[0.5],
           marginTop: space[3],
           paddingTop: space[3],
           borderTopWidth: StyleSheet.hairlineWidth * 2,

@@ -8,7 +8,8 @@ type Variant = 'default' | 'outline' | 'primary' | 'success' | 'warning' | 'dest
 
 /**
  * State, never decoration — the website's rule for badges. A small pill:
- * `accent` is champagne, for what has been checked; the rest say status.
+ * `accent` is champagne, for what has been checked; the rest say status. An
+ * icon beside the label is drawn at `iconSize.label`, in the label's colour.
  */
 export function Badge({ label, variant = 'default', icon }: { label: string; variant?: Variant; icon?: ReactNode }) {
   const { colors } = useTheme();
@@ -31,7 +32,7 @@ export function Badge({ label, variant = 'default', icon }: { label: string; var
         alignSelf: 'flex-start',
         // Never wider than the row it sits in: at the largest text sizes its label wraps instead.
         maxWidth: '100%',
-        paddingHorizontal: space[2] + 2,
+        paddingHorizontal: space[2.5],
         paddingVertical: 3,
         ...corner('full'),
         borderWidth: variant === 'outline' ? StyleSheet.hairlineWidth * 2 : 0,

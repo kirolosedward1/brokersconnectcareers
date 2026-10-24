@@ -17,6 +17,15 @@ export async function deliver(spec) {
   }
   const outcome = mail.provider(spec);
   row.status = outcome;
-  mail.sends.push({ key: spec.dedupeKey, to: spec.to, outcome, text: spec.envelope.text });
+  mail.sends.push({
+    key: spec.dedupeKey,
+    to: spec.to,
+    template: spec.template,
+    outcome,
+    text: spec.envelope.text,
+    html: spec.envelope.html,
+    subject: spec.envelope.subject,
+    unsubscribe: spec.envelope.unsubscribeUrl ?? null,
+  });
   return outcome;
 }
