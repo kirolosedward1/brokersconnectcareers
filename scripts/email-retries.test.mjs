@@ -607,8 +607,8 @@ section('the owner is told once when a listing is approved, and once when a cand
           ? {
               subject: 'انسحب مرشح من «مستشار عقاري أول»',
               heading: 'انسحب مرشح',
-              body: 'انسحب أحمد محمود من «مستشار عقاري أول». لم يعد هذا التقديم قائماً.',
-              unnamed: 'انسحب مرشح من «مستشار عقاري أول». لم يعد هذا التقديم قائماً.',
+              body: 'انسحب أحمد محمود من «مستشار عقاري أول». لم يعد هذا التقديم قائمًا.',
+              unnamed: 'انسحب مرشح من «مستشار عقاري أول». لم يعد هذا التقديم قائمًا.',
             }
           : {
               subject: 'A candidate withdrew from "Senior Property Consultant"',

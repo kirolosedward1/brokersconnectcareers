@@ -1,5 +1,5 @@
 import { createTranslator } from 'use-intl';
-import { employerToAgentOpener } from '@/lib/whatsapp';
+import { employerOpener, employerToAgentOpener } from '@/lib/whatsapp';
 import { catalogues } from '~/i18n/provider';
 
 /*
@@ -88,8 +88,17 @@ describe('one name for one thing', () => {
 
   it('opens a WhatsApp chat from the directory by its name', () => {
     const opener = employerToAgentOpener({ agentName: 'سارة', companyName: 'نايل بروكرز', locale: 'ar' });
-    expect(opener).toContain('دليل الاستشاريين');
+    expect(opener).toBe('مرحبًا سارة، معك نايل بروكرز. اطّلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.');
     expect(employerToAgentOpener({ agentName: 'Sara', companyName: 'Nile', locale: 'en' })).toContain('consultant directory');
+  });
+
+  it('asks an applicant on WhatsApp in MSA, with the same placeholders', () => {
+    expect(employerOpener({
+      candidateName: 'سارة',
+      jobTitle: 'مستشار مبيعات',
+      companyName: 'نايل بروكرز',
+      locale: 'ar',
+    })).toBe('مرحبًا سارة، معك نايل بروكرز. وصلنا طلبك على وظيفة «مستشار مبيعات» ونود التحدث معك. هل الوقت مناسب الآن؟');
   });
 });
 
