@@ -177,6 +177,7 @@ export default function WelcomeScreen() {
           label={t('nav.signUp')}
           variant="champagne"
           size={compact ? 'default' : 'lg'}
+          maxFontSizeMultiplier={WAYS_GROW}
           icon={<UserRoundPlus size={20} color={colors.champagneForeground} />}
           disabled={busy}
           onPress={() => router.push('/sign-up')}
@@ -187,6 +188,7 @@ export default function WelcomeScreen() {
             label={t('nav.signIn')}
             variant="glass"
             size={compact ? 'default' : 'lg'}
+            maxFontSizeMultiplier={WAYS_GROW}
             icon={<SignInMark size={20} color={colors.onHero} />}
             disabled={busy}
             onPress={() => router.push('/sign-in')}
@@ -194,11 +196,12 @@ export default function WelcomeScreen() {
           />
           <SocialCircles size={compact ? 48 : 56} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
         </View>
-        <Text variant="small" style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
+        <Text variant="small" maxFontSizeMultiplier={WAYS_GROW} style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
           {`${t('app.welcome.employer')} `}
           <Text
             variant="small"
             weight="semibold"
+            maxFontSizeMultiplier={WAYS_GROW}
             accessibilityRole="link"
             onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
             suppressHighlighting
@@ -211,6 +214,17 @@ export default function WelcomeScreen() {
     </View>
   );
 }
+
+/**
+ * How far the phone's text size may enlarge the ways on. They are pinned at
+ * the foot and never scroll, so at the largest accessibility sizes they grew
+ * taller than the screen: on an iPhone SE at the largest, 779 points of
+ * buttons on a 667-point screen, the company's way in drawn off its bottom
+ * edge and the words above given no room at all. Twice the ordinary size
+ * keeps them at about 300 points on every phone, with room above them for the
+ * words, which step down to fit.
+ */
+const WAYS_GROW = 2;
 
 /**
  * Steps the words take down when they do not fit, from the largest: the

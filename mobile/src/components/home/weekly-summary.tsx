@@ -12,6 +12,7 @@ import { Text } from '~/components/ui/text';
 import { boardQuery, filtersToParams } from '~/features/jobs/filters';
 import { useBoardTotal } from '~/features/jobs/queries';
 import { useDistricts } from '~/features/taxonomy';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, motion, space } from '~/theme/tokens';
 
@@ -98,6 +99,7 @@ function Line({
   label: string;
   onPress: () => void;
 }) {
+  const large = useLargeText();
   const locale = useLocale();
   const { colors } = useTheme();
   const rolled = useCountUp(count ?? 0);
@@ -124,7 +126,7 @@ function Line({
       <Text variant="headline" weight="bold" style={{ minWidth: 36, fontVariant: ['tabular-nums'] }}>
         {figure}
       </Text>
-      <Text variant="small" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={2}>
+      <Text variant="small" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={large ? undefined : 2}>
         {label}
       </Text>
       <ForwardChevron size={16} color={colors.mutedForeground} />

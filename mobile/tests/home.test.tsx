@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { RefreshControl, Text } from 'react-native';
+import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { formatList } from '@/lib/format';
 import type { JobListItem } from '@/lib/job-list';
 import type { AgentProfileRow, CandidateSummary, ProfileRow } from '@/lib/supabase/database.types';
@@ -26,6 +26,13 @@ import { fakeServer } from './server';
   why, and where the account stands when it is not in good standing. What is
   checked is what is said, what is left out, and where each tap goes.
 */
+
+// The phone's text size, which one test sets to the largest accessibility size.
+const mockWindow = { fontScale: 1 };
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => {
+  const { Dimensions } = jest.requireActual('react-native');
+  return { __esModule: true, default: () => ({ ...Dimensions.get('window'), fontScale: mockWindow.fontScale }) };
+});
 
 jest.mock('~/lib/session-storage', () => {
   const store = new Map<string, string>();
@@ -130,6 +137,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  mockWindow.fontScale = 1;
   // No message may fail to format: the provider reports each one here.
   expect(warnings.filter((warning) => warning.includes('[i18n]'))).toEqual([]);
   warnings.length = 0;
@@ -223,6 +231,27 @@ describe("a candidate's home", () => {
     // Nothing to say about the account while it is in good standing.
     expect(screen.queryByText(ar.standing.heldTitle) === null).toBe(true);
     expect(server.asked('/rest/v1/rpc/my_account_note')).toHaveLength(0);
+  });
+
+  it("puts the latest application's status under its title at the largest text size, and cuts neither short", async () => {
+    const label = formatList([applied.title_ar, 'النيل للوساطة', ar.applicationStatus.shortlisted], 'ar');
+    const row = () => screen.getByLabelText(label);
+
+    // As most people set the phone: one row, the title on one line.
+    await signIn();
+    open();
+    await screen.findByLabelText(label);
+    expect(StyleSheet.flatten(row().props.style).flexDirection).toBe('row');
+    expect(within(row()).getByText(applied.title_ar).props.numberOfLines).toBe(1);
+    screen.unmount();
+
+    // The largest accessibility size: stacked, and the title in full.
+    mockWindow.fontScale = 3.571;
+    open();
+    await screen.findByLabelText(label);
+    expect(StyleSheet.flatten(row().props.style).flexDirection).toBe('column');
+    expect(within(row()).getByText(applied.title_ar).props.numberOfLines).toBeUndefined();
+    expect(within(row()).getByText(ar.applicationStatus.shortlisted)).toBeTruthy();
   });
 
   it("suggests roles on the candidate's own track and district first, says why, and leaves out one applied to", async () => {

@@ -191,6 +191,17 @@ it('never scrolls, and sets the words smaller when they do not fit', async () =>
   expect(headline().props.maxFontSizeMultiplier).toBe(1.3);
 });
 
+it('keeps the ways on to twice the ordinary text size, so they never grow taller than a small phone', async () => {
+  // An iPhone SE at the largest accessibility size: 779 points of buttons
+  // on a 667-point screen, the company's way in drawn off its bottom edge.
+  await launch();
+  await drawn();
+  const grows = (text: string) => screen.getByText(text).props.maxFontSizeMultiplier;
+  expect(grows(ar.nav.signUp)).toBe(2);
+  expect(grows(ar.nav.signIn)).toBe(2);
+  expect(grows(ar.app.auth.forCompanies)).toBe(2);
+});
+
 it('closes onto Home when the reader skips it, and later launches open on Home', async () => {
   await launch();
   await drawn();

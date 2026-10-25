@@ -7,6 +7,7 @@ import { Appear } from '~/components/motion/appear';
 import { Pulse } from '~/components/motion/pulse';
 import { Check, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { motion } from '~/theme/tokens';
 
@@ -21,6 +22,7 @@ export function ApplicationTimeline({
 }: {
   application: { status: ApplicationStatus; created_at: string; employer_viewed_at: string | null };
 }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -107,13 +109,13 @@ export function ApplicationTimeline({
               variant="caption"
               weight={step.state === 'current' ? 'semibold' : 'medium'}
               tone={reached || step.state === 'current' ? 'foreground' : 'mutedForeground'}
-              numberOfLines={2}
+              numberOfLines={large ? undefined : 2}
               style={{ textAlign: 'center' }}
             >
               {name(step)}
             </Text>
             {step.date && reached ? (
-              <Text variant="caption" tone="mutedForeground" numberOfLines={1} style={{ textAlign: 'center' }}>
+              <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
                 {formatDayMonth(step.date, locale)}
               </Text>
             ) : null}

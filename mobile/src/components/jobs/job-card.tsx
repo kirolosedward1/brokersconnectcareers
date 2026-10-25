@@ -276,10 +276,10 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
               <CompanyLogo name={company} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
               <View style={{ flex: 1 }}>
-                <Text weight="semibold" numberOfLines={2}>
+                <Text weight="semibold" numberOfLines={large ? undefined : 2}>
                   {title}
                 </Text>
-                <Text variant="small" tone="mutedForeground" numberOfLines={1}>
+                <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 1}>
                   {`${company} · ${district}`}
                 </Text>
               </View>
