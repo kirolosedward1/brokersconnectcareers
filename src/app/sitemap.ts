@@ -184,6 +184,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/employers', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/app', { changeFrequency: 'monthly', priority: 0.5 }),
     entry('/blog', { changeFrequency: 'weekly', priority: 0.6 }),
+    entry('/support', { changeFrequency: 'monthly', priority: 0.4 }),
   ];
 
   // The policies, dated by their own `updated` line (the Arabic text, which

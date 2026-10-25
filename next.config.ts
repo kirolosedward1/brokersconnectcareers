@@ -87,6 +87,13 @@ const nextConfig: NextConfig = {
    * The hosts are derived rather than typed out, so a different Supabase
    * project or analytics provider does not silently get blocked.
    */
+  async redirects() {
+    return [
+      { source: '/contact', destination: '/support', permanent: true },
+      { source: '/en/contact', destination: '/en/support', permanent: true },
+    ];
+  },
+
   async headers() {
     const supabase = (() => {
       try {
