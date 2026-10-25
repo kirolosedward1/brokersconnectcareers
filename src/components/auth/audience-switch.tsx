@@ -68,7 +68,7 @@ export async function AudienceSwitch({
             href={{ pathname: `/${mode}/${key}`, query: next ? { next } : {} }}
             aria-current={current ? 'page' : undefined}
             className={cn(
-              'flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors',
+              'flex h-11 min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg px-1.5 text-sm font-medium transition-colors',
               current
                 ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',

@@ -5,6 +5,7 @@ import { adminMfaRequired } from '@/lib/admin-mfa';
 import { createClient } from '@/lib/supabase/server';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Locale } from '@/i18n/routing';
+import { suggestedDisplayName } from '@/lib/auth/suggested-name';
 import {
   canAccessAdminArea,
   canAccessCandidateArea,
@@ -118,11 +119,16 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     }
   }
 
-  const metadata = user.user_metadata ?? {};
-  const suggestedName =
-    (typeof metadata.full_name === 'string' && metadata.full_name) ||
-    (typeof metadata.name === 'string' && metadata.name) ||
-    (user.email ? user.email.split('@')[0] : '');
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const appMeta = (user.app_metadata ?? {}) as { provider?: unknown; providers?: unknown };
+  const providers = [
+    ...(Array.isArray(appMeta.providers) ? appMeta.providers.filter((item): item is string => typeof item === 'string') : []),
+    ...(typeof appMeta.provider === 'string' ? [appMeta.provider] : []),
+    ...(user.identities ?? []).map((identity) => identity.provider),
+  ];
+  // Empty when Apple sent no name, or the only "name" is a Hide My Email
+  // token. Onboarding's name field is required, so that is where it is asked.
+  const suggestedName = suggestedDisplayName({ metadata, email: user.email, providers });
 
   const suggestedRole =
     metadata.role === 'candidate' || metadata.role === 'employer' ? metadata.role : undefined;
