@@ -1,3 +1,4 @@
+import { isInApp } from '@/lib/in-app';
 import { locales } from '@/lib/locale';
 import { stripLocalePrefix } from '@/lib/safe-next';
 
@@ -76,48 +77,26 @@ export function isOneTapPage(pathname: string): boolean {
   return path === '/' || path === '/jobs' || JOB_DETAIL.test(path);
 }
 
-/**
- * The mobile app's embedded WebView, and only that.
- *
- * The app loads the website inside `react-native-webview` in one place:
- * `mobile/src/features/auth/captcha.tsx` (Turnstile). The app sets neither
- * `userAgent` nor `applicationNameForUserAgent`, so the WebView is recognised
- * by the two signals it already sends:
- *
- * - The flag. react-native-webview injects `window.ReactNativeWebView` before
- *   page scripts run. The captcha page already posts through it
- *   (`src/app/api/mobile/v1/captcha/route.ts`).
- * - The user agent. On Android the system WebView token is `; wv)` — the same
- *   token `describeClient` already reads as an Android WebView. On iOS the
- *   library's default is a bare WKWebView: an iPhone or iPad, AppleWebKit,
- *   and no `Safari/` token. Mobile Safari, Chrome (`CriOS`) and Firefox
- *   (`FxiOS`) all include `Safari/`, so they are not matched.
- *
- * `expo-web-browser` (the in-app browser Account uses for the site, the
- * policies and licences) is SFSafariViewController or a Chrome Custom Tab.
- * Its user agent is the system browser's and it does not inject
- * `ReactNativeWebView`, so it is not this WebView.
- */
-export function isAppWebView(input: { userAgent?: string | null; reactNativeWebView?: boolean }): boolean {
-  if (input.reactNativeWebView) return true;
-  const ua = input.userAgent ?? '';
-  if (/; wv\)/.test(ua)) return true;
-  return /iPhone|iPad|iPod/.test(ua) && /AppleWebKit/.test(ua) && !/Safari\//.test(ua);
-}
-
 export function shouldShowGoogleOneTap(input: {
   pathname: string;
   /** A session is already in hand, or the chrome request is still in flight. */
   signedIn: boolean;
   sessionPending: boolean;
   dismissedThisSession: boolean;
-  webView: boolean;
+  /** Already-computed WebView flag. The raw signals below are checked too. */
+  webView?: boolean;
+  userAgent?: string | null;
+  reactNativeWebView?: boolean;
+  /** `location.search`, including a leading `?`. `?app=1` hides the prompt. */
+  search?: string | null;
+  /** `document.cookie`. `bc_app=1` hides the prompt. */
+  cookie?: string | null;
   /** GoTrue reports the Google provider as enabled. */
   googleEnabled: boolean;
   clientId: string | null | undefined;
 }): boolean {
   if (input.signedIn || input.sessionPending) return false;
-  if (input.dismissedThisSession || input.webView) return false;
+  if (input.dismissedThisSession || isInApp(input)) return false;
   if (!input.googleEnabled || !isGoogleWebClientId(input.clientId)) return false;
   return isOneTapPage(input.pathname);
 }

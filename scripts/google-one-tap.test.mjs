@@ -17,7 +17,6 @@ const {
   googleOneTapNonce,
   gsiScriptSrc,
   hashNonce,
-  isAppWebView,
   isGoogleWebClientId,
   isOneTapPage,
   oneTapClosedByVisitor,
@@ -25,6 +24,7 @@ const {
   rememberOneTapClosed,
   shouldShowGoogleOneTap,
 } = await import('../src/lib/auth/google-one-tap.ts');
+const { hidesAppPromo, isAppWebView, isInApp } = await import('../src/lib/in-app.ts');
 
 let pass = 0;
 let fail = 0;
@@ -93,6 +93,26 @@ is('signed in', shouldShowGoogleOneTap({ ...open, signedIn: true }), false);
 is('session still loading', shouldShowGoogleOneTap({ ...open, sessionPending: true }), false);
 is('closed earlier this tab', shouldShowGoogleOneTap({ ...open, dismissedThisSession: true }), false);
 is('inside the app WebView', shouldShowGoogleOneTap({ ...open, webView: true }), false);
+is('a WebView user agent', shouldShowGoogleOneTap({ ...open, userAgent: androidWv }), false);
+is('the ReactNativeWebView flag on the prompt', shouldShowGoogleOneTap({ ...open, reactNativeWebView: true, userAgent: safari }), false);
+is('?app=1 hides One Tap', shouldShowGoogleOneTap({ ...open, search: '?app=1' }), false);
+is('the flag among other parameters', shouldShowGoogleOneTap({ ...open, search: '?q=cairo&app=1' }), false);
+is('app=10 is not the flag', shouldShowGoogleOneTap({ ...open, search: '?app=10' }), true);
+is('App=1 is not the flag', shouldShowGoogleOneTap({ ...open, search: '?App=1' }), true);
+is('the bc_app cookie hides One Tap', shouldShowGoogleOneTap({ ...open, cookie: 'bc_app=1' }), false);
+is('the cookie beside another', shouldShowGoogleOneTap({ ...open, cookie: 'theme=light; bc_app=1' }), false);
+is('bc_app=12 is not the cookie', shouldShowGoogleOneTap({ ...open, cookie: 'bc_app=12' }), true);
+is('a name that only contains bc_app', shouldShowGoogleOneTap({ ...open, cookie: 'not_bc_app=1' }), true);
+is('Mobile Safari with no marker still shows it', shouldShowGoogleOneTap({ ...open, userAgent: safari, search: '', cookie: '' }), true);
+
+console.log('— the app marker');
+is('no query and no cookie', hidesAppPromo({ search: '', cookie: '' }), false);
+is('?app=1', hidesAppPromo({ search: '?app=1' }), true);
+is('app=1 without a leading ?', hidesAppPromo({ search: 'app=1' }), true);
+is('the cookie alone', hidesAppPromo({ cookie: 'bc_app=1' }), true);
+is('either signal is the app', isInApp({ search: '?app=1', userAgent: safari }), true);
+is('the WebView without the marker is the app', isInApp({ userAgent: wk, search: '', cookie: '' }), true);
+is('a browser visit is not the app', isInApp({ userAgent: safari, search: '', cookie: '' }), false);
 is('Google disabled at GoTrue', shouldShowGoogleOneTap({ ...open, googleEnabled: false }), false);
 is('no client id', shouldShowGoogleOneTap({ ...open, clientId: undefined }), false);
 is('the e2e stand-in is not a web client id', shouldShowGoogleOneTap({ ...open, clientId: 'e2e' }), false);
@@ -117,6 +137,15 @@ is('the server passes it as the clientId prop', layout.includes('<GoogleOneTap c
 is('One Tap is a client component', prompt.startsWith("'use client'"), true);
 is('the prompt takes clientId and does not read the env', prompt.includes('{ clientId, locale }') && !prompt.includes('process.env') && !prompt.includes('SUPABASE_AUTH_GOOGLE_CLIENT_ID'), true);
 is('GIS is initialized with that prop', prompt.includes('googleInitializeOptions({\n              clientId,'), true);
+is(
+  'the prompt reads the app marker and the WebView',
+  prompt.includes('window.location.search') &&
+    prompt.includes('document.cookie') &&
+    prompt.includes('navigator.userAgent') &&
+    prompt.includes('ReactNativeWebView') &&
+    !prompt.includes('document.cookie ='),
+  true,
+);
 is('the sign-in page', shouldShowGoogleOneTap({ ...open, pathname: '/sign-in' }), false);
 is('sign-up', shouldShowGoogleOneTap({ ...open, pathname: '/sign-up/candidate' }), false);
 is('the apply form', shouldShowGoogleOneTap({ ...open, pathname: '/jobs/senior-broker/apply' }), false);

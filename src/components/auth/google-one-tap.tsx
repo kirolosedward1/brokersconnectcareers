@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { usePathname } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import {
   googleInitializeOptions,
   googleOneTapNonce,
   gsiScriptSrc,
-  isAppWebView,
   oneTapClosedByVisitor,
   oneTapClosedThisSession,
   rememberOneTapClosed,
@@ -25,6 +24,10 @@ import { useRefreshSession, useSession } from '@/components/session/session-prov
  * `prompt_parent_id`, so there is no container to restyle. Closing it is
  * remembered for this tab (`bc.google-one-tap`) and, separately, by Google's
  * own cooldown — that cookie is never cleared here.
+ *
+ * It stays hidden in the app: `?app=1`, the `bc_app` session cookie, the
+ * `ReactNativeWebView` flag, and the WebView user-agent tokens. Those are
+ * read here and decided in `isInApp`. This component does not write `bc_app`.
  *
  * A successful sign-in stays on this URL. The session cookie is written by
  * the browser client; the header reads it back from /api/chrome, and
@@ -56,21 +59,34 @@ declare global {
 
 export function GoogleOneTap({ clientId, locale }: { clientId: string; locale: Locale }) {
   const pathname = usePathname();
+  const searchKey = useSearchParams().toString();
   const session = useSession();
   const refreshSession = useRefreshSession();
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const [webView, setWebView] = useState(false);
+  const [surface, setSurface] = useState({ userAgent: '', reactNativeWebView: false, search: '', cookie: '' });
   const [dismissed, setDismissed] = useState(false);
   const [finished, setFinished] = useState(false);
   const generation = useRef(0);
   const nonces = useRef(new Map<number, string>());
 
   useEffect(() => {
-    setWebView(isAppWebView({ userAgent: navigator.userAgent, reactNativeWebView: typeof window.ReactNativeWebView !== 'undefined' }));
-    setDismissed(oneTapClosedThisSession());
-    setReady(true);
-  }, []);
+    const read = () => {
+      setSurface({
+        userAgent: navigator.userAgent,
+        reactNativeWebView: typeof window.ReactNativeWebView !== 'undefined',
+        search: window.location.search,
+        cookie: document.cookie,
+      });
+      setDismissed(oneTapClosedThisSession());
+      setReady(true);
+    };
+    read();
+    // The results card writes `bc_app` and announces it. One Tap reads the
+    // same cookie and hides without waiting for the next navigation.
+    window.addEventListener('bc-app-view', read);
+    return () => window.removeEventListener('bc-app-view', read);
+  }, [pathname, searchKey]);
 
   const onCredential = useCallback(
     async (response: { credential?: string }, issued: number) => {
@@ -102,7 +118,10 @@ export function GoogleOneTap({ clientId, locale }: { clientId: string; locale: L
       signedIn: session.kind === 'user',
       sessionPending: session.kind === 'pending',
       dismissedThisSession: dismissed,
-      webView,
+      userAgent: surface.userAgent,
+      reactNativeWebView: surface.reactNativeWebView,
+      search: surface.search,
+      cookie: surface.cookie,
       googleEnabled: true,
       clientId,
     });

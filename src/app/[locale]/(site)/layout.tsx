@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -55,9 +56,11 @@ export default async function SiteLayout({
       {/* The chrome is the visitor's. A session cookie fills the account
           cluster in the browser, which is what lets these pages be cached. */}
       <SessionProvider>
-        {providers.google && googleClientId ? (
-          <GoogleOneTap clientId={googleClientId} locale={locale as Locale} />
-        ) : null}
+        <Suspense fallback={null}>
+          {providers.google && googleClientId ? (
+            <GoogleOneTap clientId={googleClientId} locale={locale as Locale} />
+          ) : null}
+        </Suspense>
         <SiteHeader locale={locale as Locale} />
         <LivePolicyNotice agreeLabel={tLegal('agree')} failedLabel={tLegal('agreeFailed')}>
           <div className="text-sm">
