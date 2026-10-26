@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AgentProfileInput, MobileActions } from '@/lib/mobile-api/contract';
 import { releaseUnusedCv } from '@/lib/cv-in-use';
 import { canAccessCandidateArea } from '@/lib/permissions';
+import { useRetryKey } from '~/lib/retry-key';
 import { clean } from '@/lib/security/sanitize';
 import type {
   AgentCertificationRow,
@@ -34,10 +35,12 @@ function useCandidateId(): string | null {
  */
 export function useAgentProfile() {
   const candidateId = useCandidateId();
+  const queryClient = useQueryClient();
+  const queryKey = ['profile', 'agent', candidateId];
   return useQuery({
-    queryKey: ['profile', 'agent', candidateId],
+    queryKey,
     enabled: Boolean(candidateId),
-    queryFn: async () => {
+    queryFn: async (): Promise<{ agent: AgentProfileRow | null; developerIds: number[] | null }> => {
       const { data, error } = await supabase
         .from('agent_profiles')
         .select('*')
@@ -45,11 +48,17 @@ export function useAgentProfile() {
         .maybeSingle();
       if (error) throw error;
       const agent = (data as AgentProfileRow | null) ?? null;
-      if (!agent) return { agent: null, developerIds: [] as number[] };
-      // Allowed to fail quietly, as on the website: the chips draw unticked
-      // and the next save corrects them.
-      const { data: developers } = await supabase.from('agent_developers').select('developer_id').eq('agent_id', agent.id);
-      return { agent, developerIds: (developers ?? []).map((row) => row.developer_id as number) };
+      if (!agent) return { agent: null, developerIds: [] };
+      // Unreadable, the developers are not taken for none: the chips would
+      // draw unticked, and the next save — which sends the ticked ones —
+      // would wipe them. Those read before stand; with none read yet, null,
+      // and the form waits for them (everything else here does not).
+      const developers = await supabase.from('agent_developers').select('developer_id').eq('agent_id', agent.id);
+      if (developers.error) {
+        const before = queryClient.getQueryData<{ developerIds: number[] | null }>(queryKey);
+        return { agent, developerIds: before?.developerIds ?? null };
+      }
+      return { agent, developerIds: (developers.data ?? []).map((row) => row.developer_id as number) };
     },
   });
 }
@@ -113,8 +122,10 @@ export class SaveRefused extends Error {
   constructor(
     readonly reason: string,
     readonly fieldErrors?: Record<string, string>,
+    /** What went wrong underneath, said with the error (an upload's own message). */
+    readonly detail?: string,
   ) {
-    super(reason);
+    super(detail ? `${reason}: ${detail}` : reason);
     this.name = 'SaveRefused';
   }
 }
@@ -138,7 +149,7 @@ export function useSaveAgentProfile() {
       const uploaded =
         cv.kind === 'file'
           ? await uploadCv(userId, cv.file).catch((error: unknown) => {
-              throw error instanceof CvUploadFailed ? new SaveRefused(error.reason) : error;
+              throw error instanceof CvUploadFailed ? new SaveRefused(error.reason, undefined, error.detail) : error;
             })
           : null;
 
@@ -261,31 +272,37 @@ async function entryStored(entry: CvEntryInput, known: ReadonlySet<string>): Pro
   );
 }
 
-function sendCvEntry(entry: CvEntryInput) {
+function sendCvEntry(entry: CvEntryInput, idempotencyKey: string | undefined) {
   return entry.section === 'experience'
-    ? callAction('saveExperience', entry.input)
+    ? callAction('saveExperience', { ...entry.input, idempotencyKey })
     : entry.section === 'education'
-      ? callAction('saveEducation', entry.input)
-      : callAction('saveCertification', entry.input);
+      ? callAction('saveEducation', { ...entry.input, idempotencyKey })
+      : callAction('saveCertification', { ...entry.input, idempotencyKey });
 }
 
 /** Add a CV entry, or change one (the website's actions take an id for that). */
 export function useSaveCvEntry() {
   const queryClient = useQueryClient();
+  // The same entry sent again carries the same key, and the website answers
+  // with the entry it already added (src/lib/actions/idempotency.ts).
+  const retryKey = useRetryKey();
   return useMutation({
     mutationFn: async (entry: CvEntryInput) => {
       // The section's entries as the profile showed them before this one was sent; unknown while unread.
       const before = queryClient.getQueryData<CvSections>(['profile', 'cv', entry.input.agentId]);
       const known = before ? new Set((before[LIST[entry.section]] as { id: string }[]).map((row) => row.id)) : null;
-      const result = await sendCvEntry(entry).catch(async (error: unknown) => {
+      const key = entry.input.id ? undefined : retryKey.for(entry);
+      const result = await sendCvEntry(entry, key).catch(async (error: unknown) => {
         // A new entry with no answer may be in, and only the answer lost: the
-        // database decides. A change sent again changes nothing twice.
+        // database decides. A change sent again changes nothing twice. (The
+        // key settles a retry on its own; this is for a website without it.)
         if (!entry.input.id && known && !refusedAtTheDoor(error) && (await entryStored(entry, known))) {
           return { ok: true as const };
         }
         throw error;
       });
       if (!result.ok) throw new SaveRefused(result.error, result.fieldErrors);
+      retryKey.done();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });

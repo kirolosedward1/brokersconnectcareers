@@ -1,7 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
-import { getViewer } from '@/lib/auth';
+import { adminMfaRequired, getViewer } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { resolveNotification } from '@/lib/notifications/open';
@@ -13,6 +13,26 @@ import {
   updateNotificationPreferences,
   updatePushPreferences,
 } from '@/lib/actions/account';
+import {
+  addModerationNote,
+  closeDeletionRequest,
+  deleteTaxonomy,
+  endSessions,
+  getDocumentUrl,
+  moderateJob,
+  moderateReports,
+  requeueEmail,
+  revealContact,
+  reviewCompany,
+  saveTaxonomy,
+  setAccountApproval,
+  setAgentRestriction,
+  setCompanySuspension,
+  setJobFeatured,
+  setSignInBlock,
+  setUserRole,
+} from '@/lib/actions/admin';
+import { closeReports, decideAppeal, setReportingRestriction } from '@/lib/actions/moderation';
 import { recordAgentView } from '@/lib/agent-views';
 import { revealAgentContact } from '@/lib/actions/agent-contact';
 import { saveAgentProfile } from '@/lib/actions/agent-profile';
@@ -41,7 +61,7 @@ import {
   saveProfileRecord,
 } from '@/lib/actions/cv';
 import { findSimilarListing, salaryReferenceFor, saveJob, transitionJob } from '@/lib/actions/employer-jobs';
-import { recordJobView, toggleSavedJob } from '@/lib/actions/jobs';
+import { recordJobView, setSavedJobNote, toggleSavedJob } from '@/lib/actions/jobs';
 import { completeOnboarding } from '@/lib/actions/onboarding';
 import { acceptPolicies } from '@/lib/actions/policies';
 import { reportTarget } from '@/lib/actions/reports';
@@ -55,6 +75,8 @@ import {
 import { reportAuthOutcome } from '@/lib/actions/security';
 import { toggleSavedAgent } from '@/lib/actions/talent-pool';
 import { uploadImage } from '@/lib/actions/uploads';
+import { adminDoor } from './admin-door';
+import { mobileScope } from './context';
 import {
   MULTIPART_ACTIONS,
   PUBLIC_ACTIONS,
@@ -67,8 +89,12 @@ import {
  *
  * Each entry runs the website's own server action, so an application from the
  * app sends the same emails, passes the same file check and meets the same
- * rate limits as one from the website. The admin console and checkout are not
- * here: the app has neither.
+ * rate limits as one from the website. Checkout is not here: the app sells
+ * nothing. Of the admin console, every lever the website's console has
+ * (ADMIN_ACTIONS) — listings, companies, accounts, consultants, reports and
+ * appeals decided, taxonomy kept, a dead letter retried, a verification paper
+ * opened — and each behind the admin door below, so the app's console asks of
+ * a session exactly what the website's does.
  *
  * Most actions take one input object and validate it themselves. The adapters
  * below are for the ones that take positional arguments or none — several of
@@ -107,6 +133,25 @@ const seenSchema = z.object({ ids: z.array(uuid).min(1).max(200) });
 
 /** A consultant's handle: the slug, or the id a locked card is opened by — getAgentCard()'s rule. */
 const AGENT_HANDLE = z.string().regex(/^(?:[a-z0-9][a-z0-9-]{0,118}|[0-9a-f-]{36})$/);
+
+/**
+ * An admin lever, run only for a session the website's console would let in
+ * (admin-door.ts): with an authenticator, its code given this session; where
+ * the deployment requires one, an authenticator at all. Anybody who is not an
+ * admin is told `forbidden` rather than how to become one; the action and
+ * the database check the role again regardless.
+ */
+function forAdmins<R>(action: (input: unknown) => Promise<R>) {
+  return async (input: unknown): Promise<R | ActionResult> => {
+    const session = mobileScope()?.session;
+    if (!session) return { ok: false, error: 'unauthenticated' };
+    const door = adminDoor(session, adminMfaRequired());
+    if (door === 'open') return action(input);
+    const supabase = await createClient();
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+    return { ok: false, error: profile?.role === 'admin' ? door : 'forbidden' };
+  };
+}
 
 export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   // Account
@@ -153,6 +198,7 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
 
   // Jobs, searches, follows
   toggleSavedJob: { run: positional(z.string(), 'jobId', toggleSavedJob) },
+  setSavedJobNote: { run: (input) => setSavedJobNote(input) },
   recordJobView: {
     run: async (input) => {
       const slug = record(input).slug;
@@ -227,6 +273,28 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   },
 
   submitAppeal: { run: (input) => submitAppeal(input) },
+
+  // The admin console's levers
+  moderateJob: { run: forAdmins(moderateJob) },
+  reviewCompany: { run: forAdmins(reviewCompany) },
+  setAccountApproval: { run: forAdmins(setAccountApproval) },
+  moderateReports: { run: forAdmins(moderateReports) },
+  getDocumentUrl: { run: forAdmins(positional(uuid, 'documentId', getDocumentUrl)) },
+  revealContact: { run: forAdmins(revealContact) },
+  addModerationNote: { run: forAdmins(addModerationNote) },
+  setReportingRestriction: { run: forAdmins(setReportingRestriction) },
+  setUserRole: { run: forAdmins(setUserRole) },
+  setSignInBlock: { run: forAdmins(setSignInBlock) },
+  endSessions: { run: forAdmins(endSessions) },
+  setJobFeatured: { run: forAdmins(setJobFeatured) },
+  setCompanySuspension: { run: forAdmins(setCompanySuspension) },
+  setAgentRestriction: { run: forAdmins(setAgentRestriction) },
+  closeReports: { run: forAdmins(closeReports) },
+  decideAppeal: { run: forAdmins(decideAppeal) },
+  saveTaxonomy: { run: forAdmins(saveTaxonomy) },
+  deleteTaxonomy: { run: forAdmins(deleteTaxonomy) },
+  requeueEmail: { run: forAdmins(requeueEmail) },
+  closeDeletionRequest: { run: forAdmins(closeDeletionRequest) },
 };
 
 export function isActionName(name: string): name is MobileActionName {

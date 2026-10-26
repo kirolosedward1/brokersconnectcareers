@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Keyboard, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Check, ChevronDown, X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useFieldError } from './field';
 import { Text } from './text';
+import { useGatedModal } from '~/lib/sheet-gate';
+import { useSheetFence } from '~/components/ui/sheet-fence';
+import { appDirection } from '~/lib/direction';
 
 export type SelectOption<T extends string | number> = { value: T; label: string };
 
@@ -15,6 +21,9 @@ export type SelectOption<T extends string | number> = { value: T; label: string 
  * `placeholder` doubles as the empty choice ("optional") when the field may
  * be left unset, exactly as the website's first <option value="">; a
  * `required` one offers no empty choice, as a <select> without it.
+ *
+ * Inside a Field with an error its edge is the error's colour, and VoiceOver
+ * hears the error as its hint. A new choice clicks, as a chip's does.
  */
 export function Select<T extends string | number>({
   label,
@@ -36,12 +45,19 @@ export function Select<T extends string | number>({
   inlineLabel?: boolean;
 }) {
   const t = useTranslations('common');
+  // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
+  const fence = useSheetFence();
   const { colors } = useTheme();
+  const large = useLargeText();
   const insets = useSafeAreaInsets();
+  const error = useFieldError();
   const [open, setOpen] = useState(false);
   const current = options.find((option) => option.value === value) ?? null;
+  // Shown once no other sheet is still closing: a second picker tapped as the first slid away never showed.
+  const gate = useGatedModal(open, () => setOpen(false));
 
   const choose = (next: T | null) => {
+    if (next !== (current?.value ?? null)) haptic.selection();
     onChange(next);
     setOpen(false);
   };
@@ -53,30 +69,36 @@ export function Select<T extends string | number>({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${current?.label ?? placeholder}`}
-        onPress={() => setOpen(true)}
+        accessibilityHint={error ?? undefined}
+        accessibilityState={{ expanded: open }}
+        onPress={() => {
+          // A field still being typed in keeps the keyboard up over the sheet, hiding its last choices.
+          Keyboard.dismiss();
+          setOpen(true);
+        }}
         style={({ pressed }) => ({
           minHeight: hitTarget + 6,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: space[2],
-          paddingHorizontal: space[4] - 2,
+          paddingHorizontal: space[3.5],
           ...corner('lg'),
           borderWidth: 1,
-          borderColor: colors.input,
+          borderColor: error ? colors.destructive : colors.input,
           backgroundColor: pressed ? colors.muted : colors.card,
         })}
       >
-        {/* Inline, the words wrap rather than cut: it is how the largest text sizes show a choice. */}
-        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel ? undefined : 1} style={{ flexShrink: 1 }}>
+        {/* Inline, or at the largest text sizes, the words wrap rather than cut. */}
+        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel || large ? undefined : 1} style={{ flexShrink: 1 }}>
           {inlineLabel ? <Text tone="mutedForeground">{`${label}: `}</Text> : null}
           {current?.label ?? placeholder}
         </Text>
         <ChevronDown size={18} color={colors.mutedForeground} />
       </Pressable>
 
-      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={() => setOpen(false)}>
+        <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View
             style={{
               flexDirection: 'row',

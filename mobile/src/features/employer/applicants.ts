@@ -3,6 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useIsFocused } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { canAccessEmployerArea } from '@/lib/permissions';
+import { useRetryKey } from '~/lib/retry-key';
 import { clean } from '@/lib/security/sanitize';
 import type {
   ApplicationNoteRow,
@@ -11,7 +12,16 @@ import type {
   JobStatus,
   JobTrack,
 } from '@/lib/supabase/database.types';
+import {
+  APPLICATION_STAGES,
+  excludeWithdrawn,
+  orderInbox,
+  withdrawnAtMissing,
+  withdrawnStatusMissing,
+  withWithdrawnLast,
+} from '@/lib/application-stages';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -24,7 +34,6 @@ import { supabase } from '~/lib/supabase';
  */
 
 export const APPLICANTS_CAP = 200;
-export const STAGES: readonly ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
 
 export type ApplicantProfile = {
   slug: string;
@@ -84,7 +93,10 @@ function useCompanyId(): string | null {
 export type ListingPipeline = {
   job: { id: string; slug: string; title_ar: string; title_en: string | null; status: JobStatus };
   applicants: Applicant[];
+  /** Standing applications. A withdrawal is on the page and not in this number. */
   total: number;
+  /** Every application, which is what the "this list was cut" line compares with. */
+  matched: number;
 };
 
 /** One listing and its newest two hundred applicants, with the exact total. Null when it is not the company's. */
@@ -109,8 +121,16 @@ export function useListingApplicants(jobId: string) {
         .order('created_at', { ascending: false })
         .limit(APPLICANTS_CAP);
       if (error) throw error;
-      const applicants = normalise(data ?? []);
-      return { job: job as ListingPipeline['job'], applicants, total: count ?? applicants.length };
+      const applicants = withWithdrawnLast(normalise(data ?? []));
+      const matched = count ?? applicants.length;
+      // Same count as the website's header. Until `withdrawn` is a status, the
+      // filter cannot be sent and every row is standing.
+      const standing = await excludeWithdrawn(
+        supabase.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', jobId),
+      );
+      if (standing.error && !withdrawnStatusMissing(standing.error)) throw standing.error;
+      const total = standing.error ? matched : (standing.count ?? matched);
+      return { job: job as ListingPipeline['job'], applicants, total, matched };
     },
   });
 }
@@ -136,7 +156,7 @@ export function parseInboxFilters(params: Record<string, string | string[] | und
   const track = one('track');
   const job = one('job');
   return {
-    stage: (STAGES as readonly string[]).includes(stage) ? (stage as ApplicationStatus) : null,
+    stage: (APPLICATION_STAGES as readonly string[]).includes(stage) ? (stage as ApplicationStatus) : null,
     job: UUID.test(job) ? job : null,
     q: one('q').trim().slice(0, 80),
     band: (EXPERIENCE_BANDS as readonly string[]).includes(band) ? (band as ExperienceBand) : null,
@@ -144,9 +164,15 @@ export function parseInboxFilters(params: Record<string, string | string[] | und
   };
 }
 
-/** A name to search for, with LIKE's own characters taken literally. */
-function likePattern(q: string): string {
-  return `%${q.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+/**
+ * A name to search for: LIKE's own characters taken out, and the letters
+ * Arabic spells more than one way left open — the website's own reading of
+ * a name (looseArabicNeedle, as its inbox and console read one), so «احمد»
+ * finds «أحمد» on both. Null when nothing searchable was typed.
+ */
+function likePattern(q: string): string | null {
+  const needle = looseArabicNeedle(q);
+  return needle ? `%${needle}%` : null;
 }
 
 export type Inbox = { rows: Applicant[]; counts: Record<ApplicationStatus, number>; any: number };
@@ -165,29 +191,47 @@ export function useInbox(filters: InboxFilters, { enabled = true }: { enabled?: 
       const narrow = <Q extends { eq: (c: string, v: string) => Q; ilike: (c: string, v: string) => Q }>(query: Q) => {
         let next = query.eq('job.company_id', companyId as string);
         if (filters.job) next = next.eq('job_id', filters.job);
-        if (filters.q) next = next.ilike('candidate.full_name', likePattern(filters.q));
+        const pattern = filters.q ? likePattern(filters.q) : null;
+        if (pattern) next = next.ilike('candidate.full_name', pattern);
         if (filters.band) next = next.eq('experience_band', filters.band);
         if (filters.track) next = next.eq('job.track', filters.track);
         return next;
       };
 
-      let main = narrow(
-        supabase
-          .from('applications')
-          .select(`${APPLICATION}, candidate:profiles!inner ( ${CANDIDATE} ), job:jobs!inner (id, title_ar, title_en, track)`),
-      );
-      if (filters.stage) main = main.eq('status', filters.stage);
-
-      const [rows, stages] = await Promise.all([
-        main.order('created_at', { ascending: false }).limit(APPLICANTS_CAP),
-        narrow(supabase.from('applications').select('status, candidate:profiles!inner (full_name), job:jobs!inner (track)')).limit(2000),
-      ]);
+      const listed = () => {
+        let main = narrow(
+          supabase
+            .from('applications')
+            .select(`${APPLICATION}, candidate:profiles!inner ( ${CANDIDATE} ), job:jobs!inner (id, title_ar, title_en, track)`),
+        );
+        if (filters.stage) main = main.eq('status', filters.stage);
+        return main;
+      };
+      // Withdrawn last before the cap, on the mixed inbox. One stage is
+      // already one kind of row. A database without withdrawn_at yet has no
+      // withdrawn rows, so created_at alone is that order.
+      const ordered = filters.stage
+        ? listed().order('created_at', { ascending: false })
+        : orderInbox(listed());
+      const stagesPromise = narrow(
+        supabase.from('applications').select('status, candidate:profiles!inner (full_name), job:jobs!inner (track)'),
+      ).limit(2000);
+      let rows = await ordered.limit(APPLICANTS_CAP);
+      if (!filters.stage && rows.error && withdrawnAtMissing(rows.error)) {
+        rows = await listed().order('created_at', { ascending: false }).limit(APPLICANTS_CAP);
+      }
+      const stages = await stagesPromise;
       if (rows.error) throw rows.error;
       if (stages.error) throw stages.error;
 
-      const counts = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<ApplicationStatus, number>;
-      for (const row of (stages.data ?? []) as { status: ApplicationStatus }[]) counts[row.status] += 1;
-      return { rows: normalise(rows.data ?? []), counts, any: (stages.data ?? []).length };
+      const counts = Object.fromEntries(APPLICATION_STAGES.map((stage) => [stage, 0])) as Record<ApplicationStatus, number>;
+      let any = 0;
+      for (const row of (stages.data ?? []) as { status: ApplicationStatus }[]) {
+        if (row.status === 'withdrawn') continue;
+        counts[row.status] += 1;
+        any += 1;
+      }
+      return { rows: normalise(rows.data ?? []), counts, any };
     },
   });
 }
@@ -404,12 +448,14 @@ async function noteWritten(input: { applicationId: string; body: string; after: 
 export function useAddNote() {
   const queryClient = useQueryClient();
   const authorId = useSession().session?.user.id ?? null;
+  const retryKey = useRetryKey();
   return useMutation({
     // `after`: the newest note the card showed, or null while its notes were unread — then an
     // older note in the same words could not be told from this one, and nothing is looked for.
     mutationFn: async (input: { applicationId: string; body: string; after: number | null }) => {
       const { after } = input;
-      const result = await callAction('addApplicationNote', { applicationId: input.applicationId, body: input.body }).catch(
+      const idempotencyKey = retryKey.for([input.applicationId, input.body]);
+      const result = await callAction('addApplicationNote', { applicationId: input.applicationId, body: input.body, idempotencyKey }).catch(
         async (error: unknown) => {
           // No answer: the note may be in, and only the answer lost — sent again,
           // it was written twice. What the database holds decides.
@@ -420,6 +466,7 @@ export function useAddNote() {
         },
       );
       if (!result.ok) throw new Error(result.error);
+      retryKey.done();
       return result.data?.note ?? null;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employer', 'notes'] }),

@@ -1,4 +1,4 @@
-import { EMPTY_FILTERS, parseJobFilters, type JobFilters } from '@/lib/job-filters';
+import { EMPTY_FILTERS, parseJobFilters, serializeJobFilters, type JobFilters } from '@/lib/job-filters';
 import type { JobListItem } from '@/lib/job-list';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import {
@@ -63,6 +63,28 @@ describe('filters in the route', () => {
     });
   });
 
+  it('names every parameter the website writes, so none is dropped on the way', () => {
+    const everything: JobFilters = {
+      q: 'مبيعات',
+      tracks: ['primary'],
+      leadsSources: ['company_provided'],
+      experienceBands: ['junior_1_3'],
+      employmentTypes: ['full_time'],
+      districtSlugs: ['new-cairo'],
+      governorateSlug: 'cairo',
+      hasBasicSalary: true,
+      minSalary: 10000,
+      commissionTypes: ['percentage'],
+      postedWithin: 7,
+      companySlug: 'nile-brokers',
+      companyTypes: ['developer'],
+      sort: 'salary',
+      page: 2,
+    };
+    const written = [...new Set(serializeJobFilters(everything).keys())];
+    expect(written.sort()).toEqual([...BOARD_PARAMS].sort());
+  });
+
   it('starts a changed board at its first page', () => {
     expect(filtersToParams(filters).page).toBeUndefined();
   });
@@ -92,16 +114,15 @@ describe('the filter sheet', () => {
     sort: 'salary',
   });
 
-  it('counts only what it edits — not the words, the company or the governorate', () => {
-    expect(sheetFilterCount(narrowed)).toBe(3);
+  it('counts only what it edits — the words and its groups, not the company or the governorate', () => {
+    expect(sheetFilterCount(narrowed)).toBe(4);
     expect(sheetFilterCount(EMPTY_FILTERS)).toBe(0);
   });
 
-  it('clears its own groups and keeps the rest', () => {
+  it('clears the words and its own groups, and keeps the rest', () => {
     const cleared: JobFilters = clearSheetFilters(narrowed);
     expect(cleared).toEqual({
       ...EMPTY_FILTERS,
-      q: 'مبيعات',
       companySlug: 'nile-brokers',
       governorateSlug: 'cairo',
       sort: 'salary',

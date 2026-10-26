@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
-import { BellPlus, BellRing, Bookmark, BookmarkCheck, Check } from '~/components/ui/lucide';
+import { BellOff, BellPlus, BellRing, Bookmark, BookmarkCheck, Check, CircleAlert } from '~/components/ui/lucide';
 import { canSaveJobs } from '@/lib/permissions';
 import { Pop } from '~/components/motion/pop';
 import { Button } from '~/components/ui/button';
@@ -16,10 +16,12 @@ import {
   useToggleFollow,
   useToggleSavedJob,
 } from '~/features/saved/queries';
+import { toast } from '~/components/feedback/toast';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * The website's bookmarks, follows and "tell me when there's a new one": each
@@ -36,6 +38,8 @@ function signInThenReturn(next: string) {
 /** The bookmark on a listing's card: whether it is saved, and the tap that changes it. */
 export function useSaveJob(jobId: string) {
   const t = useTranslations('jobs');
+  const tToast = useTranslations('app.toast');
+  const tCommon = useTranslations('common');
   const { actor } = useSession();
   const { ids, known } = useSavedJobIds();
   const saved = ids.has(jobId);
@@ -52,9 +56,34 @@ export function useSaveJob(jobId: string) {
     label: saved ? t('removeSaved') : t('save'),
     toggle: () => {
       if (!known) return;
-      haptic.selection();
+      haptic.tap();
       if (!saved) setSaves((count) => count + 1);
-      toggle.mutate({ jobId, saved });
+      // Said at once, as the bookmark changes; a refusal says so after (and the bookmark goes back).
+      // Refused: the bookmark goes back, and the same change can be tried again.
+      const failed = (wasSaved: boolean) => () => {
+        haptic.error();
+        toast.show({
+          message: tToast('saveFailed'),
+          icon: CircleAlert,
+          tone: 'destructive',
+          action: { label: tCommon('retry'), onPress: () => toggle.mutate({ jobId, saved: wasSaved }, { onError: failed(wasSaved) }) },
+        });
+      };
+      toggle.mutate({ jobId, saved }, { onError: failed(saved) });
+      toast.show(
+        saved
+          ? {
+              message: tToast('unsaved'),
+              icon: Bookmark,
+              action: { label: tToast('undo'), onPress: () => toggle.mutate({ jobId, saved: false }, { onError: failed(false) }) },
+            }
+          : {
+              message: tToast('saved'),
+              icon: BookmarkCheck,
+              tone: 'success',
+              action: { label: tToast('viewSaved'), onPress: () => router.navigate('/dashboard/saved') },
+            },
+      );
     },
   };
 }
@@ -81,7 +110,7 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
     >
       <Pop key={save.jobId} trigger={save.saves}>
         {save.saved ? (
-          <BookmarkCheck size={20} color={colors.primary} />
+          <Bookmark size={20} color={colors.primary} fill={colors.primary} />
         ) : (
           <Bookmark size={20} color={colors.mutedForeground} />
         )}
@@ -109,7 +138,7 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
       disabled={save.pending}
       icon={
         <Pop key={jobId} trigger={save.saves}>
-          {save.saved ? <BookmarkCheck size={18} color={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
+          {save.saved ? <Bookmark size={18} color={colors.primary} fill={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
         </Pop>
       }
       onPress={() => (signedIn ? save.toggle() : signInThenReturn(`/jobs/${slug}`))}
@@ -131,6 +160,8 @@ export function SaveSearchButton({ query, defaultLabel }: { query: string; defau
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState(defaultLabel);
   const [error, setError] = useState<string | null>(null);
+  // Said to VoiceOver too: a live region is Android's alone.
+  useAnnounce(t('saved'), save.isSuccess);
 
   const signedIn = Boolean(session && viewer?.profile);
   if (signedIn && !canSaveJobs(actor)) return null;
@@ -236,6 +267,7 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
   const offered = useOffersFollow();
   const { following } = useFollowing(slug);
   const toggle = useToggleFollow(slug, label);
+  const tApp = useTranslations('app.toast');
   const [error, setError] = useState<string | null>(null);
 
   const signedIn = Boolean(session && viewer?.profile);
@@ -251,6 +283,12 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
     toggle.mutate(
       { follow: !following },
       {
+        onSuccess: () =>
+          toast.show(
+            following
+              ? { message: tApp('unfollowed', { company: label }), icon: BellOff }
+              : { message: tApp('following', { company: label }), icon: BellRing, tone: 'success' },
+          ),
         // The ten-row limit is shared with saved searches, so the message names both.
         onError: (failure) => setError(failure instanceof SaveRefused && failure.reason === 'cap' ? t('followCap') : tCommon('errorBody')),
       },

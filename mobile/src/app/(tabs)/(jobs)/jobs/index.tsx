@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
-import { ScrollView, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { FlashList } from '@shopify/flash-list';
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type Ref } from 'react';
+import { ScrollView, StyleSheet, View, type TextInputInstance } from 'react-native';
+import { router, Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
 import { SearchX, SlidersHorizontal } from '~/components/ui/lucide';
-import type { SearchBarCommands } from 'react-native-screens';
 import {
   activeFilterList,
   countActiveFilters,
@@ -16,6 +15,7 @@ import {
 } from '@/lib/job-filters';
 import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
+import type { JobListItem } from '@/lib/job-list';
 import type { JobBoardResponse } from '@/lib/mobile-api/reads';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { PageFooter } from '~/components/ui/page-footer';
@@ -23,26 +23,46 @@ import { CompanyLogo } from '~/components/companies/company-logo';
 import { FilterSheet } from '~/components/jobs/filter-sheet';
 import { JobCard } from '~/components/jobs/job-card';
 import { PopularLandings } from '~/components/jobs/popular-landings';
+import { QuickFilters } from '~/components/jobs/quick-filters';
+import { SortButton, SortSheet } from '~/components/jobs/sort-menu';
 import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
-import { Segmented } from '~/components/ui/segmented';
+import { PressableScale } from '~/components/ui/pressable-scale';
+import { SearchField } from '~/components/ui/search-field';
 import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { boardQuery, filtersToParams, sheetFilterCount, useFilterLabel } from '~/features/jobs/filters';
-import { useAppliedJobIds } from '~/features/jobs/marks';
+import { useAppliedLast } from '~/features/jobs/marks';
+import { seenDividerBefore, useBoardVisit, useMarkBoardSeen } from '~/features/jobs/new-since';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
+import { useSheet } from '~/lib/use-sheet';
+import { useRollingNumber } from '~/components/motion/rolling-number';
+import { useListOwner } from '~/features/jobs/recent';
+import { rememberSearch } from '~/features/jobs/recent-searches';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
-import { gutter, space } from '~/theme/tokens';
+import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useNextPage } from '~/lib/use-next-page';
 
 const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
+
+/** The board's orders, in the reader's words. */
+function useSortOptions(): { value: JobSort; label: string }[] {
+  const t = useTranslations('jobs');
+  return SORTS.map((sort) => ({
+    value: sort,
+    label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
+  }));
+}
 
 /**
  * The job board — the website's /jobs.
@@ -61,7 +81,6 @@ const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
 export default function BoardScreen() {
   const t = useTranslations();
   const bell = useHeaderBell();
-  const { colors } = useTheme();
   const raw = useLocalSearchParams();
   const filters = useMemo(() => parseJobFilters(raw as SearchParams), [raw]);
   const query = boardQuery(filters);
@@ -71,46 +90,62 @@ export default function BoardScreen() {
   const nextPage = useNextPage(board);
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => board.refetch());
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // The order's card, kept here rather than in the header, which is drawn afresh as the first listings arrive.
+  const sortSheet = useSheet();
+  const sortOptions = useSortOptions();
+  // The Jobs tab pressed again at the top: straight into the words, in the
+  // search field over the board.
+  const searchField = useRef<TextInputInstance>(null);
+  const list = useTabList<FlashListRef<JobListItem>>({
+    onPressAtTop: () => searchField.current?.focus(),
+  });
   const hidden = useHiddenCompanies();
   const read = useMemo(() => flattenBoard(board.data?.pages), [board.data]);
-  const jobs = useMemo(() => withoutHidden(read, hidden), [read, hidden]);
+  const hiddenJobs = useHiddenJobs();
+  const shown = useMemo(() => withoutHiddenJobs(withoutHidden(read, hidden), hiddenJobs), [read, hidden, hiddenJobs]);
   const first = board.data?.pages[0];
-  const total = totalShown(first?.total ?? 0, read.length, jobs.length);
-  const applied = useAppliedJobIds(useMemo(() => jobs.map((job) => job.id), [jobs]));
+  const total = totalShown(first?.total ?? 0, read.length, shown.length);
+  // Rolls from the last count to the new one as the filters change.
+  const rolled = useRollingNumber(first ? total : null) ?? total;
+  // What the reader has applied to goes to the foot of what is loaded, under its own heading.
+  const { jobs, applied } = useAppliedLast(shown);
+  const firstApplied = jobs.find((job) => applied.has(job.id))?.id;
 
-  const apply = (next: JobFilters) => router.setParams(filtersToParams(next));
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const owner = useListOwner();
+  // New since the last visit (features/jobs/new-since.ts): when this person
+  // last looked, as it was when this visit began; and, on the whole board,
+  // the newest listing in front of them now, kept for the next one.
+  const since = useBoardVisit(owner, board.data !== undefined);
+  const inView = useIsFocused();
+  useMarkBoardSeen(owner, {
+    since,
+    whole: countActiveFilters(filters) === 0 && filters.sort === 'newest',
+    inView,
+    jobs: shown,
+  });
+  // Only in the order the words are true of: newest first.
+  const seenBefore = filters.sort === 'newest' ? seenDividerBefore(jobs, since, applied) : null;
+
+  const latestFilters = useRef(filters);
+  useEffect(() => {
+    latestFilters.current = filters;
+  });
+  const apply = (next: JobFilters) => {
+    // Searched for words: kept for the filter sheet to offer again.
+    if (next.q !== filters.q) rememberSearch(owner, next.q);
+    router.setParams(filtersToParams(next));
+  };
   const openFilters = () => setSheetOpen(true);
 
-  // The header's search field follows the filter, whichever way it changed:
-  // typed here, carried in a link, or dropped with its chip.
-  const searchBar = useRef<SearchBarCommands>(null);
-  useEffect(() => {
-    searchBar.current?.setText(filters.q);
-  }, [filters.q]);
-  const clearSearch = () => {
-    if (filters.q) apply({ ...filters, q: '' });
-  };
-
-  const header = (
-    <Stack.Screen
-      options={{
-        title: t('jobs.title'),
-        headerRight: bell,
-        headerSearchBarOptions: {
-          ref: searchBar,
-          placeholder: t('filters.searchPlaceholder'),
-          hideWhenScrolling: false,
-          autoCapitalize: 'none',
-          tintColor: colors.primary,
-          onSearchButtonPress: (event) => apply({ ...filters, q: event.nativeEvent.text.trim().slice(0, 120) }),
-          // Leaving the search drops it: Cancel on iOS, the field's close on Android.
-          onCancelButtonPress: clearSearch,
-          onClose: clearSearch,
-        },
-      }}
-    />
-  );
+  // The words are searched from a field at the top of the board's header —
+  // search is how most people start here, so it is in sight rather than a
+  // tap into the filter sheet (HIG, Searching: "give it a primary
+  // position"). It is the same `q` as the sheet's own field and the website's
+  // panel, applied the same way (apply: kept for Recent searches too), on the
+  // keyboard's Search key as the companies directory's is, and shown as a
+  // chip like any filter.
+  const header = <Stack.Screen options={{ title: t('jobs.title'), headerRight: bell }} />;
 
   const sheet = (
     <FilterSheet
@@ -123,6 +158,17 @@ export default function BoardScreen() {
       }}
     />
   );
+  const sort = (
+    <SortSheet
+      sheet={sortSheet}
+      label={t('jobs.sortBy')}
+      value={filters.sort}
+      options={sortOptions}
+      // Applied once the card has gone: onto the filters as they are then, so a
+      // chip tapped as it faded is kept rather than undone by the order.
+      onChange={(order) => apply({ ...latestFilters.current, sort: order })}
+    />
+  );
 
   if (board.isPending) {
     // The filters and the order work before the first listings are in: on a
@@ -131,6 +177,7 @@ export default function BoardScreen() {
       <>
         {header}
         {sheet}
+        {sort}
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           keyboardDismissMode="on-drag"
@@ -140,7 +187,9 @@ export default function BoardScreen() {
             filters={filters}
             first={undefined}
             apply={apply}
+            searchRef={searchField}
             onFilters={openFilters}
+            onSort={sortSheet.show}
             hasResults={false}
             sponsoredShown={false}
             loading
@@ -159,6 +208,7 @@ export default function BoardScreen() {
       <>
         {header}
         {sheet}
+        {sort}
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           keyboardDismissMode="on-drag"
@@ -168,7 +218,9 @@ export default function BoardScreen() {
             filters={filters}
             first={undefined}
             apply={apply}
+            searchRef={searchField}
             onFilters={openFilters}
+            onSort={sortSheet.show}
             hasResults={false}
             sponsoredShown={false}
             loading
@@ -183,10 +235,20 @@ export default function BoardScreen() {
     <>
       {header}
       {sheet}
+      {sort}
       <FlashList
+        {...list}
         data={jobs}
         keyExtractor={(job) => job.id}
-        renderItem={({ item }) => <JobCard job={item} applied={applied.has(item.id)} />}
+        renderItem={({ item }) => (
+          <>
+            {item.id === seenBefore ? <SeenDivider /> : null}
+            {item.id === firstApplied ? <AppliedHeading /> : null}
+            <JobCard job={item} applied={applied.has(item.id)} swipeable />
+          </>
+        )}
+        // The divider can move without the listings changing (this visit's start read from the phone).
+        extraData={seenBefore}
         ItemSeparatorComponent={Separator}
         contentInsetAdjustmentBehavior="automatic"
         keyboardDismissMode="on-drag"
@@ -198,9 +260,11 @@ export default function BoardScreen() {
           <BoardHeader
             filters={filters}
             first={first}
-            total={total}
+            total={rolled}
             apply={apply}
+            searchRef={searchField}
             onFilters={openFilters}
+            onSort={sortSheet.show}
             hasResults={jobs.length > 0}
             sponsoredShown={jobs.some((job) => job.is_featured)}
           />
@@ -222,6 +286,41 @@ export default function BoardScreen() {
   );
 }
 
+/** Over the listings already applied to, at the foot of the board. */
+function AppliedHeading() {
+  const t = useTranslations('app.jobs');
+  return (
+    <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingTop: space[3], paddingBottom: space[3] }}>
+      {t('appliedHeading')}
+    </Text>
+  );
+}
+
+/**
+ * Above the first listing published before this person last looked at the
+ * board: a hairline either side of a few words. Said as a heading, so
+ * VoiceOver can go straight to where the new ones end.
+ */
+function SeenDivider() {
+  const t = useTranslations('app.jobs');
+  const { colors } = useTheme();
+  const line = { flex: 1, height: StyleSheet.hairlineWidth * 2, backgroundColor: colors.border };
+  return (
+    <View
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={t('seenDivider')}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingTop: space[1], paddingBottom: space[4] }}
+    >
+      <View style={line} />
+      <Text variant="caption" weight="medium" tone="mutedForeground" style={{ flexShrink: 1, textAlign: 'center' }}>
+        {t('seenDivider')}
+      </Text>
+      <View style={line} />
+    </View>
+  );
+}
+
 function Separator() {
   return <View style={{ height: space[3] }} />;
 }
@@ -230,12 +329,58 @@ function Separator() {
  * One block above the listings: how many, in what order, the pinned company
  * if the board is narrowed to one, and what else it is narrowed by.
  */
+/**
+ * Filters, as a button beside the order: the sliders and the word, and how
+ * many of the sheet's filters are on in a small solid badge — filled in the
+ * brand colour while any is.
+ */
+function FiltersButton({ count, onPress }: { count: number; onPress: () => void }) {
+  const t = useTranslations('jobs');
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const on = count > 0;
+  return (
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={on ? `${t('filters')} · ${formatNumber(count, locale)}` : t('filters')}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => ({
+        minHeight: 40,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: space[1.5],
+        paddingStart: space[3],
+        paddingEnd: on ? space[1.5] : space[3],
+        ...corner('full'),
+        borderWidth: StyleSheet.hairlineWidth * 2,
+        borderColor: on ? colors.primary : colors.border,
+        backgroundColor: on ? colors.primary : pressed ? colors.muted : colors.card,
+      })}
+    >
+      <SlidersHorizontal size={15} color={on ? colors.primaryForeground : colors.foreground} />
+      <Text variant="small" weight="semibold" maxFontSizeMultiplier={1.4} style={{ color: on ? colors.primaryForeground : colors.foreground }}>
+        {t('filters')}
+      </Text>
+      {on ? (
+        <View style={{ minWidth: 24, height: 24, paddingHorizontal: 6, ...corner('full'), alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryForeground }}>
+          <Text variant="caption" weight="bold" maxFontSizeMultiplier={1.2} style={{ color: colors.primary }}>
+            {formatNumber(count, locale)}
+          </Text>
+        </View>
+      ) : null}
+    </PressableScale>
+  );
+}
+
 function BoardHeader({
   filters,
   first,
   total = 0,
   apply,
+  searchRef,
   onFilters,
+  onSort,
   hasResults,
   sponsoredShown,
   loading = false,
@@ -245,7 +390,11 @@ function BoardHeader({
   /** How many listings there are, without those of the companies this phone hides. */
   total?: number;
   apply: (next: JobFilters) => void;
+  /** The search field, for the screen to put the cursor in. */
+  searchRef: Ref<TextInputInstance>;
   onFilters: () => void;
+  /** Opens the order's card, which the screen keeps (BoardScreen). */
+  onSort: () => void;
   hasResults: boolean;
   /** A sponsored listing is among the cards drawn — not merely in the answer, which still holds a company the reader hid. */
   sponsoredShown: boolean;
@@ -254,41 +403,39 @@ function BoardHeader({
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
-  const { colors } = useTheme();
-  const labelFor = useFilterLabel(filters);
+  const large = useLargeText();
+  const labelFor = useFilterLabel();
   const active = activeFilterList(filters);
   const company = first?.company;
   const inSheet = sheetFilterCount(filters);
   const searchLabel = useSearchLabel(filters, first);
+  const tAll = useTranslations();
 
   return (
     <View style={{ gap: space[3], marginBottom: space[4] }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
+      <SearchField
+        inputRef={searchRef}
+        value={filters.q}
+        // Not the sheet's own field's name: VoiceOver tells the two apart.
+        label={tAll('app.jobs.searchLabel')}
+        placeholder={tAll('filters.searchPlaceholder')}
+        onSearch={(q) => apply({ ...filters, q })}
+      />
+
+      {/* One line: how many there are, then the order and the filters, small, at its end. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
         {loading ? (
-          <View style={{ flexGrow: 1 }} />
+          <View style={{ flex: 1 }} />
         ) : (
-          <Text variant="small" weight="medium" tone="mutedForeground" style={{ flexGrow: 1 }} accessibilityRole="header">
+          <Text variant="headline" weight="bold" numberOfLines={large ? undefined : 1} style={{ flex: 1 }} accessibilityRole="header">
             {t('resultsCount', { count: total })}
           </Text>
         )}
-        <Chip
-          label={inSheet ? `${t('filters')} · ${formatNumber(inSheet, locale)}` : t('filters')}
-          selected={inSheet > 0}
-          icon={<SlidersHorizontal size={14} color={inSheet ? colors.primaryForeground : colors.foreground} />}
-          onPress={onFilters}
-          feedback={false}
-        />
+        <SortButton label={t('sortBy')} value={filters.sort} options={useSortOptions()} onPress={onSort} />
+        <FiltersButton count={inSheet} onPress={onFilters} />
       </View>
 
-      <Segmented
-        label={t('sortBy')}
-        value={filters.sort}
-        onChange={(sort) => apply({ ...filters, sort })}
-        options={SORTS.map((sort) => ({
-          value: sort,
-          label: t(sort === 'newest' ? 'sortNewest' : sort === 'salary' ? 'sortSalary' : 'sortSeats'),
-        }))}
-      />
+      <QuickFilters filters={filters} apply={apply} />
 
       {company ? (
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] }}>
@@ -299,7 +446,7 @@ function BoardHeader({
             size="sm"
           />
           <View style={{ flex: 1 }}>
-            <Text weight="medium" numberOfLines={1}>
+            <Text weight="medium" numberOfLines={large ? undefined : 1}>
               {t('atCompany', { company: localized(locale, company.name_ar, company.name_en) })}
             </Text>
             <Text
@@ -378,7 +525,7 @@ function EmptyBoard({
   apply: (next: JobFilters) => void;
 }) {
   const t = useTranslations('jobs');
-  const labelFor = useFilterLabel(filters);
+  const labelFor = useFilterLabel();
   const searchLabel = useSearchLabel(filters, first);
   const active = activeFilterList(filters);
   const byKey = new Map(active.map((filter) => [filter.key, filter]));
@@ -392,6 +539,7 @@ function EmptyBoard({
       title={t('empty')}
       body={t('emptyHint')}
       icon={SearchX}
+      illustration="search"
       action={
         <View style={{ alignItems: 'center', gap: space[3] }}>
           {relaxations.length ? (

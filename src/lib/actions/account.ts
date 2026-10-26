@@ -11,7 +11,8 @@ import { after } from 'next/server';
 import { isOwnedPath } from '@/lib/security/files';
 import { publish } from '@/lib/notifications/events';
 import { revokeWithAuthorizationCode } from '@/lib/apple/revoke';
-import { logFailure } from '@/lib/observe';
+import { logFailure, refused } from '@/lib/observe';
+import { sessionOwesSecondFactor } from '@/lib/auth/second-factor-server';
 
 /**
  * Deleting your own account.
@@ -52,6 +53,15 @@ export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'unauthenticated' };
+
+  /*
+    Not from a sign-in that has not given the account's second factor. The
+    account page draws nothing but the challenge until it is answered, but a
+    server action is reachable from any page, and this one cannot be undone:
+    a password alone must not be enough to erase an account its owner chose
+    to protect with a code.
+  */
+  if (await sessionOwesSecondFactor(supabase, user)) return { ok: false, error: 'unauthenticated' };
 
   /*
     owner_id, deliberately, and not membership like everywhere else: the
@@ -119,7 +129,7 @@ export async function deleteMyAccount(input?: unknown): Promise<ActionResult> {
   }
 
   const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('account', error);
 
   for (const bucket of ['cvs', 'avatars'] as const) {
     try {
@@ -180,7 +190,7 @@ export async function requestAccountDeletion(input: unknown): Promise<ActionResu
     p_key: parsed.data.key,
     p_topic: 'account_deletion',
     // For the operator who picks it up: which company, and why it is not a button.
-    p_message: `طلب حذف حساب من مالك شركة «${company.name_ar}» (${company.id}). حذف الحساب هيحذف الشركة وإعلاناتها وطلبات التقديم عليها، فمصير الشركة يتقرر الأول.`,
+    p_message: `طلب حذف حساب من مالك شركة «${company.name_ar}» (${company.id}). حذف الحساب يحذف الشركة وإعلاناتها وطلبات التقديم عليها، فيُقرَّر مصير الشركة أولًا.`,
     p_route: '/dashboard/account',
     p_client: parsed.data.client ?? null,
   });
@@ -260,12 +270,13 @@ export async function updateNotificationPreferences(input: unknown): Promise<Act
     .update(parsed.data)
     .eq('id', user.id)
     .select('id');
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('account', error);
   // The switch flips optimistically and puts itself back when this says no, so
   // a write RLS filtered to nothing has to say no rather than nothing at all.
   if (!saved?.length) return { ok: false, error: 'not_found' };
 
   revalidatePath('/dashboard/account');
+  revalidatePath('/dashboard/account/emails');
   return { ok: true };
 }
 
@@ -281,8 +292,8 @@ const pushPreferencesSchema = z
 
 /**
  * The push switches (migration 335): which kinds reach the person's phones,
- * and whether the night is kept quiet. The app is the only place they are
- * shown — the website sends no pushes — but they are the person's, not one
+ * and whether the night is kept quiet. The website sends no pushes; the
+ * account page and the app edit the same row. They are the person's, not one
  * phone's, so they live on the profile beside the email switches and are
  * written the same way: through the caller's own session, RLS deciding the
  * row, and a write that touched nothing reported as such.
@@ -308,6 +319,9 @@ export async function updatePushPreferences(input: unknown): Promise<ActionResul
     .select('id');
   if (error) return { ok: false, error: 'failed' };
   if (!saved?.length) return { ok: false, error: 'not_found' };
+
+  revalidatePath('/dashboard/account');
+  revalidatePath('/dashboard/account/alerts');
   return { ok: true };
 }
 

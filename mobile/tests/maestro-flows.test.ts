@@ -30,30 +30,33 @@ const { parseAllDocuments } = require(join(__dirname, '..', 'node_modules', 'yam
 /** The key each phrase is the text of, on the screen the flow looks for it on. */
 const KEYS: Record<string, string> = {
   // checks.yaml: the states no screen may be showing.
-  'في حاجة غلط': 'common.error',
-  'مفيش اتصال بالإنترنت': 'app.offline.title',
-  'الخدمة مش متاحة دلوقتي': 'app.unavailable.title',
-  'الصفحة مش موجودة': 'common.notFound',
-  'في نسخة أحدث من التطبيق': 'app.update.title',
-  // The first launch's welcome, Home, the tabs and the appearance switch.
+  'حدث خطأ': 'common.error',
+  'لا يوجد اتصال بالإنترنت': 'app.offline.title',
+  'الخدمة غير متاحة الآن': 'app.unavailable.title',
+  'الصفحة غير موجودة': 'common.notFound',
+  'يتوفر إصدار أحدث من التطبيق': 'app.update.title',
+  // The welcome, Home, the tabs and the appearance switch.
   'تخطي': 'app.welcome.skip',
+  'إنشاء حساب': 'nav.signUp',
+  '.*سجّل شركتك': 'app.auth.forCompanies',
   'منصة متخصصة لوظائف العقارات في مصر': 'landingPage.hero.title',
   'الرئيسية': 'app.tabs.home',
   'حسابي': 'app.tabs.account',
   'غامق': 'theme.dark',
   // The board, a listing, the companies.
   'الفلاتر.*': 'jobs.filters',
-  'مفيش وظائف مطابقة لبحثك.': 'jobs.empty',
+  'لا توجد وظائف مطابقة لبحثك.': 'jobs.empty',
   'مشاركة': 'jobs.share',
-  'الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها.': 'companies.lede',
-  'مفيش شركات مطابقة.': 'companies.empty',
-  // signed-out.yaml: Account's card, its sign-in button, the sheet, the forgotten password, sign-up.
-  'ادخل على حسابك': 'app.account.signedOutTitle',
+  'الشركات التي توظّف على بروكرز كونكت، والموثّق منها.': 'companies.lede',
+  'لا توجد شركات مطابقة.': 'companies.empty',
+  // signed-out.yaml: Account's card, its sign-in button, the sheet and its email button, the forgotten password, sign-up.
+  'سجّل الدخول إلى حسابك': 'app.account.signedOutTitle',
   'تسجيل الدخول': 'nav.signIn',
-  'أهلاً بيك تاني': 'auth.signInTitle',
+  'مرحبًا بعودتك': 'auth.signInTitle',
+  'المتابعة بالبريد الإلكتروني': 'app.auth.continueWithEmail',
   'نسيت كلمة المرور؟': 'auth.forgotPassword',
-  'اكتب إيميلك وهنبعتلك لينك تعمل بيه كلمة مرور جديدة.': 'auth.forgotBody',
-  'اعمل حسابك': 'auth.signUpTitle',
+  'اكتب بريدك وسنرسل لك رابطًا لتعيين كلمة مرور جديدة.': 'auth.forgotBody',
+  'أنشئ حسابك': 'auth.signUpTitle',
   'تأكيد كلمة المرور': 'auth.passwordConfirm',
 };
 
@@ -85,10 +88,10 @@ const TEXT_KEYS = new Set([
 /**
  * Strings that are no text on screen: a command with no argument (under no
  * key), the app, a flow's name, a file run, a link opened, a screenshot's
- * name, a condition, a point tapped or swiped between. Any other key holding a string fails the test below, so
+ * name, a condition, a point tapped or swiped between, a test id. Any other key holding a string fails the test below, so
  * a new way of naming text is sorted into one list or the other.
  */
-const OTHER_KEYS = new Set(['', 'appId', 'name', 'file', 'runFlow', 'openLink', 'takeScreenshot', 'true', 'point', 'start', 'end']);
+const OTHER_KEYS = new Set(['', 'appId', 'name', 'file', 'runFlow', 'openLink', 'takeScreenshot', 'true', 'point', 'start', 'end', 'id']);
 
 /** The strings in a flow by the key they sit under; an item of a list sits under the list's key. */
 function stringsIn(node: unknown, key: string, into: { key: string; value: string }[]): { key: string; value: string }[] {

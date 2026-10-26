@@ -133,7 +133,7 @@ async function send(path: string, init: RequestInit, withToken: boolean): Promis
     response = await attempt(token);
 
     if (response.status === 401 && token) {
-      const { data, error } = await supabase.auth.refreshSession();
+      const { data, error } = await within(supabase.auth.refreshSession(), left());
       if (error || !data.session) {
         // Only a refusal ends the session here: the refresh token is spent or
         // revoked, or the session is gone. No answer, a rate limit (carriers
@@ -171,6 +171,27 @@ async function failure(response: Response): Promise<ApiError> {
   );
 }
 
+/**
+ * A 200's body, or no answer when it is not the website's JSON.
+ *
+ * Hotel and café Wi-Fi answer every request with their own sign-in page,
+ * status 200, until the person accepts the terms; a connection that drops
+ * mid-body leaves half an answer. Either reached JSON.parse as a SyntaxError,
+ * which the screens said as "something went wrong" — not as the connection
+ * it was — and which `noAnswer` did not count. As status 0 it reads as
+ * offline, and, like any call with no answer, not as refused at the door:
+ * the action may have run, so what it wrote is looked for before it is sent
+ * again (job-form.ts, profile/queries.ts).
+ */
+async function answer<T>(response: Response): Promise<T> {
+  if (!(response.headers.get('content-type') ?? '').includes('json')) throw new ApiError(0, 'not_json');
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiError(0, 'not_json');
+  }
+}
+
 /** Run one of the website's server actions as the signed-in user (or signed out, for the four that allow it). */
 export async function callAction<N extends MobileActionName>(
   name: N,
@@ -189,7 +210,7 @@ export async function callAction<N extends MobileActionName>(
     true,
   );
   if (response.status !== 200) throw await failure(response);
-  return (await response.json()) as MobileActionOutput<N>;
+  return answer<MobileActionOutput<N>>(response);
 }
 
 /**
@@ -202,5 +223,5 @@ export async function callAction<N extends MobileActionName>(
 export async function getJson<T>(path: string, options: { signedIn?: boolean } = {}): Promise<T> {
   const response = await send(path, { method: 'GET' }, options.signedIn ?? false);
   if (!response.ok) throw await failure(response);
-  return (await response.json()) as T;
+  return answer<T>(response);
 }

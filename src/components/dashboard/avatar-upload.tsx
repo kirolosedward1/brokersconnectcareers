@@ -3,14 +3,32 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { ImageUp, Trash2 } from 'lucide-react';
+import { ImageUp, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { saveAvatar } from '@/lib/actions/account';
 import { uploadImage } from '@/lib/actions/uploads';
+import { imageFailureCopy } from '@/lib/image-upload';
+import { IMAGE_ACCEPT, prepareUploadImage } from '@/lib/prepare-upload-image';
+import { usePreparingImage } from '@/lib/use-preparing-image';
 import { reach } from '@/lib/reach';
-import { fileType } from '@/lib/file-type';
 import { useSessionRecovery } from '@/lib/session-expired';
+
+function described(
+  tValidation: (key: 'imageType' | 'imageUnreadable' | 'imageTooLarge' | 'uploadRateLimited' | 'storageError') => string,
+  tCommon: (key: 'errorBody') => string,
+  error: string,
+  detail?: string,
+) {
+  return imageFailureCopy(error, detail, {
+    imageType: tValidation('imageType'),
+    imageUnreadable: tValidation('imageUnreadable'),
+    imageTooLarge: tValidation('imageTooLarge'),
+    uploadRateLimited: tValidation('uploadRateLimited'),
+    storageError: tValidation('storageError'),
+    generic: tCommon('errorBody'),
+  });
+}
 
 /**
  * The other half of a feature that shipped with only its rendering — the same
@@ -25,15 +43,11 @@ import { useSessionRecovery } from '@/lib/session-expired';
  *
  * The bytes go to the server, which decodes the picture and writes a fresh
  * WebP with nothing else in it — no EXIF, no trailing payload — into a folder
- * named for the account. The checks below are a courtesy to the person, so a
- * wrong file is refused before it is sent; the server makes them again from
- * the bytes rather than from the browser's guess.
+ * named for the account. A HEIC from an iPhone, and a picture larger than the
+ * bucket's 2 MB, are converted in the browser first. The server checks the
+ * bytes again. An SVG is still refused: it is a document that can carry
+ * script, and anybody who signs up can send one.
  */
-const MAX_BYTES = 2 * 1024 * 1024;
-
-/** No SVG, for the reason spelled out on the logo uploader: it is a document
- *  that can carry script, and anybody who signs up can send one. */
-const TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export function AvatarUpload({
   name,
@@ -48,49 +62,53 @@ export function AvatarUpload({
 
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [converting, setConverting] = useState(false);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+  const busy = converting || pending;
+  const preparing = usePreparingImage(converting);
 
   function onPick(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     // Emptied at once, whatever happens next. A picker only reports a change,
     // so after a failed upload the same photo was still selected, and choosing
     // it again — the obvious retry — did nothing at all.
-    event.target.value = '';
+    input.value = '';
     if (!file) return;
 
-    if (file.size > MAX_BYTES) {
-      setError(tValidation('fileTooLarge'));
-      return;
-    }
-    // The browser's guess, with the extension standing in when it has none;
-    // the server checks the bytes either way.
-    if (!TYPES.includes(fileType(file))) {
-      setError(tValidation('fileType'));
-      return;
-    }
-
-    startTransition(async () => {
-      const form = new FormData();
-      form.set('kind', 'avatar');
-      form.set('file', file);
-
-      const result = await reach(uploadImage(form));
-      if (recoverSession(result)) return;
-      if (!result.ok) {
-        setError(
-          result.error === 'file_type'
-            ? tValidation('fileType')
-            : result.error === 'too_large'
-              ? tValidation('fileTooLarge')
-              : tCommon('errorBody'),
-        );
+    setError(null);
+    setConverting(true);
+    // Outside the transition so the spinner paints while a HEIC is decoded.
+    // The upload itself stays in one: a dropped request must not unmount the form.
+    void (async () => {
+      let prepared: Awaited<ReturnType<typeof prepareUploadImage>>;
+      try {
+        prepared = await prepareUploadImage(file, 'avatar');
+      } catch {
+        prepared = { ok: false, error: 'unreadable' };
+      }
+      setConverting(false);
+      if (!prepared.ok) {
+        input.value = '';
+        setError(described(tValidation, tCommon, prepared.error));
         return;
       }
 
-      setError(null);
-      router.refresh();
-    });
+      const form = new FormData();
+      form.set('kind', 'avatar');
+      form.set('file', prepared.file);
+      startTransition(async () => {
+        const result = await reach(uploadImage(form));
+        if (recoverSession(result)) return;
+        if (!result.ok) {
+          setError(described(tValidation, tCommon, result.error, 'detail' in result ? result.detail : undefined));
+          return;
+        }
+        setError(null);
+        router.refresh();
+      });
+    })();
   }
 
   function remove() {
@@ -110,7 +128,7 @@ export function AvatarUpload({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
+    <section aria-busy={busy} className="flex flex-col gap-4 rounded-xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:p-6">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <Avatar name={name} src={avatarUrl} size="lg" />
 
@@ -118,6 +136,11 @@ export function AvatarUpload({
           <h2 className="font-semibold">{t('photo')}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">{t('photoHint')}</p>
 
+          {converting ? (
+            <p role="status" className="mt-2 text-sm text-muted-foreground">
+              {preparing ? tCommon('preparingImage') : tCommon('loading')}
+            </p>
+          ) : null}
           {error ? (
             <p role="alert" className="mt-2 text-sm text-destructive">
               {error}
@@ -127,24 +150,24 @@ export function AvatarUpload({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <Button asChild variant="outline" disabled={pending}>
+        <Button asChild variant="outline" disabled={busy}>
           {/* A label, not a button that clicks a hidden input: the label is the
               control, so it works from the keyboard on its own. */}
           <label className="cursor-pointer">
-            <ImageUp aria-hidden />
+            {busy ? <Loader2 className="animate-spin" aria-hidden /> : <ImageUp aria-hidden />}
             {avatarUrl ? t('photoReplace') : t('photoUpload')}
             <input
               type="file"
-              accept={TYPES.join(',')}
+              accept={IMAGE_ACCEPT}
               onChange={onPick}
-              disabled={pending}
+              disabled={busy}
               className="sr-only"
             />
           </label>
         </Button>
 
         {avatarUrl ? (
-          <Button variant="ghost" size="icon" onClick={remove} disabled={pending}>
+          <Button variant="ghost" size="icon" onClick={remove} disabled={busy}>
             <Trash2 aria-hidden />
             <span className="sr-only">{tCommon('delete')}</span>
           </Button>

@@ -36,6 +36,8 @@ export const PUBLIC_MESSAGES = [
   'common',
   'companies',
   'companyType',
+  // The notice over a form that was filled from a draft (lib/form-draft.ts).
+  'drafts',
   'employmentType',
   'experienceBand',
   'filters',
@@ -68,13 +70,18 @@ export const CONSOLE_MESSAGES = [
   // The buy button on the billing page, when billing is on.
   'billing',
   'commissionType',
+  'compare',
   'compensation',
   'cv',
   'dashboard',
   'employer',
   'jobForm',
   'language',
+  // The confirmation before withdrawing an application, as the app asks it.
+  'myApplications',
   'nav',
+  // The note under a saved listing on /dashboard/saved; the app reads the same words.
+  'savedNotes',
 ] as const;
 
 /**

@@ -223,6 +223,32 @@
 
   --font-sans: var(--font-plex), ui-sans-serif, system-ui, sans-serif;
   --font-arabic: var(--font-plex), ui-sans-serif, sans-serif;
+
+  /* The page for the app (docs/app-page.md, "How it moves"): its hero's two
+     lights drifting, and the phone held up in it. Transform only, long
+     loops, and the reduced-motion backstop below stops both. */
+  --animate-aurora: aurora 26s ease-in-out infinite alternate;
+  --animate-aurora-slow: aurora 34s ease-in-out infinite alternate-reverse;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes aurora {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(-7%, 5%, 0) scale(1.1);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
 }
 
 @layer base {
@@ -502,10 +528,37 @@
   }
 
   /* --- Motion -------------------------------------------------------------
-     There are no entrance animations. Sections used to fade up on load and
-     again on scroll, which made a job board perform its own arrival every
-     time somebody opened it. Motion here is reserved for things that change
-     state while you watch: a drawer, a disclosure, a saved bookmark. */
+     There are no entrance animations on the board. Sections used to fade up
+     on load and again on scroll, which made a job board perform its own
+     arrival every time somebody opened it. Motion here is reserved for
+     things that change state while you watch: a drawer, a disclosure, a
+     saved bookmark.
+
+     The one exception is the page for the app, /app, which is a product
+     page rather than a tool: there a heading or a row of cards arrives as
+     the reader reaches it (components/get-app/reveal.tsx decides what is
+     below the fold; nothing on screen at the first paint is touched, and
+     nothing is hidden without JavaScript). 14px, once, half a second. */
+  [data-reveal='waiting'] {
+    opacity: 0;
+    translate: 0 14px;
+  }
+
+  [data-reveal='in'] {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 500ms ease-out,
+      translate 500ms ease-out;
+  }
+
+  /* Paper scrolls nothing: what was waiting is printed. */
+  @media print {
+    [data-reveal='waiting'] {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
 
   /* A fixed bottom bar covers the end of the document, and no amount of
      scrolling reveals what is under it. The listing page's mobile apply bar

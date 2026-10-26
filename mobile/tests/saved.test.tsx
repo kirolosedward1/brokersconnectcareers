@@ -1,8 +1,11 @@
+import { Alert } from 'react-native';
 import type { ReactNode } from 'react';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { shownToast, toast } from '~/components/feedback/toast';
+import { unhideJob } from '~/features/moderation/hidden-jobs';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -13,9 +16,9 @@ import { tabsFor } from '~/lib/tabs';
 import { ThemeProvider } from '~/theme/provider';
 import * as AuthLayout from '../src/app/(auth)/_layout';
 import * as SignInScreen from '../src/app/(auth)/sign-in/index';
-import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/_layout';
-import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/companies/[slug]';
-import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/jobs/[slug]';
+import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
+import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/companies/[slug]';
+import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import * as SavedScreen from '../src/app/(tabs)/(saved)/dashboard/saved/index';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
@@ -184,7 +187,7 @@ const gone = (text: string) => screen.queryByText(text) === null;
 describe('bookmarks', () => {
   it('keeps a listing from the listing page, and says it is kept', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.save }));
 
     await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/toggleSavedJob')).toEqual({ input: { jobId: listing.id } }));
@@ -209,7 +212,7 @@ describe('bookmarks', () => {
       throw new TypeError('Network request failed');
     });
     await signedIn();
-    renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     await screen.findByRole('button', { name: ar.jobs.save });
     // Pressable once the bookmarks are known: the website's action is a toggle.
     await waitFor(() => expect(screen.getByRole('button', { name: ar.jobs.save }).props.accessibilityState?.busy).toBeFalsy());
@@ -222,7 +225,7 @@ describe('bookmarks', () => {
   });
 
   it('sends somebody signed out to sign in, and back to the listing', async () => {
-    const result = renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    const result = await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.save }));
 
     await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
@@ -233,7 +236,7 @@ describe('bookmarks', () => {
   it('lists what is kept, and lets a card give its bookmark back', async () => {
     savedIds.add(listing.id);
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.removeSaved }));
@@ -249,7 +252,7 @@ describe('bookmarks', () => {
         : [{ created_at: '2026-09-25T10:00:00Z', job: { ...listing, expires_at: '2026-09-01T00:00:00Z' } }],
     );
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
     expect(await screen.findByText(ar.dashboard.savedClosedHeading)).toBeTruthy();
     expect(screen.getByText(ar.dashboard.savedClosedLede)).toBeTruthy();
     expect(screen.getByText(listing.title_ar)).toBeTruthy();
@@ -260,7 +263,7 @@ describe('saved searches and follows', () => {
   it("switches one's weekly email off, and deletes another, through the website", async () => {
     searches = [search(), search({ id: 's0000000-0000-4000-8000-000000000002', label: 'نايل بروكرز', query: 'company=nile-brokers' })];
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
     const switches = await screen.findAllByRole('button', { name: ar.savedSearch.alertsOn });
     fireEvent.press(switches[0]);
@@ -281,7 +284,7 @@ describe('saved searches and follows', () => {
     searches = [search()];
     server.on('POST /api/mobile/v1/actions/setSearchAlerts', { ok: false, error: 'forbidden' });
     await signedIn();
-    renderRouter(app, { initialUrl: '/dashboard/saved' });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.savedSearch.alertsOn }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/setSearchAlerts')).toHaveLength(1));
@@ -290,7 +293,7 @@ describe('saved searches and follows', () => {
 
   it('saves a narrowed board under the name the reader gives it', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs?track=primary' });
+    await renderRouter(app, { initialUrl: '/jobs?track=primary' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.savedSearch.cta }));
     const name = await screen.findByLabelText(ar.savedSearch.labelField);
@@ -308,7 +311,7 @@ describe('saved searches and follows', () => {
   it('says when the ten searches and follows are used up', async () => {
     server.on('POST /api/mobile/v1/actions/saveSearch', { ok: false, error: 'cap' });
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs?track=primary' });
+    await renderRouter(app, { initialUrl: '/jobs?track=primary' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.savedSearch.cta }));
     fireEvent.press(await screen.findByRole('button', { name: ar.common.save }));
@@ -317,14 +320,14 @@ describe('saved searches and follows', () => {
 
   it('does not offer to save the whole board', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/jobs' });
+    await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.savedSearch.cta })).toBeNull();
   });
 
   it('follows a company from its page', async () => {
     await signedIn();
-    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await renderRouter(app, { initialUrl: '/companies/nile-brokers' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.companies.follow }));
     await waitFor(() =>
@@ -337,10 +340,110 @@ describe('saved searches and follows', () => {
   it('says why a follow did not happen, and shows it did not', async () => {
     server.on('POST /api/mobile/v1/actions/followCompany', { ok: false, error: 'cap' });
     await signedIn();
-    renderRouter(app, { initialUrl: '/companies/nile-brokers' });
+    await renderRouter(app, { initialUrl: '/companies/nile-brokers' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.companies.follow }));
     expect(await screen.findByText(ar.companies.followCap)).toBeTruthy();
     expect(screen.getByRole('button', { name: ar.companies.follow })).toBeTruthy();
+  });
+});
+
+describe('a card on the board, held', () => {
+  const card = () => screen.findByRole('link', { name: new RegExp(`^${listing.title_ar}`) });
+
+  beforeEach(() => toast.hide());
+  afterEach(() => {
+    unhideJob(listing.id);
+    toast.hide();
+  });
+
+  it('offers what can be done without opening it, and sets one listing aside with a way back', async () => {
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/jobs' });
+    fireEvent(await card(), 'longPress');
+
+    await screen.findByRole('menuitem', { name: ar.jobs.save });
+    expect(screen.getAllByRole('menuitem').map((item) => item.props.accessibilityLabel)).toEqual([
+      ar.app.jobMenu.open,
+      ar.jobs.save,
+      ar.app.jobMenu.share,
+      ar.app.jobMenu.fewer,
+      ar.app.jobMenu.hideJob,
+      ar.app.jobMenu.hideCompany,
+    ]);
+    fireEvent.press(screen.getByRole('menuitem', { name: ar.app.jobMenu.hideJob }));
+
+    // Done once the menu has gone: the listing leaves the board, and Undo is offered.
+    await waitFor(() => expect(shownToast()).not.toBeNull());
+    await waitFor(() => expect(screen.queryByText(listing.title_ar)).toBeNull());
+    const shown = shownToast();
+    expect(shown?.message).toBe(ar.app.toast.jobHidden);
+    act(() => shown?.action?.onPress());
+    expect(await card()).toBeTruthy();
+  });
+
+  it('hides the whole company from the menu at once, without an alert, and Undo brings it back', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    try {
+      await signedIn();
+      await renderRouter(app, { initialUrl: '/jobs' });
+      fireEvent(await card(), 'longPress');
+      fireEvent.press(await screen.findByRole('menuitem', { name: ar.app.jobMenu.hideCompany }));
+      await waitFor(() => expect(shownToast()).not.toBeNull());
+      expect(alert).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByText(listing.title_ar)).toBeNull());
+      const shown = shownToast();
+      expect(shown?.action?.label).toBe(ar.app.toast.undo);
+      act(() => shown?.action?.onPress());
+      expect(await card()).toBeTruthy();
+    } finally {
+      alert.mockRestore();
+    }
+  });
+
+  it('saves from the menu, says so, and offers the way to the saved list', async () => {
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/jobs' });
+    fireEvent(await card(), 'longPress');
+    fireEvent.press(await screen.findByRole('menuitem', { name: ar.jobs.save }));
+
+    await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/toggleSavedJob')).toEqual({ input: { jobId: listing.id } }));
+    expect(shownToast()).toMatchObject({ message: ar.app.toast.saved, action: { label: ar.app.toast.viewSaved } });
+  });
+
+  it('offers the same to VoiceOver, as actions on the card', async () => {
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/jobs' });
+    const found = await card();
+    await waitFor(() => expect(found.props.accessibilityActions.map((action: { name: string }) => action.name)).toEqual(['save', 'share', 'hide']));
+    fireEvent(found, 'accessibilityAction', { nativeEvent: { actionName: 'hide' } });
+    await waitFor(() => expect(screen.queryByText(listing.title_ar)).toBeNull());
+  });
+});
+
+describe('searches kept on the phone', () => {
+  it('offers the words searched lately in the filter sheet, a tap from the board searched again', async () => {
+    await renderRouter(app, { initialUrl: '/jobs' });
+    const openSheet = async () => fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
+
+    await openSheet();
+    fireEvent.changeText(await screen.findByLabelText(ar.filters.search), 'مبيعات التجمع');
+    fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.filters.showResults}`) }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('q') === 'مبيعات التجمع')).toBe(true));
+
+    // The words taken off the board again…
+    await openSheet();
+    fireEvent.changeText(await screen.findByLabelText(ar.filters.search), '');
+    fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.filters.showResults}`) }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: new RegExp(`^${ar.filters.showResults}`) })).toBeNull());
+
+    // …are kept, and offered while nothing is typed; tapped, the board searches them again.
+    await openSheet();
+    const kept = await screen.findByRole('button', { name: ar.app.jobs.recentSearch.replace('{words}', 'مبيعات التجمع') });
+    server.requests.length = 0;
+    fireEvent.press(kept);
+    await waitFor(() =>
+      expect(server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('q') === 'مبيعات التجمع')).toBe(true),
+    );
   });
 });

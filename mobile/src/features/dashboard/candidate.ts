@@ -5,8 +5,11 @@ import { rankJobs, type MatchReasons } from '@/lib/match';
 import type { NextActionKind } from '@/lib/next-action';
 import type { CandidateSummary } from '@/lib/supabase/database.types';
 import { useMyApplications } from '~/features/applications/queries';
+import { fewerLast, useFewerKeys } from '~/features/jobs/fewer';
 import { useJobBoard } from '~/features/jobs/queries';
+import { useListOwner } from '~/features/jobs/recent';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { useAgentProfile } from '~/features/profile/queries';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -62,7 +65,9 @@ export type Suggestion = { job: JobListItem; score: number; reasons: MatchReason
  * Roles worth a look: the board's first page, without anything already applied
  * to (the applications sit right above) or from a company this reader hid,
  * ranked against their own stated tracks, districts and years by the website's
- * rankJobs. Three of them.
+ * rankJobs. Three of them. The kinds they asked to see fewer of (a card's
+ * "Show fewer like this", features/jobs/fewer.ts) come after every other,
+ * still in their own order: suggested last, never hidden.
  *
  * Drawn once the applications and the profile have been read, not before: a
  * role suggested and then taken away as the applications arrive is a list
@@ -75,6 +80,9 @@ export function useSuggestions() {
   const applications = useMyApplications();
   const profile = useAgentProfile();
   const hidden = useHiddenCompanies();
+  // A listing set aside with "Hide this listing" is not suggested either, as everywhere else.
+  const hiddenJobs = useHiddenJobs();
+  const fewer = useFewerKeys(useListOwner());
 
   const firstPage = board.data?.pages[0]?.jobs;
   const settled = Boolean(firstPage) && !applications.isPending && !profile.isPending;
@@ -83,16 +91,19 @@ export function useSuggestions() {
   const ranking = useMemo(() => {
     if (!settled || !firstPage) return null;
     // A failed read of the applications suggests from the whole page, as the website does.
-    const appliedTo = new Set((applications.data ?? []).map((application) => application.job_id));
-    return rankJobs(
-      withoutHidden(firstPage, hidden).filter((job) => !appliedTo.has(job.id)),
+    const appliedTo = new Set(
+      (applications.data ?? []).filter((application) => application.status !== 'withdrawn').map((application) => application.job_id),
+    );
+    const { ranked, personalised } = rankJobs(
+      withoutHiddenJobs(withoutHidden(firstPage, hidden), hiddenJobs).filter((job) => !appliedTo.has(job.id)),
       {
         tracks: agent?.tracks ?? null,
         districtIds: agent?.district_ids ?? null,
         yearsExperience: agent?.years_experience ?? null,
       },
     );
-  }, [settled, firstPage, applications.data, hidden, agent]);
+    return { ranked: fewerLast(ranked, fewer), personalised };
+  }, [settled, firstPage, applications.data, hidden, hiddenJobs, agent, fewer]);
 
   return {
     suggestions: (ranking?.ranked.slice(0, 3) ?? []) as Suggestion[],

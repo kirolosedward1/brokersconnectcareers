@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { AccessibilityInfo, Pressable, ScrollView, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, ScrollView, Text, View, type ScrollViewInstance } from 'react-native';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 
@@ -35,7 +35,7 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 function Form({ errors, above }: { errors: Record<string, string>; above?: number }) {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const form = useErrorsInView(scroll, ['name', 'phone'], { above });
   return (
     <ScrollView ref={scroll}>

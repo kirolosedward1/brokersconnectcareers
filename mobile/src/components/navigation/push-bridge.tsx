@@ -14,8 +14,11 @@ import {
 } from '~/features/push/device';
 import { useUnreadCount } from '~/features/notifications/queries';
 import { pushTapped, takePushTap, usePushTap } from '~/features/push/taps';
+import { syncReminders } from '~/features/saved/reminders';
+import { useRemindersFollowSaved } from '~/features/saved/reminders-follow';
 import { openWhenReady } from '~/lib/open-path';
 import { clearPersonalCache } from '~/lib/personal-cache';
+import { forgetKeptDrafts } from '~/lib/kept-draft';
 import { storedSession, useSession } from '~/lib/session';
 
 /**
@@ -58,8 +61,10 @@ export function PushBridge() {
     previous.current = userId;
     if (!before || before === userId) return;
     stopListeningHere();
-    // And the files they picked or exported, left in the cache.
+    // And the files they picked or exported, left in the cache, and the forms
+    // they had half typed (kept-draft.ts).
     clearPersonalCache();
+    void forgetKeptDrafts();
   }, [userId]);
 
   // Ended before anything here was listening: a cold start whose refresh the
@@ -73,8 +78,11 @@ export function PushBridge() {
     if (!ready || userId) return;
     let live = true;
     (async () => {
-      if (!(await holdsPushToken()) || (await storedSession())) return;
+      if (await storedSession()) return;
       if (!live) return;
+      // Half-typed forms go whenever nobody is signed in, push token or not.
+      await forgetKeptDrafts();
+      if (!(await holdsPushToken())) return;
       stopListeningHere();
       clearPersonalCache();
     })().catch(() => {});
@@ -87,7 +95,19 @@ export function PushBridge() {
   useEffect(() => {
     if (!wanted) return;
     registerThisPhone(locale).catch(() => {});
-    const subscription = Notifications.addPushTokenListener(() => {
+    // Only a token that changed: asking for the token fires this listener
+    // too, and re-registering on every event looped — dozens of
+    // register_push_device calls a minute from one phone, each refused 401
+    // once its session had gone.
+    let lastToken: string | null = null;
+    const subscription = Notifications.addPushTokenListener((token) => {
+      const value = typeof token?.data === 'string' ? token.data : JSON.stringify(token?.data ?? null);
+      if (lastToken === null) {
+        lastToken = value;
+        return;
+      }
+      if (value === lastToken) return;
+      lastToken = value;
       registerThisPhone(locale).catch(() => {});
     });
     return () => subscription.remove();
@@ -122,15 +142,37 @@ export function PushBridge() {
     return () => subscription.remove();
   }, [queryClient]);
 
+  // A person's reminders before a saved listing closes are theirs alone: off
+  // the phone when they leave, back when they return (features/saved/reminders.ts).
+  useEffect(() => {
+    void syncReminders(userId ?? 'anon');
+  }, [userId]);
+  // And in step with the saved list, whether or not the Saved tab is opened.
+  useRemindersFollowSaved();
+
   // Taps: the one that launched the app, then each one after.
   useEffect(() => {
-    const launched = notificationIdOf(Notifications.getLastNotificationResponse());
+    const response = Notifications.getLastNotificationResponse();
+    const launched = notificationIdOf(response);
+    // One of the app's own that launched it (a reminder before a listing closes) opens where it says.
+    const launchedLocal = localHrefOf(response);
     if (launched) {
       Notifications.clearLastNotificationResponse();
       pushTapped(launched);
+    } else if (launchedLocal) {
+      Notifications.clearLastNotificationResponse();
+      openWhenReady(launchedLocal);
     }
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const id = notificationIdOf(response);
+      // One of the app's own, from this phone (a consultant search's news, features/directory/alerts.ts;
+      // a reminder before a saved listing closes, features/saved/reminders.ts).
+      const local = localHrefOf(response);
+      if (!id && local) {
+        Notifications.clearLastNotificationResponse();
+        openWhenReady(local);
+        return;
+      }
       if (!id) return;
       Notifications.clearLastNotificationResponse();
       pushTapped(id);
@@ -163,4 +205,16 @@ export function PushBridge() {
   }, [userId, unread]);
 
   return null;
+}
+
+/**
+ * Where a notification the app posted itself leads: the directory, or one
+ * listing — never an address from elsewhere. Opened as a pushed link is
+ * (openWhenReady), so it waits for the session and lands in a tab the reader has.
+ */
+export function localHrefOf(response: Notifications.NotificationResponse | null): string | null {
+  if (response && response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return null;
+  const href = (response?.notification.request.content.data as { localHref?: unknown } | undefined)?.localHref;
+  if (typeof href !== 'string') return null;
+  return href.startsWith('/agents') || /^\/jobs\/[a-z0-9-]+$/i.test(href) ? href : null;
 }

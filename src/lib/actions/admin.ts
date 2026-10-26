@@ -9,6 +9,7 @@ import { publish } from '@/lib/notifications/events';
 import { isRetryable } from '@/lib/email/rebuild';
 import { notifyJobChanged } from '@/lib/seo/indexing-api';
 import { adminErrorCode } from '@/lib/admin/errors';
+import { refused } from '@/lib/observe';
 
 /**
  * The console's levers.
@@ -380,6 +381,94 @@ export async function revealContact(
   return { ok: true, data: { email: row.email, phone: row.whatsapp_phone } };
 }
 
+const roleSchema = z.object({
+  userId: z.string().uuid(),
+  role: z.enum(['candidate', 'employer', 'admin']),
+  reason: z.string().trim().min(3).max(500),
+});
+
+/**
+ * Make somebody an admin, or take that away.
+ *
+ * admin_set_role (migration 355) allows only the moves that involve the admin
+ * role — a candidate or an employer made an admin, an admin made one of those
+ * again — never yourself, never the last admin, and always with a reason on
+ * the record. The person is not emailed: an admin is told by an admin.
+ */
+export async function setUserRole(input: unknown): Promise<AdminResult> {
+  const parsed = roleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'reason_required' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_set_role', {
+    p_user: parsed.data.userId,
+    p_role: parsed.data.role,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  return { ok: true };
+}
+
+const signInBlockSchema = z.object({
+  userId: z.string().uuid(),
+  block: z.boolean(),
+  reason: z.string().trim().min(3).max(500),
+});
+
+/**
+ * Stop an account signing in at all, or let it again — the auth server's own
+ * ban, set by admin_set_sign_in_block (migration 355) in the same transaction
+ * as its record. Blocking also ends every session the account has, so a phone
+ * already signed in is out within the hour. Nothing else about the account
+ * changes: its listings and applications stay as they are, and nobody is
+ * emailed. Suspension (setAccountApproval) is the lever for the account's
+ * standing on the platform; this one is for the door.
+ */
+export async function setSignInBlock(input: unknown): Promise<AdminResult<{ sessionsEnded: number }>> {
+  const parsed = signInBlockSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'reason_required' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { data, error } = await supabase.rpc('admin_set_sign_in_block', {
+    p_user: parsed.data.userId,
+    p_block: parsed.data.block,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  return { ok: true, data: { sessionsEnded: Number(data ?? 0) } };
+}
+
+const endSessionsSchema = z.object({
+  userId: z.string().uuid(),
+  reason: z.string().trim().min(3).max(500),
+});
+
+/** Sign one account out of every device (admin_end_sessions, migration 355). It can sign in again at once. */
+export async function endSessions(input: unknown): Promise<AdminResult<{ sessionsEnded: number }>> {
+  const parsed = endSessionsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'reason_required' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { data, error } = await supabase.rpc('admin_end_sessions', {
+    p_user: parsed.data.userId,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  return { ok: true, data: { sessionsEnded: Number(data ?? 0) } };
+}
+
 // ---------------------------------------------------------------------------
 // Consultants
 // ---------------------------------------------------------------------------
@@ -600,7 +689,7 @@ export async function requeueEmail(input: unknown): Promise<ActionResult> {
   const { data: requeued, error } = await supabase.rpc('requeue_email', {
     p_id: parsed.data.emailId,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return refused('admin', error);
   if (!requeued) return { ok: false, error: 'not_found' };
 
   revalidatePath('/admin/operations');

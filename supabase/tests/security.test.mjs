@@ -6,7 +6,7 @@
  * migrations 303–313. Each section names the migration that closed it, so a
  * failure points at the file to reread.
  */
-import { createTestDb, runner, reporter, FIXTURES } from './setup.mjs';
+import { createTestDb, migrationScripts, runner, reporter, FIXTURES } from './setup.mjs';
 
 const report = reporter();
 const db = await createTestDb();
@@ -233,7 +233,7 @@ report.section('307 — a row says what the server said');
 
   const traversal = await as(candidate, `
     insert into applications (job_id, candidate_id, cv_path) values ('${liveJob}', '${candidate}', '${candidate}/../${publicAgent}/cv.pdf')
-    on conflict (job_id, candidate_id) do update set cv_path = excluded.cv_path returning id`);
+    on conflict (job_id, candidate_id) where status <> 'withdrawn' do update set cv_path = excluded.cv_path returning id`);
   report.check('a CV path with a dot segment is refused by the table', !traversal.ok && /cv_is_the_applicants|check constraint/.test(traversal.error ?? ''), traversal.error);
 
   const js = await as(employerVerified, `update companies set website = 'javascript:alert(1)' where id = '${verifiedCompany}' returning id`);
@@ -456,6 +456,101 @@ report.section('304 — a hidden card is not viewed and the counter is the serve
   await db.exec(`select increment_job_view('${slug.slug}')`);
   const bumped = await one(`select view_count from jobs where id = '${liveJob}'`);
   report.check('the server counts a view', bumped.view_count === slug.view_count + 1, `${slug.view_count} -> ${bumped.view_count}`);
+}
+
+// ---------------------------------------------------------------------------
+report.section('353 — a payment outlives the company');
+{
+  const rule = await one(`
+    select confdeltype from pg_constraint where conname = 'orders_company_id_fkey'`);
+  report.check('an order restricts the deletion of its company', rule?.confdeltype === 'r', JSON.stringify(rule));
+
+  // Through an admin's session, the one role whose policies allow the delete.
+  const deleteAsAdmin = async (withOrder) => {
+    await db.exec('begin');
+    try {
+      // A company of its own, nobody applied to, so applications_job_id_fkey
+      // (203) is not what refuses the delete below.
+      const quiet = (await db.query(`
+        insert into companies (owner_id, name_ar, slug)
+        values ('${admin}', 'شركة بلا طلبات', 'no-applications-353') returning id`)).rows[0].id;
+      if (withOrder) {
+        await db.exec(`
+          insert into orders (company_id, pack_key, credits, amount_egp, status)
+          values ('${quiet}', 'bulk', 5, 500, 'paid')`);
+      }
+      await db.exec(`
+        set local role authenticated;
+        set local request.jwt.claim.sub = '${admin}';
+        set local request.jwt.claims = '{"role":"authenticated","sub":"${admin}"}';`);
+      const gone = await db.query(`delete from companies where slug = 'no-applications-353' returning id`);
+      return { ok: true, rows: gone.rows };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    } finally {
+      await db.exec('rollback');
+    }
+  };
+
+  const refused = await deleteAsAdmin(true);
+  report.check('deleting a company that was paid is refused, not cascaded',
+    !refused.ok && /orders_company_id_fkey/.test(refused.error ?? ''), refused.error ?? 'deleted');
+
+  const allowed = await deleteAsAdmin(false);
+  report.check('a company with no order is deleted as before',
+    allowed.ok && allowed.rows.length === 1, allowed.error ?? JSON.stringify(allowed.rows));
+}
+
+// ---------------------------------------------------------------------------
+report.section('354 — what production changed by hand');
+{
+  // A database 354 has not reached, with the two changes production's
+  // fingerprint showed were made outside any migration.
+  const drifted = await createTestDb({ before: '20260101000354' });
+  await drifted.exec(`
+    alter function public.agent_card_listed_to_viewer(uuid) security invoker;
+    revoke execute on function public.agent_card_listed_to_viewer(uuid) from anon;
+    alter function public.admin_summary() security invoker;`);
+  const asDrifted = runner(drifted);
+
+  // A verified employer reporting a directory card of somebody who never
+  // applied to them: the case the report button exists for.
+  const stranger = (await drifted.query(`
+    select u.id from profiles u
+      join company_members m on m.user_id = u.id
+      join companies c on c.id = m.company_id and c.verification_status = 'verified'
+     where u.role = 'employer' and u.approval_status = 'approved'
+       and not exists (select 1 from applications a join jobs j on j.id = a.job_id
+                        where j.company_id = c.id and a.candidate_id = '${publicAgent}')
+     limit 1`)).rows[0]?.id;
+  const card = (await drifted.query(`select id from agent_profiles where user_id = '${publicAgent}'`)).rows[0].id;
+  const fileReport = (database) => runner(database)(stranger, `
+    insert into reports (reporter_id, target_type, target_id, agent_id, reason, detail)
+    values ('${stranger}', 'agent', '${card}', '${card}', 'spam', 'بطاقة تنتحل اسم شخص آخر')
+    returning id`);
+
+  const refused = await fileReport(drifted);
+  report.check('(drifted: an employer who found a card in the directory cannot report it)',
+    Boolean(stranger) && !refused.ok && /row-level security/.test(refused.error ?? ''), refused.error ?? 'filed');
+
+  for (const script of migrationScripts({ from: '20260101000354' })) await drifted.exec(script.sql);
+
+  const filed = await fileReport(drifted);
+  report.check('after 354 the report is filed', filed.ok && filed.rows.length === 1, filed.error);
+
+  const modes = (await drifted.query(`
+    select proname, prosecdef, has_function_privilege('anon', oid, 'execute') as anon
+      from pg_proc where pronamespace = 'public'::regnamespace
+       and proname in ('agent_card_listed_to_viewer', 'admin_summary') order by proname`)).rows;
+  report.check('both run as definer again, with the grants 344 gave them',
+    modes.length === 2 && modes.every((m) => m.prosecdef)
+      && modes.find((m) => m.proname === 'agent_card_listed_to_viewer')?.anon === true
+      && modes.find((m) => m.proname === 'admin_summary')?.anon === false,
+    JSON.stringify(modes));
+
+  const summary = await asDrifted(admin, `select (admin_summary() ->> 'candidates')::int as n`);
+  report.check("and the console's summary still answers an admin", summary.ok && summary.rows[0]?.n > 0, summary.error);
+  await drifted.close();
 }
 
 process.exitCode = report.finish() ? 0 : 1;

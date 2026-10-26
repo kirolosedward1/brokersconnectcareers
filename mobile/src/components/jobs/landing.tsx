@@ -6,7 +6,7 @@ import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { JobTrack } from '@/lib/supabase/database.types';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
-import { JobCard } from '~/components/jobs/job-card';
+import { JobCardList } from '~/components/jobs/job-card-list';
 import { Button } from '~/components/ui/button';
 import { Chip } from '~/components/ui/chip';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
@@ -14,7 +14,11 @@ import { Text } from '~/components/ui/text';
 import { useBrowseCounts, useLanding } from '~/features/browse/queries';
 import { boardQuery, filtersToParams } from '~/features/jobs/filters';
 import { flattenBoard, useJobBoard } from '~/features/jobs/queries';
+import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
+import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
+import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
@@ -31,6 +35,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const locale = useLocale();
   const t = useTranslations('landing');
   const tJobs = useTranslations('jobs');
+  const tNav = useTranslations('nav');
   const tTrack = useTranslations('track');
   const { colors } = useTheme();
 
@@ -41,6 +46,10 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const districts = useDistricts();
   const hasBoard = useHasBoard();
   const pull = usePullRefresh(() => Promise.all([landing.refetch(), board.refetch()]));
+  const shrink = useShrinkingTabBar();
+  // The companies this phone hides stay hidden here too, as on the board and Home.
+  const hiddenCompanies = useHiddenCompanies();
+  const hiddenJobs = useHiddenJobs();
 
   if (landing.isPending) return <LoadingState />;
   if (landing.isError && !landing.data) {
@@ -50,11 +59,21 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const { district, facts } = landing.data;
   const trackName = tTrack(track);
   const districtName = localized(locale, district.name_ar, district.name_en);
-  const jobs = flattenBoard(board.data?.pages);
-  const total = board.data?.pages[0]?.total ?? 0;
+  const read = flattenBoard(board.data?.pages);
+  // Without what this phone hides — a company's listings, and listings set aside one by one — as the board does,
+  // so the count, the empty state and the first twenty are of what is drawn.
+  const jobs = withoutHiddenJobs(withoutHidden(read, hiddenCompanies), hiddenJobs);
+  const total = totalShown(board.data?.pages[0]?.total ?? 0, read.length, jobs.length);
+  // More listings than the twenty drawn here, the board has the rest: once
+  // this phone hides some of a first page, more than the page holds is not
+  // "more than 20", and a first page all hidden is not "none".
+  const more = total > Math.min(jobs.length, 20);
 
   const factLines: string[] = [];
-  if (facts.listings > 0) {
+  // The area's facts are the server's, of every listing: beside an empty page
+  // — all there is hidden on this phone — they described listings not shown.
+  const allHidden = read.length > 0 && total === 0;
+  if (facts.listings > 0 && !allHidden) {
     factLines.push(t('companiesHiring', { count: facts.companies }));
     if (facts.withBasicSalary > 0) {
       factLines.push(
@@ -91,6 +110,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
     <>
       <Stack.Screen options={{ title: '' }} />
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         refreshControl={
           <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={colors.primary} />
@@ -98,7 +118,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >
         <View style={{ gap: space[2] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {t('title', { track: trackName, district: districtName })}
           </Text>
           <Text tone="mutedForeground">{t('subtitle', { track: trackName, district: districtName })}</Text>
@@ -135,22 +155,18 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           // Never "no jobs here" for a read that failed.
           <ErrorState error={board.error} onRetry={() => board.refetch()} />
         ) : jobs.length ? (
-          <View style={{ gap: space[2] }}>
-            {jobs.slice(0, 20).map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))}
-          </View>
-        ) : (
+          <JobCardList jobs={jobs.slice(0, 20)} />
+        ) : more && hasBoard ? null : (
           <EmptyState
             icon={SearchX}
             title={tJobs('empty')}
-            action={hasBoard ? <Button label={tJobs('title')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
+            action={hasBoard ? <Button label={tNav('browseJobs')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
           />
         )}
 
-        {total > 20 && hasBoard ? (
+        {more && hasBoard ? (
           <Button
-            label={tJobs('title')}
+            label={tNav('browseJobs')}
             variant="outline"
             onPress={() => router.navigate({ pathname: '/jobs', params: filtersToParams(filters) })}
           />

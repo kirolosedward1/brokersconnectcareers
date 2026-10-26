@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { RefreshControl, StyleSheet, Text } from 'react-native';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { formatList } from '@/lib/format';
 import type { JobListItem } from '@/lib/job-list';
 import type { AgentProfileRow, CandidateSummary, ProfileRow } from '@/lib/supabase/database.types';
@@ -14,6 +14,7 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
 import { board, browse, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -25,6 +26,13 @@ import { fakeServer } from './server';
   why, and where the account stands when it is not in good standing. What is
   checked is what is said, what is left out, and where each tap goes.
 */
+
+// The phone's text size, which one test sets to the largest accessibility size.
+const mockWindow = { fontScale: 1 };
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => {
+  const { Dimensions } = jest.requireActual('react-native');
+  return { __esModule: true, default: () => ({ ...Dimensions.get('window'), fontScale: mockWindow.fontScale }) };
+});
 
 jest.mock('~/lib/session-storage', () => {
   const store = new Map<string, string>();
@@ -129,6 +137,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  mockWindow.fontScale = 1;
   // No message may fail to format: the provider reports each one here.
   expect(warnings.filter((warning) => warning.includes('[i18n]'))).toEqual([]);
   warnings.length = 0;
@@ -196,7 +205,7 @@ function stand(label: string) {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home)/index': HomeScreen,
   '(tabs)/(jobs)/jobs/index': stand('the board'),
   '(tabs)/(applications)/dashboard/applications/index': stand('the applications'),
@@ -209,10 +218,10 @@ const open = () => renderRouter(app, { initialUrl: '/' });
 describe("a candidate's home", () => {
   it('opens on their overview: the reply first, the figures, the latest application', async () => {
     await signIn();
-    open();
+    await open();
 
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
-    expect(await screen.findByText('فيه رد على طلب')).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText('رد على طلب')).toBeTruthy();
     // Each figure says what it is, to VoiceOver as well.
     expect(screen.getByLabelText(`${ar.dashboard.statApplications}: 1`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statCompleteness}: 80%`)).toBeTruthy();
@@ -224,9 +233,30 @@ describe("a candidate's home", () => {
     expect(server.asked('/rest/v1/rpc/my_account_note')).toHaveLength(0);
   });
 
-  it("suggests roles on the candidate's own track and district first, says why, and leaves out one applied to", async () => {
+  it("puts the latest application's status under its title at the largest text size, and cuts neither short", async () => {
+    const label = formatList([applied.title_ar, 'النيل للوساطة', ar.applicationStatus.shortlisted], 'ar');
+    const row = () => screen.getByLabelText(label);
+
+    // As most people set the phone: one row, the title on one line.
     await signIn();
     open();
+    await screen.findByLabelText(label);
+    expect(StyleSheet.flatten(row().props.style).flexDirection).toBe('row');
+    expect(within(row()).getByText(applied.title_ar).props.numberOfLines).toBe(1);
+    screen.unmount();
+
+    // The largest accessibility size: stacked, and the title in full.
+    mockWindow.fontScale = 3.571;
+    open();
+    await screen.findByLabelText(label);
+    expect(StyleSheet.flatten(row().props.style).flexDirection).toBe('column');
+    expect(within(row()).getByText(applied.title_ar).props.numberOfLines).toBeUndefined();
+    expect(within(row()).getByText(ar.applicationStatus.shortlisted)).toBeTruthy();
+  });
+
+  it("suggests roles on the candidate's own track and district first, says why, and leaves out one applied to", async () => {
+    await signIn();
+    await open();
 
     expect(await screen.findByText(ar.dashboard.matchedRoles)).toBeTruthy();
     const titles = (await screen.findAllByText(new RegExp(`^(${fitting.title_ar}|${elsewhere.title_ar})$`))).map(
@@ -243,12 +273,52 @@ describe("a candidate's home", () => {
     [`${ar.dashboard.statCompleteness}: 80%`, '/account/profile'],
     [`${ar.dashboard.statSaved}: 3`, '/dashboard/saved'],
     [`${ar.dashboard.statReplies}: 1`, '/dashboard/applications'],
-    [`فيه رد على طلب. ${ar.dashboard.nextRepliesBody}`, '/dashboard/applications'],
+    [`رد على طلب. ${ar.dashboard.nextRepliesBody}`, '/dashboard/applications'],
   ])('sends "%s" to where it can be acted on', async (name, path) => {
     await signIn();
-    const result = open();
+    const result = await open();
     fireEvent.press(await screen.findByRole('link', { name }));
     await waitFor(() => expect(result.getPathname()).toBe(path));
+  });
+
+  it("sums up the candidate's week: new listings in their areas, applications opened, profile views", async () => {
+    server.on('POST /rest/v1/rpc/candidate_summary', summary({ profile_views_30d: 4 }));
+    await signIn();
+    const result = await open();
+
+    expect(await screen.findByRole('header', { name: ar.app.week.title })).toBeTruthy();
+    // The listings of the last seven days in the profile's areas, counted on the server.
+    await waitFor(() =>
+      expect(
+        server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('posted') === '7' && request.url.searchParams.has('district')),
+      ).toBe(true),
+    );
+    expect(await screen.findByRole('link', { name: `4 ${ar.app.week.views}` })).toBeTruthy();
+    // Opened more than a week ago: not this week's.
+    expect(screen.getByRole('link', { name: `0 ${ar.app.week.opened}` })).toBeTruthy();
+    fireEvent.press(screen.getByRole('link', { name: `4 ${ar.app.week.views}` }));
+    await waitFor(() => expect(result.getPathname()).toBe('/account/profile'));
+  });
+
+  it("counts the week back from when the applications were read, not from when Home was first drawn", async () => {
+    // Opened by the company six days ago: this week's.
+    const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+    server.on('GET /rest/v1/applications', [{ ...application, employer_viewed_at: sixDaysAgo }]);
+    await signIn();
+    await open();
+    expect(await screen.findByRole('link', { name: `1 ${ar.app.week.opened}` })).toBeTruthy();
+
+    // Two days on, Home still open under its tab, pulled to read again.
+    const start = Date.now();
+    jest.setSystemTime(start + 2 * 24 * 60 * 60 * 1000);
+    try {
+      await act(async () => {
+        screen.UNSAFE_getAllByType(RefreshControl)[0].props.onRefresh();
+      });
+      expect(await screen.findByRole('link', { name: `0 ${ar.app.week.opened}` })).toBeTruthy();
+    } finally {
+      jest.setSystemTime(start);
+    }
   });
 
   it('asks for the profile when it is under 60%, and does not call newest-first a match without a track or district', async () => {
@@ -256,7 +326,7 @@ describe("a candidate's home", () => {
     // A profile that has said nothing to match on.
     server.on('GET /rest/v1/agent_profiles', [{ ...agent, tracks: [], district_ids: [], years_experience: null }]);
     await signIn();
-    const result = open();
+    const result = await open();
 
     expect(await screen.findByText(ar.dashboard.nextProfileTitle)).toBeTruthy();
     expect(await screen.findByText(ar.dashboard.openRoles)).toBeTruthy();
@@ -271,10 +341,10 @@ describe("a candidate's home", () => {
     server.on('POST /rest/v1/rpc/candidate_summary', summary({ applications_total: 0, replies: 0 }));
     server.on('GET /rest/v1/applications', []);
     await signIn();
-    const result = open();
+    const result = await open();
 
     expect(await screen.findByText(ar.dashboard.emptyCandidateTitle)).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: ar.jobs.title }));
+    fireEvent.press(screen.getByRole('button', { name: ar.nav.browseJobs }));
     await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
   });
 
@@ -282,7 +352,7 @@ describe("a candidate's home", () => {
     server.on('POST /rest/v1/rpc/candidate_summary', { status: 500, body: { message: 'down' } });
     server.on('GET /rest/v1/applications', { status: 500, body: { message: 'down' } });
     await signIn();
-    open();
+    await open();
 
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.dashboard.emptyCandidateTitle) === null).toBe(true);
@@ -292,7 +362,7 @@ describe("a candidate's home", () => {
 
   it("tells a held account why, and lets them ask for a second look", async () => {
     await signIn('pending');
-    open();
+    await open();
 
     expect(await screen.findByText(ar.standing.heldTitle)).toBeTruthy();
     expect(screen.getByText(ar.standing.heldBodyCandidate)).toBeTruthy();
@@ -310,7 +380,7 @@ describe("a candidate's home", () => {
 
   it('says so when the account is suspended', async () => {
     await signIn('rejected');
-    open();
+    await open();
     expect(await screen.findByText(ar.standing.suspendedTitle)).toBeTruthy();
     expect(screen.getByText(ar.standing.suspendedBodyCandidate)).toBeTruthy();
   });
@@ -355,7 +425,7 @@ describe('the Terms and the Privacy policy', () => {
       return { ok: true };
     });
     await signIn();
-    open();
+    await open();
 
     expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.legal.agree }));
@@ -377,7 +447,7 @@ describe('the Terms and the Privacy policy', () => {
       return { ok: true };
     });
     await signIn();
-    open();
+    await open();
     expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
 
     published = newer;
@@ -395,7 +465,7 @@ describe('the Terms and the Privacy policy', () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ policies: { terms: '2026-12-01', privacy: '2026-10-01' } }));
     server.on('GET /rest/v1/policy_acceptances', acceptances(() => [{ terms_version: '2026-10-01', privacy_version: '2026-10-01' }]));
     await signIn();
-    open();
+    await open();
     expect(await screen.findByText(ar.legal.updatedTitle)).toBeTruthy();
     // It looks for an agreement to the versions published now.
     const asked = server.asked('/rest/v1/policy_acceptances')[0].url.searchParams;
@@ -406,8 +476,8 @@ describe('the Terms and the Privacy policy', () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ policies: versions }));
     server.on('GET /rest/v1/policy_acceptances', acceptances(() => [{ terms_version: versions.terms, privacy_version: versions.privacy }]));
     await signIn();
-    open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await open();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
@@ -423,16 +493,16 @@ describe('the Terms and the Privacy policy', () => {
       ]),
     );
     await signIn();
-    open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await open();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
 
   it('asks nothing when the website does not say what is current, and does not look', async () => {
     await signIn();
-    open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await open();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
     expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(0);
   });
@@ -442,7 +512,7 @@ describe('a directory card nobody asked about', () => {
   it('asks a candidate whose card was listed before onboarding asked, and leads to the profile', async () => {
     server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: null }]);
     await signIn();
-    open();
+    await open();
 
     expect(await screen.findByText(ar.dashboard.visibilityAskTitle)).toBeTruthy();
     expect(screen.getByText(ar.dashboard.visibilityAskBody.replace('{current}', ar.visibility.verified_employers_only))).toBeTruthy();
@@ -453,8 +523,8 @@ describe('a directory card nobody asked about', () => {
   it('says nothing once they have chosen', async () => {
     server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: '2026-10-01T10:00:00Z' }]);
     await signIn();
-    open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    await open();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').length).toBeGreaterThan(0));
     expect(screen.queryByText(ar.dashboard.visibilityAskTitle)).toBeNull();
   });

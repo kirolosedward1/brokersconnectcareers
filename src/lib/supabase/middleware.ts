@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { SESSION_COOKIE_OPTIONS } from './cookie-options';
+import { secondFactorDue as isSecondFactorDue } from '@/lib/auth/second-factor';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
@@ -19,7 +20,14 @@ export async function updateSession(
   request: NextRequest,
   response: NextResponse,
   { checkAdmin = false }: { checkAdmin?: boolean } = {},
-): Promise<{ user: User | null; response: NextResponse; isAdmin?: boolean | null; secondFactorDue?: boolean }> {
+): Promise<{
+  user: User | null;
+  response: NextResponse;
+  isAdmin?: boolean | null;
+  secondFactorDue?: boolean;
+  /** The session just accepted, so a follow-up read can be this person. Null when there is no session. */
+  accessToken: string | null;
+}> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -27,7 +35,7 @@ export async function updateSession(
   // error, so this has to be checked before constructing it.
   if (!url || !key) {
     console.warn('[middleware] Supabase is not configured; treating the request as anonymous.');
-    return { user: null, response };
+    return { user: null, response, accessToken: null };
   }
 
   const supabase = createServerClient<Database>(url, key, {
@@ -74,15 +82,20 @@ export async function updateSession(
     /*
       An authenticator on the account that this session has not answered:
       what the session's own token proved (aal) against what the account could
-      prove (a verified factor). Read from the session, no request.
+      prove (a verified factor). The factors are the auth server's answer
+      above, not the copy of the user the cookie carries — that copy is the
+      browser's to edit, and an edited one with no factors skipped the code.
+      The token is the one getUser() just had accepted; no further request.
     */
     let secondFactorDue = false;
+    let accessToken: string | null = null;
     if (user) {
-      const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      secondFactorDue = data?.currentLevel === 'aal1' && data.nextLevel === 'aal2';
+      const { data } = await supabase.auth.getSession();
+      accessToken = data.session?.access_token ?? null;
+      secondFactorDue = isSecondFactorDue(user, accessToken);
     }
 
-    return { user, response, isAdmin, secondFactorDue };
+    return { user, response, isAdmin, secondFactorDue, accessToken };
   } catch (error) {
     // A network failure reaching the auth server is not a reason to fail the
     // request. Protected routes will redirect to sign-in, which is the right
@@ -91,6 +104,6 @@ export async function updateSession(
       '[middleware] could not refresh the session:',
       error instanceof Error ? error.message : error,
     );
-    return { user: null, response };
+    return { user: null, response, accessToken: null };
   }
 }

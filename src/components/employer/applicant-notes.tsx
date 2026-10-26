@@ -9,6 +9,7 @@ import { cn, formatDate, isoDate } from '@/lib/utils';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { addApplicationNote, deleteApplicationNote } from '@/lib/actions/applications';
 import { reach } from '@/lib/reach';
+import { useRetryKey } from '@/lib/retry-key';
 import type { ApplicationNoteRow } from '@/lib/supabase/database.types';
 
 /**
@@ -31,6 +32,7 @@ export function ApplicantNotes({
   authors,
   locale,
   viewerId,
+  readOnly = false,
 }: {
   applicationId: string;
   notes: ApplicationNoteRow[];
@@ -38,6 +40,11 @@ export function ApplicantNotes({
   authors: Record<string, string>;
   locale: string;
   viewerId: string;
+  /**
+   * A withdrawn application is closed. Notes already written stay, read only,
+   * and an empty list is not an invitation to write one.
+   */
+  readOnly?: boolean;
 }) {
   const t = useTranslations('employer');
   const tCommon = useTranslations('common');
@@ -68,6 +75,8 @@ export function ApplicantNotes({
   );
 
   const [draft, setDraft] = useState('');
+  // A note pressed again after a lost answer is found, not written twice.
+  const noteKey = useRetryKey();
   /*
     Closed until there is something in it.
 
@@ -89,7 +98,7 @@ export function ApplicantNotes({
 
     startTransition(async () => {
       setError(null);
-      const result = await reach(addApplicationNote({ applicationId, body }));
+      const result = await reach(addApplicationNote({ applicationId, body, idempotencyKey: noteKey.for(body) }));
       if (recoverSession(result)) return;
 
       if (!result.ok) {
@@ -100,6 +109,7 @@ export function ApplicantNotes({
       // Cleared only once the server has it. A box that empties on submit and
       // then fails has taken somebody's sentence away.
       setDraft('');
+      noteKey.done();
       if (result.data?.note) setAdded((current) => [...current, result.data!.note]);
       router.refresh();
     });
@@ -117,6 +127,24 @@ export function ApplicantNotes({
       setRemoved((current) => [...current, id]);
       router.refresh();
     });
+  }
+
+  if (readOnly) {
+    if (notes.length === 0) return null;
+    return (
+      <ul className="mt-3 space-y-2 border-t border-border pt-3">
+        {notes.map((note) => (
+          <li key={note.id} className="text-[13px] leading-relaxed text-[#5B6475] dark:text-[#C5CAD3]">
+            <p>{note.body}</p>
+            <p className="mt-0.5">
+              <span>{note.author_id ? (authors[note.author_id] ?? t('notesFormerColleague')) : t('notesFormerColleague')}</span>
+              <span aria-hidden> · </span>
+              <time dateTime={isoDate(note.created_at)}>{formatDate(note.created_at, locale)}</time>
+            </p>
+          </li>
+        ))}
+      </ul>
+    );
   }
 
   return (

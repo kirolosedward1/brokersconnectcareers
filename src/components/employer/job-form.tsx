@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
@@ -31,6 +31,9 @@ import type {
   SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
+import { draftKey } from '@/lib/form-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
+import { DraftNotice } from '@/components/ui/draft-notice';
 
 type Values = {
   titleAr: string;
@@ -67,12 +70,15 @@ const SHOWN_ERRORS = [
 
 export function JobForm({
   locale,
+  ownerId,
   job,
   districts,
   developers,
   selectedDeveloperIds,
 }: {
   locale: string;
+  /** Whose draft this form keeps (lib/form-draft.ts). */
+  ownerId: string;
   job: JobRow | null;
   districts: DistrictRow[];
   developers: DeveloperRow[];
@@ -148,6 +154,41 @@ export function JobForm({
     requirementsAr: job?.requirements_ar ?? '',
   });
 
+  /*
+    The wizard's work, kept in this browser as it is typed (lib/form-draft.ts):
+    every field, the chips, and which step it was on. A listing is the longest
+    thing anybody types here, and until this a closed tab, a phone that
+    dropped the browser in the background, or the sign-in a lapsed session
+    sends people to, took all of it.
+
+    Measured against the version this form was built from. A draft typed over
+    an older version — a colleague saved in between, or this employer's own
+    save was refused as stale and they reloaded — is offered, not poured in,
+    because putting it in silently would undo whatever changed.
+  */
+  const draftValues = useMemo(
+    () => ({ values, benefits, developerIds, step }),
+    [values, benefits, developerIds, step],
+  );
+  const restoreDraft = useCallback(
+    (kept: { values: Values; benefits: Benefit[]; developerIds: number[]; step: number }) => {
+      setValues(kept.values);
+      setBenefits(kept.benefits);
+      setDeveloperIds(kept.developerIds);
+      setStep(Math.min(Math.max(0, kept.step), STEPS.length - 1));
+    },
+    [],
+  );
+  const draft = useFormDraft({
+    key: draftKey('job', ownerId, job?.id ?? null),
+    values: draftValues,
+    restore: restoreDraft,
+    // The step is where the wizard is, not something typed: going to look at
+    // another step does not answer an offered draft.
+    typed: (kept) => ({ values: kept.values, benefits: kept.benefits, developerIds: kept.developerIds }),
+    base: job?.version ?? null,
+  });
+
   const set = <K extends keyof Values>(key: K) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setValues((current) => ({ ...current, [key]: event.target.value as Values[K] }));
@@ -213,6 +254,8 @@ export function JobForm({
   }
 
   function submit(publish: boolean) {
+    // Kept now, not after the pause: what follows can end in a sign-in.
+    draft.flush();
     startTransition(async () => {
       const result = await reach(saveJob({
         id: job?.id,
@@ -247,14 +290,14 @@ export function JobForm({
           // Somebody else saved this listing while this form was open. Their
           // work is on the server and this form's is on the screen; reloading
           // is the only answer that does not silently discard one of them.
-          setErrors({ form: tEmployer('listingMoved') });
+          setErrors({ form: tEmployer('listingMovedKept') });
           return;
         }
         if (result.error === 'invalid_transition') {
           // The listing moved under this form — closed in another tab,
           // approved by a moderator — and the save it was built for no longer
           // makes sense. Reloading is the honest answer, not a retry.
-          setErrors({ form: tEmployer('listingMoved') });
+          setErrors({ form: tEmployer('listingMovedKept') });
           return;
         }
         if (result.error === 'post_cap') {
@@ -304,6 +347,8 @@ export function JobForm({
         nothing to tell them it worked. The obvious thing to do then is submit
         it again.
       */
+      // Saved: the server holds it now, so this browser need not.
+      draft.clear();
       router.push('/employer/jobs');
     });
   }
@@ -322,6 +367,7 @@ export function JobForm({
   return (
     <div>
       <form onSubmit={onSubmit}>
+      <DraftNotice draft={draft} className="mb-6" />
       {similar && step > 0 ? (
         <div className="rounded-xl border border-warning/40 bg-warning-muted p-4 text-sm" role="status">
           <p className="font-semibold">{tEmployer('duplicateTitle')}</p>

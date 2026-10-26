@@ -9,7 +9,7 @@ Nothing here can be applied from a migration. Each item is a dashboard setting o
 | **Enable Captcha protection** | On, provider **Turnstile**, secret = the same `TURNSTILE_SECRET_KEY` set on Vercel | Makes a Turnstile token *required* on sign-up, sign-in with password, password reset and resend — for the browser and for any script calling `auth/v1/*` directly. The forms already pass the token when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set. **Set the Vercel variables and redeploy before switching this on**, or sign-in breaks for everyone. |
 | **Rate limits → Token refresh / sign-in per IP** | Keep defaults or lower (30 per 5 min) | GoTrue's own brute-force protection, keyed on the client's real IP. |
 | **Rate limits → Emails sent per hour** | 30 (custom SMTP is configured) | Bounds reset/confirmation mail from one project; the app's own reset limiter is telemetry only. |
-| **Leaked password protection** | On (Pro plan) | Refuses passwords found in breach corpora at sign-up and change. |
+| **Leaked password protection** | On (Pro plan) | Refuses passwords found in breach corpora at sign-up and change. **Off on production as of 2026-10-22** (Supabase security advisor, `auth_leaked_password_protection`). |
 | **Minimum password length** | 10 | Forms enforce 8; raising the server side does not change the UI copy — update `validation.passwordShort` in `messages/*.json` when you raise it. |
 
 Confirm: `curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" -H "apikey: $ANON" -H "content-type: application/json" -d '{"email":"nobody@example.com","password":"x"}'` must answer `captcha verification process failed` once the toggle is on.
@@ -21,7 +21,7 @@ Confirm: `curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=pa
 | **TOTP** | Enabled |
 | **Phone** | Disabled (no SMS provider) |
 
-Then, as each admin: `/dashboard/account` → *Two-step verification* → set up. From that moment the database refuses that admin's session at AAL1 (migration 311), and the console routes them to the code prompt. `ADMIN_MFA_REQUIRED=false` on Vercel is the escape hatch **only** for an admin who has not enrolled yet; it does nothing for one who has.
+Then, as each admin: `/dashboard/account` → *Two-step verification* → set up. From that moment the database refuses that admin's session at AAL1 (migration 311), and the console routes them to the code prompt. Enrolment is optional until `ADMIN_MFA_REQUIRED=true` on Vercel; unset leaves an admin who has not enrolled able to open the console. The variable does nothing for an admin who has already enrolled.
 
 ## Authentication → Sessions
 

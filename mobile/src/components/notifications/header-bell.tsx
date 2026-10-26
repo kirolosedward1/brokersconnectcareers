@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { BarOnly } from '~/components/navigation/page-header';
 import { Bell } from '~/components/ui/lucide';
 import { formatNumber } from '@/lib/format';
 import { Text } from '~/components/ui/text';
@@ -21,7 +22,11 @@ export function useHeaderBell(): (() => ReactElement) | undefined {
   return session && viewer?.profile ? bell : undefined;
 }
 
-const bell = () => <HeaderBell />;
+const bell = () => (
+  <BarOnly>
+    <HeaderBell />
+  </BarOnly>
+);
 
 /**
  * The bell, at the trailing end of each tab's first screen — the website keeps

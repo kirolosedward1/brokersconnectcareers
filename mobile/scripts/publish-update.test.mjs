@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url';
 import {
   accountFromWhoami,
   appIdentityFrom,
+  expoGoChannel,
+  expoGoDeepLink,
   expoGoLink,
   expoGoTarget,
   findOrCreateProject,
@@ -145,8 +147,19 @@ console.log('\n— an update Expo Go opens, with no computer running');
   is('right to left still forced, as Expo Go reads it', goConfig.extra.forcesRTL, true);
   is('it waits for the newest update before it opens, so a phone never runs the one before', goConfig.updates.fallbackToCacheTimeout, 30_000);
   is('fetched from the project, like a build', goConfig.updates.url, 'https://u.expo.dev/00000000-0000-4000-8000-000000000000');
-  is('and nothing else differs from the store build', JSON.stringify({ ...goConfig, runtimeVersion: null, updates: null }),
-    JSON.stringify({ ...(await configWith({ ...production.env, EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000' })), runtimeVersion: null, updates: null }));
+  // Expo Go's loading page draws a project's icon and name, large, unless the
+  // manifest names a splash: the Expo Go publish alone carries one, a whole
+  // page with the mark at the launch screen's size, so the app opens there as
+  // the store build does. A store build has the phone's launch screen instead.
+  is('it names a splash for Expo Go\'s loading page, the mark at the launch screen\'s size', goConfig.splash, {
+    image: './assets/images/splash-expo-go.png',
+    resizeMode: 'cover',
+    backgroundColor: '#F6F4F0',
+  });
+  const storeConfig = await configWith({ ...production.env, EAS_PROJECT_ID: '00000000-0000-4000-8000-000000000000' });
+  is('which a store build does not carry (its launch screen is the phone\'s own)', storeConfig.splash, undefined);
+  const theRest = ({ runtimeVersion, updates, splash, ...rest }) => rest;
+  is('and nothing else differs from the store build', JSON.stringify(theRest(goConfig)), JSON.stringify(theRest(storeConfig)));
 
   is('the project id from the environment first', projectIdFrom({ EAS_PROJECT_ID: 'from-env' }, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'from-env');
   is('then the one app.config.ts carries', projectIdFrom({}, "const EAS_PROJECT_ID: string | null = 'in-file';"), 'in-file');
@@ -157,6 +170,16 @@ console.log('\n— an update Expo Go opens, with no computer running');
     expoGoLink('p-1', '57.0.0'),
     'https://qr.expo.dev/eas-update?slug=exp&projectId=p-1&runtimeVersion=exposdk%3A57.0.0&channel=expo-go',
   );
+  is('and the link the phone opens itself names the same channel', expoGoDeepLink('p-1', '57.0.0'), 'exp://u.expo.dev/p-1?channel-name=expo-go&runtime-version=exposdk:57.0.0');
+
+  // A pull request's publish beside main: its own channel, so neither replaces the other.
+  is('the channel is expo-go unless one is named', expoGoChannel({}), 'expo-go');
+  is('an empty name is no name', expoGoChannel({ EXPO_GO_CHANNEL: '' }), 'expo-go');
+  is('a pull request publishes on its own channel', expoGoTarget(eas, { EXPO_GO_CHANNEL: 'expo-go-pr-48' }).channel, 'expo-go-pr-48');
+  is('with the same settings as the expo-go one', expoGoTarget(eas, { EXPO_GO_CHANNEL: 'expo-go-pr-48' }).env, go.env);
+  is('and its own links', expoGoLink('p-1', '57.0.0', 'expo-go-pr-48').endsWith('&channel=expo-go-pr-48'), true);
+  is('both of them', expoGoDeepLink('p-1', '57.0.0', 'expo-go-pr-48'), 'exp://u.expo.dev/p-1?channel-name=expo-go-pr-48&runtime-version=exposdk:57.0.0');
+  throws('a channel name EAS would refuse is refused first', () => expoGoChannel({ EXPO_GO_CHANNEL: 'PR #48' }), /lowercase letters, digits and dashes/);
 }
 
 console.log('\n— the EAS project for Expo Go, found or created from the token alone');
@@ -221,13 +244,20 @@ console.log('\n— what the runtime version is a fingerprint of');
   // published over the air could not have changed. fingerprint.config.js.
   const { createFingerprintAsync } = createRequire(join(appRoot, 'package.json'))('expo/fingerprint');
   const saved = process.env;
-  process.env = { ...saved, ...eas.build.base.env, EAS_BUILD_PROFILE: 'production' };
-  try {
-    const fingerprint = await createFingerprintAsync(appRoot, {
+  const fingerprintAt = async (commit) => {
+    process.env = { ...saved, ...eas.build.base.env, EAS_BUILD_PROFILE: 'production', EAS_BUILD_GIT_COMMIT_HASH: commit };
+    return createFingerprintAsync(appRoot, {
       platforms: ['ios'],
       ignorePaths: ['android/**/*', 'ios/**/*'],
       silent: true,
     });
+  };
+  try {
+    const fingerprint = await fingerprintAt('aaaaaaa1111111');
+    // The commit shown on Account (extra.commit) changes with every publish;
+    // counted, no update published after a build would ever reach it.
+    const later = await fingerprintAt('bbbbbbb2222222');
+    is('the commit a bundle is published from does not change it', later.hash, fingerprint.hash);
     const counted = fingerprint.sources.map((source) => source.id ?? source.filePath);
     is('package.json scripts are not counted (a new check script changed every fingerprint)', counted.includes('packageJson:scripts'), false);
     is('nor .gitignore', counted.includes('.gitignore'), false);

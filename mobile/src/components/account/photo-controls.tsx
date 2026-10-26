@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
+import { imageFailureCopy } from '@/lib/image-upload';
 import { ImageUp, Trash2 } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
@@ -8,6 +9,7 @@ import { PhotoRefused, pickPhoto, useRemovePhoto, useUploadPhoto } from '~/featu
 import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 /**
  * The photo's two buttons — the website's AvatarUpload. The one thing on the
@@ -26,12 +28,15 @@ export function PhotoControls({ hasPhoto }: { hasPhoto: boolean }) {
 
   const explain = (failure: unknown) => {
     if (failure instanceof ApiError && failure.status === 0) return t('app.offline.body');
-    const reason = failure instanceof PhotoRefused ? failure.reason : 'failed';
-    return reason === 'file_type'
-      ? t('validation.fileType')
-      : reason === 'too_large'
-        ? t('validation.fileTooLarge')
-        : t('common.errorBody');
+    if (!(failure instanceof PhotoRefused)) return t('common.errorBody');
+    return imageFailureCopy(failure.reason, failure.detail, {
+      imageType: t('validation.imageType'),
+      imageUnreadable: t('validation.imageUnreadable'),
+      imageTooLarge: t('validation.imageTooLarge'),
+      uploadRateLimited: t('validation.uploadRateLimited'),
+      storageError: t('validation.storageError'),
+      generic: t('common.errorBody'),
+    });
   };
 
   // Promise chains, not try/finally, which the React Compiler does not compile.
@@ -47,7 +52,7 @@ export function PhotoControls({ hasPhoto }: { hasPhoto: boolean }) {
   };
 
   const confirmRemove = () =>
-    Alert.alert(t('account.photo'), undefined, [
+    dialog.alert(t('app.account.photoDeleteTitle'), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),

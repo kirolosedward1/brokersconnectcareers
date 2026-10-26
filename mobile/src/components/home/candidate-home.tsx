@@ -1,8 +1,8 @@
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2 } from '~/components/ui/lucide';
+import { BellRing, Bookmark, Building2, MessageSquareReply, Send, UserRoundCheck } from '~/components/ui/lucide';
 import { formatDate, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';
@@ -11,15 +11,20 @@ import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
-import { StatStrip } from '~/components/dashboard/stat-strip';
+import { StatRow, StatRowPlaceholder } from '~/components/dashboard/stat-row';
+import { WeeklySummary } from '~/components/home/weekly-summary';
 import { JobBrowse } from '~/components/home/job-browse';
+import { RecentlyViewed } from './recently-viewed';
+import { CompletenessRing } from '~/components/profile/completeness-ring';
 import { JobCard } from '~/components/jobs/job-card';
+import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
-import { STATUS_VARIANT, useMyApplications, type CandidateApplication } from '~/features/applications/queries';
+import { STAGE_TONE } from '@/lib/application-stages';
+import { useMyApplications, type CandidateApplication } from '~/features/applications/queries';
 import { useBrowseCounts } from '~/features/browse/queries';
 import {
   candidateNextAction,
@@ -30,10 +35,12 @@ import {
 import { useUnchosenVisibility } from '~/features/policies';
 import { useAgentProfile, useCandidateSummary } from '~/features/profile/queries';
 import { useDistricts } from '~/features/taxonomy';
+import { useTabList } from '~/features/tab-bar';
 import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { tabsFor } from '~/lib/tabs';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -71,6 +78,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const figuresPending = summary.isPending || applications.isPending;
   const unreadable = !s && applications.isError;
   const noApplications = s ? s.applications_total === 0 : applications.isSuccess && applications.data.length === 0;
+  const hasApplied = s ? s.applications_total > 0 : (applications.data?.length ?? 0) > 0;
 
   const refresh = () =>
     Promise.all([
@@ -88,9 +96,11 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   // applications again too, and a spinner that starts by itself pushes the
   // page down under the reader's finger.
   const pull = usePullRefresh(refresh);
+  const list = useTabList();
 
   return (
     <ScrollView
+      {...list}
       contentInsetAdjustmentBehavior="automatic"
       // An appeal is typed on Home: its Send takes the first tap, and the field is lifted above the keyboard.
       keyboardShouldPersistTaps="handled"
@@ -104,6 +114,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
         compact
         title={profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
         subtitle={t('dashboard.candidateLede')}
+        aside={profile ? <HeroPhoto profile={profile} completeness={s?.profile_completeness ?? null} /> : undefined}
       />
 
       {profile ? <StandingNotice profile={profile} /> : null}
@@ -114,11 +125,11 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       {/* Who sees their directory card was decided before onboarding asked. */}
       {profile ? <VisibilityAsk /> : null}
 
-      {/* The phone's question, with its reason, until it has been answered. */}
-      {profile ? <PushPrompt audience="candidate" /> : null}
+      {/* The phone's question, with its reason — once there is an application to hear back on — until answered. */}
+      {profile && hasApplied ? <PushPrompt audience="candidate" /> : null}
 
       {figuresPending ? (
-        <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />
+        <StatRowPlaceholder count={5} label={t('common.loading')} />
       ) : (
         <>
           {next ? (
@@ -172,35 +183,62 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                 {t('dashboard.emptyCandidateBody')}
               </Text>
               <View style={{ marginTop: space[2] }}>
-                <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} />
+                <Button label={t('nav.browseJobs')} onPress={() => router.navigate('/jobs')} />
               </View>
             </View>
           ) : null}
 
           {s ? (
-            <StatStrip
+            <StatRow
               label={t('dashboard.overview')}
               cells={[
                 {
                   label: t('dashboard.statApplications'),
+                  short: t('app.home.statApplications'),
                   value: n(s.applications_total),
+                  icon: Send,
                   onPress: () => router.navigate('/dashboard/applications'),
                 },
                 {
                   label: t('dashboard.statReplies'),
+                  short: t('app.home.statReplies'),
                   value: n(s.replies),
+                  icon: MessageSquareReply,
                   tone: s.replies > 0 ? 'good' : 'default',
                   onPress: () => router.navigate('/dashboard/applications'),
                 },
                 {
                   label: t('dashboard.statCompleteness'),
+                  short: t('app.home.statProfile'),
                   value: `${n(s.profile_completeness)}%`,
+                  icon: UserRoundCheck,
                   tone: s.profile_completeness < COMPLETENESS_WARN ? 'warn' : 'default',
                   onPress: () => router.navigate('/account/profile'),
                 },
-                { label: t('dashboard.statSaved'), value: n(s.saved_jobs), onPress: () => router.navigate('/dashboard/saved') },
-                { label: t('dashboard.statAlerts'), value: n(s.alerts_on), onPress: () => router.navigate('/dashboard/saved') },
+                {
+                  label: t('dashboard.statSaved'),
+                  short: t('app.home.statSaved'),
+                  value: n(s.saved_jobs),
+                  icon: Bookmark,
+                  onPress: () => router.navigate('/dashboard/saved'),
+                },
+                {
+                  label: t('dashboard.statAlerts'),
+                  short: t('app.home.statAlerts'),
+                  value: n(s.alerts_on),
+                  icon: BellRing,
+                  onPress: () => router.navigate('/dashboard/saved'),
+                },
               ]}
+            />
+          ) : null}
+
+          {s ? (
+            <WeeklySummary
+              districtIds={agent.data?.agent?.district_ids ?? []}
+              applications={applications.data ?? []}
+              readAt={applications.dataUpdatedAt}
+              profileViews={s.profile_views_30d ?? 0}
             />
           ) : null}
 
@@ -225,6 +263,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
           ) : null}
         </>
       )}
+
+      <RecentlyViewed />
 
       {suggestions.length ? (
         <View style={{ gap: space[3] }}>
@@ -288,6 +328,23 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   );
 }
 
+/**
+ * The reader's photo beside the greeting, in a rounded frame of light on the
+ * panel — their first letter on its colour until they add one (on Account).
+ */
+function HeroPhoto({ profile, completeness }: { profile: ProfileRow; completeness: number | null }) {
+  const photo = <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" shape="rounded" />;
+  // How complete the profile is, round the photo; a tap opens it at what is missing.
+  if (completeness !== null) {
+    return (
+      <CompletenessRing percent={completeness} size={64} radius={18} onHero onPress={() => router.navigate('/account/profile')}>
+        {photo}
+      </CompletenessRing>
+    );
+  }
+  return <View style={styles.photoFrame}>{photo}</View>;
+}
+
 function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll: () => void }) {
   const t = useTranslations('dashboard');
   const { colors } = useTheme();
@@ -316,6 +373,7 @@ function RecentApplication({ application, first }: { application: CandidateAppli
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const job = application.job;
   if (!job) return null;
 
@@ -328,10 +386,12 @@ function RecentApplication({ application, first }: { application: CandidateAppli
       accessibilityRole="link"
       accessibilityLabel={formatList([title, company, status], locale)}
       onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
+      // At the accessibility sizes the status goes under the title rather than
+      // squeezing it to a word a line.
       style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: space[3],
+        flexDirection: large ? 'column' : 'row',
+        alignItems: large ? 'flex-start' : 'center',
+        gap: large ? space[2] : space[3],
         paddingHorizontal: space[4],
         paddingVertical: space[3],
         borderTopWidth: first ? 0 : 1,
@@ -339,15 +399,15 @@ function RecentApplication({ application, first }: { application: CandidateAppli
         backgroundColor: pressed ? colors.muted : 'transparent',
       })}
     >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text weight="medium" numberOfLines={1}>
+      <View style={[{ gap: 2 }, large ? { alignSelf: 'stretch' } : { flex: 1 }]}>
+        <Text weight="medium" numberOfLines={large ? undefined : 1}>
           {title}
         </Text>
-        <Text variant="small" tone="mutedForeground" numberOfLines={1}>
+        <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 1}>
           {`${company} · ${formatDate(application.created_at, locale)}`}
         </Text>
       </View>
-      <Badge variant={STATUS_VARIANT[application.status]} label={status} />
+      <Badge variant={STAGE_TONE[application.status]} label={status} />
     </Pressable>
   );
 }
@@ -406,3 +466,15 @@ function VisibilityAsk() {
     </Notice>
   );
 }
+
+const styles = StyleSheet.create({
+  // A hairline of light around the photo, a little off it, on the deep panel.
+  photoFrame: {
+    padding: 3,
+    borderRadius: 22,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+});

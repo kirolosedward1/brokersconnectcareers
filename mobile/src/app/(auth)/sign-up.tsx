@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { View, type TextInput } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { AuthError } from '@supabase/supabase-js';
@@ -11,6 +11,7 @@ import { SocialSignIn } from '~/components/auth/social-sign-in';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
+import { PasswordField } from '~/components/ui/password-field';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useCaptcha } from '~/features/auth/captcha';
@@ -20,9 +21,11 @@ import { useLand } from '~/features/auth/land';
 import type { ProviderOutcome } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
 import { env } from '~/lib/env';
+import { useErrorFeedback } from '~/lib/haptics';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { livePasswordChecks, PASSWORD_MIN, PASSWORD_RULES } from '~/lib/password-checks';
 
 /**
  * Create an account — the website's sign-up, rule for rule: eight characters,
@@ -50,16 +53,20 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  useErrorFeedback(error);
   const [pending, setPending] = useState(false);
   // The return key moves on to the next field, and from the last one signs up, as on sign-in.
-  const passwordField = useRef<TextInput>(null);
-  const confirmField = useRef<TextInput>(null);
+  const passwordField = useRef<TextInputInstance>(null);
+  const confirmField = useRef<TextInputInstance>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
 
+  // Said under the fields while typing; checked again when sent.
+  const live = livePasswordChecks(password, passwordConfirm);
+
   async function submit() {
     setError(null);
-    if (password.length < 8) {
+    if (password.length < PASSWORD_MIN) {
       setError(t('validation.passwordShort'));
       return;
     }
@@ -208,38 +215,30 @@ export default function SignUpScreen() {
           />
         </Field>
 
-        <Field label={t('auth.password')}>
-          <TextField
+        <Field label={t('auth.password')} error={live.short ? t('validation.passwordShort') : undefined}>
+          <PasswordField
             ref={passwordField}
             value={password}
             onChangeText={setPassword}
             accessibilityLabel={t('auth.password')}
-            ltr
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
             autoComplete="new-password"
             textContentType="newPassword"
-            passwordRules="minlength: 8;"
+            passwordRules={PASSWORD_RULES}
             returnKeyType="next"
             submitBehavior="submit"
             onSubmitEditing={() => confirmField.current?.focus()}
           />
         </Field>
 
-        <Field label={t('auth.passwordConfirm')}>
-          <TextField
+        <Field label={t('auth.passwordConfirm')} error={live.mismatch ? t('validation.passwordMismatch') : undefined}>
+          <PasswordField
             ref={confirmField}
             value={passwordConfirm}
             onChangeText={setPasswordConfirm}
             accessibilityLabel={t('auth.passwordConfirm')}
-            ltr
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
             autoComplete="new-password"
             textContentType="newPassword"
-            passwordRules="minlength: 8;"
+            passwordRules={PASSWORD_RULES}
             returnKeyType="go"
             onSubmitEditing={() => {
               if (!pending && !captchaBlocks(captcha)) void submit();
@@ -247,7 +246,10 @@ export default function SignUpScreen() {
           />
         </Field>
 
-        {error ? <Notice tone="destructive">{error}</Notice> : null}
+        {/* Not said twice: a refusal the field already says stays under the field. */}
+        {error && !(live.short && error === t('validation.passwordShort')) && !(live.mismatch && error === t('validation.passwordMismatch')) ? (
+          <Notice tone="destructive">{error}</Notice>
+        ) : null}
 
         <CaptchaStatus captcha={captcha} />
 

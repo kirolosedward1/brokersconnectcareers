@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { clean } from '@/lib/security/sanitize';
+import { insertOnce } from '@/lib/actions/idempotency';
 
 /**
  * The CV sections: work history, education, certifications.
@@ -16,6 +17,13 @@ import { clean } from '@/lib/security/sanitize';
  * which is what makes this file safe to be short.
  */
 
+/**
+ * A new entry's key, made once when its form opens and sent with every
+ * attempt, so a retry after a lost answer finds the entry the first attempt
+ * added rather than adding it twice (idempotency.ts). Ignored on a change.
+ */
+const idempotencyKey = z.string().uuid().optional();
+
 const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'date')
@@ -25,6 +33,7 @@ const isoDate = z
 const experienceSchema = z
   .object({
     id: z.string().uuid().optional(),
+    idempotencyKey,
     agentId: z.string().uuid(),
     companyName: z.string().trim().min(1).max(120),
     title: z.string().trim().min(1).max(120),
@@ -45,7 +54,7 @@ export async function saveExperience(input: unknown): Promise<ActionResult<{ id:
     return { ok: false, error: 'invalid', fieldErrors: flatten(parsed.error) };
   }
 
-  const { id, agentId, companyName, title, track, districtId, started, ended, highlights } =
+  const { id, idempotencyKey: key, agentId, companyName, title, track, districtId, started, ended, highlights } =
     parsed.data;
 
   const supabase = await createClient();
@@ -60,12 +69,25 @@ export async function saveExperience(input: unknown): Promise<ActionResult<{ id:
     highlights: clean(highlights, true) || null,
   };
 
-  const query = id
-    ? supabase.from('agent_experience').update(row).eq('id', id).select('id').single()
-    : supabase.from('agent_experience').insert(row).select('id').single();
-
-  const { data, error } = await query;
-  if (error) return { ok: false, error: capMessage(error.message) };
+  const { data, error } = id
+    ? await supabase.from('agent_experience').update(row).eq('id', id).select('id').single()
+    : await insertOnce(
+        key,
+        (withKey) =>
+          supabase
+            .from('agent_experience')
+            .insert({ ...row, ...(withKey ? { idempotency_key: key } : {}) })
+            .select('id')
+            .single(),
+        () =>
+          supabase
+            .from('agent_experience')
+            .select('id')
+            .eq('agent_id', agentId)
+            .eq('idempotency_key', key!)
+            .maybeSingle(),
+      );
+  if (error || !data) return { ok: false, error: capMessage(error?.message ?? 'failed') };
 
   revalidatePath('/dashboard/profile');
   return { ok: true, data: { id: data.id } };
@@ -73,6 +95,7 @@ export async function saveExperience(input: unknown): Promise<ActionResult<{ id:
 
 const educationSchema = z.object({
   id: z.string().uuid().optional(),
+  idempotencyKey,
   agentId: z.string().uuid(),
   institution: z.string().trim().min(1).max(160),
   degree: z.string().trim().max(120).nullable().optional(),
@@ -84,7 +107,7 @@ export async function saveEducation(input: unknown): Promise<ActionResult<{ id: 
   const parsed = educationSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid', fieldErrors: flatten(parsed.error) };
 
-  const { id, agentId, institution, degree, field, graduated } = parsed.data;
+  const { id, idempotencyKey: key, agentId, institution, degree, field, graduated } = parsed.data;
 
   const supabase = await createClient();
   const row = {
@@ -95,12 +118,25 @@ export async function saveEducation(input: unknown): Promise<ActionResult<{ id: 
     graduated: graduated ?? null,
   };
 
-  const query = id
-    ? supabase.from('agent_education').update(row).eq('id', id).select('id').single()
-    : supabase.from('agent_education').insert(row).select('id').single();
-
-  const { data, error } = await query;
-  if (error) return { ok: false, error: capMessage(error.message) };
+  const { data, error } = id
+    ? await supabase.from('agent_education').update(row).eq('id', id).select('id').single()
+    : await insertOnce(
+        key,
+        (withKey) =>
+          supabase
+            .from('agent_education')
+            .insert({ ...row, ...(withKey ? { idempotency_key: key } : {}) })
+            .select('id')
+            .single(),
+        () =>
+          supabase
+            .from('agent_education')
+            .select('id')
+            .eq('agent_id', agentId)
+            .eq('idempotency_key', key!)
+            .maybeSingle(),
+      );
+  if (error || !data) return { ok: false, error: capMessage(error?.message ?? 'failed') };
 
   revalidatePath('/dashboard/profile');
   return { ok: true, data: { id: data.id } };
@@ -109,6 +145,7 @@ export async function saveEducation(input: unknown): Promise<ActionResult<{ id: 
 const certificationSchema = z
   .object({
     id: z.string().uuid().optional(),
+    idempotencyKey,
     agentId: z.string().uuid(),
     name: z.string().trim().min(1).max(160),
     issuer: z.string().trim().max(160).nullable().optional(),
@@ -124,7 +161,7 @@ export async function saveCertification(input: unknown): Promise<ActionResult<{ 
   const parsed = certificationSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid', fieldErrors: flatten(parsed.error) };
 
-  const { id, agentId, name, issuer, issued, expires } = parsed.data;
+  const { id, idempotencyKey: key, agentId, name, issuer, issued, expires } = parsed.data;
 
   const supabase = await createClient();
   const row = {
@@ -135,12 +172,25 @@ export async function saveCertification(input: unknown): Promise<ActionResult<{ 
     expires: expires || null,
   };
 
-  const query = id
-    ? supabase.from('agent_certifications').update(row).eq('id', id).select('id').single()
-    : supabase.from('agent_certifications').insert(row).select('id').single();
-
-  const { data, error } = await query;
-  if (error) return { ok: false, error: capMessage(error.message) };
+  const { data, error } = id
+    ? await supabase.from('agent_certifications').update(row).eq('id', id).select('id').single()
+    : await insertOnce(
+        key,
+        (withKey) =>
+          supabase
+            .from('agent_certifications')
+            .insert({ ...row, ...(withKey ? { idempotency_key: key } : {}) })
+            .select('id')
+            .single(),
+        () =>
+          supabase
+            .from('agent_certifications')
+            .select('id')
+            .eq('agent_id', agentId)
+            .eq('idempotency_key', key!)
+            .maybeSingle(),
+      );
+  if (error || !data) return { ok: false, error: capMessage(error?.message ?? 'failed') };
 
   revalidatePath('/dashboard/profile');
   return { ok: true, data: { id: data.id } };

@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { configuredValue } from '@/lib/env';
 import { AVATAR_BUCKET, COMPANY_LOGOS_BUCKET } from '@/lib/buckets';
+import { storageDetail } from '@/lib/image-upload';
+import { logFailure } from '@/lib/observe';
 import { IMAGE_KINDS, MAX_BYTES, reencodeImage, sniffKind } from '@/lib/security/files';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
@@ -118,7 +120,15 @@ export async function uploadImage(form: FormData): Promise<UploadOutcome> {
   const { error: uploadError } = await storage
     .from(bucket)
     .upload(path, image.bytes, { contentType: 'image/webp', upsert: false, cacheControl: '31536000' });
-  if (uploadError) return { ok: false, error: 'unavailable' };
+  if (uploadError) {
+    // The buckets have no INSERT or UPDATE for the caller's session (migration
+    // 346). When the write is the session's, storage refuses it; the sentence
+    // is what the form shows. An empty one stays the generic "try again".
+    const detail = storageDetail(uploadError.message);
+    logFailure('upload', 'storage refused a picture', { bucket, reason: detail.slice(0, 200) });
+    if (!detail) return { ok: false, error: 'unavailable' };
+    return { ok: false, error: 'storage', detail };
+  }
 
   const url = storage.from(bucket).getPublicUrl(path).data.publicUrl;
 

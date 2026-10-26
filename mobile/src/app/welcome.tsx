@@ -1,50 +1,67 @@
-import { useEffect, useState, type ComponentType } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useNavigation } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useLocale, useTranslations } from 'use-intl';
-import { AuthSwitch } from '~/components/auth/auth-scroll';
+import { SocialCircles } from '~/components/auth/social-sign-in';
 import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
+import { toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
-import { Float } from '~/components/motion/float';
-import { Button } from '~/components/ui/button';
-import { ForwardChevron } from '~/components/ui/icons';
-import { Banknote, Clock, MessageCircle, type LucideProps } from '~/components/ui/lucide';
+import { Button, GLASS } from '~/components/ui/button';
+import { ForwardChevron, SignInMark } from '~/components/ui/icons';
+import { CircleAlert, UserRoundPlus } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
-import { welcomeAnswered, welcomeDrawn } from '~/features/welcome';
+import { useAuthErrorText } from '~/features/auth/errors';
+import { intentFromParams } from '~/features/auth/intent';
+import { useLand } from '~/features/auth/land';
+import type { ProviderOutcome } from '~/features/auth/providers';
+import { rememberWelcomeSkipped, welcomeDrawn } from '~/features/welcome';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
 
+/** The website's own hero photograph (public/media/hero-poster.jpg; tests/brand.test.ts holds them equal). */
+const PHOTO = require('../../assets/images/welcome-photo.jpg');
+
 /**
- * When the screen's parts arrive, after the first frame: the splash screen
- * comes down onto that frame (the root layout), and what moves under it is
- * never seen. The emblem first, its facts, the words, then the ways on.
+ * When the screen's parts arrive, after the first frame: the screen fades in
+ * over the launch curtain or the tabs (the root layout), and its parts follow
+ * it in. Skip first — it opens again after every sign-out, and someone who
+ * has seen it before is not kept waiting for the way past it
+ * (iOS takes no taps on what has not begun to show) — with the photograph
+ * settling behind it; then the logo, the words and the ways on.
  */
 const BEAT = 160;
+/** Longer than iOS takes to fade a full-screen sheet in. */
+const FADE_IN_MS = 500;
 const AT = {
-  emblem: BEAT,
-  mark: BEAT + 140,
-  facts: BEAT + 300,
-  words: BEAT + 260,
-  ways: BEAT + 480,
-  skip: BEAT + 640,
+  skip: 0,
+  photo: 0,
+  brand: BEAT + 80,
+  words: BEAT + 180,
+  ways: BEAT + 460,
 };
 
 /**
- * The first screen of a first launch, signed out (src/components/navigation/welcome-gate.tsx):
- * the website's mark at the centre of an emblem, the three facts the board is
- * built on drifting around it, what the board is in one line, and the ways
- * on — create an account, sign in, or skip and look around without one,
- * which the App Store asks an app to allow wherever an account is not needed.
- * A company has its own way in, to the employer's sign-up.
+ * The first screen of the first launch with nobody signed in, and where
+ * signing out leads (src/components/navigation/welcome-gate.tsx): the website's hero
+ * photograph across the whole screen under a deep sapphire veil, darkening to
+ * midnight where the words are — the logo and what the board is in one line —
+ * and the ways on: create an account, sign in — with Google's or Apple's
+ * round button beside it, one tap, where they are offered — or skip and
+ * look around without one, which the App Store asks an app to allow wherever
+ * an account is not needed. A company has its own way in, to the employer's
+ * sign-up.
  *
- * Over Home, which is already drawn underneath: skipping fades it away onto
- * the board's newest listings. Signing in closes it with the sign-in sheet
- * (useCloseFlow, which counts it among the flow's screens). Either answers it
- * on this phone for good.
+ * Dark in either appearance, as the website's hero is, so its words are white
+ * and the status bar's light over it.
+ *
+ * Over the tabs, already drawn underneath — Home, at a launch: skipping fades
+ * it away onto them, and later launches open on them (src/features/welcome.ts). Signing in closes it with
+ * the sign-in sheet (useCloseFlow, which counts it among the flow's screens).
  */
 export default function WelcomeScreen() {
   const t = useTranslations();
@@ -54,34 +71,64 @@ export default function WelcomeScreen() {
   const navigation = useNavigation();
   const window = useWindowDimensions();
   const [shown, setShown] = useState(false);
+  const land = useLand();
+  const errorText = useAuthErrorText();
+  const [busy, setBusy] = useState(false);
 
-  // Shown at once under the splash screen (the root layout opens it without
-  // animation); closed by fading away onto Home.
+  // Signed in with one tap: on as the sign-in sheet goes on (onboarding, the code, or the app), the welcome closed.
+  async function afterProvider(outcome: ProviderOutcome) {
+    if (outcome.ok) {
+      await land(intentFromParams({}));
+      return;
+    }
+    if (!outcome.cancelled) toast.show({ message: errorText(outcome.error), icon: CircleAlert, tone: 'destructive' });
+  }
+
+  // Closed by fading away onto Home, as it opened.
   useEffect(() => {
     navigation.setOptions({ animation: 'fade' });
   }, [navigation]);
 
+  // On screen once it has finished fading in, not when it is first laid out:
+  // at a launch the curtain under it lifts then, unseen behind it, rather than
+  // fading out while the welcome is still half in and Home showing through
+  // both. iOS says so when the screen has appeared (transitionEnd); should it
+  // not, the fade's own length later the welcome counts as drawn anyway.
+  useEffect(
+    () =>
+      navigation.addListener('transitionEnd' as never, ((event: { data?: { closing?: boolean } }) => {
+        if (!event.data?.closing) welcomeDrawn();
+      }) as never),
+    [navigation],
+  );
+  useEffect(() => {
+    if (!shown) return;
+    const fallback = setTimeout(welcomeDrawn, FADE_IN_MS);
+    return () => clearTimeout(fallback);
+  }, [shown]);
+
+  // This screen's own Back, whatever has been opened since.
+  // Remembered, so the next launch opens on Home (src/features/welcome.ts).
   const skip = () => {
-    welcomeAnswered();
-    router.back();
+    rememberWelcomeSkipped();
+    if (navigation.canGoBack()) navigation.goBack();
+    else router.replace('/');
   };
 
-  // The emblem takes what the phone can spare: a quarter of its height (a
-  // fifth on a short phone, an SE), never wider than the page with room for
-  // its rings. A short phone also has sign-in as a line under the button
-  // rather than a second button: the headline stays in view above them.
+  // A short phone (an SE) keeps the headline in view above the buttons: a
+  // smaller headline, smaller buttons, the photograph a little shorter.
   const compact = window.height < 740;
-  const emblem = Math.round(Math.min(220, window.height * (compact ? 0.2 : 0.25), (window.width - gutter * 2) / 1.6));
+  const photo = Math.round(window.height * (compact ? 0.6 : 0.68));
 
   return (
     <View
       testID="welcome"
-      onLayout={() => {
-        welcomeDrawn();
-        setShown(true);
-      }}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      onLayout={() => setShown(true)}
+      style={{ flex: 1, backgroundColor: colors.heroDeep }}
     >
+      <StatusBar style="light" />
+      <Backdrop height={photo} screen={window.height} play={shown} />
+
       {/* Skip, where iOS keeps a way past: the top, at the end of the line. */}
       <View style={{ paddingTop: insets.top + space[2], paddingHorizontal: gutter, alignItems: 'flex-end' }}>
         <Appear play={shown} delay={AT.skip} from="none">
@@ -99,52 +146,21 @@ export default function WelcomeScreen() {
               paddingStart: space[4],
               paddingEnd: space[3],
               ...corner('full'),
-              backgroundColor: pressed ? colors.muted : colors.secondary,
+              borderWidth: StyleSheet.hairlineWidth * 2,
+              borderColor: GLASS.edge,
+              backgroundColor: pressed ? GLASS.pressed : GLASS.fill,
             })}
           >
-            <Text variant="small" weight="semibold" tone="secondaryForeground" maxFontSizeMultiplier={1.4}>
+            <Text variant="small" weight="semibold" maxFontSizeMultiplier={1.4} style={{ color: colors.onHero }}>
               {t('app.welcome.skip')}
             </Text>
-            <ForwardChevron size={16} color={colors.secondaryForeground} />
+            <ForwardChevron size={16} color={colors.onHero} />
           </PressableScale>
         </Appear>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          flexGrow: 1,
-          justifyContent: 'center',
-          gap: compact ? space[4] : space[8],
-          paddingHorizontal: gutter,
-          paddingVertical: compact ? space[2] : space[5],
-        }}
-      >
-        <Emblem size={emblem} play={shown} />
-
-        <View style={{ gap: space[2] }}>
-          {/* The logo's wordmark under its mark: the website's own lettering, not the name typed out. */}
-          <Appear play={shown} delay={AT.words} style={{ alignItems: 'center', paddingBottom: space[1] }}>
-            {locale === 'ar' ? (
-              <Wordmark height={compact ? 26 : 30} />
-            ) : (
-              <Text variant="small" weight="semibold" tone="goldForeground" style={styles.centred}>
-                {t('meta.siteName')}
-              </Text>
-            )}
-          </Appear>
-          <Appear play={shown} delay={AT.words + motion.stagger}>
-            <Text variant="display" weight="bold" accessibilityRole="header" style={styles.centred}>
-              {t('landingPage.hero.title')}
-            </Text>
-          </Appear>
-          <Appear play={shown} delay={AT.words + motion.stagger * 2}>
-            <Text tone="mutedForeground" style={styles.centred}>
-              {t('app.welcome.lead')}
-            </Text>
-          </Appear>
-        </View>
-      </ScrollView>
+      {/* The words stand still: when they do not fit (a short phone, a large text size), they are set smaller. */}
+      <Words compact={compact} play={shown} locale={locale} />
 
       {/* The ways on stay at the foot of the screen, whatever the phone's size or text size. */}
       <Appear
@@ -157,21 +173,39 @@ export default function WelcomeScreen() {
           paddingBottom: insets.bottom + space[4],
         }}
       >
-        <Button label={t('nav.signUp')} size="lg" onPress={() => router.push('/sign-up')} />
-        {compact ? (
-          <AuthSwitch question={t('auth.hasAccount')} action={t('nav.signIn')} onPress={() => router.push('/sign-in')} />
-        ) : (
-          <Button label={t('nav.signIn')} variant="outline" size="lg" onPress={() => router.push('/sign-in')} />
-        )}
-        <Text variant="small" tone="mutedForeground" style={[styles.centred, { paddingTop: space[1] }]}>
+        <Button
+          label={t('nav.signUp')}
+          variant="champagne"
+          size={compact ? 'default' : 'lg'}
+          maxFontSizeMultiplier={WAYS_GROW}
+          icon={<UserRoundPlus size={20} color={colors.champagneForeground} />}
+          disabled={busy}
+          onPress={() => router.push('/sign-up')}
+        />
+        {/* Sign in, and beside it at its end the one-tap ways, round: Google's mark, Apple's. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+          <Button
+            label={t('nav.signIn')}
+            variant="glass"
+            size={compact ? 'default' : 'lg'}
+            maxFontSizeMultiplier={WAYS_GROW}
+            icon={<SignInMark size={20} color={colors.onHero} />}
+            disabled={busy}
+            onPress={() => router.push('/sign-in')}
+            style={{ flex: 1 }}
+          />
+          <SocialCircles size={compact ? 48 : 56} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
+        </View>
+        <Text variant="small" maxFontSizeMultiplier={WAYS_GROW} style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
           {`${t('app.welcome.employer')} `}
           <Text
             variant="small"
             weight="semibold"
-            tone="primary"
+            maxFontSizeMultiplier={WAYS_GROW}
             accessibilityRole="link"
             onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
             suppressHighlighting
+            style={{ color: colors.champagne }}
           >
             {t('app.auth.forCompanies')}
           </Text>
@@ -182,162 +216,159 @@ export default function WelcomeScreen() {
 }
 
 /**
- * The website's mark on a white tile, at the centre of a sapphire disc whose
- * champagne rings open outward as a plan's sightlines do — the Home panel's
- * drawing — with the board's three promises drifting at its edge. One image
- * to VoiceOver, read as the site's name; the promises are said in the words
- * below it.
+ * How far the phone's text size may enlarge the ways on. They are pinned at
+ * the foot and never scroll, so at the largest accessibility sizes they grew
+ * taller than the screen: on an iPhone SE at the largest, 779 points of
+ * buttons on a 667-point screen, the company's way in drawn off its bottom
+ * edge and the words above given no room at all. Twice the ordinary size
+ * keeps them at about 300 points on every phone, with room above them for the
+ * words, which step down to fit.
  */
-function Emblem({ size, play }: { size: number; play: boolean }) {
-  const t = useTranslations();
-  const { colors, shadow } = useTheme();
-  const box = Math.round(size * 1.6);
-  const tile = Math.round(size * 0.46);
-  const mark = Math.round(tile * 0.68);
-  const rings = [0.58, 0.68, 0.79].map((share) => Math.round(size * share));
+const WAYS_GROW = 2;
 
+/**
+ * Steps the words take down when they do not fit, from the largest: the
+ * headline and the line under it, and how far the phone's text size may
+ * enlarge them. The last step always fits on a phone.
+ */
+const STEPS = [
+  { title: 'display', lead: 'body', grow: undefined },
+  { title: 'title', lead: 'small', grow: undefined },
+  { title: 'headline', lead: 'caption', grow: 1.3 },
+  { title: 'headline', lead: 'caption', grow: 1 },
+] as const;
+
+/**
+ * The logo, what the board is and the line under it, at the foot of the
+ * space above the buttons. Never scrolled: measured as drawn, and set a step
+ * smaller each time they are taller than the space they have.
+ */
+function Words({ compact, play, locale }: { compact: boolean; play: boolean; locale: string }) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const [step, setStep] = useState(compact ? 1 : 0);
+  const [room, setRoom] = useState(0);
+  const [needed, setNeeded] = useState(0);
+  const last = STEPS.length - 1;
+
+  // One step at a time, each judged on the words as that step draws them.
+  const judge = (height: number, words: number) => {
+    if (height > 0 && words > height + 1 && step < last) {
+      setNeeded(0);
+      setStep(step + 1);
+    }
+  };
+
+  const { title, lead, grow } = STEPS[step];
+  return (
+    <View
+      testID="welcome-words"
+      onLayout={(event) => {
+        const height = event.nativeEvent.layout.height;
+        setRoom(height);
+        judge(height, needed);
+      }}
+      style={{ flex: 1, justifyContent: 'flex-end', overflow: 'hidden', paddingHorizontal: gutter, paddingTop: space[4], paddingBottom: space[2] }}
+    >
+      <View
+        testID="welcome-words-content"
+        onLayout={(event) => {
+          const height = event.nativeEvent.layout.height;
+          setNeeded(height);
+          judge(room, height);
+        }}
+        style={{ gap: compact || step > 0 ? space[3] : space[4] }}
+      >
+        <Appear play={play} delay={AT.brand}>
+          <Brand compact={compact || step > 1} locale={locale} />
+        </Appear>
+
+        <View style={{ gap: space[2] }}>
+          <Appear play={play} delay={AT.words}>
+            <Text variant={title} weight="bold" accessibilityRole="header" maxFontSizeMultiplier={grow} style={{ color: colors.onHero }}>
+              {t('landingPage.hero.title')}
+            </Text>
+          </Appear>
+          <Appear play={play} delay={AT.words + motion.stagger}>
+            <Text variant={lead} maxFontSizeMultiplier={grow} style={{ color: colors.onHeroMuted }}>
+              {t('app.welcome.lead')}
+            </Text>
+          </Appear>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The photograph across the top of the screen, settling into place as it
+ * fades in, under a veil: a little darker under the status bar, sapphire
+ * through the middle, and midnight at its foot, where it meets the screen's
+ * own colour and the words begin. Drawn for the eye alone.
+ */
+function Backdrop({ height, screen, play }: { height: number; screen: number; play: boolean }) {
+  const { colors } = useTheme();
+  // Where the photograph ends, as a share of the screen: the veil is wholly midnight by then.
+  const end = Math.min(1, height / screen);
+
+  return (
+    <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
+      <Appear play={play} delay={AT.photo} from="none" scale={1.06} duration={1400} style={{ height, overflow: 'hidden' }}>
+        <Image source={PHOTO} contentFit="cover" contentPosition="center" style={{ flex: 1 }} accessible={false} />
+      </Appear>
+      <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="veil" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={colors.heroDeep} stopOpacity={0.6} />
+            <Stop offset={0.16 * end} stopColor={colors.hero} stopOpacity={0.22} />
+            <Stop offset={0.45 * end} stopColor={colors.hero} stopOpacity={0.4} />
+            <Stop offset={0.8 * end} stopColor={colors.heroDeep} stopOpacity={0.9} />
+            <Stop offset={end} stopColor={colors.heroDeep} stopOpacity={1} />
+            <Stop offset="1" stopColor={colors.heroDeep} stopOpacity={1} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#veil)" />
+      </Svg>
+    </View>
+  );
+}
+
+/**
+ * The website's logo, white over the photograph: the mark on its own white
+ * tile, and the wordmark in the logo's lettering (the name in the site's font
+ * in English). One image to VoiceOver, read as the site's name.
+ */
+function Brand({ compact, locale }: { compact: boolean; locale: string }) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const tile = compact ? 44 : 52;
   return (
     <View
       accessible
       accessibilityRole="image"
       accessibilityLabel={t('meta.siteName')}
-      style={{ alignSelf: 'stretch', height: box, alignItems: 'center', justifyContent: 'center' }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}
     >
-      <Appear play={play} delay={AT.emblem} from="none" scale={0.94} duration={900} style={{ position: 'absolute' }}>
-        <Svg width={box} height={box}>
-          {rings.map((r, index) => (
-            <Circle
-              key={r}
-              cx={box / 2}
-              cy={box / 2}
-              r={r}
-              stroke={colors.gold}
-              strokeOpacity={[0.5, 0.3, 0.16][index]}
-              strokeWidth={1}
-              fill="none"
-            />
-          ))}
-        </Svg>
-      </Appear>
-
-      <Appear play={play} delay={AT.emblem} from="none" scale={0.9} duration={700}>
-        <View
-          style={{
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            backgroundColor: colors.hero,
-            experimental_backgroundImage: `linear-gradient(160deg, ${colors.hero} 0%, ${colors.heroDeep} 100%)`,
-            boxShadow: shadow.hero,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Appear play={play} delay={AT.mark} from="none" scale={0.8}>
-            <View
-              style={{
-                width: tile,
-                height: tile,
-                ...corner('xxl'),
-                backgroundColor: '#FFFFFF',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0px 12px 32px rgba(5, 10, 25, 0.35)',
-              }}
-            >
-              <Image source={LOGO_MARK} contentFit="contain" style={{ width: mark, height: mark }} accessible={false} />
-            </View>
-          </Appear>
-        </View>
-      </Appear>
-
-      <Fact
-        play={play}
-        icon={Banknote}
-        tint={colors.success}
-        wash={colors.successMuted}
-        label={t('app.welcome.factPay')}
-        delay={AT.facts}
-        phase={0}
-        style={{ top: box * 0.1, start: 0 }}
-      />
-      <Fact
-        play={play}
-        icon={Clock}
-        tint={colors.goldForeground}
-        wash={colors.accent}
-        label={t('app.welcome.factApply')}
-        delay={AT.facts + motion.stagger}
-        phase={1400}
-        style={{ top: box * 0.45, end: 0 }}
-      />
-      <Fact
-        play={play}
-        icon={MessageCircle}
-        tint={colors.success}
-        wash={colors.successMuted}
-        label={t('app.welcome.factWhatsapp')}
-        delay={AT.facts + motion.stagger * 2}
-        phase={700}
-        style={{ bottom: box * 0.08, start: box * 0.04 }}
-      />
+      <View
+        style={{
+          width: tile,
+          height: tile,
+          ...corner('lg'),
+          backgroundColor: '#FFFFFF',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0px 10px 28px rgba(5, 10, 25, 0.4)',
+        }}
+      >
+        <Image source={LOGO_MARK} contentFit="contain" style={{ width: tile * 0.68, height: tile * 0.68 }} accessible={false} />
+      </View>
+      {locale === 'ar' ? (
+        <Wordmark height={compact ? 22 : 26} tint={colors.onHero} />
+      ) : (
+        <Text variant="headline" weight="bold" style={{ color: colors.onHero }} accessible={false}>
+          {t('meta.siteName')}
+        </Text>
+      )}
     </View>
   );
 }
-
-/** One of the board's promises, as a small card drifting at the emblem's edge. */
-function Fact({
-  icon: Icon,
-  tint,
-  wash,
-  label,
-  delay,
-  phase,
-  play,
-  style,
-}: {
-  icon: ComponentType<LucideProps>;
-  tint: string;
-  wash: string;
-  label: string;
-  delay: number;
-  phase: number;
-  play: boolean;
-  style: ViewStyle;
-}) {
-  const { colors, shadow } = useTheme();
-  return (
-    <Float play={play} phase={phase + delay} style={[{ position: 'absolute' }, style]}>
-      <Appear play={play} delay={delay} distance={10}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: space[2],
-            paddingVertical: 6,
-            paddingStart: 6,
-            paddingEnd: space[3],
-            ...corner('full'),
-            backgroundColor: colors.card,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: colors.border,
-            boxShadow: shadow.raised,
-          }}
-        >
-          <View
-            style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: wash, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Icon size={15} color={tint} />
-          </View>
-          <Text variant="caption" weight="semibold" numberOfLines={1} maxFontSizeMultiplier={1.3}>
-            {label}
-          </Text>
-        </View>
-      </Appear>
-    </Float>
-  );
-}
-
-const styles = StyleSheet.create({
-  centred: { textAlign: 'center' },
-});

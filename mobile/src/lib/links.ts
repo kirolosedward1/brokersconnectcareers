@@ -69,7 +69,10 @@ export function webPathToAppPath(input: string): string {
     return '/';
   }
 
-  const pathname = url.pathname.replace(LOCALE_PREFIX, '').replace(/\/+$/, '') || '/';
+  // Repeated slashes collapse before anything else reads the path: the URL
+  // parser resolves `/jobs/..//evil.com` to `//evil.com`, which expo-router
+  // treats as an outside address and opens in Safari.
+  const pathname = url.pathname.replace(/\/{2,}/g, '/').replace(LOCALE_PREFIX, '').replace(/\/+$/, '') || '/';
   for (const name of DROPPED_PARAMS) url.searchParams.delete(name);
   const search = url.searchParams.toString();
 
@@ -83,22 +86,54 @@ function pathnameOf(path: string): string {
 
 /**
  * Pages whose app screen lives at another path: the candidate's overview is
- * the home tab, the employer's console will be too, and the account settings
- * and the directory profile the website keeps under /dashboard are the
- * Account tab.
+ * the home tab, the employer's console will be too, the account settings and
+ * the directory profile the website keeps under /dashboard are the Account
+ * tab, and so are the licence notices. Held to the website's pages by
+ * scripts/route-parity.test.mjs, which runs every page through appPathFor.
  */
-const APP_PATHS: Record<string, string> = {
+export const APP_PATHS: Record<string, string> = {
   '/dashboard': '/',
   '/dashboard/account': '/account',
+  // The account hub's own pages, which the app already has under the Account tab.
+  '/dashboard/account/alerts': '/account/alerts',
+  '/dashboard/account/delete': '/account/delete',
+  '/dashboard/account/emails': '/account/emails',
+  '/dashboard/account/hidden': '/account/hidden',
+  '/dashboard/account/security': '/account/security',
   '/dashboard/profile': '/account/profile',
   '/employer': '/',
+  '/licenses': '/account/licenses',
+  // The website's "get the app" page: whoever opens it here already has it.
+  '/app': '/',
 };
+
+/**
+ * The website's door for one side of the marketplace — /sign-in/employer,
+ * /sign-up/candidate — is the app's one sheet told the role, which is what
+ * the website's own page does with it (the panel's words; the account knows
+ * what it is).
+ */
+const AUDIENCE_DOOR = /^\/(sign-in|sign-up)\/(candidate|employer)$/;
+
+/**
+ * The admin console's pages the app has (its queues, a listing's review, an account's file);
+ * the rest of the website's console — the audit log, taxonomy, one account's
+ * file — opens the app's overview, which links to the website for them.
+ */
+// Case-insensitive, as the screens read their id: an uppercase uuid in a link still lands on the file.
+// Every page of the website's console: each has, or is getting, a native screen under (admin).
+const ADMIN_SCREENS =
+  /^\/admin(?:\/(?:jobs(?:\/[0-9a-f-]{36})?|reports|users(?:\/[0-9a-f-]{36})?|companies(?:\/[0-9a-f-]{36})?|agents(?:\/[0-9a-f-]{36})?|applications(?:\/[0-9a-f-]{36})?|appeals|audit|taxonomy|search|email|operations|security))?$/i;
 
 /** A website path (already through webPathToAppPath) as the app opens it; the query is kept. */
 export function appPathFor(path: string): string {
   const pathname = pathnameOf(path);
+  const query = path.slice(pathname.length);
+  const door = AUDIENCE_DOOR.exec(pathname);
+  if (door) return `/${door[1]}?role=${door[2]}${query.startsWith('?') ? `&${query.slice(1)}` : query}`;
+  if (pathname.startsWith('/admin/') && !ADMIN_SCREENS.test(pathname)) return '/admin';
   const mapped = APP_PATHS[pathname];
-  return mapped === undefined ? path : `${mapped}${path.slice(pathname.length)}`;
+  return mapped === undefined ? path : `${mapped}${query}`;
 }
 
 /**
@@ -112,20 +147,25 @@ export function appPathFor(path: string): string {
 const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabName[], exact?: 'exact'])[] = [
   // The board is the Jobs tab's own screen; a listing opens in any tab.
   ['/jobs', ['jobs'], 'exact'],
-  ['/jobs', ['jobs', 'home']],
-  ['/companies', ['companies', 'home']],
+  // A listing, a company and the bell open in the Admin tab for an admin,
+  // whose bar has no Home (tabs.ts).
+  ['/jobs', ['jobs', 'home', 'admin']],
+  ['/companies', ['companies', 'home', 'admin']],
   ['/dashboard/applications', ['applications']],
   ['/dashboard/saved', ['saved']],
   ['/account', ['account']],
-  ['/notifications', ['home']],
+  ['/notifications', ['home', 'admin']],
   ['/employer/jobs', ['listings']],
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],
   ['/employer/billing', ['account']],
-  // The directory is the Consultants tab's own screen; a consultant's page opens in any tab.
-  ['/agents', ['consultants'], 'exact'],
-  ['/agents', ['consultants', 'home']],
-  ['/employer/talent', ['consultants']],
+  // The directory is the Consultants tab's own screen — and the Admin tab's,
+  // for an admin who runs a company, whose bar has no room for both; a
+  // consultant's page opens in any tab.
+  ['/agents', ['consultants', 'admin'], 'exact'],
+  ['/agents', ['consultants', 'admin', 'home']],
+  ['/employer/talent', ['consultants', 'admin']],
+  ['/admin', ['admin']],
 ];
 
 function ownersOf(path: string): readonly TabName[] | null {

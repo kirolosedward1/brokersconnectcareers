@@ -3,12 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
+// By name: ESLint's namespace check cannot see the enums SDK 58's build re-exports.
+import { AndroidImportance, IosAuthorizationStatus } from 'expo-notifications';
 import { useQuery } from '@tanstack/react-query';
 import { forgetOnboardingIntent } from '~/features/auth/kept-intent';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { encryptedSessionStorage } from '~/lib/session-storage';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
+import { announceLocalSignOut } from '~/lib/local-sign-out';
+import { withTimeout } from '~/lib/timeout';
 
 /**
  * This phone's part in pushes (docs/mobile.md, "Pushes"). The website sends
@@ -61,7 +65,7 @@ Notifications.setNotificationHandler({
 if (Platform.OS === 'android') {
   Notifications.setNotificationChannelAsync('default', {
     name: 'Brokers Connect',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
   }).catch(() => {});
 }
 
@@ -88,8 +92,8 @@ export async function readPermission(): Promise<PushPermission> {
   const ios = answer.ios?.status;
   if (
     answer.granted ||
-    ios === Notifications.IosAuthorizationStatus.PROVISIONAL ||
-    ios === Notifications.IosAuthorizationStatus.EPHEMERAL
+    ios === IosAuthorizationStatus.PROVISIONAL ||
+    ios === IosAuthorizationStatus.EPHEMERAL
   ) {
     return 'granted';
   }
@@ -107,11 +111,25 @@ export async function askPermission(): Promise<PushPermission> {
  * the app speaks. Throws when there is no token to be had (no EAS project in
  * a development build, no network) or the database refused it.
  */
-export async function registerThisPhone(locale: string): Promise<string> {
+export const PUSH_TOKEN_TIMEOUT_MS = 15_000;
+
+/** One registration at a time: a second ask while one is on its way shares it. */
+let registering: Promise<string> | null = null;
+
+export function registerThisPhone(locale: string): Promise<string> {
+  registering ??= registerNow(locale).finally(() => {
+    registering = null;
+  });
+  return registering;
+}
+
+async function registerNow(locale: string): Promise<string> {
   // A stop on its way for the person before finishes first, so Apple's
   // registration is not undone under the new one.
   await stopping;
-  const { data: token } = await Notifications.getExpoPushTokenAsync();
+  // Bounded: Apple's or Expo's answer can stall (Expo Go, no network), and the
+  // notifications switch spun with it.
+  const { data: token } = await withTimeout(Notifications.getExpoPushTokenAsync(), PUSH_TOKEN_TIMEOUT_MS, 'the push token');
   const version = Application.nativeApplicationVersion;
   const { error } = await supabase.rpc('register_push_device', {
     p_token: token,
@@ -191,7 +209,7 @@ export async function signOutHere(): Promise<void> {
   // Where onboarding was going (the door's role, the listing) was kept for
   // iOS ending the app midway, not for a person who chose to leave: signed
   // in again, onboarding asks afresh rather than fix the role it was given.
-  await forgetOnboardingIntent();
+  await forgetOnboardingIntent().catch(() => {});
   await Promise.race([
     forgetThisPhone().catch(() => {}),
     new Promise((resolve) => setTimeout(resolve, FORGET_TIMEOUT_MS)),
@@ -202,7 +220,16 @@ export async function signOutHere(): Promise<void> {
   ]);
   if (!error) return;
   await encryptedSessionStorage.removeItem(SESSION_KEY).catch(() => {});
-  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  // The app draws nobody now: an answer that is an error (auth-js's lock not
+  // got) emits no SIGNED_OUT, and the screen stayed signed in.
+  announceLocalSignOut();
+  // Still bounded: this signOut waits on the same auth-js lock as the first,
+  // and a refresh holding it kept the button spinning with nobody signed out.
+  // Left running, it still clears supabase-js's own copy when the lock frees.
+  await Promise.race([
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, SIGN_OUT_TIMEOUT_MS)),
+  ]);
 }
 
 /** Pushes on or off for this person on this phone, in the app (not the phone's settings). */

@@ -39,7 +39,31 @@ export type MobileConfig = {
    * to decide whether to ask again. Absent from a server older than migration 336's code.
    */
   policies?: { terms: string; privacy: string };
+  /**
+   * The commit the website is deployed from (Vercel's VERCEL_GIT_COMMIT_SHA),
+   * null where it is not known (a local build). The over-the-air publish
+   * waits on it, so the app's new code never reaches a phone before the
+   * website it calls (.github/workflows/expo-go.yml), and Account shows it
+   * beside the app's own build marker. Absent from a server older than this.
+   */
+  commit?: string | null;
+  /**
+   * Whether an admin needs an authenticator before the console opens
+   * (ADMIN_MFA_REQUIRED on the server: true only when that variable is
+   * "true"). The app enrols only when this is true. Absent, or false, the
+   * console opens for an admin who has not enrolled.
+   */
+  adminMfaRequired?: boolean;
 };
+
+/**
+ * GET /admin/mail — an admin's alone, behind the admin door: whether this
+ * deployment can send mail, and the names (never the values) of the
+ * variables in the way when it cannot. The console's mail-off banner and the
+ * email page's configuration notice, which the phone cannot read from the
+ * server's environment itself.
+ */
+export type AdminMailStatus = { configured: boolean; missing: string[] };
 
 /** GET /jobs */
 export type JobBoardResponse = {

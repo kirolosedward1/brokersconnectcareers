@@ -8,21 +8,30 @@ function query(table) {
   let order = null;
   let limit = null;
   let single = false;
+  let counting = false;
+  let head = false;
   const run = () => {
     const source = globalThis.__db[table];
     if (typeof source === 'function') return source(filters);
     let rows = (source ?? []).filter((row) => filters.every((test) => test(row)));
     if (order) rows = [...rows].sort((a, b) => (a[order.col] < b[order.col] ? -1 : a[order.col] > b[order.col] ? 1 : 0) * (order.asc ? 1 : -1));
     if (limit != null) rows = rows.slice(0, limit);
+    if (counting) return { data: head ? null : rows, count: rows.length, error: null };
     if (single) return { data: rows[0] ?? null, error: null };
     return { data: rows, error: null };
   };
   const builder = {
-    select() {
+    select(_columns, options = {}) {
+      counting = options?.count === 'exact';
+      head = options?.head === true;
       return builder;
     },
     eq(col, value) {
       filters.push((row) => row[col] === value);
+      return builder;
+    },
+    neq(col, value) {
+      filters.push((row) => row[col] !== value);
       return builder;
     },
     in(col, values) {

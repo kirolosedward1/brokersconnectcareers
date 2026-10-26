@@ -1,27 +1,33 @@
 import { useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
+import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
+import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { useHeaderBell } from '~/components/notifications/header-bell';
+import { ApplicationTimeline } from '~/components/applications/timeline';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { Illustration } from '~/components/ui/illustration';
+import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
-  canWithdraw,
-  STATUS_VARIANT,
   useMyApplications,
   useWithdrawApplication,
   type CandidateApplication,
 } from '~/features/applications/queries';
+import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
+import { useListMotion } from '~/components/motion/list-motion';
 
 /**
  * The candidate's applications — the website's /dashboard/applications: every
@@ -36,6 +42,9 @@ export default function ApplicationsScreen() {
   const applications = useMyApplications();
   // A push about a move reads the list again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => applications.refetch());
+  const list = useTabList();
+  // Withdrawn, or decided and moved under its heading: the rows close up rather than jump.
+  useListMotion((applications.data ?? []).map((application) => `${application.id}:${application.status}`));
 
   let body: React.ReactNode;
   if (!session) {
@@ -47,14 +56,17 @@ export default function ApplicationsScreen() {
       />
     );
   } else if (applications.isPending) {
-    body = <LoadingState />;
+    body = <SkeletonScreen />;
   } else if (applications.isError && !applications.data) {
     // Never "you have not applied" for a read that failed.
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;
   } else {
     const rows = applications.data.filter((application) => application.job);
+    const active = rows.filter((application) => !DECIDED.has(application.status));
+    const decided = rows.filter((application) => DECIDED.has(application.status));
     body = (
       <ScrollView
+        {...list}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
         refreshControl={
@@ -76,26 +88,42 @@ export default function ApplicationsScreen() {
               borderColor: colors.border,
             }}
           >
+            <Illustration name="apply" width={140} />
             <Text weight="medium" style={{ textAlign: 'center' }}>
               {t('dashboard.emptyApplications')}
             </Text>
             <Button label={t('dashboard.emptyApplicationsCta')} onPress={() => router.navigate('/jobs')} />
           </View>
         ) : (
-          // One surface, ruled rows — the website's layout, not a card per application.
-          <View
-            style={{
-              ...corner('xl'),
-              borderWidth: StyleSheet.hairlineWidth * 2,
-              borderColor: colors.border,
-              boxShadow: shadow.card,
-              backgroundColor: colors.card,
-              overflow: 'hidden',
-            }}
-          >
-            {rows.map((application, index) => (
-              <ApplicationRow key={application.id} application={application} first={index === 0} />
-            ))}
+          // Still open first, decided after: what may yet move is what is
+          // looked for. Each group one surface of ruled rows — the website's
+          // layout, not a card per application — and named only when both are there.
+          <View style={{ gap: space[5] }}>
+            {[active, decided].map((group, index) =>
+              group.length ? (
+                <View key={index} style={{ gap: space[2] }}>
+                  {active.length && decided.length ? (
+                    <Text variant="small" weight="semibold" tone="mutedForeground" accessibilityRole="header">
+                      {t(index === 0 ? 'app.applications.activeHeading' : 'app.applications.decidedHeading')}
+                    </Text>
+                  ) : null}
+                  <View
+                    style={{
+                      ...corner('xl'),
+                      borderWidth: StyleSheet.hairlineWidth * 2,
+                      borderColor: colors.border,
+                      boxShadow: shadow.card,
+                      backgroundColor: colors.card,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {group.map((application, row) => (
+                      <ApplicationRow key={application.id} application={application} first={row === 0} />
+                    ))}
+                  </View>
+                </View>
+              ) : null,
+            )}
           </View>
         )}
       </ScrollView>
@@ -112,12 +140,15 @@ export default function ApplicationsScreen() {
   );
 }
 
+/** Where an application has come to its end: the company has answered. */
+const DECIDED = new Set<ApplicationStatus>(['hired', 'rejected']);
+
 function ApplicationRow({ application, first }: { application: CandidateApplication; first: boolean }) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
   const withdraw = useWithdrawApplication();
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'unavailable' | 'failed' | null>(null);
 
   const job = application.job;
   if (!job) return null;
@@ -126,14 +157,18 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const shown = displayJobStatus(job);
 
   const confirmWithdraw = () => {
-    Alert.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
+    dialog.alert(t('myApplications.withdrawTitle', { title }), t('myApplications.withdrawBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('dashboard.withdraw'),
         style: 'destructive',
         onPress: () => {
-          setFailed(false);
-          withdraw.mutate(application.id, { onError: () => setFailed(true) });
+          setFailed(null);
+          withdraw.mutate(application.id, {
+            onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
+            onError: (error) =>
+              setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
+          });
         },
       },
     ]);
@@ -150,21 +185,21 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: space[0.5] }}>
           <Pressable
             accessibilityRole="link"
             onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
           >
             <Text weight="semibold">{title}</Text>
           </Pressable>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: 2 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: space[0.5] }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <Building2 size={14} color={colors.mutedForeground} />
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, job.company.name_ar, job.company.name_en)}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <MapPin size={14} color={colors.mutedForeground} />
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, job.district.name_ar, job.district.name_en)}
@@ -172,8 +207,15 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
             </View>
           </View>
         </View>
-        <Badge variant={STATUS_VARIANT[application.status]} label={t(`applicationStatus.${application.status}`)} />
+        {application.status === 'withdrawn' ? (
+          <Badge label={t('applicationStatus.withdrawn')} />
+        ) : (
+          <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+        )}
       </View>
+
+      {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
+      <ApplicationTimeline application={application} />
 
       {/* That a person at the company has had it on screen — only while the
           outcome is open; once the status moves, the status is the news. */}
@@ -230,7 +272,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 
       {failed ? (
         <Text variant="caption" tone="destructive" accessibilityRole="alert">
-          {t('common.errorBody')}
+          {failed === 'unavailable' ? t('myApplications.withdrawUnavailable') : t('common.errorBody')}
         </Text>
       ) : null}
     </View>
@@ -240,6 +282,6 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 /** A sentence about the row it sits in: a rule down its leading edge, no box. */
 function Aside({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <View style={{ borderStartWidth: 2, borderStartColor: color, paddingStart: space[3], gap: 2 }}>{children}</View>
+    <View style={{ borderStartWidth: 2, borderStartColor: color, paddingStart: space[3], gap: space[0.5] }}>{children}</View>
   );
 }

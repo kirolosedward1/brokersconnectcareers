@@ -8,6 +8,7 @@ import {
   type DimensionValue,
   type StyleProp,
   type ViewStyle,
+  type ScrollViewInstance,
 } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -20,6 +21,7 @@ import { Pulse } from '~/components/motion/pulse';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
+import { Illustration, type IllustrationName } from './illustration';
 import { corner, gutter, space } from '~/theme/tokens';
 import { Button } from './button';
 import { Text } from './text';
@@ -103,7 +105,7 @@ export function CenteredScroll({
   const header = useContext(HeaderHeightContext);
   const inSheet = useContext(InSheet);
   const screenHeight = useWindowDimensions().height;
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const [box, setBox] = useState<{ y: number; height: number } | null>(null);
   const [words, setWords] = useState(0);
   const [covered, setCovered] = useState({ height: 0, top: 0, bottom: 0 });
@@ -251,17 +253,36 @@ export function SkeletonList({
   );
 }
 
+/**
+ * A list screen on its way, under its own bars: the cards that will fill it,
+ * placed where the list will start (below a large title), not scrollable.
+ */
+export function SkeletonScreen({ count = 4, compact = true }: { count?: number; compact?: boolean }) {
+  return (
+    <ScrollView
+      scrollEnabled={false}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ padding: gutter }}
+    >
+      <SkeletonList count={count} compact={compact} inset={false} />
+    </ScrollView>
+  );
+}
+
 export function EmptyState({
   title,
   body,
   action,
   icon: Icon,
+  illustration,
 }: {
   title: string;
   body?: string;
   action?: ReactNode;
   /** A mark for the state, drawn in a soft disc above the title. */
   icon?: LucideIcon;
+  /** One of the website's drawings instead of the mark, where the screen would otherwise be bare. */
+  illustration?: IllustrationName;
 }) {
   const { colors } = useTheme();
   // At the accessibility sizes the disc gives its room to the words: on the
@@ -269,7 +290,11 @@ export function EmptyState({
   const large = useLargeText();
   return (
     <Centered>
-      {Icon && !large ? (
+      {illustration && !large ? (
+        <View style={{ marginBottom: space[1] }}>
+          <Illustration name={illustration} width={180} />
+        </View>
+      ) : Icon && !large ? (
         <View
           accessible={false}
           style={{

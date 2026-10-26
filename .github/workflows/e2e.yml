@@ -6,7 +6,10 @@
 # uploads a CV and applies; the employer opens, notes, moves and is refused
 # where a team member should be; the move arrives in the candidate's bell;
 # a listing is posted for review; somebody new signs up, onboards and deletes
-# the account. Then the mobile API's doors (scripts/mobile-api.smoke.mjs).
+# the account. Then the same journeys at their edges, checked in the database
+# itself (scripts/e2e/edge-journeys.mjs), the website's pages in a browser
+# (scripts/e2e/browser-journeys.mjs), and the mobile API's doors
+# (scripts/mobile-api.smoke.mjs).
 #
 # Everything runs on the runner: the keys are the local stack's own, made by
 # `supabase start`; no secret is used (the repository is public). Never
@@ -98,6 +101,8 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$anon"
             echo "SUPABASE_SERVICE_ROLE_KEY=$service"
             echo "DATABASE_URL=$DB_URL"
+            # The edge journeys mint an expired token with it; without it they skip that check.
+            if [ -n "${JWT_SECRET:-}" ]; then echo "SUPABASE_JWT_SECRET=$JWT_SECRET"; fi
             echo "NEXT_PUBLIC_SITE_URL=http://localhost:3000"
             echo "DEMO_PASSWORD=$password"
           } >> "$GITHUB_ENV"
@@ -110,9 +115,21 @@ jobs:
 
       - name: Start the website
         run: |
+          set -m
           nohup pnpm start > "$RUNNER_TEMP/next.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/next.pid"
           for _ in $(seq 1 60); do
-            if curl -sf http://localhost:3000/api/mobile/v1/config > /dev/null; then echo "up"; exit 0; fi
+            if curl -sf http://localhost:3000/api/mobile/v1/config > /dev/null; then
+              node --input-type=module -e '
+                const body = await (await fetch("http://localhost:3000/api/mobile/v1/config")).json();
+                if (body.adminMfaRequired !== false) {
+                  console.error("::error::the website was started with admin two-step required");
+                  process.exit(1);
+                }
+              '
+              echo "up"
+              exit 0
+            fi
             sleep 2
           done
           tail -n 80 "$RUNNER_TEMP/next.log"
@@ -126,6 +143,71 @@ jobs:
           SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
+      # The same journeys at their edges: fresh and returning accounts, wrong
+      # input, double submits, a dropped and a slow connection, expired and
+      # signed-out tokens — each read back from the database over DATABASE_URL.
+      - name: Edge journeys
+        run: node scripts/e2e/edge-journeys.mjs
+        env:
+          SITE_URL: http://localhost:3000
+          SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      # The website's own pages in Chrome (preinstalled on the runner): sign up,
+      # onboarding, applying on a throttled line and offline, a session ended
+      # elsewhere, signing out, the admin console with two-step off, the employer
+      # console. The reset-by-email journey skips here: config.toml sends auth
+      # email through Resend, which the runner cannot reach.
+      - name: Browser journeys
+        run: node scripts/e2e/browser-journeys.mjs
+        env:
+          SITE_URL: http://localhost:3000
+          SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      # The requirement is read when the server handles the request, so the
+      # same build serves both. This run is the enrolment button, the wrong
+      # code, the verifying code, and the next sign-in being asked for it.
+      - name: Restart the website with admin two-step required
+        run: |
+          set -m
+          if [ -f "$RUNNER_TEMP/next.pid" ]; then
+            kill -- "-$(cat "$RUNNER_TEMP/next.pid")" 2>/dev/null || kill "$(cat "$RUNNER_TEMP/next.pid")" 2>/dev/null || true
+          fi
+          if command -v fuser >/dev/null 2>&1; then fuser -k 3000/tcp || true; fi
+          for _ in $(seq 1 30); do
+            if ! curl -sf http://localhost:3000/api/mobile/v1/config >/dev/null; then break; fi
+            sleep 1
+          done
+          ADMIN_MFA_REQUIRED=true nohup pnpm start > "$RUNNER_TEMP/next-mfa.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/next.pid"
+          for _ in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/mobile/v1/config >/dev/null; then
+              node --input-type=module -e '
+                const body = await (await fetch("http://localhost:3000/api/mobile/v1/config")).json();
+                if (body.adminMfaRequired !== true) {
+                  console.error("::error::the website did not pick up ADMIN_MFA_REQUIRED=true");
+                  process.exit(1);
+                }
+              '
+              echo "up, admin two-step required"
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 80 "$RUNNER_TEMP/next-mfa.log"
+          echo "::error::the website did not start with admin two-step required"
+          exit 1
+
+      - name: Browser journey, admin two-step required
+        run: node scripts/e2e/browser-journeys.mjs
+        env:
+          ADMIN_MFA_REQUIRED: 'true'
+          BROWSER_JOURNEY: admin-mfa
+          SITE_URL: http://localhost:3000
+          SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
       - name: The mobile API's doors
         run: node scripts/mobile-api.smoke.mjs
         env:
@@ -133,4 +215,8 @@ jobs:
 
       - name: What the website logged
         if: failure()
-        run: tail -n 200 "$RUNNER_TEMP/next.log" || true
+        run: |
+          echo '--- next.log ---'
+          tail -n 120 "$RUNNER_TEMP/next.log" || true
+          echo '--- next-mfa.log ---'
+          tail -n 120 "$RUNNER_TEMP/next-mfa.log" || true

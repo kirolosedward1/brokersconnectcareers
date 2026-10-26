@@ -1,5 +1,6 @@
 import { useRef, type RefObject } from 'react';
-import { AccessibilityInfo, type ScrollView, type View } from 'react-native';
+import { AccessibilityInfo, type ScrollViewInstance, type ViewInstance } from 'react-native';
+import { haptic } from '~/lib/haptics';
 import { space } from '~/theme/tokens';
 
 type Messages = Partial<Record<string, string | null | undefined>>;
@@ -17,13 +18,14 @@ type Measured = { measureLayout(relativeTo: unknown, onSuccess: (x: number, y: n
  * is. `show(errors)`, given what was just set, scrolls the first of them on
  * the page — by `order`, the fields top first — into view with its label, and
  * says it to VoiceOver. An error with no place (the form's own refusal, shown
- * by its button) is said without moving the page. `above` is what covers the
- * top of the scroll view: the status bar, on a page drawn without a header.
+ * by its button) is said without moving the page. Either way the phone gives
+ * the error tap. `above` is what covers the top of the scroll view: the
+ * status bar, on a page drawn without a header.
  */
-export function useErrorsInView(scroll: RefObject<ScrollView | null>, order: readonly string[], { above = 0 }: { above?: number } = {}) {
-  const views = useRef(new Map<string, View>());
+export function useErrorsInView(scroll: RefObject<ScrollViewInstance | null>, order: readonly string[], { above = 0 }: { above?: number } = {}) {
+  const views = useRef(new Map<string, ViewInstance>());
 
-  const place = (name: string) => (view: View | null) => {
+  const place = (name: string) => (view: ViewInstance | null) => {
     if (!view) return;
     views.current.set(name, view);
     return () => {
@@ -35,6 +37,7 @@ export function useErrorsInView(scroll: RefObject<ScrollView | null>, order: rea
     const named = Object.keys(errors).filter((name) => errors[name]);
     const first = order.find((name) => named.includes(name)) ?? named[0];
     if (!first) return;
+    haptic.error();
     AccessibilityInfo.announceForAccessibilityWithOptions(errors[first] as string, { queue: true });
 
     // Measured once what was just set is drawn: the field may be on a step shown only now.

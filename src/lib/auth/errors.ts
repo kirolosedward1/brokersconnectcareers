@@ -43,6 +43,7 @@ export const AUTH_ERROR_CODES: Record<string, AuthErrorKey> = {
   email_address_invalid: { namespace: 'validation', key: 'invalidEmail' },
   validation_failed: { namespace: 'validation', key: 'invalidEmail' },
   weak_password: { namespace: 'validation', key: 'passwordShort' },
+  same_password: { namespace: 'auth', key: 'errSamePassword' },
   // CAPTCHA on in Supabase Auth (SUPABASE_SETTINGS.md) and a token missing,
   // spent or refused: the form loads the check again; this says to retry.
   captcha_failed: { namespace: 'auth', key: 'errCaptcha' },
@@ -55,6 +56,7 @@ export const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key
   { match: /email not confirmed|confirm your email/i, namespace: 'auth', key: 'errEmailUnconfirmed' },
   { match: /for security purposes|rate limit|too many requests/i, namespace: 'auth', key: 'errTooMany' },
   { match: /unable to validate email|invalid format|address .* is invalid/i, namespace: 'validation', key: 'invalidEmail' },
+  { match: /different from the old password/i, namespace: 'auth', key: 'errSamePassword' },
   { match: /password should be at least/i, namespace: 'validation', key: 'passwordShort' },
   { match: /captcha/i, namespace: 'auth', key: 'errCaptcha' },
 ];
@@ -64,8 +66,74 @@ export const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key
  * which the caller shows as the generic line, never as GoTrue's English.
  * The stable `code` is read first and the prose only when there is none.
  */
+/**
+ * GoTrue's answer when Sign in with Apple (or any provider) is switched off.
+ *
+ * The code is the generic `validation_failed`, which otherwise means a bad
+ * email address. The message is what tells the two apart, so this is matched
+ * before that table.
+ */
+export function appleProviderDisabled(error: { message: string }): boolean {
+  return /provider is not enabled/i.test(error.message);
+}
+
 export function knownAuthError(error: { message: string; code?: string } | string): AuthErrorKey | null {
   const message = typeof error === 'string' ? error : error.message;
   const code = typeof error === 'string' ? undefined : error.code;
   return (code ? AUTH_ERROR_CODES[code] : undefined) ?? AUTH_ERRORS.find((entry) => entry.match.test(message)) ?? null;
+}
+
+/**
+ * Why GoTrue refused a password change, as the next step it asks for.
+ *
+ * The reset forms read these by matching `/session|jwt|expired/` against the
+ * message and the settings forms not at all, and GoTrue's two most likely
+ * refusals were both said wrongly:
+ *
+ *   - `insufficient_aal`: the account has an authenticator and this session
+ *     has not used it. Every reset link starts at aal1, so this is the answer
+ *     to every reset on such an account — and its message, "AAL2 session is
+ *     required…", matched /session/ and read as "that link has expired". A
+ *     new link said the same thing, forever.
+ *   - `reauthentication_needed`: secure password change is on
+ *     (supabase/config.toml) and the session is more than a day old, which
+ *     is almost every session in the settings. Unmatched, it read as
+ *     "something went wrong".
+ *
+ * Pure, and shared with the iOS app.
+ */
+export type PasswordRefusal =
+  /** Answer the authenticator first; the change will then go through. */
+  | 'second_factor'
+  /** Ask for a code by email (reauthenticate()), and send it as the nonce. */
+  | 'reauthenticate'
+  /** The emailed code was wrong or has run out. */
+  | 'code_invalid'
+  /** No session to change it on: the link was spent or the session ended. */
+  | 'session'
+  | 'other';
+
+export function passwordRefusal(error: { message?: string; code?: string; name?: string }): PasswordRefusal {
+  switch (error.code) {
+    case 'insufficient_aal':
+      return 'second_factor';
+    case 'reauthentication_needed':
+      return 'reauthenticate';
+    case 'reauthentication_not_valid':
+    case 'otp_expired':
+      return 'code_invalid';
+    case 'session_not_found':
+    case 'session_expired':
+    case 'refresh_token_not_found':
+    case 'bad_jwt':
+    case 'no_authorization':
+      return 'session';
+  }
+  const message = error.message ?? '';
+  // Older servers, with no code: the prose, the specific ones first.
+  if (/\baal2\b/i.test(message)) return 'second_factor';
+  if (/requires reauthentication/i.test(message)) return 'reauthenticate';
+  if (/nonce|token has expired or is invalid/i.test(message)) return 'code_invalid';
+  if (error.name === 'AuthSessionMissingError' || /session|jwt|expired/i.test(message)) return 'session';
+  return 'other';
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { ShieldCheck, UserPlus, UserRound, X } from '~/components/ui/lucide';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
@@ -13,8 +13,10 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { MemberRefused, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
 import { EMAIL_SHAPE } from '~/lib/email-shape';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
+import { dialog } from '~/lib/dialog';
 
 const REFUSAL_COPY = {
   no_account: 'teamNoAccount',
@@ -32,6 +34,7 @@ const REFUSAL_COPY = {
 export function TeamSettings({ members, canManage }: { members: TeamMember[]; canManage: boolean }) {
   const t = useTranslations();
   const { colors } = useTheme();
+  const large = useLargeText();
   const add = useAddMember();
   const remove = useRemoveMember();
   const [email, setEmail] = useState('');
@@ -70,7 +73,7 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
   };
 
   const confirmRemove = (member: TeamMember) =>
-    Alert.alert(t('employer.teamRemove'), member.name ?? undefined, [
+    dialog.alert(t('employer.teamRemove'), member.name ?? undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('employer.teamRemove'),
@@ -113,7 +116,7 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
           >
             <Avatar name={name} seed={member.userId} />
             <View style={{ flex: 1 }}>
-              <Text variant="small" weight="medium" numberOfLines={1}>
+              <Text variant="small" weight="medium" numberOfLines={large ? undefined : 1}>
                 {name}
               </Text>
               <Text variant="caption" tone="mutedForeground">

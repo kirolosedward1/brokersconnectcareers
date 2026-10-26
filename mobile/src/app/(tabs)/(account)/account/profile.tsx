@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View, type ScrollViewInstance } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { Compass, Eye, Info, UserRound } from '~/components/ui/lucide';
@@ -35,7 +35,7 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const { notice } = useLocalSearchParams<{ notice?: string }>();
   const { session, viewer, actor } = useSession();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const formY = useRef(0);
 
   const profile = useAgentProfile();
@@ -78,6 +78,16 @@ export default function ProfileScreen() {
   }
   // A failed re-read keeps the form (and the entry being typed in its sheet); only a first read that failed is an error page.
   if (profile.isError && !profile.data) {
+    return (
+      <>
+        {header}
+        <ErrorState error={profile.error} onRetry={() => profile.refetch()} />
+      </>
+    );
+  }
+  // The developers ticked on the profile could not be read: no form until
+  // they are, or a save would send none and wipe them.
+  if (agent && profile.data?.developerIds === null) {
     return (
       <>
         {header}

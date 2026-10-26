@@ -350,7 +350,7 @@ export async function Trail({
   }
 
   const time = (at: string) =>
-    `${formatDate(at, locale)} · ${new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', {
+    `${formatDate(at, locale)} · ${new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'Africa/Cairo',

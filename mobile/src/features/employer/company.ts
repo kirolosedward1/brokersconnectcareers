@@ -9,10 +9,12 @@ import type { CompanyInput } from '@/lib/mobile-api/contract';
 import { canAccessEmployerArea } from '@/lib/permissions';
 import type { CompanyDocumentRow, CompanyMemberRole, OrderRow } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/uuid';
-import { formFile, PhotoRefused, type PickedPhoto } from '~/features/account/settings';
+import { formFile, photoRefusal, PhotoRefused, type PickedPhoto } from '~/features/account/settings';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
+import { withTimeout } from '~/lib/timeout';
+import { CV_UPLOAD_TIMEOUT_MS, readCvBytes } from '~/features/cv/files';
 
 /**
  * The company's own page — the website's /employer/company and
@@ -123,9 +125,7 @@ export function useUploadLogo(companyId: string) {
       form.append('companyId', companyId);
       form.append('file', formFile(logo));
       const result = await callAction('uploadImage', form);
-      if (!result.ok) {
-        throw new PhotoRefused(result.error === 'file_type' || result.error === 'too_large' ? result.error : 'failed');
-      }
+      if (!result.ok) throw photoRefusal(result);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
   });
@@ -216,11 +216,19 @@ export function useUploadDocument(companyId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ docType, document }: { docType: DocType; document: PickedDocument }) => {
-      const bytes = await new File(document.uri).arrayBuffer();
+      // The same reading, and the same limits, as a CV's: the File API with a
+      // base64 fallback, and no step left to spin for good.
+      const bytes = await readCvBytes(document.uri).catch(() => {
+        throw new DocumentRefused('failed');
+      });
       if (bytes.byteLength > MAX_DOCUMENT_BYTES) throw new DocumentRefused('fileTooLarge');
       const path = `${companyId}/${docType}-${uuid()}.${fileExtension({ name: document.name, type: document.type }, 'pdf')}`;
       const storage = supabase.storage.from(COMPANY_DOCS_BUCKET);
-      const { error } = await storage.upload(path, bytes, { upsert: false, contentType: document.type });
+      const { error } = await withTimeout(
+        storage.upload(path, bytes, { upsert: false, contentType: document.type }),
+        CV_UPLOAD_TIMEOUT_MS,
+        'the upload',
+      ).catch((thrown: unknown) => ({ error: thrown }));
       if (error) throw new DocumentRefused('failed');
 
       let result: Awaited<ReturnType<typeof callAction<'recordCompanyDocument'>>>;
@@ -228,23 +236,24 @@ export function useUploadDocument(companyId: string) {
         result = await callAction('recordCompanyDocument', { companyId, docType, storagePath: path });
       } catch (error) {
         if (refusedAtTheDoor(error)) {
-          await storage.remove([path]).catch(() => {});
+          await withTimeout(Promise.resolve(storage.remove([path])), 10_000, 'removing the file').catch(() => {});
           throw new DocumentRefused('failed');
         }
         // No answer: the paper may have been recorded and only the answer lost,
         // so the file stays (the storage clean-up takes one nothing points at
         // after a day) and the database says whether it went in.
-        const { data, error: unread } = await supabase
-          .from('company_documents')
-          .select('id')
-          .eq('company_id', companyId)
-          .eq('storage_path', path)
-          .maybeSingle();
-        if (!unread && data) return;
+        const answer = await withTimeout(
+          Promise.resolve(
+            supabase.from('company_documents').select('id').eq('company_id', companyId).eq('storage_path', path).maybeSingle(),
+          ),
+          15_000,
+          'checking the document',
+        ).catch(() => null);
+        if (answer && !answer.error && answer.data) return;
         throw new DocumentRefused('failed');
       }
       if (!result.ok) {
-        await storage.remove([path]).catch(() => {});
+        await withTimeout(Promise.resolve(storage.remove([path])), 10_000, 'removing the file').catch(() => {});
         throw new DocumentRefused(result.error === 'file_type' ? 'fileType' : 'failed');
       }
     },

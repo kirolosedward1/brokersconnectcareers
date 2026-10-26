@@ -1,6 +1,7 @@
+import { shownToast } from '~/components/feedback/toast';
 import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
@@ -69,7 +70,8 @@ jest.mock('expo-file-system', () => ({
       exists: false,
       create: jest.fn(),
       delete: jest.fn(),
-      write: (content: string) => {
+      write: async (content: string) => {
+        await Promise.resolve();
         mockWritten[uri] = content;
       },
     };
@@ -222,7 +224,7 @@ describe('the photo', () => {
       assets: [{ uri: 'file:///library/IMG_0001.HEIC', width: 3024, height: 3024 }],
     } as ImagePicker.ImagePickerResult);
     await signIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.photoUpload }));
 
@@ -244,7 +246,7 @@ describe('the photo', () => {
       assets: [{ uri: 'file:///library/IMG_0003.HEIC', width: 2000, height: 2000 }],
     } as ImagePicker.ImagePickerResult);
     await signIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
     const upload = await screen.findByRole('button', { name: ar.account.photoUpload });
 
     // The account's read after the upload, held.
@@ -270,16 +272,35 @@ describe('the photo', () => {
       assets: [{ uri: 'file:///library/IMG_0002.PNG', width: 800, height: 800 }],
     } as ImagePicker.ImagePickerResult);
     await signIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.photoUpload }));
-    expect(await screen.findByText(ar.validation.fileType)).toBeTruthy();
+    expect(await screen.findByText(ar.validation.imageType)).toBeTruthy();
+  });
+
+  it('shows what storage itself refused', async () => {
+    server.on('POST /api/mobile/v1/actions/uploadImage', {
+      ok: false,
+      error: 'storage',
+      detail: 'new row violates row-level security policy',
+    });
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0004.HEIC', width: 800, height: 800 }],
+    } as ImagePicker.ImagePickerResult);
+    await signIn();
+    await renderRouter(app, { initialUrl: '/account' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.photoUpload }));
+    expect(
+      await screen.findByText(`${ar.validation.storageError} new row violates row-level security policy`),
+    ).toBeTruthy();
   });
 
   it('is taken off after asking, and only the column is cleared', async () => {
     me = { ...profile, avatar_url: 'https://example.supabase.co/storage/v1/object/public/avatars/photo.webp' };
     await signIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.common.delete}: ${ar.account.photo}` }));
     await answerAlert(ar.common.delete);
@@ -288,9 +309,27 @@ describe('the photo', () => {
 });
 
 describe('signing in and security', () => {
+  it('keeps deleting the account at its foot, off the Account tab itself', async () => {
+    await signIn();
+    const result = await renderRouter(app, { initialUrl: '/account' });
+    expect(await screen.findByText(ar.app.account.security)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.account.deleteTitle })).toBeNull();
+
+    result.unmount();
+
+    await renderRouter(app, { initialUrl: '/account/security' });
+    const push = jest.spyOn(router, 'push').mockImplementation(() => {});
+    try {
+      fireEvent.press(await screen.findByRole('button', { name: ar.account.deleteTitle }));
+      expect(push).toHaveBeenCalledWith('/account/delete');
+    } finally {
+      push.mockRestore();
+    }
+  });
+
   it('changes the email address through Supabase, and says a confirmation is on its way', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
 
     fireEvent.changeText(await screen.findByLabelText(ar.account.newEmail), 'sara.new@example.com');
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[0]);
@@ -302,7 +341,7 @@ describe('signing in and security', () => {
 
   it('says so when the address belongs to another account', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
 
     fireEvent.changeText(await screen.findByLabelText(ar.account.newEmail), 'taken@example.com');
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[0]);
@@ -311,7 +350,7 @@ describe('signing in and security', () => {
 
   it("changes the password, ends every other session, and has the website tell the account", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
 
     fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'short');
     fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'short');
@@ -335,11 +374,55 @@ describe('signing in and security', () => {
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
   });
 
+  it('asks for the emailed code when the session is more than a day old, as secure password change does', async () => {
+    // GoTrue's rule: no nonce on an old session is refused; the code it emailed is accepted.
+    server.on('PUT /auth/v1/user', (_url, init) => {
+      const body = JSON.parse(String(init?.body ?? '{}'));
+      if (!body.nonce) {
+        return { status: 400, body: { code: 400, error_code: 'reauthentication_needed', msg: 'Password update requires reauthentication' } };
+      }
+      if (body.nonce !== '123456') {
+        return { status: 422, body: { code: 422, error_code: 'reauthentication_not_valid', msg: 'Nonce has expired or is invalid' } };
+      }
+      return user;
+    });
+    server.on('GET /auth/v1/reauthenticate', {});
+    await signIn();
+    await renderRouter(app, { initialUrl: '/account/security' });
+
+    fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'a-new-password');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'a-new-password');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+
+    // Not "something went wrong": a code, sent to the account's own address.
+    expect(await screen.findByLabelText(ar.account.reauthCode)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+
+    // Saved with the code left empty: said, and no second email.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.validation.required)).toBeTruthy();
+    expect(server.asked('/auth/v1/reauthenticate')).toHaveLength(1);
+    expect(userUpdates()).toHaveLength(1);
+
+    fireEvent.changeText(screen.getByLabelText(ar.account.reauthCode), '000000');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.account.reauthInvalid)).toBeTruthy();
+
+    // Typed on an Arabic keyboard.
+    fireEvent.changeText(screen.getByLabelText(ar.account.reauthCode), '١٢٣٤٥٦');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    expect(await screen.findByText(ar.account.passwordSaved)).toBeTruthy();
+    expect(userUpdates().at(-1)?.body).toEqual(expect.objectContaining({ password: 'a-new-password', nonce: '123456' }));
+    expect(screen.queryByLabelText(ar.account.reauthCode)).toBeNull();
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/announcePasswordChange')).toHaveLength(1));
+  });
+
   it('moves to the second password with the return key, and saves from there', async () => {
     await signIn();
     const focus = watchFocus();
     try {
-      renderRouter(app, { initialUrl: '/account/security' });
+      await renderRouter(app, { initialUrl: '/account/security' });
       fireEvent.changeText(await screen.findByLabelText(ar.account.newPassword), 'a-new-password');
       fireEvent(screen.getByLabelText(ar.account.newPassword), 'submitEditing');
       expect(focus.focused).toEqual([ar.auth.passwordConfirm]);
@@ -359,7 +442,7 @@ describe('signing in and security', () => {
       app_metadata: { provider, providers: [provider] },
       identities: [{ id: 'identity-1', user_id: USER_ID, provider, identity_data: {} }],
     });
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
 
     expect(await screen.findByText(copy)).toBeTruthy();
     expect(screen.queryByLabelText(ar.account.newPassword) === null).toBe(true);
@@ -368,7 +451,7 @@ describe('signing in and security', () => {
   it('sets up two-step verification: the key opens in an authenticator, then the first code', async () => {
     jest.spyOn(Linking, 'openURL').mockRejectedValueOnce(new Error('no handler'));
     await signIn();
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
     expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
@@ -388,9 +471,30 @@ describe('signing in and security', () => {
     expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
   });
 
+  it('keeps the first code when there is no connection, and says so rather than that it was wrong', async () => {
+    await signIn();
+    await renderRouter(app, { initialUrl: '/account/security' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+
+    let online = false;
+    server.on(`POST /auth/v1/factors/${totpFactor.id}/challenge`, () => {
+      if (!online) throw new TypeError('Network request failed');
+      return { id: 'challenge-1', type: 'totp', expires_at: Math.floor(Date.now() / 1000) + 300 };
+    });
+    fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
+    expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
+    expect(screen.queryByText(ar.account.mfaCodeInvalid)).toBeNull();
+    expect(screen.getByLabelText(ar.account.mfaCode).props.value).toBe('123456');
+
+    online = true;
+    fireEvent.press(screen.getByRole('button', { name: ar.account.mfaVerify }));
+    expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
+  });
+
   it('takes the first code by itself once six digits are in: the number pad has no return key', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
     fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
     expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.account.mfaCode), '123456');
@@ -400,7 +504,7 @@ describe('signing in and security', () => {
   it('clears an abandoned setup before starting again', async () => {
     await signIn({ factors: [{ ...totpFactor, id: 'abandoned', status: 'unverified' }] });
     server.on('DELETE /auth/v1/factors/abandoned', { id: 'abandoned' });
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.mfaSetup }));
     expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
@@ -409,7 +513,7 @@ describe('signing in and security', () => {
 
   it('turns it off after asking, from a session that has proved it', async () => {
     await signIn({ factors: [totpFactor] });
-    renderRouter(app, { initialUrl: '/account/security' });
+    await renderRouter(app, { initialUrl: '/account/security' });
 
     expect(await screen.findByText(ar.account.mfaEnabled)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.account.mfaDisable }));
@@ -423,7 +527,7 @@ describe('signing in and security', () => {
 describe('the emails', () => {
   it("shows a candidate's switches and sends all four when one is flipped", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account/emails' });
+    await renderRouter(app, { initialUrl: '/account/emails' });
 
     const digest = await screen.findByLabelText(ar.account.notifyDigest);
     expect(screen.queryByLabelText(ar.account.notifyApplications) === null).toBe(true);
@@ -439,7 +543,7 @@ describe('the emails', () => {
 
   it('keeps up with a switch turned off elsewhere, and does not turn it back on with the next flip', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account/emails' });
+    await renderRouter(app, { initialUrl: '/account/emails' });
     expect((await screen.findByLabelText(ar.account.notifyDigest)).props.value).toBe(true);
 
     // Turned off from an email's unsubscribe link while this was open.
@@ -461,7 +565,7 @@ describe('the emails', () => {
       return { ok: true };
     });
     await signIn();
-    renderRouter(app, { initialUrl: '/account/emails' });
+    await renderRouter(app, { initialUrl: '/account/emails' });
     fireEvent(await screen.findByLabelText(ar.account.notifyDigest), 'valueChange', false);
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
 
@@ -474,7 +578,7 @@ describe('the emails', () => {
   it('offers the profile reminder, off, where the profile has the switch, and sends it with the rest', async () => {
     me = { ...me, notify_profile_nudge: false };
     await signIn();
-    renderRouter(app, { initialUrl: '/account/emails' });
+    await renderRouter(app, { initialUrl: '/account/emails' });
 
     const reminder = await screen.findByLabelText(ar.account.notifyProfileNudge);
     expect(reminder.props.value).toBe(false);
@@ -495,7 +599,7 @@ describe('the emails', () => {
 
   it('does not offer the reminder where the database has no such switch yet', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account/emails' });
+    await renderRouter(app, { initialUrl: '/account/emails' });
     expect(await screen.findByLabelText(ar.account.notifyDigest)).toBeTruthy();
     expect(screen.queryByLabelText(ar.account.notifyProfileNudge)).toBeNull();
   });
@@ -503,7 +607,7 @@ describe('the emails', () => {
   it('puts the switch back when the website refuses', async () => {
     server.on('POST /api/mobile/v1/actions/updateNotificationPreferences', { ok: false, error: 'invalid' });
     await signIn();
-    renderRouter(app, { initialUrl: '/account/emails' });
+    await renderRouter(app, { initialUrl: '/account/emails' });
 
     fireEvent(await screen.findByLabelText(ar.account.notifyStatus), 'valueChange', false);
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
@@ -514,7 +618,7 @@ describe('the emails', () => {
 describe('the appearance', () => {
   it('is one choice of three: radio buttons in a group named for what they set', async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
 
     expect((await screen.findByLabelText(ar.app.account.appearance)).props.accessibilityRole).toBe('radiogroup');
     expect(screen.getAllByRole('radio')).toHaveLength(3);
@@ -533,7 +637,7 @@ describe('a profile that could not be read', () => {
     // A 500, which the client does not retry (a 503 it retries for a while first).
     server.on('/rest/v1/profiles', () => (down ? { status: 500, body: { message: 'failed' } } : [me]));
     await signIn();
-    renderRouter(app, { initialUrl: '/account/emails' });
+    await renderRouter(app, { initialUrl: '/account/emails' });
 
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     down = false;
@@ -545,7 +649,7 @@ describe('a profile that could not be read', () => {
 describe('a copy of the data', () => {
   it("is the website's export, handed to the share sheet", async () => {
     await signIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
 
@@ -564,10 +668,11 @@ describe('a copy of the data', () => {
   it('says when the day’s copies are used up', async () => {
     server.on('GET /api/account/export', { status: 429, body: { error: 'rate_limited', retryAfterSeconds: 3600 } });
     await signIn();
-    renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.account.exportTitle, ar.app.account.exportLimit));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.exportLimit));
+    expect(Alert.alert).not.toHaveBeenCalled();
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
 });

@@ -38,7 +38,7 @@ appId: net.brokersconnect.app
       true: ${JOB_SLUG == 'none'}
     commands:
       - extendedWaitUntil:
-          visible: "مفيش وظائف مطابقة لبحثك."
+          visible: "لا توجد وظائف مطابقة لبحثك."
           timeout: 100000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
@@ -58,7 +58,7 @@ appId: net.brokersconnect.app
       true: ${COMPANY_SLUG != 'none'}
     commands:
       - extendedWaitUntil:
-          visible: "الشركات اللي بتوظّف على بروكرز كونكت، والموثّق منها."
+          visible: "الشركات التي توظّف على بروكرز كونكت، والموثّق منها."
           timeout: 100000
       - extendedWaitUntil:
           visible: ".*${COMPANY_NAME}.*"
@@ -68,7 +68,7 @@ appId: net.brokersconnect.app
       true: ${COMPANY_SLUG == 'none'}
     commands:
       - extendedWaitUntil:
-          visible: "مفيش شركات مطابقة."
+          visible: "لا توجد شركات مطابقة."
           timeout: 100000
 - waitForAnimationToEnd
 - runFlow: checks.yaml

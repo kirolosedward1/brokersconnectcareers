@@ -62,9 +62,13 @@ export function formatRate(value: number, locale: string): string {
  * hours-only offset, "2026-08-31 12:48:30.464925+00", which Node and browsers
  * read and Hermes, the app's engine, does not; the offset is completed to
  * "+00:00" first. A value that is still not a date gives null, so a formatter
- * returns nothing instead of throwing in the middle of a list.
+ * returns nothing instead of throwing in the middle of a list. Exported for
+ * the app, which reads the same timestamps for its own arithmetic (a
+ * reminder's day, the board's "new since"): one reader, or one copy of it
+ * forgets the offset.
  */
-function readDate(value: string | Date): Date | null {
+export function readDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
   const date =
     typeof value === 'string' ? new Date(value.replace(/(:\d{2}(?:\.\d+)?)([+-]\d{2})$/, '$1$2:00')) : value;
   return Number.isNaN(date.getTime()) ? null : date;

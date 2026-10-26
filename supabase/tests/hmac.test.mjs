@@ -58,6 +58,7 @@ report.section('the signed payload is built in Paymob’s field order');
     'false' + // is_voided
     '555444333' + // order.id
     '42' + // owner
+    'false' + // pending
     '2346' + // source_data.pan
     'MasterCard' +
     'card' +

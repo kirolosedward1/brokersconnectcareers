@@ -15,8 +15,11 @@ const LETTERS = { sm: 'headline', md: 'title', lg: 'display' } as const satisfie
 /**
  * A company's mark — the website's CompanyLogo.
  *
- * Supplied logos sit on white and are contained, never cropped (most are drawn
- * for a white ground, and a cropped logo loses its name). Without one, the
+ * A supplied logo fills its tile edge to edge, as an app's icon fills its
+ * own: a square one exactly, a wider one whole, with white above and below —
+ * contain, as the website draws it, never cover: a logo cropped to fill a
+ * square is a logo with its name cut off. White behind it, for a logo drawn
+ * on nothing (most are drawn for a white ground). Without one, the
  * first letter on one of four theme tints — sapphire, champagne, the hero's
  * navy, stone — chosen from the slug by the website's hash, so a company is
  * always drawn in the same one.
@@ -59,7 +62,6 @@ export function CompanyLogo({
           borderColor: colors.border,
           backgroundColor: '#FFFFFF',
           overflow: 'hidden',
-          padding: size === 'lg' ? 8 : 5,
         }}
       >
         <Image

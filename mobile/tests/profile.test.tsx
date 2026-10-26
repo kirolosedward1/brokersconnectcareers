@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, Alert, Modal, Pressable, Text, type AlertButton } from 'react-native';
+import { AccessibilityInfo, Alert, Keyboard, Modal, Pressable, Text, type AlertButton } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import type { AgentExperienceRow, AgentProfileRow } from '@/lib/supabase/database.types';
+import { monthNames } from '~/components/ui/month-field';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -184,7 +185,7 @@ const saveButton = () => screen.getAllByRole('button', { name: ar.common.save })
 
 describe('the profile', () => {
   it("says what is missing, biggest gain first, over the form filled from the profile", async () => {
-    open();
+    await open();
     expect(await screen.findByText(ar.cv.gapsTitle)).toBeTruthy();
     expect(await screen.findByText('اكتمال الملف 45٪')).toBeTruthy();
     // The objective (20), the headline (15), the record and education (10 each); the rest is done.
@@ -195,7 +196,7 @@ describe('the profile', () => {
   });
 
   it('saves through the website, with every choice made on the form', async () => {
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.track.resale }));
     fireEvent.press(screen.getByRole('radio', { name: new RegExp(ar.visibility.public) }));
     fireEvent.press(saveButton());
@@ -225,7 +226,7 @@ describe('the profile', () => {
   it('keeps up with the name and number the account holds now, without touching what is being typed', async () => {
     let me = { ...profile };
     server.on('/rest/v1/profiles', () => [me]);
-    open();
+    await open();
     expect((await screen.findByLabelText(ar.onboarding.fullName)).props.value).toBe(profile.full_name);
     fireEvent.changeText(screen.getByLabelText(ar.agents.headlineAr), 'مستشارة مبيعات أولية');
 
@@ -265,7 +266,7 @@ describe('the profile', () => {
       me = { ...me, full_name: input.fullName.trim(), whatsapp_phone: input.whatsapp.replace(/^0/, '+20') };
       return { ok: true };
     });
-    open();
+    await open();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01009998887');
     fireEvent.press(saveButton());
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
@@ -281,7 +282,7 @@ describe('the profile', () => {
   });
 
   it("keeps a choice put back while the save's answer is being read again", async () => {
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('radio', { name: new RegExp(ar.visibility.public) }));
     // The profile, read again after the save, held as on a slow connection.
     let release = () => {};
@@ -306,7 +307,7 @@ describe('the profile', () => {
   });
 
   it('takes the CV off when asked, and only then', async () => {
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.agents.cvRemove }));
     fireEvent.press(saveButton());
     await waitFor(() => expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile')?.input?.removeCv).toBe(true));
@@ -318,7 +319,7 @@ describe('the profile', () => {
       canceled: false,
       assets: [{ uri: 'file:///cache/cv.pdf', name: 'cv.pdf', mimeType: 'application/pdf', size: 2048, lastModified: 0 }],
     } as DocumentPicker.DocumentPickerResult);
-    open();
+    await open();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
     expect(await screen.findByText('cv.pdf')).toBeTruthy();
@@ -341,7 +342,7 @@ describe('the profile', () => {
       canceled: false,
       assets: [{ uri: 'file:///cache/cv.pdf', name: 'cv.pdf', mimeType: 'application/pdf', size: 2048, lastModified: 0 }],
     } as DocumentPicker.DocumentPickerResult);
-    open();
+    await open();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.app.apply.pickCv }));
     expect(await screen.findByText('cv.pdf')).toBeTruthy();
@@ -360,7 +361,7 @@ describe('the profile', () => {
     announce.mockClear();
     const layout = placeViewsAt(700);
     try {
-      open();
+      await open();
       fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
       fireEvent.press(saveButton());
       expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
@@ -374,14 +375,21 @@ describe('the profile', () => {
 
   it('never offers an empty form over a profile it could not read', async () => {
     server.on('GET /rest/v1/agent_profiles', { status: 500, body: { message: 'boom' } });
-    open();
+    await open();
+    expect(await screen.findByText(ar.common.error)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.onboarding.fullName)).toBeNull();
+  });
+
+  it('never offers the form over developers it could not read, which a save would wipe', async () => {
+    server.on('GET /rest/v1/agent_developers', { status: 500, body: { message: 'boom' } });
+    await open();
     expect(await screen.findByText(ar.common.error)).toBeTruthy();
     expect(screen.queryByLabelText(ar.onboarding.fullName)).toBeNull();
   });
 
   it('offers the form to somebody with no profile yet, and says what comes after', async () => {
     agent = null;
-    open();
+    await open();
     expect(await screen.findByText(ar.app.profile.saveFirst)).toBeTruthy();
     expect(screen.queryByText(ar.cv.gapsTitle)).toBeNull();
     // Nothing to preview until there is a card.
@@ -389,26 +397,45 @@ describe('the profile', () => {
   });
 
   it('opens the card as companies see it, one tap from the form', async () => {
-    const result = open();
+    const result = await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.profilePreview }));
     await waitFor(() => expect(result.getPathname()).toBe('/account/profile/preview'));
   });
 
   it('says how many companies looked, once somebody has', async () => {
     server.on('POST /rest/v1/rpc/candidate_summary', { profile_views_30d: 3 });
-    open();
+    await open();
     expect(await screen.findByText(/شركات فتحوا ملفك/)).toBeTruthy();
   });
 
   it('explains a visit sent here from the directory', async () => {
-    open('?notice=directory');
+    await open('?notice=directory');
     expect(await screen.findByText(ar.agents.deniedNotice)).toBeTruthy();
   });
 });
 
 describe('the sales record', () => {
+  it('keeps up with the figures stored since it was filled, and sends them, not the old ones', async () => {
+    await open();
+    expect((await screen.findByLabelText(ar.cv.unitsClosed)).props.value).toBe('');
+    fireEvent.changeText(screen.getByLabelText(ar.cv.objective), 'بيع الوحدات الجاهزة في التجمع');
+
+    // Changed on the website meanwhile; read again after the profile's own save.
+    agent = { ...(agent as AgentProfileRow), units_closed: 40, volume_egp: 9000000 };
+    fireEvent.press(saveButton());
+    await waitFor(() => expect(screen.getByLabelText(ar.cv.unitsClosed).props.value).toBe('40'));
+    expect(screen.getByLabelText(ar.cv.objective).props.value).toBe('بيع الوحدات الجاهزة في التجمع');
+
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveProfileRecord')).toEqual({
+        input: { summaryAr: 'بيع الوحدات الجاهزة في التجمع', unitsClosed: 40, volumeEgp: 9000000 },
+      }),
+    );
+  });
+
   it('saves the objective and the figures, in either set of digits', async () => {
-    open();
+    await open();
     fireEvent.changeText(await screen.findByLabelText(ar.cv.unitsClosed), '12');
     fireEvent.changeText(screen.getByLabelText(ar.cv.volumeEgp), '٣٠٠٠٠٠٠');
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save })[1]);
@@ -420,13 +447,24 @@ describe('the sales record', () => {
   });
 });
 
+/** A month picked as a reader does: the field, then its year, then the month. */
+function pickMonth(field: string, year: number, month: number) {
+  fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${field}: `) }));
+  fireEvent.press(screen.getByRole('radio', { name: String(year) }));
+  fireEvent.press(screen.getByRole('radio', { name: `${monthNames('ar')[month - 1]} ${year}` }));
+  // iOS says the sheet has slid away: until it does, no other sheet may open (src/lib/sheet-gate.ts).
+  for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+    if (!modal.props.visible) act(() => modal.props.onDismiss?.());
+  }
+}
+
 describe('the CV sections', () => {
   it('adds a job from a sheet, dated by its month', async () => {
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    pickMonth(ar.cv.started, 2023, 5);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
 
     await waitFor(() =>
@@ -439,6 +477,7 @@ describe('the CV sections', () => {
           started: '2023-05-01',
           ended: null,
           highlights: null,
+          idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
         },
       }),
     );
@@ -471,11 +510,11 @@ describe('the CV sections', () => {
       ];
       throw new TypeError('Network request failed');
     });
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), '  سيتي سكيب ');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
+    pickMonth(ar.cv.started, 2023, 5);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
 
     // The database has it: the sheet closes, and nothing is sent twice.
@@ -489,10 +528,20 @@ describe('the CV sections', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'بالم هيلز');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مستشار مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2022-01');
+    pickMonth(ar.cv.started, 2022, 1);
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
     expect(screen.getByLabelText(ar.cv.company).props.value).toBe('بالم هيلز');
+
+    // Saved again, it is the same entry: the same key, which the website
+    // answers with the entry if the first attempt did add it.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveExperience')).toHaveLength(3));
+    const keys = server
+      .asked('/api/mobile/v1/actions/saveExperience')
+      .map((request) => (request.body as { input: { idempotencyKey?: string } }).input.idempotencyKey);
+    expect(keys[2]).toBe(keys[1]);
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('does not take an entry that was already there for the one whose answer was lost', async () => {
@@ -503,7 +552,7 @@ describe('the CV sections', () => {
     );
     // The website refuses with a server error and writes nothing.
     server.on('POST /api/mobile/v1/actions/saveEducation', { status: 500, body: { error: 'failed' } });
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addEducation }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.institution), 'جامعة القاهرة');
     fireEvent.changeText(screen.getByLabelText(ar.cv.field), 'حقوق');
@@ -515,7 +564,7 @@ describe('the CV sections', () => {
   });
 
   it('edits an entry without moving a date nobody touched', async () => {
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.profile.edit}: ${job.title} · ${job.company_name}` }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.jobTitle), 'مدير فريق مبيعات');
     fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
@@ -529,13 +578,51 @@ describe('the CV sections', () => {
     );
   });
 
+  it('takes an end in the month the job started, and a start kept from the website this month — months, not days', async () => {
+    const today = new Date();
+    const thisMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    // Started on the 28th of this month, as the website keeps it.
+    server.on('GET /rest/v1/agent_experience', [{ ...job, started: `${thisMonth}-28` }]);
+    await open();
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.profile.edit}: ${job.title} · ${job.company_name}` }));
+    pickMonth(ar.cv.ended, today.getFullYear(), today.getMonth() + 1);
+    fireEvent.press(screen.getAllByRole('button', { name: ar.common.save }).at(-1)!);
+
+    await waitFor(() =>
+      expect(bodyOf('/api/mobile/v1/actions/saveExperience')?.input).toMatchObject({ started: `${thisMonth}-28`, ended: `${thisMonth}-01` }),
+    );
+    expect(screen.queryByText(ar.app.profile.notFuture)).toBeNull();
+    expect(screen.queryByText(ar.app.profile.endBeforeStart)).toBeNull();
+  });
+
+  it('puts the keyboard away when a choice or a month is to be picked, so the sheet is not under it', async () => {
+    await open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
+    fireEvent.changeText(await screen.findByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
+    const dismiss = jest.spyOn(Keyboard, 'dismiss');
+    try {
+      fireEvent.press(screen.getByRole('button', { name: `${ar.cv.track}: —` }));
+      expect(dismiss).toHaveBeenCalledTimes(1);
+      for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+        if (modal.props.visible && modal.props.presentationStyle === 'pageSheet') act(() => modal.props.onRequestClose?.());
+      }
+      for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+        if (!modal.props.visible) act(() => modal.props.onDismiss?.());
+      }
+      fireEvent.press(screen.getByRole('button', { name: new RegExp(`^${ar.cv.started}: `) }));
+      expect(dismiss).toHaveBeenCalledTimes(2);
+    } finally {
+      dismiss.mockRestore();
+    }
+  });
+
   it('catches an end before the start, before sending anything — in view in the sheet, and said', async () => {
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     fireEvent.changeText(await screen.findByLabelText(ar.cv.company), 'سيتي سكيب');
     fireEvent.changeText(screen.getByLabelText(ar.cv.jobTitle), 'مدير مبيعات');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.started), '2023-05');
-    fireEvent.changeText(screen.getByLabelText(ar.cv.ended), '2022-01');
+    pickMonth(ar.cv.started, 2023, 5);
+    pickMonth(ar.cv.ended, 2022, 1);
     const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
     announce.mockClear();
     const layout = placeViewsAt(320);
@@ -552,7 +639,7 @@ describe('the CV sections', () => {
 
   it('asks before an entry typed into the sheet is thrown away, by its X or by pulling the sheet down', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.cv.addExperience }));
     // Nothing typed: it simply closes.
     fireEvent.press(await screen.findByRole('button', { name: ar.common.close }));
@@ -573,7 +660,7 @@ describe('the CV sections', () => {
 
   it('deletes an entry after asking', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: `${ar.common.delete}: ${job.title} · ${job.company_name}` }));
     const buttons = alert.mock.calls[0][2] as AlertButton[];
     act(() => buttons.find((button) => button.style === 'destructive')?.onPress?.());
@@ -590,7 +677,7 @@ describe('a restricted profile', () => {
   });
 
   it('says it is hidden and why, and takes a request for a second look', async () => {
-    open();
+    await open();
     expect(await screen.findByText(`${ar.dashboard.profileRestricted} «صورة غير مناسبة»`)).toBeTruthy();
 
     fireEvent.press(await screen.findByRole('button', { name: ar.appeals.ask }));
@@ -610,7 +697,7 @@ describe('a restricted profile', () => {
 
   it("says why an appeal was refused, in the website's words", async () => {
     server.on('POST /api/mobile/v1/actions/submitAppeal', { ok: false, error: 'appeal_too_soon' });
-    open();
+    await open();
     fireEvent.press(await screen.findByRole('button', { name: ar.appeals.ask }));
     fireEvent.changeText(screen.getByLabelText(ar.appeals.label), 'دي صورتي الشخصية من يوم التخرج، مش إعلان.');
     fireEvent.press(screen.getByRole('button', { name: ar.appeals.send }));
@@ -619,7 +706,7 @@ describe('a restricted profile', () => {
 
   it('offers nothing when the database cannot say whether appealing is possible', async () => {
     server.on('POST /rest/v1/rpc/my_appeal_state', { status: 404, body: { code: 'PGRST202', message: 'no function' } });
-    open();
+    await open();
     expect(await screen.findByText(`${ar.dashboard.profileRestricted} «صورة غير مناسبة»`)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.appeals.ask })).toBeNull();
   });

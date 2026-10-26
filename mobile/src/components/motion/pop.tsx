@@ -5,9 +5,11 @@ import { useReduceMotion } from '~/theme/reduce-motion';
 /**
  * A mark that answers a tap: each time `trigger` moves on — the reader's own
  * tap saving a listing — it swells a little and settles, as iOS's own toggles
- * do. Never on its own: not on its first frame, not when the bookmarks are
- * read at launch, not when a list hands its row to another listing (key it by
- * what it marks, and it starts afresh there). Not with Reduce Motion on.
+ * do. Small, and nothing more round it: saving is done many times a day, and
+ * the mark filling in is the news. Never on its own: not on its first frame,
+ * not when the bookmarks are read at launch, not when a list hands its row to
+ * another listing (key it by what it marks, and it starts afresh there). Not
+ * with Reduce Motion on.
  *
  * Stopped part-way — a second tap, its row gone — it is put back at its own
  * size, never left swollen.
@@ -22,8 +24,8 @@ export function Pop({ trigger, children, style }: { trigger: number; children?: 
     seen.current = trigger;
     if (reduceMotion) return;
     const animation = Animated.sequence([
-      Animated.timing(scale, { toValue: 1.28, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1.15, duration: 110, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 5, tension: 180, useNativeDriver: true }),
     ]);
     animation.start();
     return () => {

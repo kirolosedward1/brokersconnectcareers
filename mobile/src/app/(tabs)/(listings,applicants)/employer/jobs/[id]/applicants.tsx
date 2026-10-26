@@ -1,6 +1,7 @@
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { APPLICATION_STAGES } from '@/lib/application-stages';
 import { localized } from '@/lib/locale';
 import { isSuspended } from '@/lib/permissions';
 import { ApplicantCard } from '~/components/employer/applicant-card';
@@ -8,22 +9,26 @@ import { useApplicantContext } from '~/components/employer/applicant-context';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
-import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
+import { EmptyState, ErrorState, NotFoundState, SkeletonScreen } from '~/components/ui/states';
+import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import {
   APPLICANTS_CAP,
   notesOf,
-  STAGES,
   useApplicantNotes,
   useListingApplicants,
   useMarkSeen,
 } from '~/features/employer/applicants';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Inbox, ShieldAlert } from '~/components/ui/lucide';
+
+/** A UUID: anything else in the address is no listing. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * One listing's applicants — the website's /employer/jobs/<id>/applicants:
@@ -36,7 +41,9 @@ export default function ListingApplicantsScreen() {
   const locale = useLocale();
   const { colors } = useTheme();
   const { id: raw } = useLocalSearchParams<{ id: string }>();
-  const id = typeof raw === 'string' ? raw : '';
+  // A malformed link is no listing: the id goes to a uuid column, and a
+  // refused query would offer a Retry that can never work.
+  const id = typeof raw === 'string' && UUID.test(raw) ? raw : '';
   const { session, viewer, actor } = useSession();
   const pipeline = useListingApplicants(id);
   const applicants = pipeline.data?.applicants;
@@ -47,6 +54,7 @@ export default function ListingApplicantsScreen() {
   useMarkSeen(viewer?.company?.suspended_at ? undefined : applicants);
   // A new applicant, or a colleague's move, reaches the pipeline with a pull.
   const pull = usePullRefresh(() => Promise.all([pipeline.refetch(), applicants?.length ? notes.refetch() : null]));
+  const shrink = useShrinkingTabBar();
 
   const job = pipeline.data?.job ?? null;
   const title = job ? localized(locale, job.title_ar, job.title_en) : t('employer.jobs');
@@ -54,13 +62,14 @@ export default function ListingApplicantsScreen() {
 
   let body: React.ReactNode;
   if (!session || !viewer?.profile) body = <ViewerPending />;
-  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <SuspendedState />;
   else if (!viewer.company) body = <NotFoundState />;
   // A suspended company's applicants are hidden (migration 349): said, not
   // shown as an empty pipeline.
   else if (viewer.company.suspended_at) {
     body = <EmptyState icon={ShieldAlert} title={t('employer.applicantsSuspendedTitle')} body={t('employer.applicantsSuspendedBody')} />;
-  } else if (pipeline.isPending) body = <LoadingState />;
+  } else if (!id) body = <NotFoundState />;
+  else if (pipeline.isPending) body = <SkeletonScreen />;
   else if (pipeline.isError && !pipeline.data) body = <ErrorState error={pipeline.error} onRetry={() => pipeline.refetch()} />;
   else if (!pipeline.data || !job) body = <NotFoundState />;
   else if (pipeline.data.applicants.length === 0) {
@@ -73,7 +82,8 @@ export default function ListingApplicantsScreen() {
       >
         <EmptyState
           icon={Inbox}
-          title={t('employer.noApplicants')}
+          illustration="review"
+          title={t('app.applicants.empty')}
           body={t('employer.noApplicantsHint')}
           action={
             <View style={{ gap: space[2], alignSelf: 'stretch' }}>
@@ -89,10 +99,11 @@ export default function ListingApplicantsScreen() {
       </ScrollView>
     );
   } else {
-    const { total } = pipeline.data;
+    const { total, matched } = pipeline.data;
     const rows = pipeline.data.applicants;
     body = (
       <ScrollView
+        {...shrink}
         contentInsetAdjustmentBehavior="automatic"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
@@ -102,7 +113,7 @@ export default function ListingApplicantsScreen() {
       >
         <Text tone="mutedForeground">{t.markup('employer.pipelineCount', { count: total, ...markupTags })}</Text>
 
-        {total > rows.length ? (
+        {matched > rows.length ? (
           <View style={{ gap: space[1], padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
             <Text variant="small">{t.markup('employer.applicantsCapped', { count: APPLICANTS_CAP, ...markupTags })}</Text>
             <Pressable
@@ -123,7 +134,7 @@ export default function ListingApplicantsScreen() {
             or a push — moves under its new header as the same card, keeping
             the reason or note being typed in it; in a box per stage it was
             built again, empty. */}
-        {STAGES.flatMap((stage) => {
+        {APPLICATION_STAGES.flatMap((stage) => {
           const inStage = rows.filter((row) => row.status === stage);
           if (!inStage.length) return [];
           return [

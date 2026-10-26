@@ -20,7 +20,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestDb, reporter } from './setup.mjs';
-import { escape as escapeHtml, safeHref } from '../../src/lib/email/components.ts';
+import { escape as escapeHtml, renderEmail, safeHref } from '../../src/lib/email/components.ts';
 import { verifySvix } from '../../src/lib/email/svix.ts';
 import { eventKind } from '../../src/lib/email/events.ts';
 import { senderProblem } from '../../src/lib/email/sender.ts';
@@ -644,33 +644,74 @@ report.section('the profile reminder is asked for, and the outbox forgets');
     'a row past the period goes; one still queued, and one inside it, stay');
 }
 
-report.section('a count in an Arabic email takes its form, as the bell words it');
+report.section('the footer tells a reader where a reply goes');
+{
+  const { emailCopy } = await import('../../src/lib/email/copy.ts');
+  const address = 'info@topsuite.net';
+  const rendered = (locale, contact) =>
+    renderEmail({
+      locale,
+      dir: locale === 'ar' ? 'rtl' : 'ltr',
+      siteName: 'Brokers Connect',
+      preheader: 'p',
+      heading: 'h',
+      blocks: [{ kind: 'text', value: 'body' }],
+      footer: { contact, reason: 'reason', legal: [] },
+    });
+
+  const ar = rendered('ar', { lead: emailCopy.ar.footer.reply, email: address });
+  const en = rendered('en', { lead: emailCopy.en.footer.reply, email: address });
+  const neutral = rendered('ar', { lead: emailCopy.ar.footer.neutral });
+
+  report.ok(
+    ar.includes('هل تحتاج إلى مساعدة؟ يمكنك الرد على هذه الرسالة أو مراسلتنا على') &&
+      ar.includes(`mailto:${address}`) &&
+      ar.includes(`>${address}</a>`) &&
+      ar.includes('font-size:13px;line-height:1.7;color:#5B6475'),
+    'Arabic site mail names the support address at 13px in the footer colour',
+  );
+  report.ok(
+    en.includes('Need help? Reply to this email or write to') && en.includes(`mailto:${address}`),
+    'English site mail says a reply reaches that address',
+  );
+  report.ok(
+    !neutral.includes('mailto:') && neutral.includes('هذه الرسالة مُرسلة تلقائيًا.'),
+    'with no support address the line stays neutral',
+  );
+  report.ok(
+    !ar.includes('عدم الرد') && !ar.includes('do not reply') && !en.includes('do not reply') && !neutral.includes('عدم الرد'),
+    'nothing tells the reader not to reply',
+  );
+}
+
+report.section('a count in an Arabic email takes its MSA form');
 {
   // Arabic says one, two (a form of its own), three to ten (the plural) and
   // eleven up (the singular again). The emails used the plural for every
-  // number but one: «فاضل 2 أيام», «11 وظائف جديدة».
+  // number but one: «فاضل 2 أيام», «11 وظائف جديدة». The forms below are MSA;
+  // the bell in messages/ar.json stays Egyptian.
   const { emailCopy } = await import('../../src/lib/email/copy.ts');
   const ar = emailCopy.ar;
 
   report.is(ar.digest.subject(1, 'مدينتي'), 'وظيفة جديدة في «مدينتي»', 'one new listing');
-  report.is(ar.digest.subject(2, 'مدينتي'), 'وظيفتين جداد في «مدينتي»', 'two: the dual, as the bell says it');
+  report.is(ar.digest.subject(2, 'مدينتي'), 'وظيفتان جديدتان في «مدينتي»', 'two: the dual');
   report.is(ar.digest.subject(3, 'مدينتي'), '3 وظائف جديدة في «مدينتي»', 'three to ten: the plural');
   report.is(ar.digest.subject(11, 'مدينتي'), '11 وظيفة جديدة في «مدينتي»', 'eleven and up: the singular');
-  report.is(ar.follow.subject(2, 'نايل'), 'وظيفتين جداد في «نايل»', 'a followed company, the same');
+  report.is(ar.follow.subject(2, 'نايل'), 'وظيفتان جديدتان في «نايل»', 'a followed company, the same');
   report.is(ar.follow.subject(25, 'نايل'), '25 وظيفة جديدة في «نايل»', 'and its larger counts');
 
-  report.is(ar.applicantDigest.subject(1), 'عندك متقدم جديد', 'one new applicant');
-  report.is(ar.applicantDigest.subject(2), 'عندك متقدمين اتنين جداد', 'two new applicants');
-  report.is(ar.applicantDigest.subject(4), 'عندك 4 متقدمين جداد', 'four new applicants');
-  report.is(ar.applicantDigest.subject(12), 'عندك 12 متقدم جديد', 'twelve new applicants');
-  report.is(ar.applicantDigest.body(2), 'وصلك متقدمين اتنين جداد من آخر مرة بعتنالك.', 'and the body says it the same way');
-  report.is(ar.applicantDigest.body(15), 'وصلك 15 متقدم جديد من آخر مرة بعتنالك.', 'for a larger count too');
+  report.is(ar.applicantDigest.subject(1), 'لديك متقدم جديد', 'one new applicant');
+  report.is(ar.applicantDigest.subject(2), 'لديك متقدمان جديدان', 'two new applicants');
+  report.is(ar.applicantDigest.subject(4), 'لديك 4 متقدمين جدد', 'four new applicants');
+  report.is(ar.applicantDigest.subject(12), 'لديك 12 متقدم جديد', 'twelve new applicants');
+  report.is(ar.applicantDigest.body(2), 'وصلك متقدمان جديدان منذ آخر رسالة أرسلناها إليك.', 'and the body says it the same way');
+  report.is(ar.applicantDigest.body(15), 'وصلك 15 متقدم جديد منذ آخر رسالة أرسلناها إليك.', 'for a larger count too');
 
   // The warning goes out within three days of the end (expire-jobs), so two
   // days is an ordinary case.
-  report.ok(ar.jobExpiring.body('مستشار مبيعات', 2).startsWith('فاضل يومين على انتهاء «مستشار مبيعات»'), 'two days left');
-  report.ok(ar.jobExpiring.body('مستشار مبيعات', 3).startsWith('فاضل 3 أيام على انتهاء'), 'three days left');
-  report.ok(ar.jobExpiring.body('مستشار مبيعات', 1).includes('آخر يوم ليه بكرة'), 'the last day is still tomorrow');
+  report.ok(ar.jobExpiring.body('مستشار مبيعات', 2).startsWith('تبقّى يومان على انتهاء «مستشار مبيعات»'), 'two days left');
+  report.ok(ar.jobExpiring.body('مستشار مبيعات', 3).startsWith('تبقّى 3 أيام على انتهاء'), 'three days left');
+  report.ok(ar.jobExpiring.body('مستشار مبيعات', 1).includes('غدًا هو اليوم الأخير'), 'the last day is still tomorrow');
 
   report.is(emailCopy.en.digest.subject(2, 'Madinaty'), '2 new roles matching "Madinaty"', 'English is unchanged');
 }

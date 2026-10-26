@@ -572,6 +572,9 @@ function changedOutsideMigrations(mergeBase) {
  */
 const RENUMBERED = {
   '20260101000068_what_the_provider_said_happened.sql': '20260101000069_what_the_provider_said_happened.sql',
+  // Merged under the version my_company_is_nobodys_when_signed_out already had
+  // (and production had applied); renumbered before production ran it.
+  '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql': '20260101000357_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
 };
 
 function lint(options) {
@@ -852,6 +855,34 @@ const LEGACY = {
 export const UNRECORDED = ['20260101000026_no_svg_logos'];
 
 /**
+ * Changes production made outside any file — in the dashboard or the SQL
+ * editor — found by comparing its fingerprint (scripts/dr/fingerprint.sql)
+ * with the database its ledger builds. The rehearsal replays each one on top
+ * of a production ledger, so the rebuild is production as it is: once the
+ * file named in `after` (what the change altered) has run there, and until the
+ * file named in `undoneBy` has. Same gate as UNRECORDED: only a ledger
+ * carrying the historical names above is production's.
+ *
+ *   seen 2026-10-16, still there 2026-10-22: two definer functions switched to
+ *   invoker, and anon's execute on one revoked. The first broke reporting a
+ *   directory consultant (migration 354 says how); 354 puts both back.
+ */
+export const OUT_OF_BAND = [
+  {
+    seen: '2026-10-16',
+    after: '20260101000344_doors_a_review_found_open',
+    undoneBy: '20260101000354_what_production_changed_by_hand',
+    sql:
+      'alter function public.agent_card_listed_to_viewer(uuid) security invoker;\n' +
+      'revoke execute on function public.agent_card_listed_to_viewer(uuid) from anon;\n' +
+      'alter function public.admin_summary() security invoker;',
+  },
+];
+
+/** Whether a ledger is production's: it carries the historical names. */
+export const isProductionLedger = (rows) => rows.some((row) => Object.hasOwn(LEGACY, String(row.name ?? '')));
+
+/**
  * The steps that bring a database from its ledger to this checkout: every
  * pending file, in file order, each in its own transaction with its ledger row
  * (what `apply` runs, and scripts/release/rehearse.mjs runs first).
@@ -1005,7 +1036,7 @@ export function reconcile(rows, repoFiles) {
   }
 
   const unrecorded = [];
-  if (rows.some((row) => Object.hasOwn(LEGACY, String(row.name ?? '')))) {
+  if (isProductionLedger(rows)) {
     for (const stem of UNRECORDED) {
       if (stems.includes(stem) && !matched.has(stem)) {
         matched.add(stem);

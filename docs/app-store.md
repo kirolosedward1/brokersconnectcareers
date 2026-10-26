@@ -83,13 +83,26 @@ run. Its artifact, `ios-screens`, holds:
   screenshots App Store Connect asks for (the log prints their sizes);
 - `dark/`, `large-text/` and `ipad/`: the same screens in the dark appearance,
   at the largest accessibility text size and on an iPad (App Review opens an
-  iPhone app on one too), for checking rather than for the store.
+  iPhone app on one too), for checking rather than for the store;
+- `small/`: the welcome and Home on an iPhone SE (3rd generation), the
+  smallest screen iOS 26 runs on, at the largest accessibility text size —
+  every way on the welcome must be on screen (`mobile/maestro/small.yaml`).
+  Every pass's launch asserts the same of its own phone.
 
 On the iPad, iPadOS 26 draws an iPhone app in a window of its own, and Maestro
 loses that window after the first link: it read none of the app's words while
 the screen showed them. That pass therefore checks each screen by what macOS's
 text recognition reads on it (`mobile/scripts/screen-text.swift`), for the
 same words and error states as the iPhone passes.
+
+The website's own page for the app, `/app`
+(`src/components/get-app/get-app-landing.tsx`), shows this run's captures in
+drawn iPhone frames, from `public/app-screenshots/` — the store set, the
+dark one and the large-text one. `docs/app-page.md` says which file is
+which screen and how to refresh them from a newer run (the artifact is out
+of reach from the agent sessions, so "iOS screens to a branch",
+`screens-to-branch.yml`, copies a run's artifact onto a branch git can
+fetch). The page's store badges link nowhere (`#`) until the listing exists.
 
 They show whatever the live site lists when the workflow runs — its first
 listing and its first company — so run it when production holds the listings
@@ -129,7 +142,7 @@ in the app, and nothing is used to track people across apps or websites.
 
 ## Guidelines that apply, and how the app meets them
 
-- **5.1.1(v) account deletion.** Account → Delete account, with the word typed
+- **5.1.1(v) account deletion.** Account → Sign-in and security → Delete account (at the foot), with the word typed
   out (`deleteMyAccount`). An account made with Sign in with Apple is asked for
   a fresh Apple authorization code first, and the website revokes the grant
   (`src/lib/apple/revoke.ts`). A company owner, whose account cannot be
@@ -346,3 +359,68 @@ here:
   `eas credentials` or the Play Console — so links to the site open the app.
 - After the listing exists: `MOBILE_PLAY_STORE_URL`, and
   `MOBILE_MIN_ANDROID_APP_VERSION` when an Android build must stop.
+
+## Google Play: Data safety and policies
+
+What the Play Console asks about privacy, answered from the code as the App
+Store's label is above, for the day Android ships. Play's categories are not
+Apple's, so the same facts are sorted differently. Answers marked **decide**
+are for the owner, with legal advice where it says so.
+
+**Data collection and security**
+
+| Question | Answer |
+| --- | --- |
+| Does the app collect or share user data? | Yes, collects |
+| Is all collected data encrypted in transit? | Yes: HTTPS to the website and to Supabase, nothing else |
+| Can users ask for their data to be deleted? | Yes: Account → Delete account in the app, and `https://www.brokersconnect.net/account-deletion` (the URL Play asks for), which also says how to ask without signing in |
+| Shared with third parties? | No — **decide, with legal advice.** Play does not count transfers to service providers (Supabase, Vercel, Resend, Expo's push service), nor transfers the person starts and expects: an application sent to a company, a directory card the consultant chose to show. Answer "shared" if the lawyer reads the directory differently |
+
+**Data types collected** (all *required* unless said, none *processed
+ephemerally*, purposes "App functionality" and "Account management" unless
+said):
+
+| Play category | Type | What it is |
+| --- | --- | --- |
+| Personal info | Name | the account's full name |
+| Personal info | Email address | the sign-in address |
+| Personal info | User IDs | the account id |
+| Personal info | Phone number | the WhatsApp number, asked at onboarding |
+| Personal info | Other info | work history, education, certifications, the sales record (a consultant's profile, optional); the policy versions agreed to |
+| Photos and videos | Photos | the profile photo and the company logo (optional) |
+| Files and docs | Files and docs | CVs, company verification papers (optional) |
+| App activity | In-app search history | saved searches and followed companies (optional) |
+| App activity | App interactions | a company opening a consultant's profile or asking for their number or CV (`agent_profile_views`, `agent_contact_reveals`). Purposes: App functionality, Fraud prevention, security, and compliance (the daily limits) |
+| App activity | Other user-generated content | applications and their notes, listings, reports, appeals, support requests |
+| Device or other IDs | Device or other IDs | the push token (`push_devices`), only when notifications are allowed (optional) |
+
+Not collected: what stays on the phone and is never sent (notes and reminders
+on saved listings, recent searches, jobs looked at, a company's saved WhatsApp
+replies; Play does not count data processed only on the device), location,
+contacts, calendar, messages (WhatsApp opens outside the app), audio, health, financial info (billing is read-only and sells
+nothing; revisit before `BILLING_ENABLED`), web browsing, app info and
+performance (no crash reporting or analytics SDK).
+
+**Permissions the Android build declares** (from the Expo modules'
+manifests; `app.config.ts` blocks `SYSTEM_ALERT_WINDOW`):
+
+| Permission | Why | Policy note |
+| --- | --- | --- |
+| `INTERNET`, `ACCESS_NETWORK_STATE` | everything | — |
+| `CAMERA` | photographing company papers (`src/features/employer/company.ts`), asked when used | — |
+| `POST_NOTIFICATIONS` | pushes, asked from Home's card, never at launch | — |
+| `READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE` | Android 12 and older only (`maxSdkVersion` 32 where the module sets it; `expo-image` declares the read one without it, and Android 13+ ignores it) | The photo/video permissions policy concerns `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`, which the app does not declare: photos come through the system photo picker |
+| `USE_BIOMETRIC`, `USE_FINGERPRINT` | `expo-local-authentication`, shipped ahead of the app lock (docs/mobile.md, Over-the-air updates); nothing calls it yet | Normal permissions, no declaration |
+| `RECEIVE_BOOT_COMPLETED` | `expo-notifications`: keeps the reminders a candidate sets on saved listings (local notifications) after the phone restarts | Needed now that reminders exist |
+| `VIBRATE` | haptics | — |
+
+**Other Play requirements**
+
+- **Target API level**: SDK 57 builds with `targetSdk` 36, which meets Play's
+  current requirement for new apps and updates.
+- **Target audience**: 18 and over, as the Terms say and onboarding confirms;
+  the app is not designed for children, so the Families policy does not apply.
+- **Account deletion**: deletion inside the app and the web URL above, as
+  Play requires of an app where accounts are made.
+- **Prominent disclosure**: not needed. No permission is used in the
+  background, and nothing sensitive (location, contacts, SMS) is read.

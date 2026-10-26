@@ -2,8 +2,8 @@
 # not-found and update-required states (components/ui/states.tsx, UpdateGate).
 appId: net.brokersconnect.app
 ---
-- assertNotVisible: "في حاجة غلط"
-- assertNotVisible: "مفيش اتصال بالإنترنت"
-- assertNotVisible: "الخدمة مش متاحة دلوقتي"
-- assertNotVisible: "الصفحة مش موجودة"
-- assertNotVisible: "في نسخة أحدث من التطبيق"
+- assertNotVisible: "حدث خطأ"
+- assertNotVisible: "لا يوجد اتصال بالإنترنت"
+- assertNotVisible: "الخدمة غير متاحة الآن"
+- assertNotVisible: "الصفحة غير موجودة"
+- assertNotVisible: "يتوفر إصدار أحدث من التطبيق"

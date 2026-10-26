@@ -30,6 +30,7 @@ function fresh() {
     callAction: typeof import('~/lib/api').callAction;
     ApiError: typeof import('~/lib/api').ApiError;
     loadViewer: typeof import('~/lib/session').loadViewer;
+    onLocalSignOut: typeof import('~/lib/local-sign-out').onLocalSignOut;
   };
   jest.isolateModules(() => {
     /* eslint-disable @typescript-eslint/no-require-imports -- a fresh copy of each module, per case */
@@ -40,6 +41,7 @@ function fresh() {
       callAction: require('~/lib/api').callAction,
       ApiError: require('~/lib/api').ApiError,
       loadViewer: require('~/lib/session').loadViewer,
+      onLocalSignOut: require('~/lib/local-sign-out').onLocalSignOut,
     };
     /* eslint-enable @typescript-eslint/no-require-imports */
   });
@@ -97,6 +99,30 @@ describe('signing out', () => {
     expect(events).toContain('SIGNED_OUT');
     const { data } = await supabase.auth.getSession();
     expect(data.session).toBeNull();
+  });
+});
+
+describe('signing out while the auth service never answers', () => {
+  it('finishes in seconds and signs out on the phone, though supabase-js is still waiting', async () => {
+    const { SESSION_KEY, signOutHere, onLocalSignOut } = fresh();
+    store().set(SESSION_KEY, JSON.stringify(expired()));
+    // A connection that takes the request and never answers, nor gives up when asked to.
+    network(() => new Promise<Response>(() => {}));
+    let announced = false;
+    onLocalSignOut(() => {
+      announced = true;
+    });
+
+    let finished = false;
+    const done = signOutHere().then(() => {
+      finished = true;
+    });
+    await jest.advanceTimersByTimeAsync(11_000);
+    expect(finished).toBe(true);
+    await done;
+
+    expect(store().has(SESSION_KEY)).toBe(false);
+    expect(announced).toBe(true);
   });
 });
 
@@ -228,6 +254,25 @@ describe("a call to the website while the session cannot be refreshed", () => {
   });
 });
 
+describe('an answer that is not the website’s', () => {
+  // Hotel and café Wi-Fi answer everything with their own sign-in page, 200,
+  // until the terms are accepted; a dropped connection leaves half a body.
+  const portal = () => new Response('<html><body>Accept the terms to continue</body></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+  const truncated = () => new Response('{"ok":tr', { status: 200, headers: { 'content-type': 'application/json' } });
+
+  it.each([
+    ['a Wi-Fi sign-in page', portal],
+    ['half an answer', truncated],
+  ])('is no answer when it is %s, so a write is looked for before it is sent again', async (_, answer) => {
+    const { callAction, ApiError } = fresh();
+    network(answer);
+    const failure = await callAction('requestPasswordReset', { email: 'sara@example.com' }).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiError);
+    // Status 0: `noAnswer` says it as offline, and it was not refused at the door.
+    expect((failure as InstanceType<typeof ApiError>).status).toBe(0);
+  });
+});
+
 describe('a refresh that never answers', () => {
   it('is given up on in seconds and tried again, and the call says no answer within its own time', async () => {
     const { SESSION_KEY, callAction, ApiError } = fresh();
@@ -347,5 +392,27 @@ describe('an account with no profile', () => {
 
     expect((await loadViewer(session)).profile?.id).toBe(profile.id);
     expect(sent.some((request) => request.path === '/auth/v1/user')).toBe(false);
+  });
+});
+
+describe('an auth request on a connection that stalls', () => {
+  it('a password sign-in is given up on, not left spinning', async () => {
+    const { supabase } = fresh();
+    // Takes the request and never answers until it is aborted.
+    network(
+      (_url, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new TypeError('Network request failed: aborted')));
+        }),
+    );
+    let answered = false;
+    const done = supabase.auth.signInWithPassword({ email: 'a@b.eg', password: 'x' }).then((result) => {
+      answered = true;
+      return result;
+    });
+    await jest.advanceTimersByTimeAsync(21_000);
+    expect(answered).toBe(true);
+    const { error } = await done;
+    expect(error).not.toBeNull();
   });
 });

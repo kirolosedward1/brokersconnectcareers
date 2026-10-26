@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
-import { router, Stack, Tabs } from 'expo-router';
+import { Alert, Linking, Pressable } from 'react-native';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ import type {
   ProfileRow,
   SavedAgentCardRow,
 } from '@/lib/supabase/database.types';
+import { toast } from '~/components/feedback/toast';
 import { unhideAgent } from '~/features/moderation/hidden-agents';
 import { useSaveRecord } from '~/features/profile/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -24,11 +25,12 @@ import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
-import * as AgentScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants)/agents/[slug]';
+import * as AgentScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/agents/[slug]';
 import * as PreviewScreen from '../src/app/(tabs)/(account)/account/profile/preview';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
-import * as DirectoryScreen from '../src/app/(tabs)/(consultants)/agents/index';
-import * as ShortlistScreen from '../src/app/(tabs)/(consultants)/employer/talent';
+import * as DirectoryScreen from '../src/app/(tabs)/(consultants,admin)/agents/index';
+import * as ShortlistScreen from '../src/app/(tabs)/(consultants,admin)/employer/talent';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -245,10 +247,10 @@ function Root() {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
-  '(tabs)/(consultants)/agents/index': DirectoryScreen,
-  '(tabs)/(consultants)/agents/[slug]': AgentScreen,
-  '(tabs)/(consultants)/employer/talent': ShortlistScreen,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
+  '(tabs)/(consultants,admin)/agents/index': DirectoryScreen,
+  '(tabs)/(consultants,admin)/agents/[slug]': AgentScreen,
+  '(tabs)/(consultants,admin)/employer/talent': ShortlistScreen,
   '(tabs)/(account)/account/profile/preview': PreviewScreen,
   '(tabs)/(account)/account/hidden': HiddenScreen,
 };
@@ -263,7 +265,7 @@ async function ready(name: string) {
 
 describe('the directory, for a verified company', () => {
   it('shows the cards as the database answers them: named when open, anonymous and locked when not', async () => {
-    renderRouter(app, { initialUrl: '/agents' });
+    await renderRouter(app, { initialUrl: '/agents' });
 
     expect(await screen.findByText('منى علي')).toBeTruthy();
     expect(screen.getByText(ar.agents.anonymous)).toBeTruthy();
@@ -276,7 +278,7 @@ describe('the directory, for a verified company', () => {
   });
 
   it('keeps a consultant from the card, and offers it only on an open one', async () => {
-    renderRouter(app, { initialUrl: '/agents' });
+    await renderRouter(app, { initialUrl: '/agents' });
 
     await screen.findAllByRole('button', { name: ar.agents.shortlistAdd });
     const keep = await ready(ar.agents.shortlistAdd);
@@ -288,13 +290,13 @@ describe('the directory, for a verified company', () => {
   });
 
   it('opens a card by its slug, and a locked one by its id', async () => {
-    const result = renderRouter(app, { initialUrl: '/agents' });
+    const result = await renderRouter(app, { initialUrl: '/agents' });
     fireEvent.press(await screen.findByLabelText(new RegExp(`^${ar.agents.anonymous}`)));
     await waitFor(() => expect(result.getPathname()).toBe(`/agents/${locked.id}`));
   });
 
   it('reads its filters from the address and sends them as the website writes them', async () => {
-    renderRouter(app, { initialUrl: '/agents?track=resale&availability=actively_searching&years=5' });
+    await renderRouter(app, { initialUrl: '/agents?track=resale&availability=actively_searching&years=5' });
 
     await screen.findByText('منى علي');
     const url = server.asked('/api/mobile/v1/agents')[0].url;
@@ -307,7 +309,7 @@ describe('the directory, for a verified company', () => {
   });
 
   it('applies what the filter sheet chose in one go', async () => {
-    renderRouter(app, { initialUrl: '/agents' });
+    await renderRouter(app, { initialUrl: '/agents' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.jobs.filters }));
     fireEvent.press(await screen.findByRole('radio', { name: ar.availability.actively_searching }));
@@ -325,7 +327,7 @@ describe('the directory, for a verified company', () => {
 
   it('says the directory is empty yet, not that a search found nothing, when nothing narrows it', async () => {
     server.on('GET /api/mobile/v1/agents', () => directory([]));
-    renderRouter(app, { initialUrl: '/agents' });
+    await renderRouter(app, { initialUrl: '/agents' });
 
     expect(await screen.findByText(ar.agents.emptyDirectory)).toBeTruthy();
     expect(screen.getByText(ar.agents.emptyDirectoryHint)).toBeTruthy();
@@ -335,7 +337,7 @@ describe('the directory, for a verified company', () => {
 
   it('says nobody matched, and offers to clear what is narrowing it', async () => {
     server.on('GET /api/mobile/v1/agents', () => directory([]));
-    renderRouter(app, { initialUrl: '/agents?q=xyz' });
+    await renderRouter(app, { initialUrl: '/agents?q=xyz' });
 
     expect(await screen.findByText(ar.agents.empty)).toBeTruthy();
     expect(screen.getByText(ar.agents.emptyHint)).toBeTruthy();
@@ -347,7 +349,7 @@ describe('the directory, for a verified company', () => {
 describe('the directory, for a company not verified yet', () => {
   it('explains the gate once, and tells a recruiter who can open it', async () => {
     company = { ...verified, verification_status: 'unverified' };
-    renderRouter(app, { initialUrl: '/agents' });
+    await renderRouter(app, { initialUrl: '/agents' });
 
     expect(await screen.findByText(ar.agents.locked)).toBeTruthy();
     expect(await screen.findByText(ar.agents.lockedRecruiter)).toBeTruthy();
@@ -355,13 +357,108 @@ describe('the directory, for a company not verified yet', () => {
   });
 });
 
+describe('the search over the directory', () => {
+  it('searches the words typed, and the clear mark drops them', async () => {
+    await renderRouter(app, { initialUrl: '/agents' });
+    await screen.findByText('منى علي');
+
+    // The app's own field (tests/search-field.test.tsx): iOS's search bar ran left to right on a phone set to English.
+    const field = screen.getByLabelText(ar.filters.search);
+    expect(field.props.placeholder).toBe(ar.agents.searchPlaceholder);
+    fireEvent.changeText(field, '  مدير مبيعات  ');
+    fireEvent(field, 'submitEditing');
+    await waitFor(() => expect(server.asked('/api/mobile/v1/agents').at(-1)?.url.searchParams.get('q')).toBe('مدير مبيعات'));
+    expect(await screen.findByRole('button', { name: ar.jobs.removeFilter.replace('{name}', '«مدير مبيعات»') })).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.app.search.clear }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/agents').at(-1)?.url.searchParams.has('q')).toBe(false));
+    expect(screen.getByLabelText(ar.filters.search).props.value).toBe('');
+    expect(screen.queryByRole('button', { name: ar.app.search.clear })).toBeNull();
+  });
+
+  it('shows the words a link carries, and empties once their chip is taken off', async () => {
+    await renderRouter(app, { initialUrl: '/agents?q=ريسيل' });
+    await screen.findByText('منى علي');
+    expect(screen.getByLabelText(ar.filters.search).props.value).toBe('ريسيل');
+
+    fireEvent.press(screen.getByRole('button', { name: ar.jobs.removeFilter.replace('{name}', '«ريسيل»') }));
+    await waitFor(() => expect(screen.getByLabelText(ar.filters.search).props.value).toBe(''));
+  });
+});
+
+describe('the directory, for a company whose account is not approved yet', () => {
+  let navigate: jest.SpyInstance | null = null;
+  afterEach(() => {
+    navigate?.mockRestore();
+    navigate = null;
+  });
+
+  beforeEach(async () => {
+    me = { ...employerProfile, approval_status: 'pending' };
+    await rememberActor({
+      userId: USER_ID,
+      profile: { role: 'employer', approval_status: 'pending' },
+      company: { id: ownedCompany.id, verification_status: 'unverified' },
+    });
+  });
+
+  it("says the consultants open once the company is verified, and takes its admin to the papers", async () => {
+    company = { ...verified, verification_status: 'unverified' };
+    server.on('GET /rest/v1/company_members', () => [
+      { user_id: USER_ID, role: 'admin', created_at: '2026-09-01T10:00:00Z', profile: { full_name: 'أحمد سمير' } },
+    ]);
+    await renderRouter(app, { initialUrl: '/agents' });
+    // Expo Router gives the router its methods once the root has rendered, over any spy set before.
+    navigate = jest.spyOn(router, 'navigate').mockImplementation(() => {});
+
+    expect(await screen.findByText(ar.app.directory.verifyTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.directory.verifyBody)).toBeTruthy();
+    // Nothing asked of the directory, and nothing to search in it.
+    expect(server.asked('/api/mobile/v1/agents')).toHaveLength(0);
+    expect(screen.queryByLabelText(ar.filters.search)).toBeNull();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.agents.lockedCta }));
+    expect(navigate).toHaveBeenCalledWith('/employer/company');
+    expect(screen.queryByText(ar.agents.lockedRecruiter)).toBeNull();
+  });
+
+  it('tells a recruiter who can verify the company, with no button of their own', async () => {
+    company = { ...verified, verification_status: 'unverified' };
+    await renderRouter(app, { initialUrl: '/agents' });
+
+    expect(await screen.findByText(ar.app.directory.verifyTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.directory.verifyBody)).toBeTruthy();
+    expect(await screen.findByText(ar.agents.lockedRecruiter)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.agents.lockedCta })).toBeNull();
+  });
+
+  it('says a verified company opens it once the account is reviewed', async () => {
+    company = { ...verified };
+    await rememberActor({
+      userId: USER_ID,
+      profile: { role: 'employer', approval_status: 'pending' },
+      company: { id: ownedCompany.id, verification_status: 'verified' },
+    });
+    await renderRouter(app, { initialUrl: '/agents' });
+
+    expect(await screen.findByText(ar.employer.pendingTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.directory.reviewing)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.agents.lockedCta })).toBeNull();
+  });
+});
+
 describe("a consultant's page", () => {
   it('shows the card and the CV the database lets this company see, and records that the company looked', async () => {
-    renderRouter(app, { initialUrl: '/agents/mona-ali' });
+    await renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
     expect(await screen.findByText('منى علي')).toBeTruthy();
     expect(screen.getByText(ar.availability.actively_searching)).toBeTruthy();
-    expect(screen.getByText(ar.track.resale)).toBeTruthy();
+    // Where they stand, read as one status; each row of the card named for VoiceOver.
+    expect(screen.getByLabelText(`${ar.agents.availability}: ${ar.availability.actively_searching}`)).toBeTruthy();
+    for (const row of [ar.agents.tracks, ar.agents.districts, ar.agents.languages]) {
+      expect(screen.getByRole('header', { name: row })).toBeTruthy();
+    }
+    expect(screen.getAllByText(ar.track.resale).length).toBeGreaterThan(0);
     expect(screen.getByText(newCairo.name_ar)).toBeTruthy();
     expect(screen.getByText('بالم هيلز')).toBeTruthy();
     expect(screen.getByText(ar.language.en)).toBeTruthy();
@@ -377,8 +474,8 @@ describe("a consultant's page", () => {
   });
 
   it('asks for the number on a press, then offers WhatsApp and the CV', async () => {
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
-    renderRouter(app, { initialUrl: '/agents/mona-ali' });
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
+    await renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.agents.revealContact }));
     await waitFor(() => expect(input('/api/mobile/v1/actions/revealAgentContact')).toEqual({ handle: 'mona-ali', locale: 'ar' }));
@@ -394,7 +491,7 @@ describe("a consultant's page", () => {
 
   it("says which kind of no it was: too many for now, or not open to this company", async () => {
     server.on('POST /api/mobile/v1/actions/revealAgentContact', { ok: false, error: 'rate_limit', retryAfterSeconds: 1800 });
-    renderRouter(app, { initialUrl: '/agents/mona-ali' });
+    await renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.agents.revealContact }));
     expect(await screen.findByText(/30/)).toBeTruthy();
@@ -406,7 +503,7 @@ describe("a consultant's page", () => {
   });
 
   it('keeps the consultant from the page, and puts the button back when the website refuses', async () => {
-    renderRouter(app, { initialUrl: '/agents/mona-ali' });
+    await renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
     await screen.findByRole('button', { name: ar.agents.shortlistAdd });
     fireEvent.press((await ready(ar.agents.shortlistAdd))[0]);
@@ -432,7 +529,7 @@ describe("a consultant's page", () => {
       kept = [...kept, (JSON.parse(String(init?.body)) as { input: { agentId: string } }).input.agentId];
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: '/agents/mona-ali' });
+    await renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
     await screen.findByRole('button', { name: ar.agents.shortlistAdd });
     fireEvent.press((await ready(ar.agents.shortlistAdd))[0]);
@@ -454,7 +551,7 @@ describe("a consultant's page", () => {
       return plain(input, init);
     }) as typeof fetch;
     try {
-      renderRouter(app, { initialUrl: '/agents/mona-ali' });
+      await renderRouter(app, { initialUrl: '/agents/mona-ali' });
       const button = await screen.findByRole('button', { name: ar.agents.shortlistAdd });
       expect(button.props.accessibilityState?.busy).toBe(true);
       fireEvent.press(button);
@@ -469,7 +566,7 @@ describe("a consultant's page", () => {
 
   it('shows a locked card without a name or a way to make contact, and the way to open it', async () => {
     card = { ...monaCard, id: locked.id, slug: locked.id, is_unlocked: false, full_name: null, can_reveal: false };
-    renderRouter(app, { initialUrl: `/agents/${locked.id}` });
+    await renderRouter(app, { initialUrl: `/agents/${locked.id}` });
 
     expect(await screen.findByText(ar.agents.anonymous)).toBeTruthy();
     expect(screen.getByText(ar.agents.lockedBody)).toBeTruthy();
@@ -480,7 +577,7 @@ describe("a consultant's page", () => {
 
   it('is not found when the database has no card for this reader', async () => {
     card = null;
-    renderRouter(app, { initialUrl: '/agents/nobody' });
+    await renderRouter(app, { initialUrl: '/agents/nobody' });
     expect(await screen.findByText(ar.common.notFound)).toBeTruthy();
   });
 });
@@ -489,10 +586,23 @@ describe('hiding a consultant', () => {
   it('takes them out of the directory on this phone, from their page, which then says so and brings them back', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
-      renderRouter(app, { initialUrl: '/agents/mona-ali' });
+      await renderRouter(app, { initialUrl: '/agents/mona-ali' });
+      const shown = jest.spyOn(toast, 'show');
       fireEvent.press(await screen.findByRole('button', { name: ar.app.moderation.hideAgent }));
-      expect(alert.mock.calls[0][0]).toBe(ar.app.moderation.hideAgentTitle.replace('{name}', 'منى علي'));
-      act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+      // At once, no alert first: Undo on the toast is the way back.
+      expect(alert).not.toHaveBeenCalled();
+      expect(shown).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: ar.app.toast.agentHidden.replace('{name}', 'منى علي'),
+          action: expect.objectContaining({ label: ar.app.toast.undo }),
+        }),
+      );
+      expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
+      // Undo brings her back on the page, and hiding again works as before.
+      act(() => shown.mock.calls[0][0].action?.onPress());
+      expect(await screen.findByRole('button', { name: ar.app.moderation.hideAgent })).toBeTruthy();
+      shown.mockRestore();
+      fireEvent.press(screen.getByRole('button', { name: ar.app.moderation.hideAgent }));
       expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
       expect(screen.queryByRole('button', { name: ar.app.moderation.hideAgent })).toBeNull();
 
@@ -511,7 +621,7 @@ describe('hiding a consultant', () => {
   it('counts them out of the directory and the shortlist, and brings them back from Account', async () => {
     const tr = createTranslator({ locale: 'ar', messages: ar, formats: intlFormats, timeZone: 'Africa/Cairo' });
     kept = [mona.id];
-    renderRouter(app, { initialUrl: '/agents' });
+    await renderRouter(app, { initialUrl: '/agents' });
     expect(await screen.findByText('منى علي')).toBeTruthy();
     expect(screen.getByText(tr('jobs.resultsCount', { count: 2 }))).toBeTruthy();
     expect(await screen.findByLabelText(`${ar.employer.shortlist}: ${formatNumber(1, 'ar')}`)).toBeTruthy();
@@ -520,10 +630,7 @@ describe('hiding a consultant', () => {
     try {
       act(() => router.push('/agents/mona-ali'));
       fireEvent.press(await screen.findByRole('button', { name: ar.app.moderation.hideAgent }));
-      const confirm = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
-      // His own word in Arabic: the company's "hide it" is feminine.
-      expect(confirm?.text).toBe(ar.app.moderation.hideAgentConfirm);
-      act(() => confirm?.onPress?.());
+      expect(alert).not.toHaveBeenCalled();
       expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
     } finally {
       alert.mockRestore();
@@ -584,7 +691,7 @@ describe("the company's shortlist", () => {
     });
     shortlistRows = [saved(), gone];
     kept = [mona.id, locked.id];
-    renderRouter(app, { initialUrl: '/employer/talent' });
+    await renderRouter(app, { initialUrl: '/employer/talent' });
 
     expect(await screen.findByText('منى علي')).toBeTruthy();
     expect(screen.getByText(new RegExp('أحمد سمير'))).toBeTruthy();
@@ -599,7 +706,7 @@ describe("the company's shortlist", () => {
   });
 
   it('says so when nobody is on it', async () => {
-    renderRouter(app, { initialUrl: '/employer/talent' });
+    await renderRouter(app, { initialUrl: '/employer/talent' });
     expect(await screen.findByText(ar.employer.shortlistEmpty)).toBeTruthy();
     expect(screen.getByText(ar.employer.shortlistEmptyHint)).toBeTruthy();
   });
@@ -619,7 +726,7 @@ describe("a candidate's own card", () => {
   });
 
   it('is shown as companies see it, with who sees what, their own CV, and nothing to report or count', async () => {
-    renderRouter(app, { initialUrl: '/account/profile/preview' });
+    await renderRouter(app, { initialUrl: '/account/profile/preview' });
 
     expect(await screen.findByText(ar.agents.ownerBanner)).toBeTruthy();
     expect(screen.getByText(ar.agents.ownerVerified)).toBeTruthy();
@@ -640,7 +747,7 @@ describe("a candidate's own card", () => {
     });
     withEdit = true;
     try {
-      renderRouter(app, { initialUrl: '/account/profile/preview' });
+      await renderRouter(app, { initialUrl: '/account/profile/preview' });
       expect(await screen.findByText('مديرة مبيعات ريسيل في التجمع')).toBeTruthy();
 
       fireEvent.press(screen.getByRole('button', { name: 'edit the profile' }));
@@ -653,7 +760,7 @@ describe("a candidate's own card", () => {
 
 describe('within the card list', () => {
   it('reads a card to VoiceOver as one line, with the shortlist as an action on it', async () => {
-    renderRouter(app, { initialUrl: '/agents' });
+    await renderRouter(app, { initialUrl: '/agents' });
     const cardLink = await screen.findByLabelText(new RegExp('^منى علي'));
     expect(cardLink.props.accessibilityActions).toEqual([{ name: 'shortlist', label: ar.agents.shortlistAdd }]);
     expect(within(cardLink).getByText('منى علي')).toBeTruthy();

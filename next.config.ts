@@ -1,7 +1,25 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
-const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+/*
+  The catalogue's ICU messages are compiled when the site is built, not parsed
+  in every visitor's browser. Each client component's useTranslations used to
+  bring the whole ICU parser with it (@formatjs/icu-messageformat-parser, its
+  skeleton parser and intl-messageformat: 31 KB, 10 KB compressed, on every
+  page), and parse each message the first time it was drawn. Compiled, the
+  messages reach the browser as next-intl's small formatter's own trees and
+  the parser stays on the build machine.
+
+  Holds while every message is a string (no arrays, no t.raw), which is what
+  the catalogue is; the loader refuses the build otherwise. The mobile app
+  reads the same JSON through Metro, untouched by this.
+*/
+const withNextIntl = createNextIntlPlugin({
+  requestConfig: './src/i18n/request.ts',
+  experimental: {
+    messages: { path: './messages', format: 'json', locales: 'infer', precompile: true },
+  },
+});
 
 /** The Supabase project's host, from the build's environment; null when unset or unreadable. */
 function storageHost(): string | null {
@@ -69,6 +87,13 @@ const nextConfig: NextConfig = {
    * The hosts are derived rather than typed out, so a different Supabase
    * project or analytics provider does not silently get blocked.
    */
+  async redirects() {
+    return [
+      { source: '/contact', destination: '/support', permanent: true },
+      { source: '/en/contact', destination: '/en/support', permanent: true },
+    ];
+  },
+
   async headers() {
     const supabase = (() => {
       try {
@@ -119,7 +144,21 @@ const nextConfig: NextConfig = {
     const csp = [
       `default-src 'self'`,
       // Next inlines its bootstrap; see the note above about nonces.
-      `script-src 'self' 'unsafe-inline' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile}`.replace(/\s+/g, ' ').trim(),
+      /*
+        'wasm-unsafe-eval' lets libheif compile its WebAssembly module.
+        It does not allow eval() or new Function(), which production must
+        keep refusing: the dev bundler is the only thing that needs those,
+        and only while NODE_ENV is development.
+      */
+      `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile}`.replace(/\s+/g, ' ').trim(),
+      /*
+        The HEIC decoder runs in a worker served from this origin. worker-src
+        also allows blob, because with no worker-src Chromium falls back to
+        script-src and WebKit reports worker-src, and both used to refuse the
+        conversion. script-src stays without blob: a blob may be a worker,
+        not a script on the page.
+      */
+      `worker-src 'self' blob:`,
       // Tailwind ships as a stylesheet, but Next also inlines critical CSS.
       `style-src 'self' 'unsafe-inline'`,
       // Company logos come from Supabase storage; avatars come from whichever
