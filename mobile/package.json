@@ -15,7 +15,8 @@
     "check:licenses": "node ../scripts/licenses.mjs --check app",
     "check": "pnpm typecheck && pnpm lint && pnpm check:shared && pnpm check:updates && pnpm check:licenses && pnpm test",
     "export:ios": "expo export --platform ios --output-dir dist",
-    "ota": "node scripts/publish-update.mjs"
+    "ota": "node scripts/publish-update.mjs",
+    "release:check": "node --experimental-strip-types scripts/release-check.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/ibm-plex-sans-arabic": "^0.4.2",
