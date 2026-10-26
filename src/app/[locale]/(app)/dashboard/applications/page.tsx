@@ -14,7 +14,7 @@ import { raise } from '@/lib/queries/error';
 import { formatDate, isoDate } from '@/lib/utils';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
-import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
+import { applicationProgress, canWithdraw, type ApplicationEventStamp, type ProgressPill } from '@/lib/application-stages';
 import { WithdrawnBadge } from '@/components/applications/withdrawn-badge';
 
 export async function generateMetadata({
@@ -60,7 +60,8 @@ export default async function ApplicationsPage({
     .from('applications')
     .select(
       `
-      id, status, created_at, decision_note, employer_viewed_at,
+      id, status, created_at, decision_note, employer_viewed_at, withdrawn_at,
+      history:application_events (from_status, to_status, created_at),
       job:jobs (
         slug, status, expires_at, title_ar, title_en,
         company:companies (name_ar, name_en, slug),
@@ -78,7 +79,9 @@ export default async function ApplicationsPage({
     status: ApplicationStatus;
     decision_note: string | null;
     employer_viewed_at: string | null;
+    withdrawn_at: string | null;
     created_at: string;
+    history: ApplicationEventStamp[] | null;
     job: {
       slug: string;
       status: JobStatus;
@@ -91,7 +94,7 @@ export default async function ApplicationsPage({
   }[];
 
   const t = await getTranslations('dashboard');
-  const tStatus = await getTranslations('applicationStatus');
+  const tMine = await getTranslations('myApplications');
 
   return (
     <div className="space-y-6">
@@ -119,55 +122,66 @@ export default async function ApplicationsPage({
         const job = application.job;
         if (!job) return null;
 
+        const progress = applicationProgress({
+          status: application.status,
+          created_at: application.created_at,
+          employer_viewed_at: application.employer_viewed_at,
+          withdrawn_at: application.withdrawn_at,
+          events: application.history ?? [],
+        });
+        const title = localized(locale, job.title_ar, job.title_en);
+        const company = localized(locale, job.company.name_ar, job.company.name_en);
+        const district = localized(locale, job.district.name_ar, job.district.name_en);
+        const place = `${company} · ${district}`;
+
         return (
           <li
             key={application.id}
-            className="px-4 py-3.5 sm:px-5"
+            className="min-w-0 overflow-hidden px-4 py-1.5 sm:px-5"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="font-semibold">
-                  <Link href={`/jobs/${job.slug}`} className="hover:underline">
-                    {localized(locale, job.title_ar, job.title_en)}
+            <div className="flex min-w-0 items-start gap-2">
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-sm font-semibold leading-5">
+                  <Link href={`/jobs/${job.slug}`} className="hover:underline" title={title}>
+                    {title}
                   </Link>
                 </h2>
-                <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Building2 className="size-3.5" aria-hidden />
-                    {localized(locale, job.company.name_ar, job.company.name_en)}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <MapPin className="size-3.5" aria-hidden />
-                    {localized(locale, job.district.name_ar, job.district.name_en)}
-                  </span>
+                <p className="truncate text-xs leading-4 text-muted-foreground" title={place}>
+                  <Building2 className="me-1 inline size-3 align-text-bottom" aria-hidden />
+                  {company}
+                  <span aria-hidden> · </span>
+                  <MapPin className="me-1 inline size-3 align-text-bottom" aria-hidden />
+                  {district}
                 </p>
               </div>
 
-              {application.status === 'withdrawn' ? (
-                <WithdrawnBadge label={tStatus('withdrawn')} />
-              ) : (
-                <Badge variant={STAGE_TONE[application.status]}>
-                  {tStatus(application.status)}
-                </Badge>
-              )}
+              <span className="shrink-0">
+                <StatusPill pill={progress.pill} label={pillLabel(tMine, progress.pill)} />
+              </span>
             </div>
 
-            {/*
-              The one thing somebody wants to know after applying.
+            {/* The bar and the line under it read the same progress as the pill. */}
+            <div className="mt-1.5">
+              <ApplicationSteps progress={progress} locale={locale} />
+            </div>
 
-              Not a status — the status is still `new`, and saying anything
-              else would be inventing progress. Just that a person at the
-              company has had the application on their screen, which is what
-              employer_viewed_at now records and, until the inbox started
-              writing it, could not honestly have been shown at all.
+            <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
+              {/* Not `.numeral`: "قدّمت في 10 سبتمبر 2026" is a sentence with a
+                  date in it, and forcing it left-to-right put the date before
+                  the words. Bidi lays out digits inside Arabic text correctly
+                  on its own. */}
+              <time
+                dateTime={isoDate(application.created_at)}
+                className="min-w-0 truncate text-xs leading-4 text-muted-foreground"
+              >
+                {t('appliedOn', { date: formatDate(application.created_at, locale) })}
+              </time>
 
-              Only while the outcome is open. Once the status moves, the status
-              is the news and this becomes a smaller, older fact competing with
-              it.
-            */}
-            {/* Now the steps, as the app draws them: "seen by the company" is
-                one of them, dated, and stays reached once the status moves. */}
-            <ApplicationSteps application={application} locale={locale} />
+              {/* Withdrawing is only offered while the outcome is still open. */}
+              {canWithdraw(application.status) ? (
+                <WithdrawButton applicationId={application.id} label={t('withdraw')} title={title} />
+              ) : null}
+            </div>
 
             {/*
               What happened to the listing, when something did.
@@ -193,7 +207,7 @@ export default async function ApplicationsPage({
               being told the listing was open.
             */}
             {displayJobStatus(job) !== 'active' ? (
-              <p className="mt-2 border-s-2 border-border ps-3 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-1.5 border-s-2 border-border ps-3 text-xs leading-relaxed text-muted-foreground">
                 {(() => {
                   const shown = displayJobStatus(job);
                   return shown === 'closed' || shown === 'expired'
@@ -206,31 +220,13 @@ export default async function ApplicationsPage({
             {/* The reason, when the company gave one. This is the whole point
                 of the board: a decision you can act on rather than guess at. */}
             {application.decision_note ? (
-              <div className="mt-2.5 border-s-2 border-primary/40 ps-3">
+              <div className="mt-1.5 border-s-2 border-primary/40 ps-3">
                 <p className="text-xs font-medium text-muted-foreground">
                   {t('decisionFromCompany')}
                 </p>
                 <p className="mt-0.5 text-sm leading-relaxed">{application.decision_note}</p>
               </div>
             ) : null}
-
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              {/* Not `.numeral`: "قدّمت يوم 10 سبتمبر" is a sentence with a
-                  date in it, and forcing it left-to-right put the date before
-                  the words. Bidi lays out digits inside Arabic text correctly
-                  on its own. */}
-              <time
-                dateTime={isoDate(application.created_at)}
-                className="text-xs text-muted-foreground"
-              >
-                {t('appliedOn', { date: formatDate(application.created_at, locale) })}
-              </time>
-
-              {/* Withdrawing is only offered while the outcome is still open. */}
-              {canWithdraw(application.status) ? (
-                <WithdrawButton applicationId={application.id} label={t('withdraw')} title={localized(locale, job.title_ar, job.title_en)} />
-              ) : null}
-            </div>
             </li>
           );
         })}
@@ -238,4 +234,28 @@ export default async function ApplicationsPage({
       )}
     </div>
   );
+}
+
+function pillLabel(
+  tMine: (key: 'pillNew' | 'pillReview' | 'pillHired' | 'pillRejected' | 'pillWithdrawn') => string,
+  pill: ProgressPill,
+): string {
+  switch (pill) {
+    case 'new':
+      return tMine('pillNew');
+    case 'review':
+      return tMine('pillReview');
+    case 'hired':
+      return tMine('pillHired');
+    case 'rejected':
+      return tMine('pillRejected');
+    case 'withdrawn':
+      return tMine('pillWithdrawn');
+  }
+}
+
+/** The pill for a progress result. Withdrawn keeps the grey pair specified for that state. */
+function StatusPill({ pill, label }: { pill: ProgressPill; label: string }) {
+  if (pill === 'withdrawn') return <WithdrawnBadge label={label} />;
+  return <Badge variant={pill === 'rejected' ? 'destructive' : pill === 'new' ? 'default' : 'primary'}>{label}</Badge>;
 }

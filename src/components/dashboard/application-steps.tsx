@@ -1,94 +1,117 @@
-import { Check, X } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
-import { timelineSteps, type TimelineStep } from '@/lib/application-stages';
 import { formatDayMonth } from '@/lib/format';
-import type { ApplicationStatus } from '@/lib/supabase/database.types';
+import type { ApplicationProgress, ProgressSegment, ProgressStepKey, ProgressSummary, SegmentTone } from '@/lib/application-stages';
 import { cn } from '@/lib/utils';
 
+function summaryLine(
+  t: (key: 'lineSent' | 'lineSeen' | 'lineShortlisted' | 'lineHired' | 'lineRejected' | 'lineWithdrawn') => string,
+  summary: ProgressSummary,
+): string {
+  switch (summary) {
+    case 'sent':
+      return t('lineSent');
+    case 'seen':
+      return t('lineSeen');
+    case 'shortlisted':
+      return t('lineShortlisted');
+    case 'hired':
+      return t('lineHired');
+    case 'rejected':
+      return t('lineRejected');
+    case 'withdrawn':
+      return t('lineWithdrawn');
+  }
+}
+
+const TONE_CLASS: Record<SegmentTone, string> = {
+  done: 'bg-primary',
+  current: 'bg-card ring-1 ring-inset ring-primary',
+  upcoming: 'bg-foreground/15',
+  rejected: 'bg-destructive',
+  withdrawn: 'bg-foreground/25',
+};
+
 /**
- * Where an application stands, as the app draws it
- * (mobile/src/components/applications/timeline.tsx): four steps in a row in
- * the reading's direction — sent, seen by the company, shortlisted or called
- * to interview, the decision — each a mark on a line with its name under it.
- * Reached steps are filled green (a rejection red, where the line ends); the
- * one it waits at is ringed in the brand colour and breathes. The rule is
- * shared (timelineSteps, src/lib/application-stages.ts), and so are the words.
+ * The candidate's progress, as one short bar.
+ *
+ * Four segments when the outcome is still open or it ended in a hire: 4px
+ * tall, 4px apart, the width of the card. Brand blue once a step has
+ * happened, white with a blue ring on the step it is waiting at, grey for
+ * what has not happened. A rejection drops the steps that never happened and
+ * paints only the last segment red. A withdrawal draws the steps it had
+ * reached, in grey. Nothing under the bar but one line: the latest fact and,
+ * when a real timestamp exists, its date.
+ *
+ * The same progress object drives the pill on the card. The list below is
+ * for a screen reader; the bar itself is drawn, not announced.
  */
 export async function ApplicationSteps({
-  application,
+  progress,
   locale,
 }: {
-  application: { status: ApplicationStatus; created_at: string; employer_viewed_at: string | null };
+  progress: ApplicationProgress;
   locale: string;
 }) {
   const t = await getTranslations('myApplications');
-  const tStatus = await getTranslations('applicationStatus');
-  const steps = timelineSteps(application);
 
-  const name = (step: TimelineStep) => {
-    switch (step.key) {
+  const stepName = (key: ProgressStepKey, tone: SegmentTone) => {
+    if (tone === 'rejected') return t('lineRejected');
+    switch (key) {
       case 'sent':
         return t('stepSent');
       case 'seen':
         return t('stepSeen');
       case 'shortlisted':
-        return application.status === 'interview' ? tStatus('interview') : tStatus('shortlisted');
+        return t('stepShortlist');
       case 'decision':
-        return application.status === 'hired' || application.status === 'rejected' || application.status === 'withdrawn'
-          ? tStatus(application.status)
-          : t('stepDecision');
+        return progress.summary === 'hired' ? t('pillHired') : t('stepDecision');
     }
   };
 
-  const reached = (step: TimelineStep) => step.state === 'done' || step.state === 'stopped';
-  /** The colour a line takes towards a step: the step's own once it is reached or waited at. */
-  const lineTo = (step: TimelineStep) =>
-    step.state === 'ahead'
-      ? 'bg-border'
-      : step.state === 'stopped'
-        ? application.status === 'withdrawn'
-          ? 'bg-[#5B6475]'
-          : 'bg-destructive'
-        : step.state === 'current'
-          ? 'bg-primary'
-          : 'bg-success';
+  const stateName = (tone: SegmentTone) => {
+    switch (tone) {
+      case 'done':
+        return t('stateDone');
+      case 'current':
+        return t('stateCurrent');
+      case 'upcoming':
+        return t('stateUpcoming');
+      case 'rejected':
+        return t('stateRejected');
+      case 'withdrawn':
+        return t('stateWithdrawn');
+    }
+  };
+
+  const dated = (date: string | null) => (date ? formatDayMonth(date, locale) : '');
+
+  const spoken = (segment: ProgressSegment) => {
+    const name = stepName(segment.key, segment.tone);
+    const when = segment.tone === 'done' || segment.tone === 'withdrawn' || segment.tone === 'rejected' ? dated(segment.date) : '';
+    const parts = segment.tone === 'rejected' ? [name] : [name, stateName(segment.tone)];
+    if (when) parts.push(when);
+    return parts.join(' · ');
+  };
+
+  const sentence = summaryLine(t, progress.summary);
+  const summaryDate = dated(progress.summaryDate);
+  const line = summaryDate ? `${sentence} · ${summaryDate}` : sentence;
 
   return (
-    <ol className="mt-3 flex" aria-label={t('timeline')}>
-      {steps.map((step, index) => (
-        <li key={step.key} className="flex flex-1 flex-col items-center gap-1 text-center" aria-current={step.state === 'current' ? 'step' : undefined}>
-          <div className="flex w-full items-center" aria-hidden>
-            <span className={cn('h-0.5 flex-1', index === 0 ? 'bg-transparent' : lineTo(step))} />
-            <span
-              className={cn(
-                'grid size-5 shrink-0 place-items-center rounded-full motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:fill-mode-both',
-                step.state === 'done' && 'bg-success text-white',
-                step.state === 'stopped' && application.status === 'withdrawn' && 'bg-[#5B6475] text-white',
-                step.state === 'stopped' && application.status !== 'withdrawn' && 'bg-destructive text-white',
-                step.state === 'current' && 'border-2 border-primary bg-card motion-safe:animate-pulse',
-                step.state === 'ahead' && 'border-2 border-border bg-card',
-              )}
-              style={{ animationDelay: `${index * 140}ms` }}
-            >
-              {step.state === 'done' ? <Check className="size-3" strokeWidth={3} /> : null}
-              {step.state === 'stopped' ? <X className="size-3" strokeWidth={3} /> : null}
-            </span>
-            <span className={cn('h-0.5 flex-1', index === steps.length - 1 ? 'bg-transparent' : lineTo(steps[index + 1]))} />
-          </div>
-          <span
-            className={cn(
-              'text-xs',
-              step.state === 'current' ? 'font-semibold' : 'font-medium',
-              reached(step) || step.state === 'current' ? 'text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            {name(step)}
-          </span>
-          {step.date && reached(step) ? (
-            <span className="text-xs text-muted-foreground">{formatDayMonth(step.date, locale)}</span>
-          ) : null}
-        </li>
-      ))}
-    </ol>
+    <div>
+      <ol className="sr-only" aria-label={t('timeline')}>
+        {progress.segments.map((segment) => (
+          <li key={segment.key} aria-current={segment.tone === 'current' ? 'step' : undefined}>
+            {spoken(segment)}
+          </li>
+        ))}
+      </ol>
+      <div className="flex w-full gap-1" aria-hidden>
+        {progress.segments.map((segment) => (
+          <span key={segment.key} className={cn('h-1 min-w-0 flex-1 rounded-full', TONE_CLASS[segment.tone])} />
+        ))}
+      </div>
+      <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">{line}</p>
+    </div>
   );
 }

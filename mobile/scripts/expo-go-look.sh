@@ -432,6 +432,15 @@ tap_word t6-share 'tour: Share' 'مشاركة'
 tap_word t7-share-cancelled 'tour: Share cancelled' 'إلغاء'
 # Back to the board: the Jobs tab pressed again.
 back_by_tab t8-back 'tour: back to the board' 'الوظائف' '61%,96%'
+# The press is aimed at the tab's name, which sits on the home indicator on a
+# tall phone, and a miss leaves the listing up. The card's menu is read on
+# the board, so Jobs is opened again when the press did not leave.
+if grep -q 'الراتب والعمولة' "$out/t8-back.boxes" && ! grep -q 'الفلاتر' "$out/t8-back.boxes"; then
+  echo "::notice title=Expo Go: t8-back::the Jobs tab press left the listing up; opening Jobs again for the card menu"
+  open_app jobs
+  see t8-back-board 'الفلاتر'
+  last_shot=t8-back-board
+fi
 # A card held: its menu at the foot of the screen, then closed from the shade above it.
 tour t8b-card-held 'tour: a card held' -e 'POINT=50%,45%' "$flows/expo-go-hold.yaml"
 if ! grep -q 'افتح الإعلان' "$out/t8b-card-held.boxes"; then
