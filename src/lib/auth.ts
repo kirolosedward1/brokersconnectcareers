@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { unstable_rethrow } from 'next/navigation';
 import { redirect } from '@/i18n/navigation';
 import { adminMfaRequired } from '@/lib/admin-mfa';
+import { readMemberCompany } from '@/lib/company-member';
 import { createClient } from '@/lib/supabase/server';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Locale } from '@/i18n/routing';
@@ -106,6 +107,9 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
       my_company_id() is the single answer to "which company am I acting
       for", and it breaks ties deterministically: admin first, then oldest.
+      The owner, the credit balance and whether the company is suspended
+      come from my_company_private() — a member's answer, not columns of the
+      public row — so those can be closed to a public read.
 
       Admins too. The rail offered an admin the whole employer console and
       this never looked their company up, so every page in it rendered the
@@ -114,8 +118,15 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     */
     const { data: companyId } = await supabase.rpc('my_company_id');
     if (companyId) {
-      const { data } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
-      company = data ?? null;
+      // A failed read is not "no company": the header calls this on every
+      // page, so a throw would take the site down. Null is what a failed
+      // select already answered, and the console then says to create one.
+      try {
+        company = await readMemberCompany(supabase, companyId);
+      } catch (error) {
+        console.warn('[auth] could not read the company:', error instanceof Error ? error.message : error);
+        company = null;
+      }
     }
   }
 

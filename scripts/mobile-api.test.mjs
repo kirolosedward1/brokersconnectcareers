@@ -237,5 +237,27 @@ console.log('\n— a password alone is not the account when it has an authentica
   );
 }
 
+console.log('\n— a member reads the company columns that are not public');
+{
+  const route = readFileSync(new URL('../src/app/api/mobile/v1/company/route.ts', import.meta.url), 'utf8');
+  const reader = readFileSync(new URL('../src/lib/company-member.ts', import.meta.url), 'utf8');
+  is('the company route is a signed-in read', /export const GET = withMobileAuth\(/.test(route), true);
+  is('it answers my_company_private(), not a select of the row', /readCompanyPrivate\(/.test(route) && !/from\('companies'\)/.test(route), true);
+  is(
+    'the viewer does not select the owner, the balance or the suspension',
+    !/owner_id|post_credits|suspended_at/.test(
+      reader.slice(reader.indexOf('COMPANY_PUBLIC_COLUMNS'), reader.indexOf('PRIVATE_COLUMNS')),
+    ),
+    true,
+  );
+  is('those three come from my_company_private()', /rpc\('my_company_private'\)/.test(reader), true);
+  const companies = readFileSync(new URL('../src/lib/queries/companies.ts', import.meta.url), 'utf8');
+  is(
+    'a privilege refusal (42501) falls back like a missing function',
+    /42501/.test(reader) && /memberReadUnavailable\(suspended\.error\)/.test(companies),
+    true,
+  );
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

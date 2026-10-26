@@ -19,7 +19,7 @@ import { ThemeProvider } from '~/theme/provider';
 import * as InboxScreen from '../src/app/(tabs)/(applicants)/employer/applicants/index';
 import * as PipelineScreen from '../src/app/(tabs)/(listings,applicants)/employer/jobs/[id]/applicants';
 import { DeclaredTabs } from './declared-tabs';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { fakeServer } from './server';
 
@@ -132,6 +132,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => ownedCompany.id);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(ownedCompany));
   server.on('GET /rest/v1/companies', [ownedCompany]);
   server.on('/rest/v1/districts', [newCairo]);
   server.on('HEAD /rest/v1/notifications', { body: null, headers: { 'content-range': '*/0' } });
@@ -963,7 +964,10 @@ describe('the inbox', () => {
 describe('a suspended company', () => {
   it('is told its applicants are hidden, in the inbox and on a listing, rather than shown an empty list', async () => {
     // The database answers none of them while the company is suspended (349).
-    server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
+    server.on('POST /rest/v1/rpc/my_company_private', {
+      ...memberPrivate(ownedCompany),
+      suspended_at: '2026-10-01T10:00:00Z',
+    });
 
     const inbox = await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
@@ -989,14 +993,20 @@ describe('a suspended company', () => {
   };
 
   it('does not stamp them seen in the inbox, even where the database still answers them', async () => {
-    server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
+    server.on('POST /rest/v1/rpc/my_company_private', {
+      ...memberPrivate(ownedCompany),
+      suspended_at: '2026-10-01T10:00:00Z',
+    });
     await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
     await notStamped();
   });
 
   it("nor on a listing's applicants", async () => {
-    server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
+    server.on('POST /rest/v1/rpc/my_company_private', {
+      ...memberPrivate(ownedCompany),
+      suspended_at: '2026-10-01T10:00:00Z',
+    });
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
     await notStamped();

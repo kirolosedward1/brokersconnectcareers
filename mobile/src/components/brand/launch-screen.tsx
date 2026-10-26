@@ -31,8 +31,8 @@ const SPLASH_FALLBACK_MS = 1500;
  * lifts: the mark grows a little as the page fades through to the app (only
  * the fade, with Reduce Motion on).
  *
- * The phone's own launch screen draws the same mark at the same size in the
- * same place on the same colour (app.config.ts, expo-splash-screen), and is
+ * The phone's own launch screen draws the same mark at the same width in the
+ * same place on the same colour (launch-size.ts, app.config.ts), and is
  * taken down as soon as this is laid out over it, so one gives way to the
  * other without a change; only the wordmark arrives. In Expo Go, whose own
  * loading screen the app takes down the same way, this is what shows while

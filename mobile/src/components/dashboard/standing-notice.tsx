@@ -25,14 +25,29 @@ import { space } from '~/theme/tokens';
  * review, and only an appeal state tells a hold apart. A suspended company
  * is said separately, with its own reason and its own appeal.
  */
-export function StandingNotice({ profile, company = null }: { profile: ProfileRow; company?: CompanyRow | null }) {
+export function StandingNotice({
+  profile,
+  company = null,
+  companyOnly = false,
+}: {
+  profile: ProfileRow;
+  company?: CompanyRow | null;
+  /**
+   * The company's suspension only. An admin's console and Account already
+   * have a place for a pending or restricted account; the full notice there
+   * said it a second time.
+   */
+  companyOnly?: boolean;
+}) {
   const t = useTranslations();
   const { colors } = useTheme();
 
   const status = profile.approval_status;
   const employer = profile.role === 'employer';
-  const standing = status !== 'approved';
-  const companySuspended = employer && Boolean(company?.suspended_at);
+  const standing = !companyOnly && status !== 'approved';
+  // An admin who also runs a company has no employer Home, so the company's
+  // suspension is said on the console and on Account. The role is admin.
+  const companySuspended = (employer || profile.role === 'admin') && Boolean(company?.suspended_at);
 
   const note = useAccountNote(standing).data ?? null;
   const account = useAppealState('account', standing ? profile.id : null).data ?? null;
@@ -44,7 +59,7 @@ export function StandingNotice({ profile, company = null }: { profile: ProfileRo
 
   const panels: React.ReactNode[] = [];
 
-  if (status === 'rejected' || held) {
+  if (!companyOnly && (status === 'rejected' || held)) {
     const suspended = status === 'rejected';
     panels.push(
       <Notice
@@ -70,7 +85,7 @@ export function StandingNotice({ profile, company = null }: { profile: ProfileRo
         </View>
       </Notice>,
     );
-  } else if (firstReview) {
+  } else if (!companyOnly && firstReview) {
     // Said once, at the top, where the work is — rather than discovered when the listing form refuses.
     panels.push(
       <Notice key="account" tone="warning" title={t('employer.pendingTitle')} icon={<Clock size={16} color={colors.warning} />}>

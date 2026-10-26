@@ -916,6 +916,11 @@ the versions, the icons and both listings — and, given `--bundle dist` after
 Builds are made with EAS (`eas.json`): `development` (a development client for
 a registered iPhone), `development-simulator`, `preview` (internal
 distribution) and `production` (App Store, build number incremented remotely).
+`development` and `development-simulator` set `developmentClient: true`, so
+they include the Expo dev menu — the blue gear that floats over the header.
+That menu is `expo-dev-menu`, compiled into debug builds only. `preview` and
+`production` set `developmentClient: false`: they are standalone releases and
+do not include it.
 Before the first build:
 
 - an Apple Developer Program membership (an organisation needs a D-U-N-S number).
@@ -1004,11 +1009,13 @@ well.
 
 ## The admin console in the app
 
-An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`),
-and nothing of the public site's: its bar is the console and the account.
-Home's screens stay in the app with their button hidden, `/` opens the
-console, and a listing, a company or the bell's feed the console points at
-opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
+An account whose role is `admin` has two tabs (`src/lib/tabs.ts`): the
+**Admin** console first, so the app opens on it, then the account. They do
+not get Home, the board, the companies directory, or — even when they also
+run a company — the employer console. The company's page and its billing
+stay in the account. Home's screens stay in the app with their button hidden,
+`/` opens the console, and a listing, a company or the bell's feed the console
+points at opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
 
 Every page of the website's console is a native screen under `(admin)`, at the
 website's own path: the overview (`/admin`, which ends with every section in
@@ -1023,8 +1030,7 @@ the audit log, taxonomy, email activity, background work and security. A
 file screen carries the record's audit trail and notes as the website's does.
 Nothing in the console opens the website; an `/admin/…` path the app does not
 know opens the overview. Setting up an authenticator is native too
-(`src/app/mfa-enrol.tsx`). An admin who runs a company has the company's
-console in the bar beside the Admin tab, and the consultant directory opens
+(`src/app/mfa-enrol.tsx`). The consultant directory and the shortlist open
 inside the Admin tab (`(consultants,admin)` in the routes).
 
 - **Reads** go straight to Supabase under the admin's session — the same

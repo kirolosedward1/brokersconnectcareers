@@ -47,6 +47,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // react-native-web's Appearance has no setColorScheme; calling it crashes
+    // the Expo web build. The phone still gets the choice.
+    if (typeof Appearance.setColorScheme !== 'function') return;
     Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
   }, [preference]);
 

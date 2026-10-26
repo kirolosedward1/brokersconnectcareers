@@ -35,6 +35,7 @@ import {
   authSession,
   authUser,
   mobileConfig,
+  memberPrivate,
   ownedCompany,
   profile,
   SITE,
@@ -115,6 +116,7 @@ beforeEach(async () => {
   server.on('/rest/v1/governorates', [cairo]);
   server.on('/rest/v1/profiles', () => (profileRow ? [profileRow] : []));
   server.on('/rest/v1/rpc/my_company_id', () => companyId);
+  server.on('/rest/v1/rpc/my_company_private', () => (companyId ? memberPrivate(ownedCompany) : null));
   server.on('/rest/v1/companies', () => (companyId ? [ownedCompany] : []));
 
   server.on('POST /auth/v1/token', (url, init) => {
