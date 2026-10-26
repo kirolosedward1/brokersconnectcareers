@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
+import { useSession } from '@/components/session/session-provider';
 
 /**
  * The pages whose hero the header sits on top of.
@@ -63,8 +64,16 @@ export function HeaderShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const session = useSession();
+  /*
+    A signed-in reader on `/` is rewritten to a feed, but the URL — and so
+    this pathname — stays `/`. The cached HTML assumes a hero. A session
+    cookie flips that before paint, or the bar would be white type on the feed.
+  */
+  const signedInFeed = session.kind === 'pending' || (session.kind === 'user' && session.hasProfile);
+  const band = bandBelow || (session.kind === 'user' && session.asksToAgree);
   const overHero =
-    !bandBelow && (ALWAYS_OVER_HERO.includes(pathname) || (pathname === '/' && hasHomeHero));
+    !band && (ALWAYS_OVER_HERO.includes(pathname) || (pathname === '/' && hasHomeHero && !signedInFeed));
 
   const [scrolled, setScrolled] = useState(false);
 

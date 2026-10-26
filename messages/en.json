@@ -2,7 +2,21 @@
   "meta": {
     "siteName": "Brokers Connect",
     "tagline": "The specialist job market for Egyptian real estate",
-    "defaultDescription": "Real estate sales and brokerage jobs across Egypt — every listing says who supplies the leads, with the salary and commission in figures whenever the company publishes them."
+    "defaultDescription": "Real estate sales and brokerage jobs across Egypt — every listing says who supplies the leads, with the salary and commission in figures whenever the company publishes them.",
+    "homeDescription": "Real estate sales and marketing jobs across Egypt, by area and specialism. Every ad says who supplies the leads, and the salary and commission in figures when the company publishes them.",
+    "jobsTitle": "Real estate jobs open in Egypt today | Brokers Connect",
+    "jobsDescription": "Browse real estate jobs open in Egypt now: off-plan, resale, rentals, commercial and administrative. Salary, commission and lead source are shown before you apply.",
+    "privacyTitle": "Privacy policy for the data we collect | Brokers Connect",
+    "privacyDescription": "The Brokers Connect privacy policy: what we collect when you open an account or apply, why, who can see it, how long we keep it, and how to ask for a copy or deletion.",
+    "termsTitle": "Terms of use for the site and the app | Brokers Connect",
+    "termsDescription": "Terms of use for the Brokers Connect website and app: what is allowed when you apply or post, who answers for an ad, and how employer and candidate accounts work.",
+    "cookiesTitle": "Cookies and storage on your device | Brokers Connect",
+    "cookiesDescription": "What the Brokers Connect site stores in the browser and the app stores on the phone: the sign-in session, language and theme only, with no third-party tracking cookies.",
+    "refundsTitle": "Refund policy: nothing is sold today | Brokers Connect",
+    "refundsDescription": "The Brokers Connect refund policy: the platform sells nothing today, so nothing is refunded. This page says what is free now and what would change before any later sale.",
+    "accountDeletionTitle": "How to delete your Brokers Connect account",
+    "accountDeletionDescription": "How to delete your Brokers Connect account on the website or in the app, when a request is reviewed, what leaves your profile and applications, and what is kept.",
+    "descriptionPad": "Salary, commission and lead source are shown before you apply."
   },
   "nav": {
     "jobs": "Jobs",
@@ -65,6 +79,7 @@
     "requirements": "Requirements",
     "developers": "Developer portfolio",
     "similarJobs": "Similar jobs",
+    "otherAtCompany": "Other jobs at {company}",
     "sortNewest": "Newest",
     "sortSalary": "Highest salary",
     "sortSeats": "Most seats",
@@ -147,7 +162,7 @@
     "rental": "Rentals",
     "commercial": "Commercial & administrative",
     "property_management": "Property management",
-    "back_office": "Admin roles"
+    "back_office": "Administrative"
   },
   "employmentType": {
     "full_time": "Full time",
@@ -190,6 +205,12 @@
   "companies": {
     "title": "Real estate companies",
     "lede": "The companies hiring on Brokers Connect, and which of them are verified.",
+    "kindFallback": "a real estate company",
+    "kindBrokerage": "a brokerage",
+    "kindDeveloper": "a developer",
+    "placeFallback": "Egypt",
+    "pageTitle": "{name} jobs open in {place} — {kind}",
+    "generatedDescription": "{name}, {kind} in {place}. {openings} on Brokers Connect, and every ad shows the salary, the commission and who supplies the leads.",
     "verified": "Verified",
     "unverified": "Unverified",
     "openRoles": "{count, plural, =0 {No open roles} one {1 open role} other {# open roles}}",
@@ -1293,7 +1314,22 @@
     "appealsCount": "Appeals: {count} ({open} open)",
     "decisionsCount": "Decisions on this account: {count}",
     "notesCount": "Notes: {count}",
-    "activityEmpty": "Nothing yet."
+    "activityEmpty": "Nothing yet.",
+    "help": "User guide",
+    "helpLede": "Every screen in the admin console: what it does, how to use it, and what changes after a decision.",
+    "helpSearchLabel": "Search the guide",
+    "helpSearchPlaceholder": "Search for a screen, action or status…",
+    "helpEmptyTitle": "No matching results",
+    "helpEmptyBody": "Try part of a screen name or a button label. Search ignores Arabic diacritics, and treats alef forms, teh marbuta and heh, and alef maqsura and yeh as the same letter.",
+    "helpToc": "Contents",
+    "helpSteps": "Steps",
+    "helpFields": "Fields and options",
+    "helpStatuses": "Statuses",
+    "helpTips": "Notes",
+    "helpOpen": "Open the page",
+    "helpContactLead": "If you cannot find what you need, write to support:",
+    "helpResults": "{count, plural, one {# result} other {# results}}",
+    "helpClearSearch": "Clear search"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
@@ -1353,10 +1389,12 @@
     "errorReference": "Error reference",
     "retry": "Try again",
     "saveSuccess": "Saved",
-    "close": "Close"
+    "close": "Close",
+    "breadcrumb": "Breadcrumb"
   },
   "landing": {
     "title": "{track} jobs in {district}",
+    "metaTitle": "{track} jobs open to apply for in {district}",
     "subtitle": "Every {track} role open on Brokers Connect right now in {district} — with who supplies the leads, and the salary and commission whenever the company publishes them.",
     "otherDistricts": "{track} in other districts",
     "otherTracks": "Other tracks in {district}",

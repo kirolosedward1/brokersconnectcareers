@@ -18,7 +18,10 @@ import { getViewer } from '@/lib/auth';
 import { followQuery } from '@/lib/saved-search';
 import { env } from '@/lib/env';
 import { trustedLogoUrl } from '@/lib/avatar-url';
-import { truncate, toPlainText } from '@/lib/utils';
+import { toPlainText } from '@/lib/utils';
+import { fitDescription, fitTitle, titleRoom } from '@/lib/seo/meta-text';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
+import { BreadcrumbTrail } from '@/components/breadcrumb-trail';
 
 type Params = { locale: string; slug: string };
 
@@ -44,6 +47,29 @@ export async function generateMetadata({
   const name = localized(locale, company.name_ar, company.name_en);
   const about = localized(locale, company.about_ar, company.about_en);
   const path = `/companies/${slug}`;
+  const t = await getTranslations({ locale, namespace: 'companies' });
+  const tMeta = await getTranslations({ locale, namespace: 'meta' });
+  const { total: openRoles } = await getCompanyOpenJobs(company.id);
+  const kind =
+    company.company_type === 'brokerage'
+      ? t('kindBrokerage')
+      : company.company_type === 'developer'
+        ? t('kindDeveloper')
+        : t('kindFallback');
+  const place = company.district
+    ? localized(locale, company.district.name_ar, company.district.name_en)
+    : t('placeFallback');
+  const description = fitDescription(
+    about
+      ? toPlainText(about)
+      : t('generatedDescription', {
+          name,
+          kind,
+          place,
+          openings: t('openRoles', { count: openRoles }),
+        }),
+    tMeta('descriptionPad'),
+  );
 
   /*
     Indexable while the company is hiring, and only then.
@@ -57,11 +83,14 @@ export async function generateMetadata({
     sitemap now does the same, so the page agrees. It stays reachable for
     anybody following a link, and returns to the index the day it hires.
   */
-  const hiring = (await getCompanyOpenJobs(company.id)).total > 0;
+  const hiring = openRoles > 0;
 
   return {
-    title: name,
-    description: about ? truncate(toPlainText(about), 160) : undefined,
+    // The layout appends " | " and the site name. The phrase is long enough
+    // that a short company name still fills a result, and the room keeps the
+    // document title within 60.
+    title: fitTitle(t('pageTitle', { name, kind, place }), titleRoom(tMeta('siteName'))),
+    description,
     ...(hiring
       ? { alternates: alternatesFor(path, locale) }
       : { robots: { index: false, follow: true } }),
@@ -133,12 +162,20 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
   const websiteHref = safeHttpUrl(company.website);
 
   const t = await getTranslations('companies');
+  const tMeta = await getTranslations('meta');
+  const tCommon = await getTranslations('common');
 
   const name = localized(locale, company.name_ar, company.name_en);
   const about = localized(locale, company.about_ar, company.about_en);
+  const crumbs = [
+    { name: tMeta('siteName'), path: '/' },
+    { name: t('title'), path: '/companies' },
+    { name },
+  ];
 
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd(crumbs, locale)} />
       <JsonLd
         data={{
           '@context': 'https://schema.org',
@@ -165,6 +202,10 @@ export default async function CompanyPage({ params }: { params: Promise<Params> 
       />
 
       <div className="mx-auto max-w-5xl px-4 py-8">
+        <BreadcrumbTrail
+          label={tCommon('breadcrumb')}
+          items={crumbs.map((crumb) => ({ name: crumb.name, href: crumb.path }))}
+        />
         <header className="flex flex-wrap items-start gap-4">
           <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
 

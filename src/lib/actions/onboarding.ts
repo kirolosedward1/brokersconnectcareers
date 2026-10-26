@@ -240,7 +240,9 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
         the duplicate profile above is read as already onboarded.
       */
       const created = await withUniqueSlug<{ id: string }>(
-        () => buildCompanySlug(company.nameAr),
+        // The onboarding form has the Arabic name only. The slug stays `company-<id>`
+        // until an English name exists; Arabic is not transliterated into the URL.
+        () => buildCompanySlug(''),
         (slug) =>
           supabase
             .from('companies')

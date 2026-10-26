@@ -1,7 +1,12 @@
 /**
- * Slugs are transliterated ASCII in both locales — `property-consultant-new-cairo`,
- * never Arabic-script URLs. Arabic percent-encodes to unreadable byte soup in
- * links, breaks copy-paste sharing, and reads badly in search results.
+ * Public slugs are English ASCII — `property-consultant-new-cairo` — never
+ * Arabic-script URLs and never a transliteration of an Arabic name.
+ *
+ * Arabic percent-encodes to unreadable byte soup. A transliteration
+ * (`wzaef-admn`) is ASCII but it is not a word, so it does not belong in a
+ * result either. When the English name is missing the slug is `role-…` or
+ * `company-…` plus the random id. `slugify` still transliterates, for any
+ * caller that has not moved over.
  */
 
 const ARABIC_MAP: Record<string, string> = {
@@ -29,6 +34,22 @@ export function transliterate(input: string): string {
 
 export function slugify(input: string): string {
   return transliterate(input)
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 72)
+    .replace(/-+$/g, '');
+}
+
+/**
+ * Latin letters and digits only. Arabic is dropped, not transliterated, so a
+ * title that has no English comes back empty and the caller uses `role` or
+ * `company`.
+ */
+export function slugifyEnglish(input: string): string {
+  return input
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
@@ -76,12 +97,12 @@ export function slugId(digits = 6): string {
  * programmatic `<track>-<district>` landing page.
  */
 export function buildJobSlug(title: string, districtSlug: string): string {
-  const base = slugify(title) || 'job';
+  const base = slugifyEnglish(title) || 'role';
   return `${base}-${districtSlug}-${slugId()}`;
 }
 
 export function buildCompanySlug(name: string): string {
-  const base = slugify(name) || 'company';
+  const base = slugifyEnglish(name) || 'company';
   return `${base}-${slugId()}`;
 }
 

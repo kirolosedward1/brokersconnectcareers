@@ -17,7 +17,17 @@ import { formatNumber } from '@/lib/utils';
  *
  * Renders nothing when the counts cannot be read or nothing is live.
  */
-export async function PopularLandings({ locale, limit = 12 }: { locale: Locale; limit?: number }) {
+export async function PopularLandings({
+  locale,
+  limit = 12,
+  className = 'mt-10 border-t border-border pt-6',
+  id = 'popular-landings',
+}: {
+  locale: Locale;
+  limit?: number;
+  className?: string;
+  id?: string;
+}) {
   const [counts, districts] = await Promise.all([
     optional(getBrowseCounts(), null),
     optional(getDistricts(), []),
@@ -34,8 +44,8 @@ export async function PopularLandings({ locale, limit = 12 }: { locale: Locale; 
   const tTrack = await getTranslations('track');
 
   return (
-    <nav aria-labelledby="popular-landings" className="mt-10 border-t border-border pt-6">
-      <h2 id="popular-landings" className="text-sm font-semibold">
+    <nav aria-labelledby={id} className={className}>
+      <h2 id={id} className="text-sm font-semibold">
         {t('popularTitle')}
       </h2>
       <ul className="mt-3 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">

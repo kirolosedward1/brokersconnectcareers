@@ -329,7 +329,9 @@ submitting.
    as the employer, as App Review will, and warns if it cannot: then the
    website is missing `SUPABASE_SERVICE_ROLE_KEY` (step 1), which deleting an
    account needs too.
-10. **The App Store build**, from `mobile/` on your computer:
+10. **The App Store build**, from `mobile/` on your computer: first
+   `pnpm release:check` (the production profile, the evaluated configuration,
+   the icons and the listings, offline; CI runs it with the bundle too), then
    `npx eas-cli@latest build --platform ios --profile production --auto-submit`.
    EAS builds it with Xcode 26, which SDK 57 needs, signs it with the
    credentials it keeps, and uploads it to App Store Connect. The first upload
@@ -343,6 +345,10 @@ submitting.
    only when an older build must stop.
 
 ### Android, when it ships
+
+The Play Console's questions, the listing, the Data safety answers and the
+steps in order are in `docs/play-store.md`. What the Android build needs from
+here:
 
 - Firebase: a project with the Android app `net.brokersconnect.app`; its
   `google-services.json` as an EAS file variable `GOOGLE_SERVICES_JSON` (not

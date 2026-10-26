@@ -154,7 +154,7 @@ export async function saveCompany(input: unknown): Promise<ActionResult<{ id: st
 
   const insert = (values: typeof withoutType) =>
     withUniqueSlug<{ id: string }>(
-      () => buildCompanySlug(parsed.data.nameEn || parsed.data.nameAr),
+      () => buildCompanySlug(parsed.data.nameEn ?? ''),
       (slug) =>
         supabase.from('companies').insert({ owner_id: user.id, slug, ...values }).select('id').single(),
     );

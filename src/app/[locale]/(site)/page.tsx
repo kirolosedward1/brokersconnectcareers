@@ -1,106 +1,37 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
-import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { asLocale, alternatesFor } from '@/i18n/routing';
 import { Landing } from '@/components/home/landing';
-import { EmployerHome, type EmployerSummary } from '@/components/home/employer-home';
-import { SignedInHome } from '@/components/home/signed-in-home';
-import { actorOf, getViewer } from '@/lib/auth';
-import { canAccessEmployerArea, homeFor } from '@/lib/permissions';
-import { redirect } from '@/i18n/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { getDistricts } from '@/lib/queries/taxonomy';
-import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
+import { anonymousJobs, EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
 import { getBrowseCounts } from '@/lib/queries/browse';
 
-/** The title and description come from the locale layout's defaults. */
+/**
+ * The public landing. A signed-in reader is rewritten to /signed-home before
+ * this renders, so the cached HTML is only the pitch — never a person's feed.
+ */
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
-  return { alternates: alternatesFor('/', locale) };
+  const t = await getTranslations({ locale, namespace: 'meta' });
+  return { description: t('homeDescription'), alternates: alternatesFor('/', locale) };
 }
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale: rawLocale } = await params;
-  const locale = asLocale(rawLocale);
+  const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
-  // The landing page's job is to explain the product, so it must survive the
-  // database being unreachable — every read here is allowed to come back empty.
-  // The districts do not depend on who is reading: asked alongside the viewer,
-  // not after it (a signed-in viewer is an auth round trip and a profile read).
-  const [viewer, districts] = await Promise.all([getViewer(), optional(getDistricts(), [])]);
-
-  if (!viewer?.profile) {
-    /*
-      The board's own evidence, for the landing page: how many live listings
-      sit behind each way of browsing, and the newest of them. Both in one
-      await, both allowed to fail — without them the page is the explanation
-      it always was, which is the contract the comment above sets.
-    */
-    const [counts, latest] = await Promise.all([
-      optional(getBrowseCounts(), null),
-      optional(queryJobs({ ...EMPTY_FILTERS }), { jobs: [], total: 0, pageCount: 0, page: 1 }),
-    ]);
-
-    return <Landing locale={locale} districts={districts} counts={counts} jobs={latest.jobs} />;
-  }
-
-  // Somebody who hires does not get a feed of other companies' listings. They
-  // get their own: who is waiting, what is live, what is stuck in review, what
-  // expires this week. Fetched instead of the job list, not alongside it — the
-  // board query is real work and nothing on their page uses it.
-  if (viewer.profile.role === 'employer' || viewer.profile.role === 'admin') {
-    /*
-      Only somebody the employer console takes. An admin with no company has
-      no employer home — everything on it is about the viewer's company — and
-      was offered "complete your company profile" and two buttons that bounced
-      to /admin; this is where a Google sign-in with no `next` lands, too.
-    */
-    const actor = actorOf(viewer);
-    if (!canAccessEmployerArea(actor)) redirect({ href: homeFor(actor), locale });
-
-    const supabase = await createClient();
-    // The home page must survive the database being unreachable, the same way
-    // the landing page does — an empty summary renders the "no company yet"
-    // state rather than a 500.
-    const summary = await optional(
-      supabase.rpc('employer_summary').then(({ data }) => data as EmployerSummary | null),
-      null,
-    );
-
-    return (
-      <EmployerHome
-        locale={locale}
-        name={viewer.profile.full_name}
-        summary={summary}
-        approvalStatus={viewer.profile.approval_status}
-      />
-    );
-  }
-
-  const [{ jobs, total }, counts] = await Promise.all([
-    optional(queryJobs({ ...EMPTY_FILTERS }), {
-      jobs: [],
-      total: 0,
-      pageCount: 0,
-      page: 1,
-    }),
+  const districts = await optional(getDistricts(), []);
+  const [counts, latest] = await Promise.all([
     optional(getBrowseCounts(), null),
+    optional(queryJobs({ ...EMPTY_FILTERS }, anonymousJobs()), { jobs: [], total: 0, pageCount: 0, page: 1 }),
   ]);
 
-  return (
-    <SignedInHome
-      locale={locale}
-      name={viewer.profile.full_name}
-      role={viewer.profile.role}
-      districts={districts}
-      jobs={jobs}
-      total={total}
-      counts={counts}
-    />
-  );
+  return <Landing locale={locale} districts={districts} counts={counts} jobs={latest.jobs} />;
 }
