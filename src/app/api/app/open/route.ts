@@ -4,7 +4,7 @@ import { storeRedirectTarget } from '@/lib/app-links';
 export const dynamic = 'force-dynamic';
 
 /**
- * The one address the results-page QR encodes.
+ * The one address a results-page QR will encode, once that card draws one.
  *
  * An iPhone is sent to the App Store and an Android phone to Google
  * Play, when that listing is set (lib/app-links.ts). Not cached: a

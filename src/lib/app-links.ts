@@ -13,14 +13,15 @@
  * results card a null address draws no badge — a greyed badge is not a
  * listing.
  *
- * APP_SMART_LINK_PATH is the single address the results QR encodes.
- * /api/app/open sends an iPhone to the App Store and an Android phone
- * to Google Play, when that listing is the one set.
+ * APP_SMART_LINK_PATH is the address a results-page QR will encode once
+ * that drawing is added. It is not drawn yet. /api/app/open sends an
+ * iPhone to the App Store and an Android phone to Google Play, when
+ * that listing is the one set.
  */
 export const APP_STORE_URL: string | null = null;
 export const GOOGLE_PLAY_URL: string | null = null;
 
-/** The QR's address. One link; the phone's own store is chosen there. */
+/** Where a phone is sent on to its own store. The results card does not draw a QR of this yet. */
 export const APP_SMART_LINK_PATH = '/api/app/open';
 
 /**
