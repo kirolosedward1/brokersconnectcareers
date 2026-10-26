@@ -1,7 +1,7 @@
 import { Animated, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { LAUNCH_MARK_WIDTH, LAUNCH_WORDMARK_HEIGHT } from '~/components/brand/launch-size';
+import { LAUNCH_MARK_WIDTH, LAUNCH_WORDMARK_HEIGHT, welcomeTile, welcomeWordmarkHeight } from '~/components/brand/launch-size';
 import { BREATHE_AFTER_MS, LaunchCurtain } from '~/components/brand/launch-screen';
 import { LAUNCH_HOLD_MS, launchReady, resetLaunchForTests } from '~/features/launch';
 import { useReduceMotion } from '~/theme/reduce-motion';
@@ -59,6 +59,12 @@ it('draws the mark at the splash width, and the wordmark in the artwork\'s propo
   expect(LAUNCH_WORDMARK_HEIGHT).toBe(14);
   expect(mark).toMatchObject({ width: LAUNCH_MARK_WIDTH, height: LAUNCH_MARK_WIDTH });
   expect(word).toMatchObject({ width: (1375 / 286) * LAUNCH_WORDMARK_HEIGHT, height: LAUNCH_WORDMARK_HEIGHT });
+
+  // The welcome lockup is that same share of its previous tile (52 / 44) and wordmark (26 / 22).
+  expect(welcomeTile(false)).toBe(30);
+  expect(welcomeTile(true)).toBe(25);
+  expect(welcomeWordmarkHeight(false)).toBe(15);
+  expect(welcomeWordmarkHeight(true)).toBe(13);
 
   // The native splash is given that same width, so the handoff does not jump.
   const config = readFileSync(join(__dirname, '../app.config.ts'), 'utf8');

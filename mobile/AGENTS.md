@@ -23,6 +23,7 @@ pnpm start                  # the dev server, for a development build
 pnpm start:go               # the same, for the Expo Go app (docs/mobile.md, "Trying it in Expo Go")
 pnpm check                  # typecheck + lint + shared-code guard + update-publishing check + Jest — run before declaring anything done
 pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept everything
+pnpm release:check          # what a store build is made from (add --bundle dist after export:ios)
 ```
 
 ## Rules for this app

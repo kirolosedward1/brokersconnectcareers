@@ -39,6 +39,10 @@
       "ios": {
         "language": "ar-SA",
         "metadataPath": "./store.config.js"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

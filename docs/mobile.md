@@ -906,7 +906,12 @@ In the Supabase dashboard (Authentication):
 ## Releasing
 
 What App Store Connect asks, and the answers the code gives — the privacy
-label, the guidelines that apply, review notes — is in `docs/app-store.md`.
+label, the guidelines that apply, review notes — is in `docs/app-store.md`;
+Google Play's, in `docs/play-store.md`. `pnpm release:check` (in `mobile/`,
+`scripts/release-check.mjs`) checks what a store build is made from before one
+is paid for: the production profile, the configuration as EAS evaluates it,
+the versions, the icons and both listings — and, given `--bundle dist` after
+`pnpm export:ios`, that the bundle holds no secret key or token.
 
 Builds are made with EAS (`eas.json`): `development` (a development client for
 a registered iPhone), `development-simulator`, `preview` (internal
