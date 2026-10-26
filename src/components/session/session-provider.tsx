@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useLayoutEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * Who is reading, learned in the browser.
@@ -28,9 +28,18 @@ export type SessionState =
     };
 
 const SessionContext = createContext<SessionState>({ kind: 'anon' });
+const SessionRefreshContext = createContext<() => void>(() => {});
 
 export function useSession(): SessionState {
   return useContext(SessionContext);
+}
+
+/**
+ * Read /api/chrome again. One Tap calls this after a sign-in that did not
+ * navigate, so the header swaps to the account cluster on the same page.
+ */
+export function useRefreshSession(): () => void {
+  return useContext(SessionRefreshContext);
 }
 
 export function hasAuthCookie(): boolean {
@@ -39,26 +48,41 @@ export function hasAuthCookie(): boolean {
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>({ kind: 'anon' });
+  const cancelLoad = useRef<(() => void) | null>(null);
 
-  useLayoutEffect(() => {
-    if (!hasAuthCookie()) return;
-    setState({ kind: 'pending' });
+  const load = useCallback(() => {
+    cancelLoad.current?.();
     let cancel = false;
+    cancelLoad.current = () => {
+      cancel = true;
+    };
     fetch('/api/chrome', { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : { signedIn: false }))
       .then((data: ChromePayload) => {
-        if (cancel) return;
-        setState(data?.signedIn ? toUser(data) : { kind: 'anon' });
+        if (!cancel) setState(data?.signedIn ? toUser(data) : { kind: 'anon' });
       })
       .catch(() => {
         if (!cancel) setState({ kind: 'anon' });
       });
-    return () => {
-      cancel = true;
-    };
   }, []);
 
-  return <SessionContext.Provider value={state}>{children}</SessionContext.Provider>;
+  const refresh = useCallback(() => {
+    setState({ kind: 'pending' });
+    load();
+  }, [load]);
+
+  useLayoutEffect(() => {
+    if (!hasAuthCookie()) return;
+    setState({ kind: 'pending' });
+    load();
+    return () => cancelLoad.current?.();
+  }, [load]);
+
+  return (
+    <SessionRefreshContext.Provider value={refresh}>
+      <SessionContext.Provider value={state}>{children}</SessionContext.Provider>
+    </SessionRefreshContext.Provider>
+  );
 }
 
 type ChromePayload = {

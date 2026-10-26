@@ -5,6 +5,9 @@ import { SignInGateProvider } from '@/components/auth/sign-in-gate';
 import { SessionProvider } from '@/components/session/session-provider';
 import { LivePolicyNotice } from '@/components/session/live-policy-notice';
 import { enabledProviders } from '@/lib/auth-providers';
+import { isGoogleWebClientId } from '@/lib/auth/google-one-tap';
+import { configuredValue } from '@/lib/env';
+import { GoogleOneTap } from '@/components/auth/google-one-tap';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 
@@ -33,6 +36,10 @@ export default async function SiteLayout({
   // For the sign-in dialog Save, Follow and Apply open over a page; cached
   // for five minutes, as the sign-in page's own read is.
   const providers = await enabledProviders();
+  // The web client id Supabase's Google provider already has. Unset, or not
+  // that shape, and One Tap is not mounted — the button on the sign-in page
+  // is the same provider, asked separately.
+  const googleClientId = configuredValue(process.env.SUPABASE_AUTH_GOOGLE_CLIENT_ID);
   const tLegal = await getTranslations('legal');
   const link = (href: '/terms' | '/privacy') =>
     function PolicyLink(chunks: React.ReactNode) {
@@ -48,6 +55,9 @@ export default async function SiteLayout({
       {/* The chrome is the visitor's. A session cookie fills the account
           cluster in the browser, which is what lets these pages be cached. */}
       <SessionProvider>
+        {providers.google && isGoogleWebClientId(googleClientId) ? (
+          <GoogleOneTap clientId={googleClientId} locale={locale as Locale} />
+        ) : null}
         <SiteHeader locale={locale as Locale} />
         <LivePolicyNotice agreeLabel={tLegal('agree')} failedLabel={tLegal('agreeFailed')}>
           <div className="text-sm">

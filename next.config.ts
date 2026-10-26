@@ -141,6 +141,22 @@ const nextConfig: NextConfig = {
       ? 'https://challenges.cloudflare.com'
       : '';
 
+    /*
+      Google Identity Services, for One Tap. These are the hosts Google
+      documents — script, frame, connect and style — and nothing else from
+      Google:
+
+      https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
+
+      connect-src and frame-src take the /gsi/ parent, which is what Google
+      says to allow rather than each endpoint under it. The client id is read
+      per request, so the header cannot be switched on only when it is set
+      without a rebuild that might lag the variable.
+    */
+    const googleGsi = 'https://accounts.google.com/gsi/';
+    const googleGsiClient = 'https://accounts.google.com/gsi/client';
+    const googleGsiStyle = 'https://accounts.google.com/gsi/style';
+
     const csp = [
       `default-src 'self'`,
       // Next inlines its bootstrap; see the note above about nonces.
@@ -150,7 +166,7 @@ const nextConfig: NextConfig = {
         keep refusing: the dev bundler is the only thing that needs those,
         and only while NODE_ENV is development.
       */
-      `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile}`.replace(/\s+/g, ' ').trim(),
+      `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile} ${googleGsiClient}`.replace(/\s+/g, ' ').trim(),
       /*
         The HEIC decoder runs in a worker served from this origin. worker-src
         also allows blob, because with no worker-src Chromium falls back to
@@ -160,7 +176,7 @@ const nextConfig: NextConfig = {
       */
       `worker-src 'self' blob:`,
       // Tailwind ships as a stylesheet, but Next also inlines critical CSS.
-      `style-src 'self' 'unsafe-inline'`,
+      `style-src 'self' 'unsafe-inline' ${googleGsiStyle}`,
       // Company logos come from Supabase storage; avatars come from whichever
       // identity provider the account signed in with, so https: is the honest
       // bound rather than a list that breaks the next provider added.
@@ -170,11 +186,11 @@ const nextConfig: NextConfig = {
       // The websocket origin as well as the https one: supabase-js opens a
       // realtime socket even where the application does not subscribe to
       // anything, and a blocked socket is a console error on every page.
-      `connect-src 'self' ${supabase} ${supabase.replace(/^https:/, 'wss:')} ${analytics} ${turnstile} ${dev ? 'ws://localhost:* http://localhost:*' : ''}`
+      `connect-src 'self' ${supabase} ${supabase.replace(/^https:/, 'wss:')} ${analytics} ${turnstile} ${googleGsi} ${dev ? 'ws://localhost:* http://localhost:*' : ''}`
         .replace(/\s+/g, ' ')
         .trim(),
-      // Nothing is framed here except the challenge widget.
-      `frame-src ${turnstile || "'none'"}`,
+      // The challenge widget, when a site key is set, and One Tap's iframe.
+      `frame-src ${[turnstile, googleGsi].filter(Boolean).join(' ') || "'none'"}`,
       `object-src 'none'`,
       `base-uri 'self'`,
       `form-action 'self'`,
