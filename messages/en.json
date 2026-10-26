@@ -1314,7 +1314,22 @@
     "appealsCount": "Appeals: {count} ({open} open)",
     "decisionsCount": "Decisions on this account: {count}",
     "notesCount": "Notes: {count}",
-    "activityEmpty": "Nothing yet."
+    "activityEmpty": "Nothing yet.",
+    "help": "User guide",
+    "helpLede": "Every screen in the admin console: what it does, how to use it, and what changes after a decision.",
+    "helpSearchLabel": "Search the guide",
+    "helpSearchPlaceholder": "Search for a screen, action or status…",
+    "helpEmptyTitle": "No matching results",
+    "helpEmptyBody": "Try part of a screen name or a button label. Search ignores Arabic diacritics, and treats alef forms, teh marbuta and heh, and alef maqsura and yeh as the same letter.",
+    "helpToc": "Contents",
+    "helpSteps": "Steps",
+    "helpFields": "Fields and options",
+    "helpStatuses": "Statuses",
+    "helpTips": "Notes",
+    "helpOpen": "Open the page",
+    "helpContactLead": "If you cannot find what you need, write to support:",
+    "helpResults": "{count, plural, one {# result} other {# results}}",
+    "helpClearSearch": "Clear search"
   },
   "reportReason": {
     "fake_listing": "Fake listing",
