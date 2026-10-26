@@ -7,6 +7,7 @@ import { JOB_TRACKS } from '@/lib/taxonomy';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { clean } from '@/lib/security/sanitize';
 import { insertOnce } from '@/lib/actions/idempotency';
+import { refused } from '@/lib/observe';
 
 /**
  * The CV sections: work history, education, certifications.
@@ -87,7 +88,8 @@ export async function saveExperience(input: unknown): Promise<ActionResult<{ id:
             .eq('idempotency_key', key!)
             .maybeSingle(),
       );
-  if (error || !data) return { ok: false, error: capMessage(error?.message ?? 'failed') };
+  if (error) return sectionRefused('experience', error, { agent: agentId, entry: id });
+  if (!data) return { ok: false, error: 'failed' };
 
   revalidatePath('/dashboard/profile');
   return { ok: true, data: { id: data.id } };
@@ -136,7 +138,8 @@ export async function saveEducation(input: unknown): Promise<ActionResult<{ id: 
             .eq('idempotency_key', key!)
             .maybeSingle(),
       );
-  if (error || !data) return { ok: false, error: capMessage(error?.message ?? 'failed') };
+  if (error) return sectionRefused('education', error, { agent: agentId, entry: id });
+  if (!data) return { ok: false, error: 'failed' };
 
   revalidatePath('/dashboard/profile');
   return { ok: true, data: { id: data.id } };
@@ -190,7 +193,8 @@ export async function saveCertification(input: unknown): Promise<ActionResult<{ 
             .eq('idempotency_key', key!)
             .maybeSingle(),
       );
-  if (error || !data) return { ok: false, error: capMessage(error?.message ?? 'failed') };
+  if (error) return sectionRefused('certification', error, { agent: agentId, entry: id });
+  if (!data) return { ok: false, error: 'failed' };
 
   revalidatePath('/dashboard/profile');
   return { ok: true, data: { id: data.id } };
@@ -269,9 +273,19 @@ export async function saveProfileRecord(input: unknown): Promise<ActionResult> {
   return { ok: true };
 }
 
-/** The cap is a database rule; say so in words the editor can show. */
-function capMessage(message: string): string {
-  return message.includes('cv_section_cap') ? 'cap' : 'failed';
+/**
+ * A section write the database refused, in words the editor can show.
+ *
+ * The cap is a database rule, raised as `cv_section_cap`, and the editor says
+ * so; anything else is `failed`, with the code and the ids in the log.
+ */
+function sectionRefused(
+  section: keyof typeof SECTIONS,
+  error: { code?: string | null; message: string },
+  detail: { agent: string; entry?: string },
+): { ok: false; error: 'cap' | 'failed' } {
+  if (error.message.includes('cv_section_cap')) return { ok: false, error: 'cap' };
+  return refused('cv', error, { section, ...detail });
 }
 
 function flatten(error: z.ZodError): Record<string, string> {

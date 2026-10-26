@@ -262,7 +262,9 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
         if (already) return { ok: true, data: { id: already.id } };
       }
 
-      return { ok: false, error: mapJobError(error?.message ?? 'insert_failed') };
+      if (!error) return { ok: false, error: 'failed' };
+      logFailure('listing', 'create refused', { company: company.id, code: error.code });
+      return { ok: false, error: mapJobError(error.message) };
     }
 
     jobId = data.id;

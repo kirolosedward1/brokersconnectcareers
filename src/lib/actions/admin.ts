@@ -679,7 +679,7 @@ export async function requeueEmail(input: unknown): Promise<ActionResult> {
   const { data: dead, error: deadError } = await supabase.rpc('email_dead_letters', {
     p_limit: 500,
   });
-  if (deadError) return { ok: false, error: deadError.message };
+  if (deadError) return refused('admin', deadError, { email: parsed.data.emailId });
   const target = (dead ?? []).find((row) => row.id === parsed.data.emailId);
   if (!target) return { ok: false, error: 'not_found' };
   if (!isRetryable(target.template) || !target.entity_id) {
@@ -689,7 +689,7 @@ export async function requeueEmail(input: unknown): Promise<ActionResult> {
   const { data: requeued, error } = await supabase.rpc('requeue_email', {
     p_id: parsed.data.emailId,
   });
-  if (error) return refused('admin', error);
+  if (error) return refused('admin', error, { email: parsed.data.emailId });
   if (!requeued) return { ok: false, error: 'not_found' };
 
   revalidatePath('/admin/operations');

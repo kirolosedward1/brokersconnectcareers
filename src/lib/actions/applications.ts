@@ -227,7 +227,7 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     logFailure('apply', 'withdraw_application is not available', { application: applicationId, code: error.code });
     return { ok: false, error: 'unavailable' };
   }
-  if (error) return refused('application', error);
+  if (error) return refused('application', error, { application: applicationId });
   if (!withdrawnRows?.length) {
     logFailure('apply', 'withdrawal refused', { application: applicationId, by: user?.id });
     return { ok: false, error: 'forbidden' };
@@ -378,7 +378,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     // moved. A false notification is worse than a failed one.
     .select('id');
 
-  if (error) return refused('application', error);
+  if (error) return refused('application', error, { application: parsed.data.applicationId });
 
   if (!moved?.length) {
     // Zero rows means one of two things and the reader deserves to know which:
@@ -508,7 +508,7 @@ export async function deleteApplicationNote(id: number): Promise<ActionResult> {
     .eq('id', id)
     .select('id');
 
-  if (error) return refused('application', error);
+  if (error) return refused('application', error, { note: id });
   if (!removed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/employer/applicants');

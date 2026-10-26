@@ -46,7 +46,7 @@ export async function saveSearch(input: unknown): Promise<ActionResult<{ id: str
     // Saving the same filters twice is not a failure worth showing as one.
     if (error.code === '23505') return { ok: false, error: 'already_saved' };
     if (error.message.includes('saved_search_cap')) return { ok: false, error: 'cap' };
-    return refused('saved-search', error);
+    return refused('saved-search', error, { user: user.id });
   }
 
   revalidatePath('/dashboard/saved');
@@ -70,7 +70,7 @@ export async function deleteSavedSearch(id: string): Promise<ActionResult> {
     .eq('id', id)
     .select('id');
 
-  if (error) return refused('saved-search', error);
+  if (error) return refused('saved-search', error, { search: id });
   if (!removed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/dashboard/saved');
@@ -95,7 +95,7 @@ export async function setSearchAlerts(input: unknown): Promise<ActionResult> {
     .eq('id', parsed.data.id)
     .select('id');
 
-  if (error) return refused('saved-search', error);
+  if (error) return refused('saved-search', error, { search: parsed.data.id });
   if (!changed?.length) return { ok: false, error: 'forbidden' };
 
   revalidatePath('/dashboard/saved');
@@ -161,7 +161,7 @@ export async function followCompany(input: unknown): Promise<ActionResult<{ id: 
       if (existing) return { ok: true, data: { id: existing.id } };
     }
     if (error.message.includes('saved_search_cap')) return { ok: false, error: 'cap' };
-    return refused('saved-search', error);
+    return refused('saved-search', error, { user: user.id });
   }
 
   revalidatePath('/dashboard/saved');

@@ -146,7 +146,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
         .eq('id', existing.id)
         .select('id'));
     }
-    if (error) return refused('cv', error);
+    if (error) return refused('cv', error, { agent: existing.id });
     // An update RLS filters to zero rows carries no error, and this form is
     // the one place a consultant sets their own visibility — reporting a save
     // that did not happen would leave them believing they are hidden.
@@ -165,7 +165,8 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
           : first;
       },
     );
-    if (error || !data) return { ok: false, error: error?.message ?? 'insert_failed' };
+    if (error) return refused('cv', error, { user: user.id });
+    if (!data) return { ok: false, error: 'insert_failed' };
     agentId = data.id;
     const { data: created } = await supabase
       .from('agent_profiles')
@@ -203,7 +204,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
         .delete()
         .eq('agent_id', agentId)
         .in('developer_id', removed);
-      if (error) return refused('cv', error);
+      if (error) return refused('cv', error, { agent: agentId });
     }
 
     if (added.length) {
@@ -213,7 +214,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
           developer_id: developerId,
         })),
       );
-      if (error) return refused('cv', error);
+      if (error) return refused('cv', error, { agent: agentId });
     }
   }
 
