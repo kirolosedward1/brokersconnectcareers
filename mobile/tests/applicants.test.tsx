@@ -279,7 +279,7 @@ describe("a listing's applicants", () => {
   it('saves the reason written to the candidate on its own, at the same stage', async () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'مقابلة يوم الأحد الساعة ١١.');
-    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.decisionNote}: ${ar.common.save}` }));
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.decisionNoteSend }));
     await waitFor(() =>
       expect(input('/api/mobile/v1/actions/setApplicationStatus')).toEqual({
         applicationId: omar.id,
@@ -290,22 +290,32 @@ describe("a listing's applicants", () => {
     );
   });
 
+  it('does not send a blank reason', async () => {
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText(ar.employer.decisionNoteVisible)).toBeTruthy();
+    expect(screen.getByText(ar.employer.decisionNoteHint)).toBeTruthy();
+    fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), '   ');
+    expect(screen.getByRole('button', { name: ar.employer.decisionNoteSend }).props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+  });
+
   it('keeps the reason as typed when it could not be saved, and says why', async () => {
     server.on('POST /api/mobile/v1/actions/setApplicationStatus', () => {
       throw new TypeError('Network request failed');
     });
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'مقابلة يوم الأحد الساعة ١١.');
-    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.decisionNote}: ${ar.common.save}` }));
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.decisionNoteSend }));
 
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
-    // Their words, to send again — not the stored ones under a "Saved" that is not true.
+    // Their words, to send again — the button still offers to send, it does not claim they were saved.
     expect(screen.getByDisplayValue('مقابلة يوم الأحد الساعة ١١.')).toBeTruthy();
-    expect(screen.queryByText(ar.employer.decisionNoteSaved)).toBeNull();
+    expect(screen.getByRole('button', { name: ar.employer.decisionNoteSend })).toBeTruthy();
 
     // Refused for any other reason: the general words, and still their sentence.
     server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: false, error: 'failed' });
-    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.decisionNote}: ${ar.common.save}` }));
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.decisionNoteSend }));
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.app.offline.body)).toBeNull();
     expect(screen.getByDisplayValue('مقابلة يوم الأحد الساعة ١١.')).toBeTruthy();

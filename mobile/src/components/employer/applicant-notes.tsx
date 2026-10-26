@@ -10,7 +10,6 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useAddNote, useDeleteNote } from '~/features/employer/applicants';
 import { ApiError } from '~/lib/api';
-import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -39,7 +38,6 @@ export function ApplicantNotes({
   const t = useTranslations();
   const locale = useLocale();
   const { colors, scheme } = useTheme();
-  const large = useLargeText();
   const add = useAddNote();
   const remove = useDeleteNote();
   const shown = notes ?? [];
@@ -89,7 +87,6 @@ export function ApplicantNotes({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityHint={t('employer.notesHint')}
         onPress={() => setChosen(!open)}
         hitSlop={{ top: 4, bottom: 4 }}
         style={{ minHeight: hitTarget - 8, flexDirection: 'row', alignItems: 'center', gap: space[1] }}
@@ -105,9 +102,7 @@ export function ApplicantNotes({
             </Text>
           </View>
         ) : null}
-        <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={large ? undefined : 1}>
-          {`— ${t('employer.notesHint')}`}
-        </Text>
+        <View style={{ flex: 1 }} />
         <Chevron size={16} color={colors.mutedForeground} />
       </Pressable>
 
