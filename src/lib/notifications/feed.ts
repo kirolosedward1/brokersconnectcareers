@@ -43,6 +43,33 @@ export function dedupeFeed<T extends { dedupe_key: string | null; folded_into: s
 type FeedError = { code?: string; message: string } | null;
 
 /**
+ * How many of this reader's rows are unread and still shown.
+ *
+ * A head count: no row bodies. `folded_into` is excluded, because a folded
+ * applicant is already counted by the head it points at. A database that has
+ * not yet gained that column (42703) is counted without the filter.
+ */
+export async function countUnreadNotifications(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<{ unread: number; error: FeedError }> {
+  const countUnread = (hideFolded: boolean) => {
+    let query = supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .is('read_at', null);
+    if (hideFolded) query = query.is('folded_into', null);
+    return query;
+  };
+
+  let counted = await countUnread(true);
+  if ((counted.error as FeedError)?.code === '42703') counted = await countUnread(false);
+  const error = counted.error as FeedError;
+  return { unread: error ? 0 : (counted.count ?? 0), error };
+}
+
+/**
  * The bell's page of the feed, under the reader's own session.
  *
  * Scoped to `user_id` so the feed index serves it; RLS still decides what
@@ -60,19 +87,7 @@ export async function readNotificationFeed(
     return query.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limit);
   };
 
-  const countUnread = (hideFolded: boolean) => {
-    let query = supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .is('read_at', null);
-    // A folded row is already counted by the head it points at. Counting it
-    // again would put a number on the bell for a row the list does not show.
-    if (hideFolded) query = query.is('folded_into', null);
-    return query;
-  };
-
-  const [first, countedFirst] = await Promise.all([latest(true), countUnread(true)]);
+  const [first, counted] = await Promise.all([latest(true), countUnreadNotifications(supabase, userId)]);
 
   let recent = first.data as NotificationRow[] | null;
   let recentError = first.error as FeedError;
@@ -82,13 +97,9 @@ export async function readNotificationFeed(
     recentError = second.error as FeedError;
   }
 
-  let counted = countedFirst;
-  if ((counted.error as FeedError)?.code === '42703') counted = await countUnread(false);
-  const countedError = counted.error as FeedError;
-
   return {
     rows: recentError ? [] : dedupeFeed(recent ?? []),
-    unread: countedError ? 0 : (counted.count ?? 0),
-    error: recentError ?? countedError,
+    unread: counted.unread,
+    error: recentError ?? counted.error,
   };
 }

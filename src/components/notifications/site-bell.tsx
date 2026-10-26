@@ -23,8 +23,6 @@ type Item = {
   unread: boolean;
 };
 
-type Feed = { unread: number; items: Item[] };
-
 const triggerClass =
   'relative grid size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground group-data-[over-hero]/header:text-white group-data-[over-hero]/header:hover:bg-white/15 group-data-[over-hero]/header:hover:text-white';
 
@@ -33,9 +31,9 @@ const triggerClass =
  *
  * On a phone it is a link to the feed: a dropdown there covers the page.
  * From the `md` breakpoint up, the same control opens a 360px panel aligned
- * to the bell's end edge. The list is fetched, not rendered into the cached
- * page, and asked again while the tab is open so a reply shows up without
- * a navigation.
+ * to the bell's end edge. The list is fetched when that panel opens, not
+ * rendered into the cached page. While the tab is visible the badge asks
+ * only for the unread count, and that question stops while the tab is hidden.
  */
 export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initialUnread?: number }) {
   const t = useTranslations('notifications');
@@ -45,15 +43,30 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
   const summaryRef = useRef<HTMLElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const listId = useId();
-  const [feed, setFeed] = useState<Feed | null>(null);
+  const [unreadCount, setUnreadCount] = useState(initialUnread);
+  const [items, setItems] = useState<Item[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState(false);
 
-  const unread = feed?.unread ?? initialUnread;
+  const unread = unreadCount;
   const badge = bellBadge(unread);
   const label = unread > 0 ? t('bellUnread', { count: unread }) : t('bellTitle');
 
-  const load = useCallback(async () => {
+  const loadCount = useCallback(async () => {
+    if (document.hidden) return;
+    try {
+      const response = await fetch('/api/notifications?count=1', { cache: 'no-store' });
+      if (!response.ok || document.hidden) return;
+      const data = (await response.json()) as { signedIn?: boolean; unread?: number };
+      const next = data.unread;
+      if (!data.signedIn || typeof next !== 'number') return;
+      setUnreadCount((current) => (current === next ? current : next));
+    } catch {
+      // The badge stays. A dropped poll is not an empty inbox.
+    }
+  }, []);
+
+  const loadList = useCallback(async () => {
     try {
       const response = await fetch(`/api/notifications?locale=${encodeURIComponent(locale)}`, {
         cache: 'no-store',
@@ -61,41 +74,43 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
       if (!response.ok) return;
       const data = (await response.json()) as { signedIn?: boolean; unread?: number; items?: Item[] };
       if (!data.signedIn || !Array.isArray(data.items)) return;
-      const next: Feed = {
-        unread: typeof data.unread === 'number' ? data.unread : 0,
-        items: data.items.filter((item) => item && typeof item.id === 'string' && typeof item.title === 'string'),
-      };
-      setFeed((current) => (current && JSON.stringify(current) === JSON.stringify(next) ? current : next));
+      const next = data.items.filter((item) => item && typeof item.id === 'string' && typeof item.title === 'string');
+      if (typeof data.unread === 'number') setUnreadCount(data.unread);
+      setItems((current) => (current && JSON.stringify(current) === JSON.stringify(next) ? current : next));
     } catch {
-      // The last list stays. A dropped poll is not an empty inbox.
+      // The last list stays. A dropped read is not an empty inbox.
     }
   }, [locale]);
 
   useEffect(() => {
-    let stop = false;
+    let stopped = false;
     let timer = 0;
-    const tick = () => {
-      if (stop || document.visibilityState === 'hidden') return;
-      void load();
+    const clear = () => {
+      window.clearTimeout(timer);
+      timer = 0;
     };
-    const later = () => {
+    const arm = () => {
+      clear();
+      if (stopped || document.hidden) return;
       timer = window.setTimeout(() => {
-        tick();
-        later();
+        void loadCount().finally(arm);
       }, POLL_MS);
     };
-    tick();
-    later();
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') tick();
+    const onVisibility = () => {
+      if (document.hidden) {
+        clear();
+        return;
+      }
+      void loadCount().finally(arm);
     };
-    document.addEventListener('visibilitychange', onVisible);
+    if (!document.hidden) void loadCount().finally(arm);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
-      stop = true;
-      window.clearTimeout(timer);
-      document.removeEventListener('visibilitychange', onVisible);
+      stopped = true;
+      clear();
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [load]);
+  }, [loadCount]);
 
   useEffect(() => {
     const el = detailsRef.current;
@@ -125,7 +140,7 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
   function onToggle() {
     const el = detailsRef.current;
     if (!el?.open) return;
-    void load();
+    void loadList();
     queueMicrotask(() => focusList());
   }
 
@@ -142,9 +157,9 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
     if (!el?.open || !list || document.activeElement !== list) return;
     const row = list.querySelector('button');
     row?.focus();
-  }, [feed]);
+  }, [items]);
 
-  const newest = feed?.items[0]?.createdAt ?? null;
+  const newest = items?.[0]?.createdAt ?? null;
 
   async function markAll() {
     if (unread <= 0 || pending) return;
@@ -156,12 +171,9 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
       setFailed(true);
       return;
     }
-    setFeed((current) =>
-      current
-        ? { unread: 0, items: current.items.map((item) => ({ ...item, unread: false })) }
-        : current,
-    );
-    void load();
+    setUnreadCount(0);
+    setItems((current) => (current ? current.map((item) => ({ ...item, unread: false })) : current));
+    void loadList();
   }
 
   return (
@@ -218,14 +230,14 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
             tabIndex={-1}
             className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto outline-none"
           >
-            {feed && feed.items.length === 0 ? (
+            {items && items.length === 0 ? (
               <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
                 <Bell className="size-8 text-muted-foreground" strokeWidth={1.5} aria-hidden />
                 <p className="text-sm text-muted-foreground">{t('bellEmpty')}</p>
               </div>
             ) : (
               <ul>
-                {(feed?.items ?? []).map((item) => (
+                {(items ?? []).map((item) => (
                   <li key={item.id}>
                     <Row item={item} locale={locale} unreadLabel={t('unread')} />
                   </li>

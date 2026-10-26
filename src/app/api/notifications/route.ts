@@ -3,7 +3,7 @@ import { createTranslator } from 'next-intl';
 import { getViewer } from '@/lib/auth';
 import { asLocale } from '@/lib/locale';
 import { syncMyJobNotifications } from '@/lib/actions/notifications';
-import { readNotificationFeed } from '@/lib/notifications/feed';
+import { countUnreadNotifications, readNotificationFeed } from '@/lib/notifications/feed';
 import { notificationTitle, type Translate } from '@/lib/notifications/title';
 import { createClient } from '@/lib/supabase/server';
 
@@ -24,9 +24,20 @@ const headers = {
  * is the one line under the title.
  */
 export async function GET(request: Request) {
-  const locale = asLocale(new URL(request.url).searchParams.get('locale') ?? '');
+  const url = new URL(request.url);
+  const locale = asLocale(url.searchParams.get('locale') ?? '');
   const viewer = await getViewer();
   if (!viewer?.profile) return NextResponse.json({ signedIn: false }, { headers });
+
+  const supabase = await createClient();
+
+  // The badge asks this every half minute. A head count, not the rows: the
+  // list is read when the panel opens.
+  if (url.searchParams.get('count') === '1') {
+    const { unread, error } = await countUnreadNotifications(supabase, viewer.userId);
+    if (error) console.warn('[notify] bell count failed:', error.message);
+    return NextResponse.json({ signedIn: true, unread }, { headers });
+  }
 
   // Listings that ended have no row change to trigger on. The same sweep the
   // feed runs, scoped to this reader's company, and a no-op for a candidate.
@@ -34,7 +45,6 @@ export async function GET(request: Request) {
     await syncMyJobNotifications();
   }
 
-  const supabase = await createClient();
   const { rows, unread, error } = await readNotificationFeed(supabase, viewer.userId);
   if (error) console.warn('[notify] bell feed failed:', error.message);
 

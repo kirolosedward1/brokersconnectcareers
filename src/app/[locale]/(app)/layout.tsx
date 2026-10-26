@@ -10,7 +10,7 @@ import { StandingNotice } from '@/components/moderation/standing-notice';
 import { SuspensionGate } from '@/components/moderation/suspension-gate';
 import { SiteBell } from '@/components/notifications/site-bell';
 import { syncMyJobNotifications } from '@/lib/actions/notifications';
-import { readNotificationFeed } from '@/lib/notifications/feed';
+import { countUnreadNotifications } from '@/lib/notifications/feed';
 import { createClient } from '@/lib/supabase/server';
 import { optional } from '@/lib/queries/error';
 import type { AdminSummary, EmployerSummary } from '@/lib/supabase/database.types';
@@ -100,7 +100,7 @@ export default async function AppLayout({
   // Listings that ended have no row change to trigger on. The same sweep the
   // feed runs, before the badge is drawn, so the first paint already counts it.
   if (role === 'employer' || role === 'admin') await syncMyJobNotifications();
-  const bellFeed = await readNotificationFeed(supabase, viewer!.userId);
+  const bellFeed = await countUnreadNotifications(supabase, viewer!.userId);
 
   const t = await getTranslations('dashboard');
   const tNotifications = await getTranslations('notifications');
