@@ -499,9 +499,11 @@ describe('an admin who also runs a company', () => {
   it('is told the same on Account', async () => {
     suspendedCompany();
     await signIn();
-    renderRouter(
+    // The real tab layout declares the Account group. The route map it is
+    // drawn from has to name this screen, or /account never opens it.
+    await renderRouter(
       {
-        ...app,
+        ...tabbed,
         '(tabs)/(account)/account/index': AccountScreen,
       },
       { initialUrl: '/account' },

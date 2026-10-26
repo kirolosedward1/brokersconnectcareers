@@ -20,7 +20,7 @@ export function WebAnchorParams() {
     done.current = true;
     const next = withoutLeakedParams(state);
     if (next === state) return;
-    ref.resetRoot(next as typeof state);
+    ref.reset(next);
   }, [ready, ref]);
 
   return null;

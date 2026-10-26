@@ -27,7 +27,7 @@ let actor: Actor = null;
 function TabBar() {
   const tabs = tabsFor(actor);
   return (
-    <Tabs initialRouteName={tabs[0] === 'admin' ? '(admin)' : '(home)'}>
+    <Tabs>
       <Tabs.Protected guard={tabs.includes('home')}>
         <Tabs.Screen name="(home)" />
       </Tabs.Protected>
@@ -314,39 +314,39 @@ const adminWithCompany: Actor = {
 };
 
 describe("an admin's tab bar", () => {
-  it('opens the app on the console', () => {
+  it('opens the app on the console', async () => {
     actor = admin;
-    expect(open('https://www.brokersconnect.net/').getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+    expect((await open('https://www.brokersconnect.net/')).getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
   });
 
-  it('opens a listing from a link in the Admin tab, with the console under it', () => {
+  it('opens a listing from a link in the Admin tab, with the console under it', async () => {
     actor = admin;
-    const result = open('https://www.brokersconnect.net/jobs/sales-a1b2');
+    const result = await open('https://www.brokersconnect.net/jobs/sales-a1b2');
     expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'jobs', '[slug]']);
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
   });
 
-  it('opens a company from a link in the Admin tab, with the console under it', () => {
+  it('opens a company from a link in the Admin tab, with the console under it', async () => {
     actor = admin;
-    const result = open('https://www.brokersconnect.net/companies/nile');
+    const result = await open('https://www.brokersconnect.net/companies/nile');
     expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'companies', '[slug]']);
     // The Admin tab's first screen is the console, so that is what Back returns to.
     act(() => router.back());
     expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
   });
 
-  it('opens the directory and the bell inside the Admin tab', () => {
+  it('opens the directory and the bell inside the Admin tab', async () => {
     actor = admin;
-    const result = open('https://www.brokersconnect.net/companies');
+    const result = await open('https://www.brokersconnect.net/companies');
     expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'companies']);
-    const bell = open('/notifications');
+    const bell = await open('/notifications');
     expect(bell.getSegments()).toEqual(['(tabs)', '(admin)', 'notifications']);
   });
 
-  it('opens a listing pushed from the console in that tab, and Back returns to it', () => {
+  it('opens a listing pushed from the console in that tab, and Back returns to it', async () => {
     actor = admin;
-    const result = open('/admin');
+    const result = await open('/admin');
     act(() => router.push('/jobs/sales-a1b2'));
     expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'jobs', '[slug]']);
     act(() => router.push('/companies/nile'));
@@ -359,12 +359,12 @@ describe("an admin's tab bar", () => {
     expect(result.getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
   });
 
-  it('sends the board and an employer console link to the console, and keeps the company page in Account', () => {
+  it('sends the board and an employer console link to the console, and keeps the company page in Account', async () => {
     actor = adminWithCompany;
-    expect(open('https://www.brokersconnect.net/jobs').getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
-    expect(open('https://www.brokersconnect.net/employer/jobs').getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
-    expect(open('https://www.brokersconnect.net/employer/company').getSegments()).toEqual(['(tabs)', '(account)', 'employer', 'company']);
-    expect(open('https://www.brokersconnect.net/agents/mona-ali').getSegments()).toEqual(['(tabs)', '(admin)', 'agents', '[slug]']);
+    expect((await open('https://www.brokersconnect.net/jobs')).getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+    expect((await open('https://www.brokersconnect.net/employer/jobs')).getSegments()).toEqual(['(tabs)', '(admin)', 'admin']);
+    expect((await open('https://www.brokersconnect.net/employer/company')).getSegments()).toEqual(['(tabs)', '(account)', 'employer', 'company']);
+    expect((await open('https://www.brokersconnect.net/agents/mona-ali')).getSegments()).toEqual(['(tabs)', '(admin)', 'agents', '[slug]']);
   });
 });
 

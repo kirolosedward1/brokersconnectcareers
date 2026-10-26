@@ -85,11 +85,7 @@ export default function TabsLayout() {
   const waiting = summaryWaiting(useAdminSummary().data);
 
   return (
-    <Tabs
-      initialRouteName={tabs[0] === 'admin' ? '(admin)' : '(home)'}
-      tabBar={(props) => <TabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
       {/* Always in the app, as `/` and every "back home" lead here; for an
           admin, whose bar is the console and the account even when they run
           a company, its button is hidden and the screen opens the console

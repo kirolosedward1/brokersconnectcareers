@@ -53,7 +53,7 @@ describe('what the web build cannot assign', () => {
         <Text>theme</Text>
       </ThemeProvider>,
     );
-    expect(setColorScheme).toHaveBeenCalledWith('light');
+    expect(setColorScheme).toHaveBeenCalledWith('unspecified');
     setColorScheme.mockRestore();
   });
 });
