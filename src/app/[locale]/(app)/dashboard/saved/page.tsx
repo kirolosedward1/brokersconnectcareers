@@ -68,7 +68,7 @@ export default async function SavedJobsPage({
     (row) => Boolean(row.job),
   );
   const jobs = rows.map((row) => row.job);
-  // The note (migration 356) and the reminder (migration 365) on each bookmark — the app's too.
+  // The note (migration 356) and the reminder (migration 366) on each bookmark — the app's too.
   const extras = new Map(rows.map((row) => [row.job.id, { note: row.note, remindAt: row.remind_at }]));
 
   /**

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
  * and press; pressed, a small form in its place: the field, counted as they
  * type, Save, Cancel, and Delete once there is a note to delete.
  *
- * The reminder before the listing closes (migration 365) is the app's to
+ * The reminder before the listing closes (migration 366) is the app's to
  * set — it is a notification on the phone — so here it is only said, with
  * the way to take it back. The phone lets go of its copy the next time it
  * reads the saved list.

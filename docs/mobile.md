@@ -334,7 +334,7 @@ this, and every server call went on being refused with the old key).
   once and put back if the server refuses. A follow is a saved search with
   one filter, so the ten-row cap and the weekly email are shared. When to
   **remind** them before the listing closes is `saved_jobs.remind_at`
-  (migration 365, `setSavedJobReminder`), read with the bookmarks
+  (migration 366, `setSavedJobReminder`), read with the bookmarks
   (`features/saved/queries.ts`). The website's saved page says it and can
   take it back. The notification the app schedules — the day before the
   closing, at ten in Cairo (`features/saved/reminders.ts`) — is a copy of

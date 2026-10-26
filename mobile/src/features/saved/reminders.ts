@@ -13,7 +13,7 @@ import { createLocalList } from '~/lib/local-list';
  * Cairo — early enough in the day to apply, late enough not to wake anybody.
  *
  * When it goes off is kept on the bookmark (saved_jobs.remind_at, migration
- * 365), written through the website's setSavedJobReminder: the website's saved
+ * 366), written through the website's setSavedJobReminder: the website's saved
  * page says it and can take it back, a new phone finds it, and a bookmark
  * taken off anywhere takes it with it. The notification scheduled on this
  * phone is a copy of that, made to match each time the saved list is read
