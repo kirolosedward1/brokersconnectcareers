@@ -9,7 +9,8 @@ import { Button } from '~/components/ui/button';
 import { CircleAlert, Lock, NotebookPen, Pencil, Plus, Trash2, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
-import { cleanNote, NOTE_MAX, useJobNote, useNoteActions, type JobNote } from '~/features/saved/notes';
+import { useJobNote, useKeepNote } from '~/features/saved/note-queries';
+import { cleanNote, NOTE_MAX, type JobNote } from '~/features/saved/notes';
 import { useSavedJobIds } from '~/features/saved/queries';
 import { markupTags } from '~/i18n/rich';
 import { appDirection } from '~/lib/direction';
@@ -51,8 +52,9 @@ export function NoteSheet({
   const tToast = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
-  const { keep, remove: removeNote } = useNoteActions();
   const note = useJobNote(jobId);
+  // Shown at once; the website's no puts the note back as it was, and says so.
+  const keep = useKeepNote(() => toast.show({ message: t('failed'), icon: CircleAlert }));
   // Null until the reader types: until then the field shows the note as it is kept.
   const [draft, setDraft] = useState<string | null>(null);
   const text = draft ?? note?.text ?? '';
@@ -78,30 +80,17 @@ export function NoteSheet({
     return () => clearTimeout(late);
   }, [visible]);
 
+  const write = (text: string) => keep.mutate({ jobId, text });
+
   const deleted = (before: JobNote): Toast => ({
     message: t('deleted'),
     icon: Trash2,
-    action: { label: tToast('undo'), onPress: () => void keep(before.id, before.text) },
+    action: { label: tToast('undo'), onPress: () => write(before.text) },
   });
-
-  // A refusal puts the note back and says so, with the same change to try again.
-  const attempt = (write: () => Promise<boolean>) => {
-    void write().then((ok) => {
-      if (ok) return;
-      haptic.error();
-      toast.show({
-        message: tCommon('errorBody'),
-        icon: CircleAlert,
-        tone: 'destructive',
-        action: { label: tCommon('retry'), onPress: () => attempt(write) },
-      });
-    });
-  };
 
   const save = () => {
     if (!changed) return;
-    // Shown at once; the server's refusal, should one come, puts the note back and says so.
-    attempt(() => keep(jobId, clean));
+    write(clean);
     haptic.tap();
     onClose();
     // Emptied and saved is the same as deleted, and says so.
@@ -111,7 +100,7 @@ export function NoteSheet({
 
   const remove = () => {
     if (!note) return;
-    attempt(() => removeNote(jobId));
+    write('');
     haptic.tap();
     onClose();
     toast.show(deleted(note));

@@ -2100,7 +2100,10 @@
     "countSpoken": "{count} of {max} characters",
     "saved": "Note saved",
     "deleted": "Note deleted",
-    "delete": "Delete"
+    "delete": "Delete",
+    "failed": "Couldn't save the note. Try again.",
+    "reminder": "The app reminds you on {when}, before it closes.",
+    "reminderRemove": "Remove reminder"
   },
   "myApplications": {
     "timeline": "Where it stands",

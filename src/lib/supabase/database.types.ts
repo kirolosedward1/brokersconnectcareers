@@ -763,6 +763,8 @@ export type SavedJobRow = Timestamped & {
   job_id: string;
   /** The candidate's own line about the listing (migration 356): 1–300 characters, or null. */
   note: string | null;
+  /** When the app reminds them before it closes (migration 365); null when no reminder is set. */
+  remind_at: string | null;
 };
 
 /**

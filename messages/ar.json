@@ -2100,7 +2100,10 @@
     "countSpoken": "{count} من {max} حرف",
     "saved": "حُفظت ملاحظتك",
     "deleted": "حُذفت الملاحظة",
-    "delete": "امسح"
+    "delete": "امسح",
+    "failed": "تعذّر حفظ الملاحظة. أعد المحاولة.",
+    "reminder": "يذكّرك التطبيق يوم {when}، قبل أن يُغلق الإعلان.",
+    "reminderRemove": "أزل التذكير"
   },
   "myApplications": {
     "timeline": "حالة طلبك",

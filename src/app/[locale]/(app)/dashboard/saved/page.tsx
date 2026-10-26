@@ -47,6 +47,7 @@ export default async function SavedJobsPage({
       `
       created_at,
       note,
+      remind_at,
       job:jobs!inner (${LIST_SELECT})
     `,
     )
@@ -63,10 +64,12 @@ export default async function SavedJobsPage({
 
   if (error) raise(error, 'loading your saved jobs');
 
-  const rows = (data ?? []) as unknown as { note: string | null; job: JobListItem }[];
-  const jobs = rows.map((row) => row.job).filter(Boolean);
-  // The reader's own line under each card (migration 356), the app's too.
-  const notes = new Map(rows.filter((row) => row.job).map((row) => [row.job.id, row.note]));
+  const rows = ((data ?? []) as unknown as { note: string | null; remind_at: string | null; job: JobListItem }[]).filter(
+    (row) => Boolean(row.job),
+  );
+  const jobs = rows.map((row) => row.job);
+  // The note (migration 356) and the reminder (migration 365) on each bookmark — the app's too.
+  const extras = new Map(rows.map((row) => [row.job.id, { note: row.note, remindAt: row.remind_at }]));
 
   /**
    * A saved role that has ended is not the same object as one still hiring.
@@ -160,7 +163,12 @@ export default async function SavedJobsPage({
                       saved
                       savable
                     />
-                    <SavedJobNote jobId={job.id} initialNote={notes.get(job.id) ?? null} />
+                    <SavedJobNote
+                      jobId={job.id}
+                      initialNote={extras.get(job.id)?.note ?? null}
+                      remindAt={extras.get(job.id)?.remindAt ?? null}
+                      locale={locale}
+                    />
                   </>
                 ),
               }))}
@@ -183,7 +191,12 @@ export default async function SavedJobsPage({
                             saved
                             savable
                           />
-                          <SavedJobNote jobId={job.id} initialNote={notes.get(job.id) ?? null} />
+                          <SavedJobNote
+                            jobId={job.id}
+                            initialNote={extras.get(job.id)?.note ?? null}
+                            remindAt={extras.get(job.id)?.remindAt ?? null}
+                            locale={locale}
+                          />
                         </li>
                       ))}
                     </ul>
