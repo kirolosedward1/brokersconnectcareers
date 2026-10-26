@@ -149,6 +149,88 @@ export type StepState = 'done' | 'current' | 'ahead' | 'stopped';
 export type TimelineStep = { key: 'sent' | 'seen' | 'shortlisted' | 'decision'; state: StepState; date: string | null };
 
 /**
+ * The candidate card's status, shared by the pill and the bar.
+ *
+ * Coarser than the employer's pipeline on purpose. Shortlisted and interview
+ * are both still open, so both are «قيد المراجعة»; the line under the bar is
+ * what says which of those it is. Hired is the accepted state. Rejected and
+ * withdrawn are terminal and use their own words.
+ */
+export const PROGRESS_PILLS = ['new', 'review', 'hired', 'rejected', 'withdrawn'] as const;
+export type ProgressPill = (typeof PROGRESS_PILLS)[number];
+
+export type ProgressStepKey = 'sent' | 'seen' | 'shortlisted' | 'decision';
+
+/** done = brand blue, current = white with a blue ring, upcoming/withdrawn = grey, rejected = red. */
+export type SegmentTone = 'done' | 'current' | 'upcoming' | 'rejected' | 'withdrawn';
+
+export type ProgressSegment = {
+  key: ProgressStepKey;
+  tone: SegmentTone;
+  /**
+   * When this step actually happened. Null when the step is not reached, or
+   * when it is reached but nothing records the moment — never a guessed one.
+   */
+  date: string | null;
+};
+
+export type ProgressSummary = 'sent' | 'seen' | 'shortlisted' | 'hired' | 'rejected' | 'withdrawn';
+
+export type ApplicationProgress = {
+  pill: ProgressPill;
+  segments: ProgressSegment[];
+  summary: ProgressSummary;
+  summaryDate: string | null;
+};
+
+/** One row of application_events: the transition and when it was written. */
+export type ApplicationEventStamp = {
+  from_status: ApplicationStatus | null;
+  to_status: ApplicationStatus;
+  created_at: string;
+};
+
+const SHORTLIST_MOVE: readonly ApplicationStatus[] = ['shortlisted', 'interview'];
+
+function earliestTo(events: readonly ApplicationEventStamp[], to: readonly ApplicationStatus[]): string | null {
+  let best: string | null = null;
+  for (const event of events) {
+    if (!to.includes(event.to_status)) continue;
+    if (best === null || event.created_at < best) best = event.created_at;
+  }
+  return best;
+}
+
+/** True when a shortlist or an interview is in the status or in the history. */
+function reachedShortlist(status: ApplicationStatus, events: readonly ApplicationEventStamp[]): boolean {
+  if (status === 'shortlisted' || status === 'interview' || status === 'hired') return true;
+  return events.some(
+    (event) =>
+      SHORTLIST_MOVE.includes(event.to_status) ||
+      (event.from_status !== null && SHORTLIST_MOVE.includes(event.from_status)),
+  );
+}
+
+/**
+ * True when the company has had the application, not merely when a column says so.
+ *
+ * `employer_viewed_at` is the only stamp of an opening. A move off `new` is
+ * also an opening — somebody acted — except a withdrawal from `new`, which
+ * the candidate can do before anyone looks. That case stays unseen unless the
+ * history shows an employer move first.
+ */
+function companyOpened(
+  status: ApplicationStatus,
+  viewedAt: string | null,
+  events: readonly ApplicationEventStamp[],
+): boolean {
+  if (viewedAt) return true;
+  if (status === 'shortlisted' || status === 'interview' || status === 'hired' || status === 'rejected') return true;
+  if (status === 'withdrawn') return reachedShortlist(status, events);
+  return false;
+}
+
+/**
  * Where an application stands, as four steps: sent, seen by the company,
  * shortlisted (or called to an interview), and the decision. A step is done
  * once the application has passed it — a status past "new" means somebody at
@@ -184,4 +266,103 @@ export function timelineSteps(application: {
     },
     { key: 'decision', state: status === 'rejected' ? 'stopped' : decided ? 'done' : shortlisted ? 'current' : 'ahead', date: null },
   ];
+}
+
+/**
+ * Where a candidate's application stands, for the pill and the bar together.
+ *
+ * Dates, and where they are not:
+ *   sent        applications.created_at
+ *   seen        applications.employer_viewed_at only. A view does not write
+ *               application_events (the trigger ignores a change that is not
+ *               a status move), so a reached "seen" with a null stamp has no
+ *               date and none is invented from a later move.
+ *   shortlist   the earliest application_events row whose to_status is
+ *               shortlisted, or interview when they were interviewed without
+ *               a shortlist row. There is no shortlisted_at column.
+ *   decision    the earliest event to hired or rejected. There is no
+ *               hired_at, rejected_at, or decided_at column.
+ *   withdrawn   applications.withdrawn_at, which the check constraint keeps
+ *               in step with the status. The withdrawal event is the fallback.
+ *
+ * A row inserted already at its current status (the demo seed, and the
+ * backfill in migration 42) has a single event at that status. Intermediate
+ * steps then have no moment of their own.
+ *
+ * Rejection drops steps that never happened instead of crossing them: the
+ * bar stops at the decision, the last segment is the rejected one, and a
+ * shortlist that was never reached is absent. Withdrawal draws only the
+ * steps reached before it, in grey, and the line is the withdrawal.
+ */
+export function applicationProgress(application: {
+  status: ApplicationStatus;
+  created_at: string;
+  employer_viewed_at: string | null;
+  withdrawn_at?: string | null;
+  events?: readonly ApplicationEventStamp[];
+}): ApplicationProgress {
+  const events = application.events ?? [];
+  const { status } = application;
+  const shortlistDate = earliestTo(events, ['shortlisted']) ?? earliestTo(events, ['interview']);
+  const hiredDate = earliestTo(events, ['hired']);
+  const rejectedDate = earliestTo(events, ['rejected']);
+  const withdrawnDate = application.withdrawn_at ?? earliestTo(events, ['withdrawn']);
+  const shortlist = reachedShortlist(status, events);
+  const seen = companyOpened(status, application.employer_viewed_at, events) || shortlist;
+
+  const pill: ProgressPill =
+    status === 'withdrawn'
+      ? 'withdrawn'
+      : status === 'rejected'
+        ? 'rejected'
+        : status === 'hired'
+          ? 'hired'
+          : status === 'new' && !application.employer_viewed_at
+            ? 'new'
+            : 'review';
+
+  if (status === 'withdrawn') {
+    const segments: ProgressSegment[] = [
+      { key: 'sent', tone: 'withdrawn', date: application.created_at },
+    ];
+    if (seen) segments.push({ key: 'seen', tone: 'withdrawn', date: application.employer_viewed_at });
+    if (shortlist) segments.push({ key: 'shortlisted', tone: 'withdrawn', date: shortlistDate });
+    return { pill, segments, summary: 'withdrawn', summaryDate: withdrawnDate };
+  }
+
+  if (status === 'rejected') {
+    const segments: ProgressSegment[] = [
+      { key: 'sent', tone: 'done', date: application.created_at },
+      { key: 'seen', tone: 'done', date: application.employer_viewed_at },
+    ];
+    if (shortlist) segments.push({ key: 'shortlisted', tone: 'done', date: shortlistDate });
+    segments.push({ key: 'decision', tone: 'rejected', date: rejectedDate });
+    return { pill, segments, summary: 'rejected', summaryDate: rejectedDate };
+  }
+
+  const reached = {
+    sent: true,
+    seen,
+    shortlisted: shortlist,
+    decision: status === 'hired',
+  } as const;
+  const dates: Record<ProgressStepKey, string | null> = {
+    sent: application.created_at,
+    seen: application.employer_viewed_at,
+    shortlisted: shortlistDate,
+    decision: hiredDate,
+  };
+  const order: ProgressStepKey[] = ['sent', 'seen', 'shortlisted', 'decision'];
+  const firstOpen = order.findIndex((key) => !reached[key]);
+  const segments: ProgressSegment[] = order.map((key, index) => ({
+    key,
+    tone: reached[key] ? 'done' : index === firstOpen ? 'current' : 'upcoming',
+    date: reached[key] ? dates[key] : null,
+  }));
+
+  const summary: ProgressSummary = status === 'hired' ? 'hired' : shortlist ? 'shortlisted' : seen ? 'seen' : 'sent';
+  const summaryDate =
+    summary === 'hired' ? hiredDate : summary === 'shortlisted' ? shortlistDate : summary === 'seen' ? application.employer_viewed_at : application.created_at;
+
+  return { pill, segments, summary, summaryDate };
 }

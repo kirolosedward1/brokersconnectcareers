@@ -40,19 +40,16 @@ export function WithdrawButton({
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
       {/*
-        Red, because withdrawing is the irreversible one.
+        A quiet link on the card, and red once the pointer is on it.
 
-        It sat in the same grey as every other line on the card, which made the
-        action that takes an application back — and it cannot be put back, the
-        unique index refuses a second one — the least conspicuous thing there.
-        The employer console already settled this for "close the listing": a
-        colour each, and each one means something rather than varying for
-        variety.
+        The row is a date and this action. Filling it red made the card look
+        decided before anyone had chosen; the question that follows is where
+        the warning belongs, and the hover says the same thing on the way there.
       */}
       <Button
         variant="ghost"
         size="sm"
-        className="text-destructive hover:bg-destructive-muted hover:text-destructive"
+        className="h-auto shrink-0 px-0 py-0.5 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-destructive"
         disabled={pending}
         onClick={() => setAsking(true)}
       >
