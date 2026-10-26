@@ -13,7 +13,9 @@ import { parseLandingSlug } from '../src/lib/taxonomy.ts';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { detailTargets, goneRewritePath, recordState } = await import('../src/lib/seo/record-exists.ts');
+const { detailTargets, goneRewritePath, isLandingDistrict, recordState } = await import(
+  '../src/lib/seo/record-exists.ts'
+);
 
 let pass = 0;
 let fail = 0;
@@ -136,6 +138,40 @@ console.log('\n— asked as the signed-in reader');
     'unknown',
   );
   is('a card they may open', await asked('/agents/sara', { present: ['get_agent_card:sara'], browse: true }), 'exists');
+}
+
+console.log('\n— a district lookup is remembered');
+{
+  let fetches = 0;
+  const flaky = async () => {
+    fetches += 1;
+    if (fetches === 1) return new Response('no', { status: 500 });
+    return new Response(JSON.stringify([{ slug: 'cache-district-seo' }]), { status: 200 });
+  };
+  const path = '/jobs/resale-cache-district-seo';
+  is('a failed district lookup is not a landing', await isLandingDistrict(path, parseLandingSlug, flaky), null);
+  is('and a failure is not remembered', await isLandingDistrict(path, parseLandingSlug, flaky), true);
+  is('so the district is asked again', fetches, 2);
+  const asked = fetches;
+  is('a hit stays a landing', await isLandingDistrict(path, parseLandingSlug, flaky), true);
+  is('without another request', fetches, asked);
+
+  let misses = 0;
+  const empty = async () => {
+    misses += 1;
+    return new Response(JSON.stringify([]), { status: 200 });
+  };
+  const absent = '/jobs/resale-missing-district-seo';
+  is('a district that is not there is not a landing', await isLandingDistrict(absent, parseLandingSlug, empty), false);
+  is('and that miss is remembered', await isLandingDistrict(absent, parseLandingSlug, empty), false);
+  is('so a miss is asked once', misses, 1);
+  is(
+    'a job slug is not asked as a district',
+    await isLandingDistrict('/jobs/consultant-new-cairo-123456', parseLandingSlug, async () => {
+      throw new Error('should not fetch');
+    }),
+    false,
+  );
 }
 
 delete process.env.NEXT_PUBLIC_SUPABASE_URL;

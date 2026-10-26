@@ -44,7 +44,8 @@ import { markupTags } from '~/i18n/rich';
 import { useNextPage } from '~/lib/use-next-page';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useLargeText } from '~/theme/large-text';
 
 /**
  * Reports — the website's /admin/reports, every view and filter of it.
@@ -320,6 +321,7 @@ function StateBadge({ item }: { item: { target_type: ReportTargetType; target_st
 }
 
 function CaseCard({ item }: { item: ReportCase }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -370,7 +372,11 @@ function CaseCard({ item }: { item: ReportCase }) {
         )}
         {item.target_type === 'job' && item.company_name_ar ? (
           item.company_id && live ? (
-            <Pressable accessibilityRole="link" onPress={() => openPath(targetPath('company', item.company_id as string))}>
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => openPath(targetPath('company', item.company_id as string))}
+              style={{ minHeight: hitTarget, justifyContent: 'center' }}
+            >
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, item.company_name_ar, item.company_name_en)}
               </Text>
@@ -417,7 +423,7 @@ function CaseCard({ item }: { item: ReportCase }) {
           <Text variant="caption" tone="mutedForeground">
             {t('admin.snapshotLabel')}
           </Text>
-          <Text variant="small" numberOfLines={4}>
+          <Text variant="small" numberOfLines={large ? undefined : 4}>
             {snapshot.excerpt}
           </Text>
         </View>

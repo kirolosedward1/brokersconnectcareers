@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type AccessibilityActionEvent, type AccessibilityActionInfo, type ViewStyle } from 'react-native';
 import { useTheme } from '~/theme/provider';
-import { corner, space } from '~/theme/tokens';
+import { corner, motion, space } from '~/theme/tokens';
 import { PressableScale } from './pressable-scale';
 
 /**
@@ -51,7 +51,7 @@ export function Card({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={320}
-      scaleTo={0.985}
+      scaleTo={motion.cardPressScale}
       style={({ pressed }) => [base, pressed && { backgroundColor: colors.muted }, style]}
     >
       {children}

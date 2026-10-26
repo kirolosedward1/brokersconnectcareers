@@ -9,7 +9,7 @@ import { usePathname } from '@/i18n/navigation';
  * with its reason — and its notifications, where the decision was announced.
  * Their own data is still theirs while a decision about them stands.
  */
-const STILL_OPEN = ['/dashboard/account', '/notifications'];
+const STILL_OPEN = ['/dashboard/account', '/dashboard/notifications', '/notifications'];
 
 /**
  * A suspended account's console: where it stands on every page — what

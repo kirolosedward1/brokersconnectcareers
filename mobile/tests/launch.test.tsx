@@ -1,12 +1,18 @@
 import { Animated, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { LAUNCH_MARK_WIDTH, LAUNCH_WORDMARK_HEIGHT, welcomeTile, welcomeWordmarkHeight } from '~/components/brand/launch-size';
 import { BREATHE_AFTER_MS, LaunchCurtain } from '~/components/brand/launch-screen';
 import { LAUNCH_HOLD_MS, launchReady, resetLaunchForTests } from '~/features/launch';
 import { useReduceMotion } from '~/theme/reduce-motion';
 
 /** The curtain is hidden from VoiceOver, so queries have to be told to look at it. */
 const HIDDEN = { includeHiddenElements: true };
+
+// The tests' types are Jest's alone, so the little of Node used here is typed where it is used.
+declare const __dirname: string;
+const { readFileSync } = jest.requireActual<{ readFileSync: (path: string, encoding: 'utf8') => string }>('fs');
+const { join } = jest.requireActual<{ join: (...parts: string[]) => string }>('path');
 
 /*
   The app's opening: the logo mark at the middle of the page and the wordmark
@@ -43,6 +49,27 @@ async function wait(ms: number) {
 
 type Style = { opacity?: unknown; transform?: unknown[] };
 const styleOf = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID, HIDDEN).props.style) as Style;
+
+it('draws the mark at the splash width, and the wordmark in the artwork\'s proportion', () => {
+  render(<LaunchCurtain />);
+  const mark = StyleSheet.flatten(screen.getByTestId('launch-mark-image', HIDDEN).props.style);
+  const word = StyleSheet.flatten(screen.getByTestId('launch-wordmark', HIDDEN).props.style);
+  // The mark is 44 points (it was 76). The wordmark is 14 points tall (it was 20, then 12).
+  expect(LAUNCH_MARK_WIDTH).toBe(44);
+  expect(LAUNCH_WORDMARK_HEIGHT).toBe(14);
+  expect(mark).toMatchObject({ width: LAUNCH_MARK_WIDTH, height: LAUNCH_MARK_WIDTH });
+  expect(word).toMatchObject({ width: (1375 / 286) * LAUNCH_WORDMARK_HEIGHT, height: LAUNCH_WORDMARK_HEIGHT });
+
+  // The welcome lockup is that same share of its previous tile (52 / 44) and wordmark (26 / 22).
+  expect(welcomeTile(false)).toBe(30);
+  expect(welcomeTile(true)).toBe(25);
+  expect(welcomeWordmarkHeight(false)).toBe(15);
+  expect(welcomeWordmarkHeight(true)).toBe(13);
+
+  // The native splash is given that same width, so the handoff does not jump.
+  const config = readFileSync(join(__dirname, '../app.config.ts'), 'utf8');
+  expect(config).toContain('imageWidth: LAUNCH_MARK_WIDTH');
+});
 
 it('draws the mark and the wordmark, hidden from VoiceOver, and takes the launch screen down once laid out over it', () => {
   render(<LaunchCurtain />);

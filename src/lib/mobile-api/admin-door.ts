@@ -9,8 +9,8 @@
  *     The database already insists (migration 311: is_admin() is false at
  *     aal1 for such an account), so this only turns its silent refusal into a
  *     word the app can act on — "enter your code".
- *   - where the deployment requires one (ADMIN_MFA_REQUIRED, on by default in
- *     production), an admin without an authenticator is turned away until
+ *   - where the deployment requires one (ADMIN_MFA_REQUIRED=true; unset means
+ *     it does not), an admin without an authenticator is turned away until
  *     they set one up — the same rule that sends them from /admin to enrol.
  *
  * The role itself is the action's to check (assertAdmin) and the database's

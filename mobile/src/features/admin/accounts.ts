@@ -123,6 +123,7 @@ export type AccountMembership = {
     id: string;
     name_ar: string;
     name_en: string | null;
+    slug: string;
     verification_status: VerificationStatus;
     suspended_at: string | null;
   } | null;
@@ -177,7 +178,7 @@ export function useAccountFile(id: string | undefined) {
         supabase.rpc('admin_user_activity', { p_user: user }),
         supabase
           .from('company_members')
-          .select('role, created_at, company:companies (id, name_ar, name_en, verification_status, suspended_at)')
+          .select('role, created_at, company:companies (id, name_ar, name_en, slug, verification_status, suspended_at)')
           .eq('user_id', user),
         supabase.from('agent_profiles').select('id, slug, visibility, restricted_at').eq('user_id', user).maybeSingle(),
         supabase

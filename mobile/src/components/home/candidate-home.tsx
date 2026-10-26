@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -11,7 +11,7 @@ import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
-import { StatRow } from '~/components/dashboard/stat-row';
+import { StatRow, StatRowPlaceholder } from '~/components/dashboard/stat-row';
 import { WeeklySummary } from '~/components/home/weekly-summary';
 import { JobBrowse } from '~/components/home/job-browse';
 import { RecentlyViewed } from './recently-viewed';
@@ -40,6 +40,7 @@ import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { tabsFor } from '~/lib/tabs';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -77,6 +78,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const figuresPending = summary.isPending || applications.isPending;
   const unreadable = !s && applications.isError;
   const noApplications = s ? s.applications_total === 0 : applications.isSuccess && applications.data.length === 0;
+  const hasApplied = s ? s.applications_total > 0 : (applications.data?.length ?? 0) > 0;
 
   const refresh = () =>
     Promise.all([
@@ -123,11 +125,11 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       {/* Who sees their directory card was decided before onboarding asked. */}
       {profile ? <VisibilityAsk /> : null}
 
-      {/* The phone's question, with its reason, until it has been answered. */}
-      {profile ? <PushPrompt audience="candidate" /> : null}
+      {/* The phone's question, with its reason — once there is an application to hear back on — until answered. */}
+      {profile && hasApplied ? <PushPrompt audience="candidate" /> : null}
 
       {figuresPending ? (
-        <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />
+        <StatRowPlaceholder count={5} label={t('common.loading')} />
       ) : (
         <>
           {next ? (
@@ -181,7 +183,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
                 {t('dashboard.emptyCandidateBody')}
               </Text>
               <View style={{ marginTop: space[2] }}>
-                <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} />
+                <Button label={t('nav.browseJobs')} onPress={() => router.navigate('/jobs')} />
               </View>
             </View>
           ) : null}
@@ -335,7 +337,7 @@ function HeroPhoto({ profile, completeness }: { profile: ProfileRow; completenes
   // How complete the profile is, round the photo; a tap opens it at what is missing.
   if (completeness !== null) {
     return (
-      <CompletenessRing percent={completeness} size={64} radius={18} onPress={() => router.navigate('/account/profile')}>
+      <CompletenessRing percent={completeness} size={64} radius={18} onHero onPress={() => router.navigate('/account/profile')}>
         {photo}
       </CompletenessRing>
     );
@@ -371,6 +373,7 @@ function RecentApplication({ application, first }: { application: CandidateAppli
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const job = application.job;
   if (!job) return null;
 
@@ -383,10 +386,12 @@ function RecentApplication({ application, first }: { application: CandidateAppli
       accessibilityRole="link"
       accessibilityLabel={formatList([title, company, status], locale)}
       onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
+      // At the accessibility sizes the status goes under the title rather than
+      // squeezing it to a word a line.
       style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: space[3],
+        flexDirection: large ? 'column' : 'row',
+        alignItems: large ? 'flex-start' : 'center',
+        gap: large ? space[2] : space[3],
         paddingHorizontal: space[4],
         paddingVertical: space[3],
         borderTopWidth: first ? 0 : 1,
@@ -394,11 +399,11 @@ function RecentApplication({ application, first }: { application: CandidateAppli
         backgroundColor: pressed ? colors.muted : 'transparent',
       })}
     >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text weight="medium" numberOfLines={1}>
+      <View style={[{ gap: 2 }, large ? { alignSelf: 'stretch' } : { flex: 1 }]}>
+        <Text weight="medium" numberOfLines={large ? undefined : 1}>
           {title}
         </Text>
-        <Text variant="small" tone="mutedForeground" numberOfLines={1}>
+        <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 1}>
           {`${company} · ${formatDate(application.created_at, locale)}`}
         </Text>
       </View>

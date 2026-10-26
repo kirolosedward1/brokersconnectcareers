@@ -24,12 +24,13 @@ import { Dialog } from '@/components/ui/dialog';
  *   const signedIn = await requireSignIn({ reason: 'save', next: '/jobs/abc' });
  *   if (signedIn) save();
  *
- * The promise answers true once a password sign-in has gone through — the
- * dialog has closed and the server has been asked to draw the page again, so
- * what the page knows about the reader (can they save, are they following)
- * catches up while the action already runs with the new session cookie — and
- * false when the dialog is dismissed. Sign-up and the one-tap providers leave
- * the page as they always did, with `next` pointing back here; a new account
+ * The promise answers true once a password sign-in has gone through, and
+ * false when the dialog is dismissed. The dialog has closed and the action
+ * that asked runs with the new session cookie; that action's own render is
+ * what redraws the page. Refreshing first would draw the listing from before
+ * the save, and that draw can arrive afterwards and put the button back.
+ * Sign-up and the one-tap providers leave the page as they always did, with
+ * `next` pointing back here; a new account
  * has onboarding to pass through first, and OAuth returns through the
  * callback.
  *
@@ -74,7 +75,6 @@ export function SignInGateProvider({
 }) {
   const t = useTranslations('auth');
   const tCommon = useTranslations('common');
-  const router = useRouter();
   const [ask, setAsk] = useState<SignInAsk | null>(null);
   const answer = useRef<((signedIn: boolean) => void) | null>(null);
 
@@ -104,17 +104,14 @@ export function SignInGateProvider({
       {ask ? (
         <Dialog open onClose={() => settle(false)} label={titles[ask.reason]} closeLabel={tCommon('close')}>
           <div className="space-y-5">
-            <div className="space-y-1 pe-8">
-              <h2 className="text-lg font-semibold">{titles[ask.reason]}</h2>
-              <p className="text-sm text-muted-foreground">{t('gateLead')}</p>
-            </div>
+            <h2 className="pe-8 text-lg font-semibold">{titles[ask.reason]}</h2>
 
             {/* The listing named, as the sign-in page names it (return-intent.tsx). */}
             {ask.intent ? (
-              <div className="flex gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+              <div className="flex gap-3 rounded-xl border border-border bg-card p-4">
                 <Briefcase className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">{t('applyingTo', { job: ask.intent.job })}</p>
+                  <p className="text-sm font-bold">{t('applyingTo', { job: ask.intent.job })}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {t('applyingToCompany', { company: ask.intent.company })}
                   </p>
@@ -129,9 +126,9 @@ export function SignInGateProvider({
               appleEnabled={appleEnabled}
               nextPath={ask.next}
               onSignedIn={() => {
-                // The page is drawn again for the signed-in reader; the
-                // action that asked runs meanwhile, on the cookie already set.
-                router.refresh();
+                // The action that asked redraws the page once it has run.
+                // A refresh started here would render the listing from
+                // before the save and can land after it, clearing the button.
                 settle(true);
               }}
             />

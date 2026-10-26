@@ -14,7 +14,7 @@ import { ThemeProvider } from '~/theme/provider';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as ListingsScreen from '../src/app/(tabs)/(listings)/employer/jobs/index';
 import { DeclaredTabs } from './declared-tabs';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { fakeServer } from './server';
 
@@ -125,6 +125,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', () => [me]);
   server.on('POST /rest/v1/rpc/my_company_id', () => company?.id ?? null);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(company));
   server.on('GET /rest/v1/companies', () => (company ? [company] : []));
   server.on('POST /rest/v1/rpc/employer_summary', () => summary());
   server.on('POST /rest/v1/rpc/employer_trend', trend);
@@ -200,10 +201,10 @@ describe("an employer's home", () => {
     const result = await renderRouter(app, { initialUrl: '/' });
 
     expect(await screen.findByText(ar.dashboard.overview)).toBeTruthy();
-    expect(await screen.findByText('3 متقدمين مستنيين منك')).toBeTruthy();
+    expect(await screen.findByText('3 متقدمين بانتظارك')).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statApplicantsNew}: 3`)).toBeTruthy();
     // Six this week against four the week before: up by half.
-    expect(screen.getByLabelText(`${ar.dashboard.statApplicants7d}: 6، 50% ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
+    expect(screen.getByLabelText(`${ar.dashboard.statApplicants7d}: 6، ${ar.app.dashboard.trendUp.replace('{value}', '50%')} ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statVerification}: ${ar.companies.verified}`)).toBeTruthy();
     // The month, and how each listing converts.
     expect(await screen.findByText(ar.dashboard.trendApplicationsTitle)).toBeTruthy();

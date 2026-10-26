@@ -7,6 +7,7 @@ import type { AdminOverview } from '@/lib/supabase/database.types';
 import { openDecision } from '~/components/admin/decision-sheet';
 import { AdminGate, auditLabel, SectionTitle } from '~/components/admin/kit';
 import { MailOffBanner } from '~/components/admin/mail-banner';
+import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { StatStrip, type StatCell } from '~/components/dashboard/stat-strip';
 import { TrendBars } from '~/components/dashboard/trend-bars';
 import { useHeaderBell } from '~/components/notifications/header-bell';
@@ -18,6 +19,7 @@ import { ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAdminOverview, useAdminSummary, useAdminTrend, useDeletionRequests, type DeletionRequest } from '~/features/admin/queries';
 import { useTabList } from '~/features/tab-bar';
+import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
@@ -73,6 +75,7 @@ function Overview() {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const { viewer } = useSession();
   const overview = useAdminOverview();
   const trend = useAdminTrend();
   const deletions = useDeletionRequests();
@@ -172,6 +175,7 @@ function Overview() {
       refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
     >
+      {viewer?.profile ? <StandingNotice profile={viewer.profile} company={viewer.company} companyOnly /> : null}
       <MailOffBanner />
       <Text tone="mutedForeground">{t('admin.overviewLede')}</Text>
 
@@ -212,7 +216,7 @@ function Overview() {
       <View style={{ gap: space[2] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
           <SectionTitle>{t('admin.recentActivity')}</SectionTitle>
-          <Pressable accessibilityRole="link" onPress={go('/admin/audit')} hitSlop={8} style={{ paddingHorizontal: space[1] }}>
+          <Pressable accessibilityRole="link" onPress={go('/admin/audit')} hitSlop={8} style={{ paddingHorizontal: space[1], minHeight: hitTarget, justifyContent: 'center' }}>
             <Text variant="caption" weight="medium" tone="primary">
               {t('admin.auditLog')}
             </Text>

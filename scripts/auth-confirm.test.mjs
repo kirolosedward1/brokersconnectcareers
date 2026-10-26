@@ -131,8 +131,10 @@ console.log('\n— the generated mail');
   const confirmation = readFileSync(join(ROOT, 'supabase', 'templates', 'confirmation.html'), 'utf8');
   const recovery = readFileSync(join(ROOT, 'supabase', 'templates', 'recovery.html'), 'utf8');
   is(
-    'confirmation says 24 hours, in MSA',
-    confirmation.includes('هذا الرابط صالح لمدة 24 ساعة، ويعمل مرة واحدة فقط.') && confirmation.includes('أهلاً بك في بروكرز كونكت'),
+    'confirmation says one hour, in MSA',
+    confirmation.includes('هذا الرابط صالح لمدة ساعة واحدة، ويعمل مرة واحدة فقط.') &&
+      confirmation.includes('This link is valid for one hour, and it works only once.') &&
+      confirmation.includes('أهلًا بك في بروكرز كونكت'),
     true,
   );
   is('recovery still says one hour', recovery.includes('هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.') && !recovery.includes('24 ساعة'), true);
@@ -370,6 +372,28 @@ console.log('\n— signing out on the website');
     /auth\.signOut\(\{ scope: 'local' \}\)/.test(readFileSync(join(ROOT, 'src', 'components', String(file)), 'utf8')),
   );
   is('the menus and onboarding sign this browser out', local.length >= 3, true);
+}
+
+console.log('\n— tanween sits on the alef');
+{
+  // ALEF + FATHATAN (اً) is the form this pass removes. TEH MARBUTA + FATHATAN
+  // (ةً), as in عادةً, is a different letter and is not this check.
+  const alefThenFathatan = /\u0627\u064B/;
+  is('ta marbuta with fathatan is left alone', alefThenFathatan.test('عادةً'), false);
+  is('alef then fathatan is the form that fails', alefThenFathatan.test('تلقائياً'), true);
+  const files = [
+    'scripts/auth-templates.mjs',
+    'supabase/templates/confirmation.html',
+    'supabase/templates/recovery.html',
+    'supabase/templates/magic-link.html',
+    'supabase/templates/email-change.html',
+    'supabase/templates/reauthentication.html',
+    'src/lib/actions/account.ts',
+  ];
+  for (const file of files) {
+    const text = readFileSync(join(ROOT, file), 'utf8');
+    is(`${file} writes fathatan on the alef`, alefThenFathatan.test(text), false);
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

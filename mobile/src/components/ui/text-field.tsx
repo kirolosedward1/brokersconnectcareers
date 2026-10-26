@@ -1,4 +1,4 @@
-import { forwardRef, useId, useState, type ReactNode } from 'react';
+import { forwardRef, useState, type ReactNode } from 'react';
 import { InputAccessoryView, Keyboard, Platform, StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { appDirection } from '~/lib/direction';
@@ -42,13 +42,14 @@ export const TextField = forwardRef<
     ltr?: boolean;
     /** The focus ring's colour, where the brand colour is the surface around it (Home's panel). */
     focusColor?: string;
+    /** Brand wash and brand edge: a field the other person will read. */
+    tone?: 'default' | 'brand';
   }
->(function TextField({ leading, trailing, ltr = false, focusColor, style, onFocus, onBlur, ...props }, ref) {
+>(function TextField({ leading, trailing, ltr = false, focusColor, tone = 'default', style, onFocus, onBlur, ...props }, ref) {
   const { colors, scheme } = useTheme();
   const error = useFieldError();
   const [focused, setFocused] = useState(false);
   const ring = focusColor ?? colors.primary;
-  const accessory = `done-${useId()}`;
   const padWithoutReturn = Platform.OS === 'ios' && !props.multiline && NO_RETURN_KEY.has(props.keyboardType);
 
   return (
@@ -58,11 +59,11 @@ export const TextField = forwardRef<
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[2],
-        paddingHorizontal: space[4] - 2,
+        paddingHorizontal: space[3.5],
         ...corner('lg'),
         borderWidth: 1,
-        borderColor: focused ? ring : error ? colors.destructive : colors.input,
-        backgroundColor: colors.card,
+        borderColor: focused ? ring : error ? colors.destructive : tone === 'brand' ? colors.primary : colors.input,
+        backgroundColor: tone === 'brand' ? `${colors.primary}14` : colors.card,
         // The focus ring: the border a little heavier, without moving the text.
         outlineWidth: focused ? 1 : 0,
         outlineColor: ring,
@@ -77,7 +78,7 @@ export const TextField = forwardRef<
         keyboardAppearance={scheme}
         returnKeyType={props.multiline ? undefined : 'done'}
         accessibilityHint={error ?? undefined}
-        inputAccessoryViewID={padWithoutReturn ? accessory : undefined}
+        inputAccessoryViewID={padWithoutReturn ? DONE_ACCESSORY : undefined}
         onFocus={(event) => {
           setFocused(true);
           onFocus?.(event);
@@ -90,6 +91,9 @@ export const TextField = forwardRef<
         style={[
           {
             flex: 1,
+            // The web's default min width is the text's own width, so a long
+            // field pushes the eye past the screen (the input wider than the row).
+            minWidth: 0,
             minHeight: hitTarget,
             fontFamily: font.regular,
             fontSize: scale.body.fontSize,
@@ -102,16 +106,28 @@ export const TextField = forwardRef<
         ]}
       />
       {trailing}
-      {padWithoutReturn ? <DoneAccessory id={accessory} /> : null}
     </View>
   );
 });
+
+/** The one Done bar every number and phone pad shares (KeyboardDone, mounted once at the root). */
+const DONE_ACCESSORY = 'keyboard-done';
 
 /**
  * The Done above a number or phone pad: at the end of the reading line, a
  * capsule on the card surface floating over the page, as iOS's own bars float
  * over the keyboard. Pressing it puts the keyboard away.
+ *
+ * Mounted once, in the root layout, and shared by ID — React Native's own
+ * pattern. Each field used to mount its own, and the job wizard's salary step
+ * had three at once; there, tapping the highest-salary field did not bring up
+ * the keyboard on the phone.
  */
+export function KeyboardDone() {
+  if (Platform.OS !== 'ios') return null;
+  return <DoneAccessory id={DONE_ACCESSORY} />;
+}
+
 function DoneAccessory({ id }: { id: string }) {
   const t = useTranslations('app');
   const { colors, shadow } = useTheme();

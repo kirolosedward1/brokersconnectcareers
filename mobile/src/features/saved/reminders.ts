@@ -4,17 +4,24 @@ import { jobIsLive } from '@/lib/job-state';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { useListOwner } from '~/features/jobs/recent';
 import { askPermission, readPermission } from '~/features/push/device';
+import { callAction } from '~/lib/api';
 import { createLocalList } from '~/lib/local-list';
 
 /**
- * "Remind me before it closes": a notification of the app's own, on this
- * phone, the day before a saved listing stops taking applications, at ten in
- * the morning in Cairo — early enough in the day to apply, late enough not to
- * wake anybody. Nothing about it reaches the website.
+ * "Remind me before it closes": a notification of the app's own, the day
+ * before a saved listing stops taking applications, at ten in the morning in
+ * Cairo — early enough in the day to apply, late enough not to wake anybody.
  *
- * Kept per person (src/lib/local-list.ts) with the system's id for it, so it
- * can be taken back: from the card, by taking the bookmark off, or when the
- * listing closes early. A person's reminders are theirs: when they sign out
+ * When it goes off is kept on the bookmark (saved_jobs.remind_at, migration
+ * 366), written through the website's setSavedJobReminder: the website's saved
+ * page says it and can take it back, a new phone finds it, and a bookmark
+ * taken off anywhere takes it with it. The notification scheduled on this
+ * phone is a copy of that, made to match each time the saved list is read
+ * (reconcileReminders, from reminders-follow.ts).
+ *
+ * The copy is kept per person (src/lib/local-list.ts) with the system's id for
+ * it, so it can be taken back: from the card, by taking the bookmark off, or
+ * when the listing closes early. A person's reminders are theirs: when they sign out
  * the phone stops holding them, so a lock screen never tells the next person
  * what they were applying for, and they are put back when the person returns
  * (syncReminders, from the push bridge).
@@ -150,6 +157,11 @@ export function reminderDay(at: Date, expiresAt: string | Date): 'today' | 'tomo
   return closes && cairoDayNumber(closes) === cairoDayNumber(at) ? 'today' : 'tomorrow';
 }
 
+/** Whether a bookmark's remind_at is still to come. */
+export function remindAtPending(remindAt: string | null, now: number = Date.now()): boolean {
+  return remindAt !== null && new Date(remindAt).getTime() > now;
+}
+
 /** Whether a reminder is still to go off: one that has gone off is done with, wherever it is still listed. */
 export function isPending(reminder: JobReminder, now: number = Date.now()): boolean {
   return reminder.fireAt > now;
@@ -207,10 +219,22 @@ export type ReminderResult =
   | { status: 'closing' }
   | { status: 'failed' };
 
+/** Tells the account when to remind, or (null) that there is no reminder; whether it took it. */
+async function keepOnAccount(jobId: string, at: Date | null): Promise<'kept' | 'closing' | 'not_saved' | 'failed'> {
+  try {
+    const result = await callAction('setSavedJobReminder', { jobId, remindAt: at ? at.toISOString() : null });
+    if (result.ok) return 'kept';
+    return result.error === 'closing' || result.error === 'not_saved' ? result.error : 'failed';
+  } catch {
+    return 'failed';
+  }
+}
+
 /**
- * Sets the reminder for a saved listing, replacing one already set. Asks the
- * phone first when it has never been asked: the reader has just said what
- * they want to hear about, the reason the app waits for (features/push).
+ * Sets the reminder for a saved listing, replacing one already set: on the
+ * account first, then on the phone. Asks the phone first when it has never
+ * been asked: the reader has just said what they want to hear about, the
+ * reason the app waits for (features/push).
  */
 export function setReminder(
   owner: string,
@@ -224,6 +248,9 @@ export function setReminder(
     let permission = await readPermission().catch(() => 'undetermined' as const);
     if (permission === 'undetermined') permission = await askPermission().catch(() => 'denied' as const);
     if (permission !== 'granted') return { status: 'denied' };
+    const kept = await keepOnAccount(job.id, at);
+    if (kept === 'closing') return { status: 'closing' };
+    if (kept !== 'kept') return { status: 'failed' };
     try {
       const before = (await jobReminders.read(owner)).find((reminder) => reminder.id === job.id);
       if (before) await cancelScheduled(before.notificationId);
@@ -248,13 +275,27 @@ const TAKEN_KEPT = 10;
 const takenKey = (owner: string, jobId: string) => `${owner}\n${jobId}`;
 
 /**
- * Takes a listing's reminder back; whether there was one. `withBookmark`: it
- * goes because the bookmark did, and comes back if the bookmark does.
+ * When each reminder was last taken back here, by person and listing: a read
+ * of the saved list from before then still says it is set, and must not put
+ * it back (reconcileReminders).
+ */
+const takenBackAt = new Map<string, number>();
+
+/**
+ * Takes a listing's reminder back, from the account and the phone; whether it
+ * is gone (false when the website could not be told, and nothing changed).
+ * `withBookmark`: it goes because the bookmark did — the row and its reminder
+ * are gone already, or (a listing hidden) stay on the account — so only the
+ * phone's copy goes, and comes back if the bookmark does.
  */
 export function cancelReminder(owner: string, jobId: string, { withBookmark = false }: { withBookmark?: boolean } = {}): Promise<boolean> {
   return serially(async () => {
+    if (!withBookmark) {
+      if ((await keepOnAccount(jobId, null)) === 'failed') return false;
+      takenBackAt.set(takenKey(owner, jobId), Date.now());
+    }
     const reminder = (await jobReminders.read(owner)).find((item) => item.id === jobId);
-    if (!reminder) return false;
+    if (!reminder) return !withBookmark;
     jobReminders.remove(owner, jobId);
     await cancelScheduled(reminder.notificationId);
     if (withBookmark) {
@@ -268,9 +309,10 @@ export function cancelReminder(owner: string, jobId: string, { withBookmark = fa
 }
 
 /**
- * The bookmark is back (Undo, or saved again): so is the reminder it took
- * with it, if it is still to go off, none has been set since, and the phone
- * still lets the app notify. Never asks the phone anything; whether it was put back.
+ * The bookmark is back (Undo, saved again, or the listing shown again): so is
+ * the reminder it took with it — on the account and the phone — if it is
+ * still to go off, none has been set since, and the phone still lets the app
+ * notify. Never asks the phone anything; whether it was put back.
  */
 export function restoreReminder(owner: string, jobId: string, now: Date = new Date()): Promise<boolean> {
   return serially(async () => {
@@ -280,6 +322,7 @@ export function restoreReminder(owner: string, jobId: string, now: Date = new Da
     if (!reminder || !isPending(reminder, now.getTime())) return false;
     if ((await jobReminders.read(owner)).some((item) => item.id === jobId)) return false;
     if ((await readPermission().catch(() => 'denied')) !== 'granted') return false;
+    if ((await keepOnAccount(jobId, new Date(reminder.fireAt))) !== 'kept') return false;
     try {
       // Set again now: a read of the list from before the bookmark came back does not take it for unsaved.
       jobReminders.add(owner, { ...reminder, notificationId: await schedule(reminder), setAt: now.getTime() });
@@ -293,6 +336,7 @@ export function restoreReminder(owner: string, jobId: string, now: Date = new Da
 /** For tests: nothing held for an Undo. */
 export function forgetTakenRemindersForTests() {
   takenWithBookmark.clear();
+  takenBackAt.clear();
 }
 
 /**
@@ -331,42 +375,74 @@ export function syncReminders(owner: string, now: Date = new Date()): Promise<vo
 }
 
 /**
- * The reminders made to match the saved list as just read (`readAt`): one
- * whose listing is no longer saved — taken off on the website, say — or has
- * closed early goes; one whose closing date moved is set again for the new
- * date, or goes if there is no time left. Only reminders set before the read
- * are judged by it, so one set a moment ago is not taken for unsaved.
+ * The phone's reminders made to match the saved list as just read (`readAt`),
+ * with each bookmark's `remind_at` — the account's word on when to remind:
+ *
+ * - one the account no longer holds — taken back on the website, the bookmark
+ *   taken off anywhere — goes from the phone;
+ * - one the account holds and the phone does not — set on another phone, or
+ *   before this one was signed in — is scheduled here, if the phone lets the
+ *   app notify (it is never asked here);
+ * - one whose listing has closed, early or for good, goes from both;
+ * - one whose closing date moved is worked out again for the new date, and the
+ *   account told.
+ *
+ * Only reminders set here before the read are judged by it, so one set a
+ * moment ago is not taken for unsaved.
  */
 export function reconcileReminders(
   owner: string,
-  jobs: readonly { id: string; slug: string; status: JobStatus; expires_at: string | null }[],
+  jobs: readonly { id: string; slug: string; status: JobStatus; expires_at: string | null; remind_at: string | null }[],
   readAt: number,
   wordsFor: (jobId: string) => ReminderWords | null,
   now: Date = new Date(),
 ): Promise<void> {
   return serially(async () => {
     const kept = await jobReminders.read(owner);
+    const held = new Map(kept.map((reminder) => [reminder.id, reminder]));
+    const drop = async (reminder: JobReminder | undefined) => {
+      if (!reminder) return;
+      jobReminders.remove(owner, reminder.id);
+      await cancelScheduled(reminder.notificationId);
+    };
+
     for (const reminder of kept) {
       const job = jobs.find((item) => item.id === reminder.id);
-      if (!job) {
-        if (reminder.setAt < readAt) {
-          jobReminders.remove(owner, reminder.id);
-          await cancelScheduled(reminder.notificationId);
-        }
-        continue;
-      }
+      if ((!job || !job.remind_at) && reminder.setAt < readAt) await drop(reminder);
+    }
+
+    let allowed: boolean | null = null;
+    for (const job of jobs) {
+      if (!job.remind_at) continue;
+      const local = held.get(job.id);
       const at = jobIsLive(job) ? reminderAt(job.expires_at, now) : null;
       if (!at || !job.expires_at) {
-        jobReminders.remove(owner, reminder.id);
-        await cancelScheduled(reminder.notificationId);
+        // Nothing left to remind of, here or anywhere.
+        await drop(local);
+        await keepOnAccount(job.id, null);
         continue;
       }
-      if (job.expires_at === reminder.expiresAt) continue;
+      let fireAt = new Date(job.remind_at).getTime();
+      if (Number.isNaN(fireAt) || fireAt <= now.getTime()) {
+        // Gone off already: done with.
+        await drop(local);
+        continue;
+      }
+      // The closing date moved since it was set (or the reminder now falls after it).
+      const moved = (local && local.expiresAt !== job.expires_at) || fireAt >= new Date(job.expires_at).getTime();
+      if (moved && at.getTime() !== fireAt && (await keepOnAccount(job.id, at)) === 'kept') fireAt = at.getTime();
+      if (local && local.fireAt === fireAt && local.expiresAt === job.expires_at) continue;
       const words = wordsFor(job.id);
       if (!words) continue;
-      await cancelScheduled(reminder.notificationId);
-      const { title, body } = words(reminderDay(at, job.expires_at));
-      const fields = { id: job.id, slug: job.slug, title, body, fireAt: at.getTime() };
+      // Taken back here since the read: it is not set, whatever the read says.
+      if (!local && (takenBackAt.get(takenKey(owner, job.id)) ?? 0) >= readAt) continue;
+      if (!local) {
+        allowed ??= (await readPermission().catch(() => 'denied')) === 'granted';
+        if (!allowed) continue;
+      }
+      if (local) await cancelScheduled(local.notificationId);
+      const { title, body } = words(reminderDay(new Date(fireAt), job.expires_at));
+      const fields = { id: job.id, slug: job.slug, title, body, fireAt };
       jobReminders.add(owner, { ...fields, expiresAt: job.expires_at, notificationId: await schedule(fields), setAt: now.getTime() });
     }
   }).catch(() => {});

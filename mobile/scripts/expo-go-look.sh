@@ -12,7 +12,9 @@
 # screen before it applies the app's right to left when it opens an update
 # from the network and when it comes back from its own home screen, and lays
 # its bars out in its own language — English here, as on an iPhone set to
-# English. So it opens the update — the welcome, then Home — and three screens
+# English. So it opens the update — the welcome in the light appearance and
+# again in the dark, then Home — the Jobs tab in the light and in the dark,
+# and three screens
 # by link, then goes back to Expo Go's home and opens the app again from there:
 # the welcome once more, as every launch with nobody signed in opens on it,
 # then Home. Each screen
@@ -232,8 +234,11 @@ print(len(read))
 PY
 }
 
-# same_screen <shot> <shot>: whether two readings are the same screen, the
-# clock aside — a swipe that left the list where it was.
+# same_screen <shot> <shot>: whether two readings are the same screen. The
+# clock is left out, and so is the order of the lines and how far across they
+# sit: text recognition swaps two chips on one row between readings of a
+# screen that has not moved, which used to count as a scroll and skip the
+# second try. A list that moved has its lines at different heights.
 same_screen() {
   python3 - "$out/$1.boxes" "$out/$2.boxes" <<'PY'
 import re, sys
@@ -242,7 +247,17 @@ def lines(path):
         rows = [raw.rstrip("\n") for raw in open(path, encoding="utf-8")]
     except OSError:
         return None
-    return [row for row in rows if not re.match(r"y[0-4] ", row)]
+    found = []
+    for row in rows:
+        m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", row)
+        if not m:
+            continue
+        y = int(m[1])
+        if 0 <= y <= 4:
+            continue
+        found.append((y, m[4].strip()))
+    found.sort()
+    return found
 a, b = lines(sys.argv[1]), lines(sys.argv[2])
 print("yes" if a is not None and a == b else "no")
 PY
@@ -323,21 +338,58 @@ tour() {
   echo "::endgroup::"
 }
 
+# appearance <light|dark>: the simulator's appearance. The app follows the
+# phone until someone chooses otherwise (src/theme/provider.tsx). The welcome
+# is drawn dark in either one (src/app/welcome.tsx); both are kept so each is
+# in the run's artifact.
+appearance() {
+  xcrun simctl ui "$udid" appearance "$1"
+  sleep 2
+}
+
+# settle_scroll <shot> <names wanted> <flow> <what>: read the bar again after
+# a pause and, still not what a finished scroll reads, scroll through the
+# list. The edge swipe sits inside iOS's edge gesture — Maestro reports it
+# done and the list has not moved — and a slow bar keeps its names for a
+# moment after the list has moved.
+settle_scroll() {
+  local shot="$1" want="$2" flow="$3" what="$4"
+  if [ "$(bar_names "$shot")" = "$want" ]; then
+    return
+  fi
+  sleep 2
+  glance "$shot" "$what"
+  if [ "$(bar_names "$shot")" = "$want" ]; then
+    return
+  fi
+  tour "$shot" "$what" "$flow"
+}
+
 # The first open, from the network: the case that came up left to right. A
 # launch with nobody signed in opens on the welcome; skipping it goes on to Home.
+# Both appearances, before Skip: a skip is kept on the phone, and the next
+# launch goes straight to Home.
+appearance light
 open_app
-see 1-welcome 'إنشاء حساب'
+see 1-welcome-light 'إنشاء حساب'
+appearance dark
+see 1-welcome-dark 'إنشاء حساب'
+appearance light
 skip
 see 2-home 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 open_app jobs
 see 3-jobs 'الفلاتر'
 in_header 3-jobs 'الوظائف'
+# The same Jobs tab in the dark appearance. Back to light before the scroll,
+# so the checks below still read the light list: the names must be gone after
+# the scroll down, and all four must be back after the scroll up.
+appearance dark
+see 3-jobs-dark 'الفلاتر'
+in_header 3-jobs-dark 'الوظائف'
+appearance light
+# 3b-jobs-scrolled-down is the list scrolled down, the tab bar's names gone.
 tour 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone' "$flows/expo-go-scroll-down.yaml"
-# The margin swipe starts 3% in, inside the screen-edge gesture. When iOS
-# takes it, Maestro still reports the swipe done and the list has not moved.
-if [ "$(same_screen 3-jobs 3b-jobs-scrolled-down)" = yes ]; then
-  tour 3b-jobs-scrolled-down 'scrolled down through the list' "$flows/expo-go-scroll-down-mid.yaml"
-fi
+settle_scroll 3b-jobs-scrolled-down 0 "$flows/expo-go-scroll-down-mid.yaml" 'scrolled down through the list'
 # A resting finger on that second swipe opens the card's menu. Close it and
 # count the scroll as missed: the later steps would otherwise read the menu.
 if grep -q 'افتح الإعلان' "$out/3b-jobs-scrolled-down.boxes"; then
@@ -352,9 +404,7 @@ elif [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
   echo "::error title=Expo Go: 3b-jobs-scrolled-down::the tab bar's names are still read after scrolling down"
 fi
 tour 3c-jobs-scrolled-up 'scrolled back up: the bar whole again, names and all' "$flows/expo-go-scroll-up.yaml"
-if [ "$(same_screen 3b-jobs-scrolled-down 3c-jobs-scrolled-up)" = yes ]; then
-  tour 3c-jobs-scrolled-up 'scrolled back up through the list' "$flows/expo-go-scroll-up-mid.yaml"
-fi
+settle_scroll 3c-jobs-scrolled-up 4 "$flows/expo-go-scroll-up-mid.yaml" 'scrolled back up through the list'
 if grep -q 'افتح الإعلان' "$out/3c-jobs-scrolled-up.boxes"; then
   tour 3c-menu-closed 'closed the menu a resting finger opened' -e 'POINT=50%,12%' "$flows/expo-go-tap.yaml"
   failed+=("3c-jobs-scrolled-up: the swipe opened a card's menu")
@@ -372,7 +422,7 @@ fi
 glance t0-board 'tour: the board, before'
 last_shot=t0-board
 tap_word t1-sort-menu 'tour: the order' 'الأحدث'
-tap_word t2-sorted 'tour: by salary' 'الأعلى راتباً'
+tap_word t2-sorted 'tour: by salary' 'الأعلى راتبًا'
 tap_word t3-filters 'tour: the filter sheet' 'الفلاتر'
 # Closed with its own button, not its X: Expo Go's floating tools button sits
 # over the sheet's top corner, and a tap there opened Expo Go's menu instead.
@@ -400,23 +450,23 @@ open_app jobs
 see 3f-jobs-after-tour 'الفلاتر'
 
 open_app companies
-see 3d-companies 'الموثّقة بس'
+see 3d-companies 'الموثّقة فقط'
 in_header 3d-companies 'شركات العقارات'
 open_app account
-see 4-account 'ادخل على حسابك'
+see 4-account 'سجّل الدخول إلى حسابك'
 in_header 4-account 'حسابي'
 open_app sign-in
-see 5-sign-in 'أهلاً بيك تاني'
+see 5-sign-in 'مرحبًا بعودتك'
 
 # Back to Expo Go's own home, and the app opened again from there: the other case.
 xcrun simctl terminate "$udid" host.exp.Exponent > /dev/null 2>&1 || true
 xcrun simctl launch "$udid" host.exp.Exponent > /dev/null
 sleep 8
 xcrun simctl io "$udid" screenshot "$out/6-expo-go-home.png" > /dev/null 2>&1 || true
+# The welcome was skipped at the first open, and a skip is kept on the phone
+# (src/features/welcome.ts): opened again, the app goes straight to Home.
 open_app
-see 7-welcome-again 'إنشاء حساب'
-skip
-see 8-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
+see 7-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 
 for verdict in "$out"/*.verdict; do
   if grep -q 'LEFT TO RIGHT' "$verdict"; then

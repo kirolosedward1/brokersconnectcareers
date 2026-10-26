@@ -272,6 +272,8 @@ export const PROTECTED_ROUTES: readonly { prefix: string; audience: RouteAudienc
   { prefix: '/onboarding', audience: 'authenticated' },
   { prefix: '/notifications', audience: 'authenticated' },
   { prefix: '/dashboard/account', audience: 'authenticated' },
+  // The bell's full list. Same audience as /notifications: every signed-in role.
+  { prefix: '/dashboard/notifications', audience: 'authenticated' },
   { prefix: '/dashboard', audience: 'candidate' },
   { prefix: '/agents', audience: 'directory' },
   { prefix: '/employer', audience: 'employer' },

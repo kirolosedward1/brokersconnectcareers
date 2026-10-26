@@ -2,11 +2,14 @@ import type { JobDetail, JobListItem } from '@/lib/job-list';
 import type { BrowseCounts, CompanyListItem, LandingFacts } from '@/lib/read-types';
 import type {
   AgentCardRow,
+  CompanyPrivate,
   CompanyRow,
   DistrictRow,
   JobTrack,
   SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
+
+export type { CompanyPrivate };
 
 /**
  * What each GET under /api/mobile/v1 answers — the read half of contract.ts.
@@ -49,9 +52,9 @@ export type MobileConfig = {
   commit?: string | null;
   /**
    * Whether an admin needs an authenticator before the console opens
-   * (ADMIN_MFA_REQUIRED, on by default in production): the app's console asks
-   * what the website's does. Absent from a server older than the app's
-   * console, where it is taken as required.
+   * (ADMIN_MFA_REQUIRED on the server: true only when that variable is
+   * "true"). The app enrols only when this is true. Absent, or false, the
+   * console opens for an admin who has not enrolled.
    */
   adminMfaRequired?: boolean;
 };
@@ -96,6 +99,15 @@ export type CompanyListResponse = {
   pageCount: number;
   page: number;
 };
+
+/**
+ * GET /company — my_company_private().
+ *
+ * The owner, the credit balance, and whether the company is suspended. A
+ * member gets them; everybody else is a 404. The app's viewer asks the
+ * function directly, as it asks my_company_id(), so the account still loads
+ * when this website is down. CompanyPrivate is that answer.
+ */
 
 /** GET /companies/<slug> — the company's public columns only. */
 export type CompanyPageResponse = {

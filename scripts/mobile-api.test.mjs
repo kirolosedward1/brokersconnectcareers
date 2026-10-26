@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 const { readBearer, challenge, tokenRefused } = await import('../src/lib/mobile-api/bearer.ts');
 const { secondFactorDue, tokenAssurance } = await import('../src/lib/auth/second-factor.ts');
 const { adminDoor, assuranceOf } = await import('../src/lib/mobile-api/admin-door.ts');
+const { adminMfaRequired } = await import('../src/lib/admin-mfa.ts');
 const { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError, AuthUnknownError } = await import('@supabase/supabase-js');
 
 let pass = 0;
@@ -94,10 +95,21 @@ console.log('\n— an admin lever opens only for a session the website\'s consol
     'mfa_required',
   );
   is(
-    'no authenticator where none is required (the escape hatch): open',
+    'no authenticator where none is required: open',
     adminDoor({ jwt: token({ aal: 'aal1' }), user: {} }, false),
     'open',
   );
+}
+
+console.log('\n— ADMIN_MFA_REQUIRED is off unless it is exactly true');
+{
+  const flag = (value) => adminMfaRequired({ ADMIN_MFA_REQUIRED: value, NODE_ENV: 'production' });
+  is('unset is off, including in production', adminMfaRequired({ NODE_ENV: 'production' }), false);
+  is('unset is off in development', adminMfaRequired({ NODE_ENV: 'development' }), false);
+  is('true turns it on', flag('true'), true);
+  is('false leaves it off', flag('false'), false);
+  is('any other value leaves it off', flag('1'), false);
+  is('empty leaves it off', flag(''), false);
 }
 
 console.log('\n— the app can reach only what the registry lists');
@@ -221,6 +233,28 @@ console.log('\n— a password alone is not the account when it has an authentica
   is(
     'deleting an account asks first, before anything is removed',
     deletion.indexOf('sessionOwesSecondFactor(') > -1 && deletion.indexOf('sessionOwesSecondFactor(') < deletion.indexOf('deleteUser('),
+    true,
+  );
+}
+
+console.log('\n— a member reads the company columns that are not public');
+{
+  const route = readFileSync(new URL('../src/app/api/mobile/v1/company/route.ts', import.meta.url), 'utf8');
+  const reader = readFileSync(new URL('../src/lib/company-member.ts', import.meta.url), 'utf8');
+  is('the company route is a signed-in read', /export const GET = withMobileAuth\(/.test(route), true);
+  is('it answers my_company_private(), not a select of the row', /readCompanyPrivate\(/.test(route) && !/from\('companies'\)/.test(route), true);
+  is(
+    'the viewer does not select the owner, the balance or the suspension',
+    !/owner_id|post_credits|suspended_at/.test(
+      reader.slice(reader.indexOf('COMPANY_PUBLIC_COLUMNS'), reader.indexOf('PRIVATE_COLUMNS')),
+    ),
+    true,
+  );
+  is('those three come from my_company_private()', /rpc\('my_company_private'\)/.test(reader), true);
+  const companies = readFileSync(new URL('../src/lib/queries/companies.ts', import.meta.url), 'utf8');
+  is(
+    'a privilege refusal (42501) falls back like a missing function',
+    /42501/.test(reader) && /memberReadUnavailable\(suspended\.error\)/.test(companies),
     true,
   );
 }

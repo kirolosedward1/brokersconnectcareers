@@ -2,6 +2,7 @@ import type { ReactNode, Ref } from 'react';
 import { Platform, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandLogo } from '~/components/brand/brand-logo';
+import { InlineLink } from '~/components/ui/inline-link';
 import { gutter, space } from '~/theme/tokens';
 import { Text } from '~/components/ui/text';
 
@@ -46,11 +47,11 @@ export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollVi
  */
 export function AuthHeading({ title, body }: { title: string; body?: string | null }) {
   return (
-    <View style={{ gap: space[1], alignItems: 'center' }}>
-      <View style={{ marginBottom: space[3] }}>
+    <View style={{ gap: space[1], width: '100%' }}>
+      <View style={{ marginBottom: space[3], alignItems: 'center' }}>
         <BrandLogo size="form" />
       </View>
-      <Text variant="display" weight="bold" accessibilityRole="header" style={styles.title}>
+      <Text variant="title" weight="semibold" accessibilityRole="header" style={styles.centred}>
         {title}
       </Text>
       {body ? (
@@ -65,16 +66,17 @@ export function AuthHeading({ title, body }: { title: string; body?: string | nu
 /** "Have an account? Sign in" under the form; the question may be left out. */
 export function AuthSwitch({ question, action, onPress }: { question?: string; action: string; onPress: () => void }) {
   return (
-    <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
-      {question ? `${question} ` : null}
-      <Text variant="small" weight="semibold" tone="primary" accessibilityRole="link" onPress={onPress} suppressHighlighting>
-        {action}
-      </Text>
-    </Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+      {question ? (
+        <Text variant="small" tone="mutedForeground" style={{ maxWidth: '100%', textAlign: 'center' }}>
+          {`${question} `}
+        </Text>
+      ) : null}
+      <InlineLink onPress={onPress}>{action}</InlineLink>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  centred: { textAlign: 'center' },
-  title: { textAlign: 'center', fontSize: 26, lineHeight: 38 },
+  centred: { textAlign: 'center', width: '100%' },
 });

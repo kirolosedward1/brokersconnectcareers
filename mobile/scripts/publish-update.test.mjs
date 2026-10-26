@@ -59,6 +59,9 @@ for (const name of ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY',
   is(`and ${name} from the base profile`, production.env[name], eas.build.base.env[name]);
 }
 is('preview publishes on its own channel', profileFor(eas, 'preview').channel, 'preview');
+is('preview is a standalone build, without the dev menu', eas.build.preview.developmentClient, false);
+is('production is a standalone build, without the dev menu', eas.build.production.developmentClient, false);
+is('a development build includes the dev client', eas.build.development.developmentClient, true);
 throws('a development build takes no updates', () => profileFor(eas, 'development'), /development build/);
 throws('nor does the simulator one, which extends it', () => profileFor(eas, 'development-simulator'), /development build/);
 throws('an unknown profile is refused', () => profileFor(eas, 'prod'), /no build profile "prod"/);

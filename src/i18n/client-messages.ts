@@ -47,6 +47,8 @@ export const PUBLIC_MESSAGES = [
   'landingPage.tabs',
   'leadsSource',
   'onboarding',
+  // The header bell: its label, the panel, and marking the list read.
+  'notifications',
   // The report dialog on listings, companies and consultant profiles.
   'report',
   'reportHint',

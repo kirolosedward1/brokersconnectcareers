@@ -109,7 +109,7 @@ export function AppLock() {
       {showLock ? (
         <>
           <View style={{ gap: space[2], alignItems: 'center' }}>
-            <Text variant="title" weight="bold" style={{ textAlign: 'center' }} accessibilityRole="header">
+            <Text variant="title" weight="semibold" style={{ textAlign: 'center' }} accessibilityRole="header">
               {t('title')}
             </Text>
             <Text tone="mutedForeground" style={{ textAlign: 'center' }}>

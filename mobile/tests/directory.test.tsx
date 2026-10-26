@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
+import { Alert, Linking, Pressable } from 'react-native';
 import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
@@ -17,6 +17,7 @@ import type {
   ProfileRow,
   SavedAgentCardRow,
 } from '@/lib/supabase/database.types';
+import { toast } from '~/components/feedback/toast';
 import { unhideAgent } from '~/features/moderation/hidden-agents';
 import { useSaveRecord } from '~/features/profile/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -30,7 +31,7 @@ import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as DirectoryScreen from '../src/app/(tabs)/(consultants,admin)/agents/index';
 import * as ShortlistScreen from '../src/app/(tabs)/(consultants,admin)/employer/talent';
 import { DeclaredTabs } from './declared-tabs';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { cairo, newCairo } from './fixtures';
 import { fakeServer } from './server';
 
@@ -178,6 +179,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', () => [me]);
   server.on('POST /rest/v1/rpc/my_company_id', () => company?.id ?? null);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(company));
   server.on('GET /rest/v1/companies', () => (company ? [company] : []));
   server.on('/rest/v1/districts', [newCairo]);
   server.on('/rest/v1/governorates', [cairo]);
@@ -586,9 +588,22 @@ describe('hiding a consultant', () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     try {
       await renderRouter(app, { initialUrl: '/agents/mona-ali' });
+      const shown = jest.spyOn(toast, 'show');
       fireEvent.press(await screen.findByRole('button', { name: ar.app.moderation.hideAgent }));
-      expect(alert.mock.calls[0][0]).toBe(ar.app.moderation.hideAgentTitle.replace('{name}', 'منى علي'));
-      act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+      // At once, no alert first: Undo on the toast is the way back.
+      expect(alert).not.toHaveBeenCalled();
+      expect(shown).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: ar.app.toast.agentHidden.replace('{name}', 'منى علي'),
+          action: expect.objectContaining({ label: ar.app.toast.undo }),
+        }),
+      );
+      expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
+      // Undo brings her back on the page, and hiding again works as before.
+      act(() => shown.mock.calls[0][0].action?.onPress());
+      expect(await screen.findByRole('button', { name: ar.app.moderation.hideAgent })).toBeTruthy();
+      shown.mockRestore();
+      fireEvent.press(screen.getByRole('button', { name: ar.app.moderation.hideAgent }));
       expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
       expect(screen.queryByRole('button', { name: ar.app.moderation.hideAgent })).toBeNull();
 
@@ -616,10 +631,7 @@ describe('hiding a consultant', () => {
     try {
       act(() => router.push('/agents/mona-ali'));
       fireEvent.press(await screen.findByRole('button', { name: ar.app.moderation.hideAgent }));
-      const confirm = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
-      // His own word in Arabic: the company's "hide it" is feminine.
-      expect(confirm?.text).toBe(ar.app.moderation.hideAgentConfirm);
-      act(() => confirm?.onPress?.());
+      expect(alert).not.toHaveBeenCalled();
       expect(await screen.findByText(ar.app.moderation.hiddenAgent)).toBeTruthy();
     } finally {
       alert.mockRestore();

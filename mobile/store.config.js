@@ -40,22 +40,22 @@ const descriptionAr = `بروكرز كونكت منصة وظائف ودليل ا
 
 للاستشاريين العقاريين والسماسرة
 • وظائف البيع والتسويق العقاري في كل مصر، بفلاتر للمنطقة والتخصص ومصدر العملاء والراتب والعمولة وسنوات الخبرة.
-• بنطلب من كل شركة الراتب الأساسي والعمولة بالأرقام، وكل إعلان بيقول مين اللي بيوفّر العملاء.
-• قدّم بسيرتك الذاتية وتابع كل طلب: هتعرف إمتى الشركة فتحته، وإمتى نقلتك للقائمة المختصرة أو للمقابلة.
-• احفظ الوظائف وعمليات البحث، وتابع الشركات، ويوصلك إشعار لما تنزل وظائف جديدة تناسبك.
-• بروفايلك في دليل الاستشاريين — مناطقك، والمطورين اللي بعت مشاريعهم، وسجل مبيعاتك، وسيرتك الذاتية — عشان الشركات المعتمدة على المنصة توصلّك. وانت اللي بتقرر يظهر ولا لأ.
-• من غير رسوم على الباحثين عن عمل.
+• نطلب من كل شركة الراتب الأساسي والعمولة بالأرقام، وكل إعلان يوضح من يوفّر العملاء.
+• قدّم بسيرتك الذاتية وتابع كل طلب: تعرف متى فتحته الشركة، ومتى نقلتك إلى القائمة المختصرة أو إلى المقابلة.
+• احفظ الوظائف وعمليات البحث، وتابع الشركات، ويصلك إشعار عند نزول وظائف جديدة تناسبك.
+• ملفك في دليل الاستشاريين — مناطقك، والمطورون الذين بعت مشاريعهم، وسجل مبيعاتك، وسيرتك الذاتية — كي تصل إليك الشركات المعتمدة على المنصة. وأنت من يقرر إن كان يظهر.
+• دون رسوم على الباحثين عن عمل.
 
 لشركات العقارات
-• انشر وظيفتك بالراتب والعمولة ومصدر العملاء بوضوح. كل إعلان بيتراجع قبل ما ينزل.
+• انشر وظيفتك بالراتب والعمولة ومصدر العملاء بوضوح. يُراجَع كل إعلان قبل النشر.
 • كل المتقدمين في مكان واحد — جديد، قائمة مختصرة، مقابلة، تم التعيين — مع ملاحظات خاصة لفريقك، والسيرة الذاتية على بُعد لمسة.
-• دوّر في دليل الاستشاريين واحتفظ بقائمة المرشحين.
-• وثّق شركتك بالسجل التجاري والبطاقة الضريبية عشان تاخد علامة «موثّقة».
-• ضيف زمايلك يديروا الإعلانات والمتقدمين معاك.
+• ابحث في دليل الاستشاريين واحتفظ بقائمة المرشحين.
+• وثّق شركتك بالسجل التجاري والبطاقة الضريبية لتحصل على علامة «موثّقة».
+• أضف زملاءك ليديروا الإعلانات والمتقدمين معك.
 
 الأمان
-• الإعلانات اللي بتطلب من المتقدمين فلوس، أو بيانات بطاقة أو حساب بنكي قبل المقابلة، بتتشال.
-• تقدر تبلّغ عن أي إعلان أو شركة أو بروفايل من جوه التطبيق.`;
+• تُزال الإعلانات التي تطلب من المتقدمين مالًا، أو بيانات بطاقة أو حساب بنكي قبل المقابلة.
+• يمكنك البلاغ عن أي إعلان أو شركة أو ملف من داخل التطبيق.`;
 
 const descriptionEn = `Brokers Connect is a job board and consultant directory for real estate sales in Egypt. The app is in Arabic.
 
@@ -95,11 +95,11 @@ EMPLOYER ACCOUNT: ${employerEmail} / ${employerPassword}
 
 USER-GENERATED CONTENT
 • Report: «بلّغ عن الإعلان» (Report the listing) on a listing, «بلّغ عن الشركة» (Report the company) on a company's page, «بلّغ عن الملف» (Report the profile) on a consultant's profile. Reports go to our moderators.
-• Hide: «اخفي الشركة دي» (Hide this company) on a company's page and, for a company, «اخفي الاستشاري ده» (Hide this consultant) on a consultant's profile. Both come back from «مخفي على الموبايل ده» (Hidden on this phone), under «حسابي».
+• Hide: «أخفِ هذه الشركة» (Hide this company) on a company's page and, for a company, «أخفِ هذا الاستشاري» (Hide this consultant) on a consultant's profile. Both come back from «مخفي على هذا الهاتف» (Hidden on this phone), under «حسابي».
 • A new account agrees to the Terms, and confirms being 18 or over, before it can go on (sign up with an address you can receive mail at to see it). The two review accounts have already agreed.
 
 DELETING THE ACCOUNT
-«حسابي» > «حذف الحساب» (Delete account): type «حذف», or the English word delete, then tap «احذف حسابي نهائياً» (Delete my account permanently). Please try it last: deleting the candidate deletes its applications, which are the employer's applicants. The employer account owns the review company, so for it the same screen sends a deletion request instead: deleting it would delete other people's applications to the company's listings.
+«حسابي» > «حذف الحساب» (Delete account): type «حذف», or the English word delete, then tap «احذف حسابي نهائيًا» (Delete my account permanently). Please try it last: deleting the candidate deletes its applications, which are the employer's applicants. The employer account owns the review company, so for it the same screen sends a deletion request instead: deleting it would delete other people's applications to the company's listings.
 
 Nothing is sold in the app.`;
 }
@@ -137,7 +137,7 @@ function storeConfig(env = process.env) {
       // The App Store version the listing is for: the build's own (app.config.ts),
       // or App Store Connect opens 1.0 and offers it no 1.0.0 build.
       version: '1.0.0',
-      copyright: `2026 ${OPERATOR}`,
+      copyright: '© 2026 TOP SUITE DIGITAL MARKETING L.L.C',
       categories: ['BUSINESS'],
       info: {
         'ar-SA': {
@@ -147,9 +147,9 @@ function storeConfig(env = process.env) {
           // 100 bytes at most, and an Arabic letter is two: وظائف and مصر are in the
           // subtitle, which App Store search reads as well.
           keywords: ['سمسار', 'استشاري عقاري', 'تسويق عقاري', 'مبيعات', 'توظيف', 'عقارات'],
-          promoText: 'وظائف البيع والتسويق العقاري في كل مصر. كل إعلان بيقول مين اللي بيوفّر العملاء.',
+          promoText: 'وظائف البيع والتسويق العقاري في كل مصر. كل إعلان يوضح من يوفّر العملاء.',
           marketingUrl: SITE,
-          supportUrl: SITE,
+          supportUrl: `${SITE}/support`,
           privacyPolicyUrl: `${SITE}/privacy`,
           privacyChoicesUrl: `${SITE}/account-deletion`,
         },
@@ -160,7 +160,7 @@ function storeConfig(env = process.env) {
           keywords: ['real estate', 'jobs', 'property consultant', 'sales', 'Egypt', 'hiring', 'careers', 'New Cairo', 'Sheikh Zayed', 'commission'],
           promoText: 'Real estate sales jobs across Egypt. Every listing says who supplies the leads.',
           marketingUrl: SITE,
-          supportUrl: SITE,
+          supportUrl: `${SITE}/support?lang=en`,
           privacyPolicyUrl: `${SITE}/privacy?lang=en`,
           privacyChoicesUrl: `${SITE}/account-deletion?lang=en`,
         },
@@ -210,3 +210,5 @@ function storeConfig(env = process.env) {
 
 module.exports = () => storeConfig();
 module.exports.storeConfig = storeConfig;
+/** The same descriptions on Google Play (store/play/listing.js). */
+module.exports.descriptions = { ar: descriptionAr, en: descriptionEn };

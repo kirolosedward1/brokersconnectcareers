@@ -175,7 +175,7 @@ describe('asking, with a reason', () => {
   it('asks the phone only when pressed, then registers this phone for the person signed in', async () => {
     await renderRouter(app, { initialUrl: '/' });
 
-    expect(await screen.findByText(ar.app.push.promptTitle)).toBeTruthy();
+    expect(await screen.findByText(ar.app.push.promptTitleCandidate)).toBeTruthy();
     expect(screen.getByText(ar.app.push.promptCandidate)).toBeTruthy();
     // Nothing asked of the phone, nothing registered, until somebody says yes.
     expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
@@ -185,13 +185,13 @@ describe('asking, with a reason', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.app.push.turnOn }));
 
     await waitFor(() => expect(registered()[0]).toEqual({ p_token: TOKEN, p_platform: 'ios', p_locale: 'ar', p_app_version: '1.0.0' }));
-    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitleCandidate) === null).toBe(true));
   });
 
   it('puts the prompt away for good on "not now"', async () => {
     const first = await renderRouter(app, { initialUrl: '/' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.push.notNow }));
-    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitleCandidate) === null).toBe(true));
     first.unmount();
 
     // Read again from scratch — the phone's answer and the choice kept here — and still away.
@@ -200,7 +200,7 @@ describe('asking, with a reason', () => {
     await waitFor(() => expect(jest.mocked(Notifications.getPermissionsAsync).mock.calls.length).toBeGreaterThan(reads));
     await act(async () => {});
     await act(async () => {});
-    expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull();
+    expect(screen.queryByText(ar.app.push.promptTitleCandidate)).toBeNull();
     expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 
@@ -212,7 +212,7 @@ describe('asking, with a reason', () => {
     // The system's question, answered no: from now on the phone says denied.
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
     fireEvent.press(turnOn);
-    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitle) === null).toBe(true));
+    await waitFor(() => expect(screen.queryByText(ar.app.push.promptTitleCandidate) === null).toBe(true));
     expect(registered()).toHaveLength(0);
   });
 });
@@ -441,7 +441,7 @@ describe('a tapped push', () => {
 
   it('while the app runs opens the same way, and the feed when the link has gone', async () => {
     const result = await renderRouter(app, { initialUrl: '/' });
-    await screen.findByText(ar.app.push.promptTitle);
+    await screen.findByText(ar.app.push.promptTitleCandidate);
     const listener = jest.mocked(Notifications.addNotificationResponseReceivedListener).mock.calls.at(-1)?.[0];
 
     server.on('POST /api/mobile/v1/actions/openNotification', { ok: true, data: { fallback: '/notifications?link=gone' } });
@@ -449,6 +449,39 @@ describe('a tapped push', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
     // With the reason, which the feed says as it does for a tap in the bell.
     expect(result.getSearchParams()).toEqual({ link: 'gone' });
+  });
+
+  it('opens the last one tapped, when an earlier tap is answered after it', async () => {
+    const result = await renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitleCandidate);
+    const listener = jest.mocked(Notifications.addNotificationResponseReceivedListener).mock.calls.at(-1)?.[0];
+
+    // The first tap's answer is slow (a poor connection); the second's is not.
+    const LATER = 'n0000000-0000-4000-8000-000000000002';
+    let answerFirst!: () => void;
+    const firstAnswered = new Promise<void>((resolve) => {
+      answerFirst = resolve;
+    });
+    server.on('POST /api/mobile/v1/actions/openNotification', async (_url, init) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { id: string } };
+      if (input.id === NOTIFICATION) {
+        await firstAnswered;
+        return { ok: true, data: { href: '/dashboard/applications' } };
+      }
+      return { ok: true, data: { fallback: '/notifications?link=gone' } };
+    });
+
+    act(() => listener?.(response(NOTIFICATION)));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(1));
+    act(() => listener?.(response(LATER)));
+    await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
+
+    act(() => answerFirst());
+    // The older tap's answer, arriving last, does not take the reader away from the one they chose.
+    await expect(
+      waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'), { timeout: 1000 }),
+    ).rejects.toThrow();
+    expect(result.getPathname()).toBe('/notifications');
   });
 
   it('asks somebody signed out to sign in, and comes back to the feed', async () => {
@@ -466,7 +499,7 @@ describe('a tapped push', () => {
 describe('a push while the app is open', () => {
   it('reads again what it is most often about, as well as the bell and the account', async () => {
     await renderRouter(app, { initialUrl: '/' });
-    await screen.findByText(ar.app.push.promptTitle);
+    await screen.findByText(ar.app.push.promptTitleCandidate);
     const listener = jest.mocked(Notifications.addNotificationReceivedListener).mock.calls.at(-1)?.[0];
     const invalidated = jest.spyOn(queryClient, 'invalidateQueries');
 
@@ -510,7 +543,7 @@ describe('signing out', () => {
 
   it('stops listening on the phone when the session ends elsewhere', async () => {
     await renderRouter(app, { initialUrl: '/' });
-    await screen.findByText(ar.app.push.promptTitle);
+    await screen.findByText(ar.app.push.promptTitleCandidate);
 
     // A refresh the auth server refused: the session is gone before the phone could say anything.
     await act(async () => {
@@ -646,7 +679,7 @@ describe('a build without a push project', () => {
     await waitFor(() => expect(jest.mocked(Notifications.getPermissionsAsync)).toHaveBeenCalled());
     await act(async () => {});
     await act(async () => {});
-    expect(screen.queryByText(ar.app.push.promptTitle)).toBeNull();
+    expect(screen.queryByText(ar.app.push.promptTitleCandidate)).toBeNull();
   });
 
   it('registers nothing, even with the phone allowing it, and leaves its registration alone at sign-out', async () => {

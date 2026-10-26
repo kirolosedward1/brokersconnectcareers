@@ -16,9 +16,9 @@ import { IBMPlexSansArabic_700Bold } from '@expo-google-fonts/ibm-plex-sans-arab
 import { LaunchCurtain } from '~/components/brand/launch-screen';
 import { AppError, ScreenError } from '~/components/navigation/error-boundaries';
 import { PendingPath } from '~/components/navigation/pending-path';
+import { WebAnchorParams } from '~/components/navigation/web-anchor';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
 import { AppLock } from '~/components/navigation/app-lock';
-import { CrashNotice } from '~/components/navigation/crash-notice';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
@@ -36,6 +36,7 @@ import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
 import { launchReady, useLaunchHeld, useLaunchReady } from '~/features/launch';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
+import { KeyboardDone } from '~/components/ui/text-field';
 import { installCrashLog } from '~/lib/crash-log';
 import { appDirection } from '~/lib/direction';
 import { persistOptions, queryClient } from '~/lib/query';
@@ -93,6 +94,7 @@ export default function RootLayout() {
                     <Navigation>
                       <AppStack />
                     </Navigation>
+                    <KeyboardDone />
                   </SessionProvider>
                 </I18nProvider>
               </ThemeProvider>
@@ -167,9 +169,9 @@ function AppStack() {
       <WelcomeGate onDecided={decided} />
       <SessionGate />
       <PendingPath />
+      <WebAnchorParams />
       <PushBridge />
       <AppleCredentialWatch />
-      <CrashNotice />
       <HomeShortcuts />
       <VerifiedExplainerHost />
       <NoteSheetHost />

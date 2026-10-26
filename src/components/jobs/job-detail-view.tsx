@@ -24,7 +24,7 @@ import { AppliedNotice } from '@/components/jobs/applied-notice';
 import { ShareJobButton } from '@/components/jobs/share-job-button';
 import { ShareArrival } from '@/components/jobs/share-arrival';
 import { formatDate, formatNumber, isoDate } from '@/lib/utils';
-import { getSimilarJobs, salaryReference, type JobDetail } from '@/lib/queries/jobs';
+import { getOtherCompanyJobs, getSimilarJobs, salaryReference, type JobDetail } from '@/lib/queries/jobs';
 import { actorOf, getViewer } from '@/lib/auth';
 import { canSaveJobs } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
@@ -53,6 +53,7 @@ export async function JobDetailView({
   published?: boolean;
 }) {
   const t = await getTranslations('jobs');
+  const tMeta = await getTranslations('meta');
   const tTrack = await getTranslations('track');
   const tType = await getTranslations('employmentType');
   const tExp = await getTranslations('experienceBand');
@@ -61,8 +62,9 @@ export async function JobDetailView({
   const tLanding = await getTranslations('landing');
   const tStatus = await getTranslations('jobStatus');
 
-  const [similar, viewer, reference] = await Promise.all([
+  const [similar, companyJobs, viewer, reference] = await Promise.all([
     getSimilarJobs(job),
+    getOtherCompanyJobs(job.company_id, job.id).catch(() => []),
     getViewer(),
     /*
       The board's own answer to "is this a normal number".
@@ -150,6 +152,12 @@ export async function JobDetailView({
         pages had no way in but each other; every listing now links to one.
       */}
       <nav aria-label="breadcrumb" className="mb-3 text-sm text-muted-foreground">
+        <Link href="/" className="hover:text-foreground">
+          {tMeta('siteName')}
+        </Link>
+        <span className="mx-2" aria-hidden>
+          /
+        </span>
         <Link href="/jobs" className="hover:text-foreground">
           {t('title')}
         </Link>
@@ -485,6 +493,21 @@ export async function JobDetailView({
           ) : null}
         </aside>
       </div>
+
+      {companyJobs.length ? (
+        <section className="mt-10 border-t border-border pt-6" aria-labelledby="company-jobs-heading">
+          <h2 id="company-jobs-heading" className="text-base font-semibold">
+            {t('otherAtCompany', { company: companyName })}
+          </h2>
+          <ul className="mt-3 grid gap-2 lg:grid-cols-2">
+            {companyJobs.map((item) => (
+              <li key={item.id}>
+                <JobCard job={item} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {similar.length ? (
         <section

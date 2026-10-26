@@ -119,6 +119,8 @@ describe('the App Store listing', () => {
       // A page of the site's own: its route, and the document it serves.
       const slug = parsed.pathname.slice(1);
       expect(existsSync(join(root, 'src', 'app', '[locale]', '(site)', slug, 'page.tsx'))).toBe(true);
+      // /support carries both languages in its page; the legal pages read content/legal.
+      if (slug === 'support') continue;
       const lang = parsed.searchParams.get('lang') ?? 'ar';
       expect(existsSync(join(root, 'content', 'legal', `${slug}.${lang}.md`))).toBe(true);
     }
@@ -154,8 +156,8 @@ describe('the App Store listing', () => {
   });
 
   it('names the operator the legal documents name', () => {
-    expect(listing.apple.copyright).toMatch(/^\d{4} /);
-    expect(listing.apple.copyright?.replace(/^\d{4} /, '')).toBe(OPERATOR.name);
+    expect(listing.apple.copyright).toBe('© 2026 TOP SUITE DIGITAL MARKETING L.L.C');
+    expect(listing.apple.copyright?.toLowerCase()).toContain(OPERATOR.name.toLowerCase());
   });
 
   it('answers every age-rating question, rated 18+', () => {

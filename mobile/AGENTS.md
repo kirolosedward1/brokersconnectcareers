@@ -23,6 +23,7 @@ pnpm start                  # the dev server, for a development build
 pnpm start:go               # the same, for the Expo Go app (docs/mobile.md, "Trying it in Expo Go")
 pnpm check                  # typecheck + lint + shared-code guard + update-publishing check + Jest — run before declaring anything done
 pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept everything
+pnpm release:check          # what a store build is made from (add --bundle dist after export:ios)
 ```
 
 ## Rules for this app
@@ -42,7 +43,7 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 - **Words come from the catalogue.** No user-facing string in code: the website's keys, or the app's
   own under `app.*` in `src/i18n/messages/{ar,en}.json` (same keys in both). Numbers inside Arabic
   sentences use `t.markup(…, markupTags)` so they are isolated left to right.
-- **Right to left.** `textAlign: 'left'` is the logical start; use `ForwardChevron` for "onward".
+- **Right to left.** `textAlignStart()` is where a line starts (the right while the app is Arabic, or `left` when the phone will mirror that once); use `ForwardChevron` for "onward".
 - **Routes mirror the website's paths** so links, notification hrefs and pushes name the same screens.
   `+native-intent.tsx` maps incoming URLs (`src/lib/links.ts`); `tests/routing.test.tsx` covers where
   each lands.

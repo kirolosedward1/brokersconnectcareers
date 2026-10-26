@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, FileX2, MessageCircle, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
+import { Download, Eye, FileX2, MessageCircle, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
 import { formatDate, formatEgp, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
@@ -167,8 +167,9 @@ export function ApplicantCard({
     !withdrawn && status === 'new'
       ? {
           label: t('applicationStatus.shortlisted'),
-          icon: <UserRoundCheck size={20} color="#FFFFFF" />,
+          icon: <UserRoundCheck size={20} color={colors.successForeground} />,
           color: colors.success,
+          ink: colors.successForeground,
           onPress: () => moveTo('shortlisted'),
         }
       : undefined;
@@ -176,8 +177,9 @@ export function ApplicantCard({
     !withdrawn && status !== 'rejected' && status !== 'hired'
       ? {
           label: t('applicationStatus.rejected'),
-          icon: <UserRoundX size={20} color="#FFFFFF" />,
+          icon: <UserRoundX size={20} color={colors.destructiveForeground} />,
           color: colors.destructive,
+          ink: colors.destructiveForeground,
           onPress: () =>
             dialog.alert(t('app.applicants.rejectConfirm'), name, [
               { text: t('common.cancel'), style: 'cancel' },
@@ -225,18 +227,7 @@ export function ApplicantCard({
           </Text>
         </View>
         {withdrawn ? (
-          <View
-            style={{
-              backgroundColor: WITHDRAWN_BADGE.background,
-              borderRadius: WITHDRAWN_BADGE.radius,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <Text style={{ color: WITHDRAWN_BADGE.color, fontSize: WITHDRAWN_BADGE.fontSize }} weight="medium">
-              {t('applicationStatus.withdrawn')}
-            </Text>
-          </View>
+          <Badge label={t('applicationStatus.withdrawn')} />
         ) : (
           <Badge variant={STAGE_TONE[status]} label={t(`applicationStatus.${status}`)} />
         )}
@@ -399,28 +390,40 @@ export function ApplicantCard({
         </Text>
       ) : null}
 
-      {/* Once there is a decision: written to the candidate, and never required. */}
+      {/* Once there is a decision: the candidate reads it. The eye says so. */}
       {status !== 'new' ? (
         <View style={{ gap: space[2], paddingTop: space[3], borderTopWidth: 1, borderTopColor: colors.border }}>
-          <Field label={t('employer.decisionNote')} hint={t('employer.decisionNoteHint')}>
-            <TextField
-              value={reason}
-              onChangeText={setReason}
-              accessibilityLabel={t('employer.decisionNote')}
-              placeholder={t('employer.decisionNotePlaceholder')}
-              multiline
-              maxLength={500}
-              style={{ minHeight: 56, paddingVertical: space[2], textAlignVertical: 'top' }}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
+            <Text variant="small" weight="medium">
+              {t('employer.decisionNote')}
+            </Text>
+            <Badge
+              variant="primary"
+              icon={<Eye size={12} color={colors.primary} accessible={false} />}
+              label={t('employer.decisionNoteVisible')}
             />
-          </Field>
+          </View>
+          <Text variant="caption" tone="mutedForeground">
+            {t('employer.decisionNoteHint')}
+          </Text>
+          <TextField
+            tone="brand"
+            value={reason}
+            onChangeText={setReason}
+            accessibilityLabel={t('employer.decisionNote')}
+            accessibilityHint={t('employer.decisionNoteHint')}
+            placeholder={t('employer.decisionNotePlaceholder')}
+            multiline
+            maxLength={500}
+            style={{ minHeight: 56, paddingVertical: space[2], textAlignVertical: 'top' }}
+          />
           <View style={{ alignItems: 'flex-start' }}>
             <Button
-              label={reason.trim() === savedReason.trim() && savedReason ? t('employer.decisionNoteSaved') : t('common.save')}
-              accessibilityLabel={`${t('employer.decisionNote')}: ${t('common.save')}`}
+              label={t('employer.decisionNoteSend')}
               variant="outline"
               size="sm"
               loading={move.isPending}
-              disabled={reason.trim() === savedReason.trim()}
+              disabled={!reason.trim() || reason.trim() === savedReason.trim()}
               onPress={() => save(status, reason)}
             />
           </View>

@@ -10,16 +10,20 @@ import { getLegalDoc, LEGAL_SLUGS } from '@/lib/legal';
 
 export const revalidate = 3600;
 
+/**
+ * lastmod for a page that has no row of its own.
+ *
+ * The file's mtime on Vercel is the deploy clock, so reading it would tell a
+ * crawler those pages changed on every build. This is the date the static
+ * copy last changed; bump it when that copy changes.
+ */
+const CATALOGUE_LASTMOD = new Date('2026-10-24T00:00:00.000Z');
+
 /** One entry per URL, with an ar/en pair only while English is published. */
-function entry(
-  path: string,
-  options: { lastModified?: string | Date; changeFrequency?: MetadataRoute.Sitemap[number]['changeFrequency']; priority?: number } = {},
-): MetadataRoute.Sitemap[number] {
+function entry(path: string, lastModified: string | Date): MetadataRoute.Sitemap[number] {
   return {
     url: `${env.siteUrl}${path}`,
-    lastModified: options.lastModified,
-    changeFrequency: options.changeFrequency,
-    priority: options.priority,
+    lastModified,
     ...(ENGLISH_ENABLED
       ? {
           alternates: {
@@ -176,59 +180,51 @@ async function fromDatabase(): Promise<DbRows> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { jobs, companies, districts, liveLandings } = await fromDatabase();
+  const catalogue = CATALOGUE_LASTMOD;
+  const posts = getAllPosts('ar');
+  const newestJob = jobs.find((job) => job.published_at)?.published_at ?? catalogue;
+  const newestPost = posts[0]?.date ?? catalogue;
+  const newestCompany =
+    companies.reduce<string | undefined>((best, company) => {
+      if (!company.lastModified) return best;
+      return !best || company.lastModified > best ? company.lastModified : best;
+    }, undefined) ?? catalogue;
 
   const staticPages: MetadataRoute.Sitemap = [
-    entry('/', { changeFrequency: 'daily', priority: 1 }),
-    entry('/jobs', { changeFrequency: 'hourly', priority: 0.9 }),
-    entry('/companies', { changeFrequency: 'daily', priority: 0.6 }),
-    entry('/employers', { changeFrequency: 'monthly', priority: 0.8 }),
-    entry('/app', { changeFrequency: 'monthly', priority: 0.5 }),
-    entry('/blog', { changeFrequency: 'weekly', priority: 0.6 }),
+    entry('/', newestJob),
+    entry('/jobs', newestJob),
+    entry('/companies', newestCompany),
+    entry('/employers', catalogue),
+    entry('/app', catalogue),
+    entry('/blog', newestPost),
+    entry('/support', catalogue),
   ];
 
   // The policies, dated by their own `updated` line (the Arabic text, which
   // prevails), so a revision is what tells a crawler to read one again.
+  // Refunds and account deletion are noindex, so they are not advertised.
+  // The map over LEGAL_SLUGS stays: scripts/legal.test.mjs reads this call.
   const legalPages: MetadataRoute.Sitemap = LEGAL_SLUGS.map((slug) =>
-    entry(`/${slug}`, {
-      lastModified: getLegalDoc(slug, 'ar')?.updated || undefined,
-      changeFrequency: 'yearly',
-      priority: 0.2,
-    }),
-  );
+    slug === 'refunds' || slug === 'account-deletion'
+      ? null
+      : entry(`/${slug}`, getLegalDoc(slug, 'ar')?.updated || catalogue),
+  ).filter((item): item is MetadataRoute.Sitemap[number] => item !== null);
 
-  const blogPages: MetadataRoute.Sitemap = getAllPosts('ar').map((post) =>
-    entry(`/blog/${post.slug}`, {
-      lastModified: post.date,
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    }),
-  );
+  const blogPages: MetadataRoute.Sitemap = posts.map((post) => entry(`/blog/${post.slug}`, post.date));
 
   // The track x district pages that have something on them. See liveLandings.
   const landingPages: MetadataRoute.Sitemap = districts.flatMap((district) =>
     JOB_TRACKS.filter((track) => liveLandings.has(`${track}:${district.id}`)).map((track) =>
-      entry(`/jobs/${buildLandingSlug(track, district.slug)}`, {
-        lastModified: liveLandings.get(`${track}:${district.id}`),
-        changeFrequency: 'daily',
-        priority: 0.7,
-      }),
+      entry(`/jobs/${buildLandingSlug(track, district.slug)}`, liveLandings.get(`${track}:${district.id}`) ?? catalogue),
     ),
   );
 
   const jobPages: MetadataRoute.Sitemap = jobs.map((job) =>
-    entry(`/jobs/${job.slug}`, {
-      lastModified: job.published_at ?? undefined,
-      changeFrequency: 'daily',
-      priority: 0.8,
-    }),
+    entry(`/jobs/${job.slug}`, job.published_at ?? catalogue),
   );
 
   const companyPages: MetadataRoute.Sitemap = companies.map((company) =>
-    entry(`/companies/${company.slug}`, {
-      lastModified: company.lastModified,
-      changeFrequency: 'weekly',
-      priority: 0.5,
-    }),
+    entry(`/companies/${company.slug}`, company.lastModified ?? catalogue),
   );
 
   return [...staticPages, ...legalPages, ...blogPages, ...landingPages, ...jobPages, ...companyPages];

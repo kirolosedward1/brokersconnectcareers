@@ -880,6 +880,42 @@ console.log('\n— the email copy has two halves too');
   const misspelled = words(emailCopy.ar).filter(([, text]) => /وظايف|نتايج|قايمة|قوايم|رسايل|دقايق/.test(text)).map(([key]) => key);
   check('Arabic emails spell وظائف, نتائج and the rest as the site does', misspelled.length === 0, misspelled.join(', '));
 
+  // Tanween fath sits on the letter before the alef («تلقائيًا»، «فورًا»، «أهلًا»),
+  // the same spelling as messages/ar.json. «اً» is the alef carrying the mark.
+  const tanweenOnAlef = words(emailCopy.ar).filter(([, text]) => text.includes('اً')).map(([key]) => key);
+  check(
+    'Arabic emails write the tanween on the letter before the alef',
+    tanweenOnAlef.length === 0,
+    tanweenOnAlef.join(', '),
+  );
+
+  const blogDir = join(ROOT, 'content', 'blog');
+  const arabicPosts = readdirSync(blogDir).filter((name) => name.endsWith('.ar.md'));
+  const blogTanween = arabicPosts.filter((name) => readFileSync(join(blogDir, name), 'utf8').includes('اً'));
+  check(
+    'the two Arabic blog posts write the tanween the same way',
+    arabicPosts.length === 2 && blogTanween.length === 0,
+    blogTanween.join(', ') || `${arabicPosts.length} Arabic posts`,
+  );
+
+  const { employerOpener, employerToAgentOpener } = await import('../src/lib/whatsapp.ts');
+  const applicantOpener = employerOpener({
+    candidateName: 'سارة',
+    jobTitle: 'مستشار مبيعات',
+    companyName: 'نايل بروكرز',
+    locale: 'ar',
+  });
+  const agentOpener = employerToAgentOpener({ agentName: 'سارة', companyName: 'نايل بروكرز', locale: 'ar' });
+  const dialect = /دلوقتي|شفنا|ممكن تناسبك|نحب نتكلم|عندنا فرصة/;
+  check(
+    'employer WhatsApp openers are MSA',
+    applicantOpener === 'مرحبًا سارة، معك نايل بروكرز. وصلنا طلبك على وظيفة «مستشار مبيعات» ونود التحدث معك. هل الوقت مناسب الآن؟' &&
+      agentOpener === 'مرحبًا سارة، معك نايل بروكرز. اطّلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.' &&
+      !dialect.test(applicantOpener) &&
+      !dialect.test(agentOpener),
+    `${applicantOpener} || ${agentOpener}`,
+  );
+
   // The same words in the website's own catalogue (the app's copy.test.ts reads it too, with the app's).
   const siteMisspelled = flatten(load('ar'))
     .filter(([, text]) => typeof text === 'string' && /وظايف|نتايج|قايمة|قوايم|رسايل|دقايق/.test(text))
@@ -928,19 +964,19 @@ console.log('\n— a count on the website takes its form');
   expect('the bulk pack', ar, 'billing.seatsUpTo', { count: 15 }, 'حتى 15 وظيفة خالية');
   expect('the single pack', en, 'billing.seatsUpTo', { count: 3 }, 'Up to 3 seats');
   expect('a pack of one', en, 'billing.seatsUpTo', { count: 1 }, 'Up to 1 seat');
-  expect('a pack’s days', ar, 'billing.days', { count: 30 }, '30 يوماً');
+  expect('a pack’s days', ar, 'billing.days', { count: 30 }, '30 يومًا');
   expect('a short pack', ar, 'billing.days', { count: 7 }, '7 أيام');
   expect('one applicant', en, 'admin.applicantsN', { count: 1 }, '1 applicant');
-  expect('two applicants', ar, 'admin.applicantsN', { count: 2 }, 'متقدمين اتنين');
+  expect('two applicants', ar, 'admin.applicantsN', { count: 2 }, 'متقدمان');
   expect('four applicants', ar, 'admin.applicantsN', { count: 4 }, '4 متقدمين');
   expect('one year', en, 'admin.yearsN', { count: 1 }, '1 yr');
-  expect('three years', ar, 'admin.yearsN', { count: 3 }, '3 سنين');
+  expect('three years', ar, 'admin.yearsN', { count: 3 }, '3 سنوات');
   expect('used once', en, 'admin.inUse', { count: 1 }, 'Used once');
   expect('used twice', ar, 'admin.inUse', { count: 2 }, 'مستخدم مرتين');
   expect('used five times', ar, 'admin.inUse', { count: 5 }, 'مستخدم 5 مرات');
   expect('one open report', en, 'admin.openListingReports', { count: 1 }, '1 open report on its listings');
   expect('three open reports', ar, 'admin.openListingReports', { count: 3 }, '3 بلاغات مفتوحة على إعلاناتها');
-  expect('two reports filed', ar, 'admin.reportsFiledSummary', { count: 2, dismissed: 1 }, 'بلاغين، منهم 1 طلع مفيهوش مخالفة.');
+  expect('two reports filed', ar, 'admin.reportsFiledSummary', { count: 2, dismissed: 1 }, 'بلاغان، و1 دون مخالفة.');
   // Passed as a number now, it is grouped by the message, as formatNumber grouped it.
   expect('a thousand reports filed', en, 'admin.reportsFiledSummary', { count: 1000, dismissed: '12' }, '1,000 filed, 12 found to be no violation.');
 

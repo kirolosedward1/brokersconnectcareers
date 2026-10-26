@@ -7,6 +7,7 @@ import type { EmployerConversionRow } from '@/lib/supabase/database.types';
 import { Card } from '~/components/ui/card';
 import { ForwardChevron } from '~/components/ui/icons';
 import { Text } from '~/components/ui/text';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -20,6 +21,7 @@ export function ConversionBars({ rows }: { rows: EmployerConversionRow[] }) {
   const t = useTranslations('dashboard');
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const n = (value: number) => formatNumber(value, locale);
 
   const rate = (row: EmployerConversionRow) => (row.views > 0 ? row.applications / row.views : null);
@@ -56,7 +58,7 @@ export function ConversionBars({ rows }: { rows: EmployerConversionRow[] }) {
               style={({ pressed }) => ({ gap: space[1], paddingVertical: space[1], opacity: pressed ? 0.7 : 1 })}
             >
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: space[3] }}>
-                <Text variant="small" weight="medium" numberOfLines={1} style={{ flex: 1 }}>
+                <Text variant="small" weight="medium" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
                   {title}
                 </Text>
                 <Text variant="small" weight="semibold">

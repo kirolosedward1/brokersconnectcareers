@@ -207,7 +207,7 @@ export function AccountSettings({
               {/*
                 `word` is an ICU *argument*, not a tag, so the arrow function
                 that used to be passed for it rendered nothing at all: the
-                label read "اكتب عشان تأكّد" — type to confirm — without ever
+                label read "اكتب للتأكيد" — type to confirm — without ever
                 saying what to type. Which made the button below it
                 permanently disabled, because it compares the input against a
                 word the reader was never shown. Deleting an account was not

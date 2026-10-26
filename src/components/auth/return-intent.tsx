@@ -8,7 +8,7 @@ import { safeNext } from '@/lib/safe-next';
 /**
  * Why this person is being asked to sign in.
  *
- * The auth screens open with "أهلاً بيك تاني" whatever brought somebody to
+ * The auth screens open with "مرحبًا بعودتك" whatever brought somebody to
  * them, which is fine for a returning user typing the URL and wrong for the
  * one path that matters: tapping Apply on a listing and being interrupted. The
  * destination is preserved and they do land back on the form — but at the
@@ -16,28 +16,14 @@ import { safeNext } from '@/lib/safe-next';
  * gate reads as a demand for an account rather than as one step inside
  * something they already started.
  *
- * So the listing is named. It also quietly answers the question underneath the
- * hesitation, which is whether the application survives the detour.
+ * So the listing is named: the job title, then the company that posted it.
  *
  * Real data only: the slug is read out of `next`, the listing is looked up, and
  * if it does not resolve — a stale link, a listing taken down between the click
  * and the redirect, the database unreachable — nothing renders at all rather
- * than a promise about a job that may not exist.
+ * than a card about a job that may not exist.
  */
-export async function ReturnIntent({
-  next,
-  locale,
-  mode = 'sign-in',
-}: {
-  next?: string;
-  locale: string;
-  /**
-   * Which screen it sits on. Most people who tap Apply have no account yet, so
-   * the sign-up screen needs the same reassurance — worded for creating an
-   * account rather than for signing in.
-   */
-  mode?: 'sign-in' | 'sign-up';
-}) {
+export async function ReturnIntent({ next, locale }: { next?: string; locale: string }) {
   const target = safeNext(next);
   if (!target) return null;
 
@@ -54,13 +40,11 @@ export async function ReturnIntent({
   const company = localized(locale, job.company.name_ar, job.company.name_en);
 
   return (
-    <div className="mt-6 flex gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+    <div className="mt-6 flex gap-3 rounded-xl border border-border bg-card p-4">
       <Briefcase className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0">
-        <p className="text-sm font-semibold">{t('applyingTo', { job: title })}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t(mode === 'sign-up' ? 'applyingToCompanySignUp' : 'applyingToCompany', { company })}
-        </p>
+        <p className="text-sm font-bold">{t('applyingTo', { job: title })}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t('applyingToCompany', { company })}</p>
       </div>
     </div>
   );

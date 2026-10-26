@@ -12,9 +12,9 @@ import type { ApplicationStatus } from '@/lib/supabase/database.types';
  * script that generates the Supabase Auth templates has to be able to load it
  * outside Next.
  *
- * Modern Standard Arabic on the Arabic side. The website and the app stay in
- * Egyptian (messages/ar.json); these emails are the surface that uses MSA.
- * Subjects stay literal and unexcited: what happened, and to which listing.
+ * Modern Standard Arabic on the Arabic side, the same register as the website
+ * and the app (messages/ar.json). Subjects stay literal and unexcited: what
+ * happened, and to which listing.
  */
 
 type Locale = 'ar' | 'en';
@@ -25,7 +25,7 @@ const arabicPlural = new Intl.PluralRules('ar');
  * A count in Arabic. One and two have forms of their own, three to ten take
  * the plural, eleven and up the singular again. `#` is the number. The
  * categories are the same ones the bell uses in messages/ar.json; the words
- * here are MSA, which these emails use, while the bell stays Egyptian. Until
+ * here are MSA, as the bell is too. Until
  * the categories were split, every number but one took the plural:
  * «فاضل 2 أيام», «11 وظائف جديدة».
  */
@@ -48,7 +48,7 @@ export const emailCopy = {
     footer: {
       // The address is appended, and linked. Without one, the neutral line is used.
       reply: 'هل تحتاج إلى مساعدة؟ يمكنك الرد على هذه الرسالة أو مراسلتنا على',
-      neutral: 'هذه الرسالة مُرسلة تلقائياً.',
+      neutral: 'هذه الرسالة مُرسلة تلقائيًا.',
       reasonAccount: 'وصلتك هذه الرسالة لأنك مسجّل في بروكرز كونكت.',
       reasonOptional: 'وصلتك هذه الرسالة لأنك فعّلت إشعارات البريد الإلكتروني.',
       privacy: 'الخصوصية',
@@ -61,18 +61,18 @@ export const emailCopy = {
     // -----------------------------------------------------------------------
 
     welcomeCandidate: {
-      subject: 'أهلاً بك في بروكرز كونكت',
+      subject: 'أهلًا بك في بروكرز كونكت',
       preheader: 'خطوة واحدة وتبدأ الشركات في رؤيتك.',
-      heading: 'أهلاً بك',
+      heading: 'أهلًا بك',
       body: 'حسابك جاهز. تبحث الشركات هنا عن مستشارين عقاريين وفق الخبرة والمناطق التي يعملون فيها، فكلما اكتمل ملفك أكثر ظهرت لعدد أكبر من الشركات.',
       hint: 'يصل الملف المكتمل إلى شركات أكثر، ويوفّر عليك إعادة كتابة البيانات نفسها مع كل تقديم.',
       cta: 'أكمل ملفك المهني',
     },
 
     welcomeEmployer: {
-      subject: 'أهلاً بك في بروكرز كونكت',
+      subject: 'أهلًا بك في بروكرز كونكت',
       preheader: 'ابدأ بنشر أول إعلان وظيفة.',
-      heading: 'أهلاً بك',
+      heading: 'أهلًا بك',
       body: 'تم إنشاء حساب شركتك. يمكنك نشر وظائفك واستقبال المتقدمين في مكان واحد، والتواصل معهم عبر واتساب من داخل المنصة.',
       hint: 'اكتمال بيانات الشركة وتوثيقها يجعلان الإعلان يجذب متقدمين أكثر وأكثر جدية.',
       cta: 'ابدأ استخدام بروكرز كونكت',
@@ -84,7 +84,7 @@ export const emailCopy = {
       heading: 'تم تغيير كلمة المرور',
       body: 'تم تغيير كلمة المرور الخاصة بحسابك في بروكرز كونكت للتو.',
       security:
-        'إذا لم تكن أنت من غيّرها، فاستخدم «نسيت كلمة المرور» فوراً لاستعادة حسابك.',
+        'إذا لم تكن أنت من غيّرها، فاستخدم «نسيت كلمة المرور» فورًا لاستعادة حسابك.',
       cta: 'إعدادات الحساب',
       labelWhen: 'وقت التغيير',
     },
@@ -93,7 +93,7 @@ export const emailCopy = {
       subject: 'ملفك المهني جاهز',
       preheader: 'ملفك ظاهر للشركات الآن.',
       heading: 'ملفك المهني جاهز',
-      body: 'أكملت البيانات الأساسية، وأصبح ملفك ظاهراً للشركات وفق إعدادات الخصوصية التي اخترتها.',
+      body: 'أكملت البيانات الأساسية، وأصبح ملفك ظاهرًا للشركات وفق إعدادات الخصوصية التي اخترتها.',
       cta: 'عرض ملفي',
       labelVisibility: 'الظهور',
     },
@@ -118,7 +118,7 @@ export const emailCopy = {
       visibility: {
         public: 'ظاهر للجميع',
         verified_employers_only: 'للشركات الموثّقة فقط',
-        hidden: 'مخفي تماماً',
+        hidden: 'مخفي تمامًا',
       },
     },
 
@@ -170,7 +170,7 @@ export const emailCopy = {
       body: (job: string, company: string) =>
         `أكملت شركة ${company} مراجعة المتقدمين لوظيفة «${job}»، ووقع الاختيار على مرشح آخر هذه المرة.`,
       encouragement:
-        'تنشر الشركات وظائف جديدة على المنصة كل أسبوع. حافظ على تحديث ملفك وستجد فرصاً أخرى تناسب خبرتك.',
+        'تنشر الشركات وظائف جديدة على المنصة كل أسبوع. حافظ على تحديث ملفك وستجد فرصًا أخرى تناسب خبرتك.',
       cta: 'تصفّح وظائف أخرى',
       labelJob: 'الوظيفة',
       labelCompany: 'الشركة',
@@ -185,9 +185,23 @@ export const emailCopy = {
       heading: 'تم سحب طلبك',
       body: (job: string) =>
         `تم سحب طلبك على وظيفة «${job}»، وسيظهر للشركة أنك انسحبت من التقديم.`,
-      reapply: 'يمكنك التقديم مرة أخرى ما دام الإعلان متاحاً.',
+      reapply: 'يمكنك التقديم مرة أخرى ما دام الإعلان متاحًا.',
       cta: 'تصفّح الوظائف',
       labelJob: 'الوظيفة',
+    },
+
+    candidateWithdrew: {
+      // To the listing's owner, in the owner's language only. The name is the
+      // one the applicants page still shows; the phone, the email and the CV
+      // are not in this message.
+      subject: (job: string) => `انسحب مرشح من «${job}»`,
+      preheader: 'لم يعد هذا التقديم قائمًا.',
+      heading: 'انسحب مرشح',
+      body: (job: string) => `انسحب مرشح من «${job}». لم يعد هذا التقديم قائمًا.`,
+      bodyNamed: (name: string, job: string) => `انسحب ${name} من «${job}». لم يعد هذا التقديم قائمًا.`,
+      cta: 'عرض المتقدمين',
+      labelJob: 'الإعلان',
+      labelApplicant: 'المرشح',
     },
 
     // -----------------------------------------------------------------------
@@ -199,7 +213,7 @@ export const emailCopy = {
       preheader: 'الإعلان قيد المراجعة.',
       heading: 'استلمنا الإعلان',
       body: (job: string) =>
-        `دخل «${job}» مرحلة المراجعة. نراجع الإعلانات لمنع الإعلانات الوهمية، ويستغرق ذلك عادةً يوم عمل واحداً — وسنراسلك فور الانتهاء.`,
+        `دخل «${job}» مرحلة المراجعة. نراجع الإعلانات لمنع الإعلانات الوهمية، ويستغرق ذلك عادةً يوم عمل واحدًا — وسنراسلك فور الانتهاء.`,
       cta: 'إدارة الوظيفة',
       labelJob: 'الوظيفة',
       labelDate: 'تاريخ الإرسال',
@@ -209,13 +223,26 @@ export const emailCopy = {
 
     jobApproved: {
       subject: (job: string) => `تم نشر «${job}»`,
-      preheader: 'أصبح إعلانك ظاهراً للمتقدمين.',
+      preheader: 'أصبح إعلانك ظاهرًا للمتقدمين.',
       heading: 'تم نشر إعلانك',
-      body: (job: string) => `اجتاز «${job}» المراجعة وأصبح ظاهراً في نتائج البحث.`,
+      body: (job: string) => `اجتاز «${job}» المراجعة وأصبح ظاهرًا في نتائج البحث.`,
       cta: 'عرض الإعلان',
       labelJob: 'الوظيفة',
       labelPublished: 'تاريخ النشر',
       labelExpires: 'ينتهي في',
+    },
+
+    // The owner's receipt. A different message from jobApproved, which the
+    // preference mail to other members still uses.
+    jobApprovedOwner: {
+      subject: (job: string) => `تمت الموافقة على «${job}»`,
+      preheader: 'إعلانك ظاهر للمرشحين الآن.',
+      heading: 'تمت الموافقة على إعلانك',
+      body: (job: string) => `«${job}» ظاهر للمرشحين الآن. ستصلك رسالة عند كل تقديم جديد.`,
+      cta: 'عرض الإعلان',
+      labelJob: 'الإعلان',
+      labelPublished: 'تاريخ النشر',
+      labelExpires: 'تاريخ الانتهاء',
     },
 
     jobRejected: {
@@ -229,13 +256,13 @@ export const emailCopy = {
     },
 
     jobExpiring: {
-      subject: (job: string) => `«${job}» سينتهي قريباً`,
+      subject: (job: string) => `«${job}» سينتهي قريبًا`,
       preheader: 'اقترب الإعلان من يومه الأخير.',
-      heading: 'إعلانك سينتهي قريباً',
+      heading: 'إعلانك سينتهي قريبًا',
       body: (job: string, days: number) =>
         days === 1
-          ? `غداً هو اليوم الأخير لـ«${job}». بعد ذلك سيتوقف عن الظهور في نتائج البحث.`
-          : `تبقّى ${arabicCount(days, { one: 'يوم واحد', two: 'يومان', few: '# أيام', other: '# يوماً' })} على انتهاء «${job}». بعد ذلك سيتوقف عن الظهور في نتائج البحث.`,
+          ? `غدًا هو اليوم الأخير لـ«${job}». بعد ذلك سيتوقف عن الظهور في نتائج البحث.`
+          : `تبقّى ${arabicCount(days, { one: 'يوم واحد', two: 'يومان', few: '# أيام', other: '# يومًا' })} على انتهاء «${job}». بعد ذلك سيتوقف عن الظهور في نتائج البحث.`,
       cta: 'إدارة الوظيفة',
       labelJob: 'الوظيفة',
       labelExpires: 'ينتهي في',
@@ -262,15 +289,15 @@ export const emailCopy = {
       subject: 'تم تفعيل حسابك',
       preheader: 'يمكنك نشر إعلاناتك الآن.',
       heading: 'تم تفعيل حسابك',
-      body: 'راجعنا بيانات شركتك، وأصبح الحساب مفعّلاً. يمكنك نشر أول إعلان الآن.',
+      body: 'راجعنا بيانات شركتك، وأصبح الحساب مفعّلًا. يمكنك نشر أول إعلان الآن.',
       cta: 'انشر وظيفة',
     },
 
     accountRejected: {
-      subject: 'تم إيقاف حسابك مؤقتاً',
+      subject: 'تم إيقاف حسابك مؤقتًا',
       preheader: 'نحتاج إلى مراجعة بيانات الشركة مرة أخرى.',
-      heading: 'تم إيقاف حسابك مؤقتاً',
-      body: 'أوقفنا الحساب مؤقتاً إلى حين مراجعة البيانات مرة أخرى.',
+      heading: 'تم إيقاف حسابك مؤقتًا',
+      body: 'أوقفنا الحساب مؤقتًا إلى حين مراجعة البيانات مرة أخرى.',
       reason: (note: string) => `السبب: ${note}`,
       contact: 'إذا كان ذلك غير صحيح، فراسلنا من صفحة المساعدة وسنراجع الأمر.',
     },
@@ -280,15 +307,15 @@ export const emailCopy = {
       subject: 'تم تفعيل حسابك',
       preheader: 'يمكنك التقديم على الوظائف الآن.',
       heading: 'تم تفعيل حسابك',
-      body: 'راجعنا حسابك، وأصبح مفعّلاً مجدداً. يمكنك التقديم على الوظائف وتحديث ملفك.',
+      body: 'راجعنا حسابك، وأصبح مفعّلًا مجددًا. يمكنك التقديم على الوظائف وتحديث ملفك.',
       cta: 'افتح حسابك',
     },
 
     accountRejectedCandidate: {
-      subject: 'تم إيقاف حسابك مؤقتاً',
+      subject: 'تم إيقاف حسابك مؤقتًا',
       preheader: 'نحتاج إلى مراجعة بيانات حسابك مرة أخرى.',
-      heading: 'تم إيقاف حسابك مؤقتاً',
-      body: 'أوقفنا الحساب مؤقتاً إلى حين مراجعة البيانات مرة أخرى.',
+      heading: 'تم إيقاف حسابك مؤقتًا',
+      body: 'أوقفنا الحساب مؤقتًا إلى حين مراجعة البيانات مرة أخرى.',
     },
 
     companyVerified: {
@@ -317,7 +344,7 @@ export const emailCopy = {
       preheader: 'أُزيلت علامة التوثيق من صفحة الشركة.',
       heading: 'لم تعد شركتك موثّقة',
       body: (company: string) =>
-        `أُزيلت علامة التوثيق من صفحة «${company}» ومن إعلاناتها، ومعها إمكانية الاطلاع على ملفات المستشارين المخصّصة للشركات الموثّقة. يمكنك طلب التوثيق مجدداً من صفحة الشركة بسجل تجاري وبطاقة ضريبية ساريين، وإذا كان لديك أي سؤال فراسلنا.`,
+        `أُزيلت علامة التوثيق من صفحة «${company}» ومن إعلاناتها، ومعها إمكانية الاطلاع على ملفات المستشارين المخصّصة للشركات الموثّقة. يمكنك طلب التوثيق مجددًا من صفحة الشركة بسجل تجاري وبطاقة ضريبية ساريين، وإذا كان لديك أي سؤال فراسلنا.`,
       cta: 'عرض صفحة الشركة',
       labelCompany: 'الشركة',
     },
@@ -331,7 +358,7 @@ export const emailCopy = {
       preheader: 'وظائف جديدة تطابق البحث المحفوظ لديك.',
       heading: 'جديد في بحثك',
       body: (label: string) => `هذه هي الوظائف التي نُشرت هذا الأسبوع وتطابق «${label}».`,
-      cta: 'عرضها جميعاً',
+      cta: 'عرضها جميعًا',
     },
 
     /*
@@ -350,7 +377,7 @@ export const emailCopy = {
       preheader: 'وظائف جديدة من شركة تتابعها.',
       heading: 'جديد من شركة تتابعها',
       body: (label: string) => `نشرت «${label}» هذه الوظائف هذا الأسبوع.`,
-      cta: 'عرضها جميعاً',
+      cta: 'عرضها جميعًا',
     },
 
     applicantDigest: {
@@ -508,6 +535,17 @@ export const emailCopy = {
       labelJob: 'Role',
     },
 
+    candidateWithdrew: {
+      subject: (job: string) => `A candidate withdrew from "${job}"`,
+      preheader: 'This application is no longer active.',
+      heading: 'A candidate withdrew',
+      body: (job: string) => `A candidate withdrew from "${job}". This application is no longer active.`,
+      bodyNamed: (name: string, job: string) => `${name} withdrew from "${job}". This application is no longer active.`,
+      cta: 'View applicants',
+      labelJob: 'Listing',
+      labelApplicant: 'Candidate',
+    },
+
     jobSubmitted: {
       subject: (job: string) => `We have your listing for "${job}"`,
       preheader: 'The listing is under review.',
@@ -530,6 +568,18 @@ export const emailCopy = {
       labelJob: 'Role',
       labelPublished: 'Published',
       labelExpires: 'Expires',
+    },
+
+    jobApprovedOwner: {
+      subject: (job: string) => `"${job}" is approved`,
+      preheader: 'Candidates can see your listing now.',
+      heading: 'Your listing is approved',
+      body: (job: string) =>
+        `"${job}" is visible to candidates now. You will receive an email for each new application.`,
+      cta: 'View the listing',
+      labelJob: 'Listing',
+      labelPublished: 'Published',
+      labelExpires: 'Closes',
     },
 
     jobRejected: {

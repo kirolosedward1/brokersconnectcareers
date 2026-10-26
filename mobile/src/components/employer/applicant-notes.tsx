@@ -87,7 +87,6 @@ export function ApplicantNotes({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityHint={t('employer.notesHint')}
         onPress={() => setChosen(!open)}
         hitSlop={{ top: 4, bottom: 4 }}
         style={{ minHeight: hitTarget - 8, flexDirection: 'row', alignItems: 'center', gap: space[1] }}
@@ -103,9 +102,7 @@ export function ApplicantNotes({
             </Text>
           </View>
         ) : null}
-        <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }} numberOfLines={1}>
-          {`— ${t('employer.notesHint')}`}
-        </Text>
+        <View style={{ flex: 1 }} />
         <Chevron size={16} color={colors.mutedForeground} />
       </Pressable>
 

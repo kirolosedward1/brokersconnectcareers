@@ -8,6 +8,7 @@
  * writes anybody else's; it goes with the account. A new directory card is
  * hidden unless its owner says otherwise; the owner choosing is stamped with
  * the database's time, and nobody else changing the card counts as a choice.
+ * A profile photo is only ever a file the person uploaded (migrations 339, 364).
  */
 import { readFileSync } from 'node:fs';
 import { createTestDb, runner, reporter, FIXTURES, USERS } from './setup.mjs';
@@ -146,6 +147,27 @@ report.section('a photo somebody uploaded (migration 339)');
   report.check('an uploaded photo stays', own.avatar_url === uploaded, String(own.avatar_url));
   const queued = await count(`select count(*)::int as n from storage_gc_queue where path like '%legacy-photo%'`);
   report.check('and nothing that is not ours is queued for deletion', queued === 0);
+}
+
+report.section('only a photo somebody uploaded (migration 364)');
+{
+  // Nothing writes a Google photo any more, so a person may not either: only
+  // a file in their own avatar folder.
+  const google = 'https://lh3.googleusercontent.com/a/new-sign-up=s96-c';
+  const refused = await committedAs(publicAgent, `update profiles set avatar_url = '${google}' where id = '${publicAgent}'`);
+  report.check('a Google photo is refused', !refused.ok && /own avatar folder/.test(refused.error ?? ''), JSON.stringify(refused));
+  const ownFile = `https://example.supabase.co/storage/v1/object/public/avatars/${publicAgent}/photo.webp`;
+  const saved = await committedAs(publicAgent, `update profiles set avatar_url = '${ownFile}' where id = '${publicAgent}'`);
+  report.check('a photo in the account’s own folder is kept', saved.ok, JSON.stringify(saved));
+  const elsewhere = await committedAs(publicAgent, `update profiles set avatar_url = 'https://example.supabase.co/storage/v1/object/public/avatars/${candidate}/photo.webp' where id = '${publicAgent}'`);
+  report.check('and one in somebody else’s folder is refused', !elsewhere.ok);
+
+  // Somebody who signed up with Google between 339 and the release that
+  // stopped importing the photo: the file's own statement clears them.
+  await db.exec(`update profiles set avatar_url = '${google}' where id = '${publicAgent}'`);
+  await db.exec(readFileSync(new URL('../migrations/20260101000364_only_a_photo_somebody_uploaded.sql', import.meta.url), 'utf8'));
+  const cleared = await one(`select avatar_url from profiles where id = '${publicAgent}'`);
+  report.check('a Google photo saved in between is cleared', cleared.avatar_url === null, String(cleared.avatar_url));
 }
 
 report.section('it goes with the account');

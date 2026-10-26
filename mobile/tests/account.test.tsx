@@ -1,3 +1,4 @@
+import { shownToast } from '~/components/feedback/toast';
 import type { ReactNode } from 'react';
 import { Alert, Linking, Pressable, type AlertButton } from 'react-native';
 import { router, Stack } from 'expo-router';
@@ -274,7 +275,26 @@ describe('the photo', () => {
     await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.photoUpload }));
-    expect(await screen.findByText(ar.validation.fileType)).toBeTruthy();
+    expect(await screen.findByText(ar.validation.imageType)).toBeTruthy();
+  });
+
+  it('shows what storage itself refused', async () => {
+    server.on('POST /api/mobile/v1/actions/uploadImage', {
+      ok: false,
+      error: 'storage',
+      detail: 'new row violates row-level security policy',
+    });
+    jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///library/IMG_0004.HEIC', width: 800, height: 800 }],
+    } as ImagePicker.ImagePickerResult);
+    await signIn();
+    await renderRouter(app, { initialUrl: '/account' });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.account.photoUpload }));
+    expect(
+      await screen.findByText(`${ar.validation.storageError} new row violates row-level security policy`),
+    ).toBeTruthy();
   });
 
   it('is taken off after asking, and only the column is cleared', async () => {
@@ -651,7 +671,8 @@ describe('a copy of the data', () => {
     await renderRouter(app, { initialUrl: '/account' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
-    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.account.exportTitle, ar.app.account.exportLimit));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.exportLimit));
+    expect(Alert.alert).not.toHaveBeenCalled();
     expect(Sharing.shareAsync).not.toHaveBeenCalled();
   });
 });

@@ -8,6 +8,15 @@ import {
 import { tabsFor, type TabName } from './tabs';
 
 /**
+ * Home, for a person who has that tab. An admin's bar does not: the console
+ * is where a path with nowhere else to go opens, so it never names a tab
+ * that is not there.
+ */
+function opening(tabs: readonly TabName[]): '/' | '/admin' {
+  return tabs.includes('home') || !tabs.includes('admin') ? '/' : '/admin';
+}
+
+/**
  * Website addresses as app paths.
  *
  * The app's routes mirror the website's paths — /jobs, /jobs/<slug>,
@@ -94,6 +103,8 @@ function pathnameOf(path: string): string {
 export const APP_PATHS: Record<string, string> = {
   '/dashboard': '/',
   '/dashboard/account': '/account',
+  // The website bell's "see all". The app already has the feed.
+  '/dashboard/notifications': '/notifications',
   // The account hub's own pages, which the app already has under the Account tab.
   '/dashboard/account/alerts': '/account/alerts',
   '/dashboard/account/delete': '/account/delete',
@@ -141,11 +152,13 @@ export function appPathFor(path: string): string {
  * with no screen to be "similar to", expo-router would open a page every tab
  * can show (a listing, the bell's feed) in whichever tab sorts first. Each
  * section names its tabs in order of preference; the first this person has
- * wins. A section none of their tabs has — the board, for an employer — has
- * no screen for them at all, and opens home instead.
+ * wins. A section none of their tabs has — the board, for an employer or an
+ * admin — has no screen for them at all, and opens where the app opens for
+ * them (home, or the console for an admin).
  */
 const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabName[], exact?: 'exact'])[] = [
-  // The board is the Jobs tab's own screen; a listing opens in any tab.
+  // The board is the Jobs tab's own screen; a listing opens in any tab that
+  // has it, and in the Admin tab for an admin (their bar has no Jobs or Home).
   ['/jobs', ['jobs'], 'exact'],
   // A listing, a company and the bell open in the Admin tab for an admin,
   // whose bar has no Home (tabs.ts).
@@ -159,9 +172,9 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],
   ['/employer/billing', ['account']],
-  // The directory is the Consultants tab's own screen — and the Admin tab's,
-  // for an admin who runs a company, whose bar has no room for both; a
-  // consultant's page opens in any tab.
+  // The directory is the Consultants tab's own screen, and the Admin tab's
+  // for an admin, whose bar has no Consultants tab; a consultant's page
+  // opens in any tab.
   ['/agents', ['consultants', 'admin'], 'exact'],
   ['/agents', ['consultants', 'admin', 'home']],
   ['/employer/talent', ['consultants', 'admin']],
@@ -178,9 +191,10 @@ function ownersOf(path: string): readonly TabName[] | null {
 
 export function inOwnTab(path: string, tabs: readonly TabName[]): string {
   const owners = ownersOf(path);
-  if (!owners) return path;
+  // '/' is Home. An admin has no Home tab, so it is the console.
+  if (!owners) return pathnameOf(path) === '/' ? opening(tabs) : path;
   const owner = owners.find((tab) => tabs.includes(tab));
-  return owner ? `/(${owner})${path}` : '/';
+  return owner ? `/(${owner})${path}` : opening(tabs);
 }
 
 /** Whether any of this person's tabs has a screen for the path. */
@@ -198,7 +212,7 @@ function hasScreen(path: string, tabs: readonly TabName[]): boolean {
 function deniedPath(path: string, actor: Actor, audience: RouteAudience): string {
   if (!actor) return `/sign-in?next=${encodeURIComponent(path)}`;
   if (audience === 'directory') return appPathFor(directoryDeniedRedirect(actor));
-  return '/';
+  return opening(tabsFor(actor));
 }
 
 /** A page anybody may open, signed in or not. */
@@ -228,5 +242,7 @@ export function routeInside(input: string, actor: Actor): string {
   const audience = routeAudience(pathnameOf(path));
   if (!mayEnter(actor, audience)) return deniedPath(path, actor, audience);
   const inApp = appPathFor(path);
-  return hasScreen(inApp, tabsFor(actor)) ? inApp : '/';
+  const tabs = tabsFor(actor);
+  if (pathnameOf(inApp) === '/') return opening(tabs);
+  return hasScreen(inApp, tabs) ? inApp : opening(tabs);
 }

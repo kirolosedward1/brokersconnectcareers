@@ -78,7 +78,7 @@ function Profile({ id }: { id: string | undefined }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
         <Avatar name={agent.profile.full_name} src={agent.profile.avatar_url} seed={agent.id} size="lg" />
         <View style={{ flex: 1, gap: space[1] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {agent.profile.full_name}
           </Text>
           {headline ? (

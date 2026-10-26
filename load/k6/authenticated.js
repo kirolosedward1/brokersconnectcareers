@@ -48,9 +48,9 @@ export function employer() {
 
 export function admin() {
   if (!signIn('admin@demo.test', __ENV.DEMO_PASSWORD)) return;
-  // Without a TOTP factor enrolled and ADMIN_MFA_REQUIRED unset on a preview,
-  // the console opens; with it required, this lands on the account page,
-  // which is also a 200 and also fine to measure.
+  // Without a TOTP factor enrolled and ADMIN_MFA_REQUIRED unset, the console
+  // opens; with it set to true, this lands on the account page, which is
+  // also a 200 and also fine to measure.
   page('/admin', 'admin');
   page('/admin/jobs', 'queue');
   page('/admin/security', 'security');

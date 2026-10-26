@@ -48,12 +48,19 @@ const WEBSITE_ONLY = new Map([
   ...LEGAL_SLUGS.map((slug) => [`/${slug}`, 'a legal document, opened in the in-app browser']),
   ['/blog', 'the blog, opened in the in-app browser'],
   ['/blog/[slug]', 'the blog, opened in the in-app browser'],
+  ['/support', 'the public help page, and the App Store support URL'],
   ['/employers', "the website's landing page for companies"],
   ['/unsubscribe', "an email's one-tap link"],
   ['/[...rest]', "the website's 404"],
   // An expired listing is rewritten here with status 410. The app shows that
   // listing on its own job screen; this address is not one iOS opens.
   ['/gone/jobs/[slug]', "the website's 410 for an expired listing"],
+  // A rewrite of `/` for a signed-in reader, so the public landing can be cached.
+  ['/signed-home', "the signed-in home, reached only by a rewrite of /"],
+  // A rewrite of `/jobs?…`, so the unfiltered board can be cached.
+  ['/board', "a filtered board, reached only by a rewrite of /jobs"],
+  // A rewrite of `/jobs/<slug>` for a listing, so the landing on that segment can be cached.
+  ['/listing/[slug]', 'a job ad, reached only by a rewrite of /jobs/:slug'],
 ]);
 /** A section that is the website's alone, with every page under it. */
 const WEBSITE_ONLY_SECTIONS = new Map([['/admin', 'the operations console (docs/mobile.md)']]);

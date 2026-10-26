@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { FragmentSession } from '@/components/auth/fragment-session';
@@ -15,8 +16,11 @@ import {
 } from "@/i18n/routing";
 import { PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { env } from '@/lib/env';
+import { JsonLd } from '@/components/json-ld';
+import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/site-jsonld';
 import '../globals.css';
 import { Analytics } from '@/components/analytics';
+import { AppViewCookie } from '@/components/app-view-cookie';
 
 /**
  * One family, both scripts.
@@ -87,7 +91,6 @@ export async function generateMetadata({
       type: "website",
       siteName: t("siteName"),
       locale: locale === "ar" ? "ar_EG" : "en_US",
-      alternateLocale: locale === "ar" ? "en_US" : "ar_EG",
       /**
        * A static card, not a generated one.
        *
@@ -133,6 +136,7 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "nav" });
+  const tMeta = await getTranslations({ locale, namespace: "meta" });
 
   return (
     <html
@@ -159,8 +163,36 @@ export default async function LocaleLayout({
             __html: `(function(){try{var t=localStorage.getItem('bc-theme');var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
           }}
         />
+        {/*
+          React reveals a postponed chunk with an inline `$RS(from, to)` that
+          moves one node onto another. Both ids are in the HTML, so the move
+          is safe once the parser has them. It is not safe when hydration has
+          already run.
+
+          The console shell flushes first (the sidebar, the header, and
+          loading.tsx), and the bootstrap bundle is an async script right
+          after that shell. On a slow parse the bundle is already cached from
+          the page before, so it hydrates while the document is still
+          `loading` and the postponed applicants markup is still a hole.
+          Hydration mismatches (#418), React's recovery removes the
+          placeholders, and the reveal script — which does
+          `getElementById(id).parentNode` with no null check — throws. The
+          mismatch is recovered; the throw is an uncaught page error, one per
+          postponed chunk.
+
+          The setter wraps the function React assigns. When both nodes are
+          there the original move runs, unchanged. When recovery has already
+          taken them, the call returns instead of throwing.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var value;Object.defineProperty(window,'$RS',{configurable:true,get:function(){return value},set:function(fn){value=function(a,b){var from=document.getElementById(a);var to=document.getElementById(b);if(!from||!to||!from.parentNode||!to.parentNode)return;return fn(a,b)}}})}catch(e){}})()`,
+          }}
+        />
       </head>
       <body className="flex min-h-dvh flex-col">
+        <JsonLd data={organizationJsonLd(env.siteUrl, tMeta("siteName"))} />
+        <JsonLd data={websiteJsonLd(env.siteUrl, tMeta("siteName"))} />
         {/* Only what the public site's client components read. The console
             nests its own provider and adds its half. See client-messages.ts. */}
         <NextIntlClientProvider
@@ -187,6 +219,11 @@ export default async function LocaleLayout({
           {/* Spends a session that Supabase handed over in the URL fragment —
               see the component. Renders nothing. */}
           <FragmentSession />
+          {/* `?app=1` becomes a session cookie. Suspense keeps the query
+              read from pulling the cached pages into client rendering. */}
+          <Suspense fallback={null}>
+            <AppViewCookie />
+          </Suspense>
         </NextIntlClientProvider>
         <Analytics />
       </body>

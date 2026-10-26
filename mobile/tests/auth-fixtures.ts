@@ -99,6 +99,21 @@ export const profile: ProfileRow = {
 /** A company this account owns, for the deletion that cannot go ahead. */
 export const ownedCompany: CompanyRow = { ...company, owner_id: USER_ID };
 
+/**
+ * my_company_private(), as the viewer reads it: the three columns that are
+ * not on the public company row. Null when there is no company.
+ */
+export function memberPrivate(
+  row: (Pick<CompanyRow, 'owner_id' | 'post_credits'> & { suspended_at?: string | null }) | null,
+) {
+  if (!row) return null;
+  return {
+    owner_id: row.owner_id,
+    post_credits: row.post_credits,
+    suspended_at: row.suspended_at ?? null,
+  };
+}
+
 export function mobileConfig(overrides: Partial<MobileConfig> = {}): MobileConfig {
   return {
     minAppVersion: '1.0.0',

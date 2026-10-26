@@ -275,6 +275,11 @@ export type MobileActions = {
     input: { jobId: string; note: string | null };
     output: ActionResult<{ note: string | null }>;
   };
+  /** An ISO timestamp, or null to take the reminder away; `closing` when it is past, or not before the listing closes. */
+  setSavedJobReminder: {
+    input: { jobId: string; remindAt: string | null };
+    output: ActionResult<{ remindAt: string | null }>;
+  };
   recordJobView: { input: { slug: string }; output: ActionResult };
   reportTarget: { input: ReportInput; output: ActionResult };
   saveSearch: { input: { label: string; query: string }; output: ActionResult<{ id: string }> };

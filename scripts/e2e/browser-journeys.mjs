@@ -7,6 +7,12 @@
  *   SUPABASE_ANON_KEY=… DATABASE_URL=postgres://… DEMO_PASSWORD=… \
  *   [CHROMIUM_PATH=/path/to/chrome] [MAIL_DIR=…] node scripts/e2e/browser-journeys.mjs
  *
+ * ADMIN_MFA_REQUIRED=true (on this process and on the website) is the run
+ * where an admin with no authenticator is sent to enrol. Without it the
+ * console opens, and that is what the admin section below expects.
+ * BROWSER_JOURNEY=admin-mfa runs only that enrolment section, and refuses
+ * to start unless ADMIN_MFA_REQUIRED=true.
+ *
  * Chrome: CHROMIUM_PATH if set, otherwise the installed Google Chrome
  * (GitHub's Ubuntu runners have it). MAIL_DIR, a folder an SMTP sink writes
  * each message into as a file, turns on the password-reset journey, which has
@@ -37,6 +43,12 @@ for (const url of [SITE, SUPABASE, DATABASE_URL]) {
     console.error('Refusing to run journeys against production.');
     process.exit(1);
   }
+}
+
+// Before Chrome or the database: the short run is only the enrolment path.
+if (process.env.BROWSER_JOURNEY === 'admin-mfa' && process.env.ADMIN_MFA_REQUIRED !== 'true') {
+  console.error('BROWSER_JOURNEY=admin-mfa needs ADMIN_MFA_REQUIRED=true, on the website as well as here.');
+  process.exit(1);
 }
 
 function required(name) {
@@ -143,6 +155,106 @@ async function signInThroughForm(page, email, password = PASSWORD) {
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await submit(page).click();
+}
+
+const ADMIN_ROUTES = ['/admin', '/admin/jobs', '/admin/users', '/admin/companies', '/admin/reports', '/admin/audit', '/admin/operations'];
+
+/** The console's pages, then one waiting employer when the seed has one. */
+async function consoleOpens(page, lead) {
+  for (const where of ADMIN_ROUTES) {
+    const opened = await page.goto(`${SITE}${where}`, { waitUntil: 'load' });
+    check(`${lead} ${where} opens`, opened?.status() === 200 && path(page) === where, `${opened?.status()} ${page.url()}`);
+  }
+  const waiting = await sql(
+    "select id from profiles where role = 'employer' and approval_status = 'pending' order by created_at desc limit 1",
+  );
+  if (waiting.length) {
+    const opened = await page.goto(`${SITE}/admin/users/${waiting[0].id}`, { waitUntil: 'load' });
+    check('a waiting employer opens in the console', opened?.status() === 200 && /\/admin\/users\//.test(path(page)), `${opened?.status()} ${page.url()}`);
+  }
+}
+
+/**
+ * ADMIN_MFA_REQUIRED is unset. An admin with no authenticator is let straight
+ * into the console. The enrolment button is not on this page: it is drawn
+ * when the console sends them to /dashboard/account?mfa=required, which is
+ * the other run.
+ */
+async function adminConsoleOpens() {
+  section('the admin: the console opens without two-step sign-in');
+  const adminId = (await sql("select id from auth.users where email = 'admin@demo.test'"))[0]?.id;
+  await sql('delete from auth.mfa_factors where user_id = $1', [adminId]);
+  const { page, context, errors } = await device();
+  await signInThroughForm(page, 'admin@demo.test');
+  check('an admin with no second factor reaches the console', await landsOn(page, /\/admin$/), page.url());
+  await consoleOpens(page, 'without a second factor the console\'s');
+  check('the console threw no script errors', errors.length === 0, errors.slice(0, 3));
+  await context.close();
+}
+
+/**
+ * ADMIN_MFA_REQUIRED=true. The console sends an admin with no authenticator
+ * to enrol, the same button as before the requirement defaulted to off.
+ * Once a factor exists, the next sign-in is asked for the code whether or
+ * not the requirement is on — this run is where that is exercised.
+ */
+async function adminWithMfaRequired() {
+  section('the admin: two-step verification, then the console');
+  const adminId = (await sql("select id from auth.users where email = 'admin@demo.test'"))[0]?.id;
+  // A clean start: a factor a previous run left has a secret this run never saw.
+  await sql('delete from auth.mfa_factors where user_id = $1', [adminId]);
+  const { page, context, errors } = await device();
+  await signInThroughForm(page, 'admin@demo.test');
+  const sentToEnrol = check(
+    'an admin with no second factor is sent to set one up',
+    await landsOn(page, /\/dashboard\/account\?mfa=required/),
+    page.url(),
+  );
+  if (sentToEnrol) {
+    // The button is on this page because of ?mfa=required. The account hub
+    // without that query does not draw it.
+    await page.locator('button').filter({ hasText: 'فعّل التحقق بخطوتين' }).click();
+    const secret = (await page.locator('code[dir="ltr"]').first().textContent({ timeout: 15000 }))?.trim() ?? '';
+    check('enrolling shows a secret for the authenticator app', /^[A-Z2-7]{16,}$/.test(secret), secret);
+    await page.fill('input[name="code"]', '000000');
+    await submit(page).click();
+    await sleep(1500);
+    check('a wrong code is refused', (await sql("select 1 from auth.mfa_factors where user_id = $1 and status = 'verified'", [adminId])).length === 0);
+    await page.fill('input[name="code"]', totp(secret));
+    await submit(page).click();
+    await sleep(2500);
+    check('the right code verifies the factor', (await sql("select 1 from auth.mfa_factors where user_id = $1 and status = 'verified'", [adminId])).length === 1);
+
+    await consoleOpens(page, "at aal2 the console's");
+    check('the console threw no script errors', errors.length === 0, errors.slice(0, 3));
+
+    // A new session on another browser starts at aal1: it is asked for the code.
+    const second = await device();
+    await signInThroughForm(second.page, 'admin@demo.test');
+    check('the next sign-in is asked for the code before the console', await landsOn(second.page, /\/dashboard\/account\?mfa=challenge/), second.page.url());
+    // A code is good once: GoTrue refuses one already used, as the enrolment
+    // just did with this window's. The admin types the next one, as anybody
+    // whose app has moved on would.
+    await sleep(30_000 - (Date.now() % 30_000) + 1000);
+    await second.page.fill('input[name="code"]', totp(secret));
+    await submit(second.page).click();
+    await sleep(2500);
+    const afterCode = await second.page.goto(`${SITE}/admin`, { waitUntil: 'load' });
+    check('and with it, the console opens', afterCode?.status() === 200 && path(second.page) === '/admin', `${afterCode?.status()} ${second.page.url()}`);
+    await second.context.close();
+  }
+  await context.close();
+  // Leave the demo admin as it was found, for the API journeys that sign in as it.
+  await sql('delete from auth.mfa_factors where user_id = $1', [adminId]);
+}
+
+// The enrolment path on its own, against a website started with the requirement on.
+if (process.env.BROWSER_JOURNEY === 'admin-mfa') {
+  await adminWithMfaRequired();
+  await browser.close();
+  await db.end();
+  console.log(`\n${pass} passed, ${fail} failed`);
+  process.exit(fail === 0 ? 0 : 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,7 +373,7 @@ section('applying on a slow line, pressing send twice');
   check('a bad phone on the apply form is refused there', (await sql('select 1 from applications where candidate_id = $1 and job_id = $2', [userId, target.id])).length === 0);
 
   await page.fill('input[name="whatsapp"]', '01001234567');
-  await page.fill('textarea[name="note"]', 'متاح فوراً (browser)');
+  await page.fill('textarea[name="note"]', 'متاح فورًا (browser)');
   await submit(page).click();
   await submit(page).click({ timeout: 1500 }).catch(() => {});
   check('on a slow line the application still goes through', await showsApplied(page, 60000), page.url());
@@ -270,7 +382,14 @@ section('applying on a slow line, pressing send twice');
   check('exactly one application, new, with the note', rows.length === 1 && rows[0].status === 'new' && rows[0].note?.includes('browser'), rows);
 
   await page.goto(`${SITE}/dashboard/applications`);
-  check('the applications page lists it, by its title', (await page.locator('main').innerText()).includes(target.title_ar), target.title_ar);
+  // The console streams a skeleton first ((app)/loading.tsx). `load` can
+  // arrive before the list, so wait for the title the way the apply form
+  // waits for its own confirmation. The title is the row's title_ar: English
+  // is unpublished, and this string is what the database holds.
+  const listed = page.locator('main').getByText(target.title_ar, { exact: false }).first();
+  const appeared = await listed.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  const seen = appeared ? target.title_ar : `${page.url()} — ${(await page.locator('main').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 180)}`;
+  check('the applications page lists it, by its title', appeared, seen);
   check('no script errors along the way', errors.length === 0, errors.slice(0, 3));
 
   // Offline, then back: the page does not pretend it sent anything.
@@ -477,57 +596,10 @@ section('an approved employer: the console, and the company profile saved');
   await context.close();
 }
 
-section('the admin: two-step verification, then the console');
-{
-  const adminId = (await sql("select id from auth.users where email = 'admin@demo.test'"))[0]?.id;
-  // A clean start: a factor a previous run left has a secret this run never saw.
-  await sql('delete from auth.mfa_factors where user_id = $1', [adminId]);
-  const { page, context, errors } = await device();
-  await signInThroughForm(page, 'admin@demo.test');
-  check('an admin with no second factor is sent to set one up', await landsOn(page, /\/dashboard\/account\?mfa=required/), page.url());
-  await page.locator('button').filter({ hasText: 'فعّل التحقق بخطوتين' }).click();
-  const secret = (await page.locator('code[dir="ltr"]').first().textContent({ timeout: 15000 }))?.trim() ?? '';
-  check('enrolling shows a secret for the authenticator app', /^[A-Z2-7]{16,}$/.test(secret), secret);
-  await page.fill('input[name="code"]', '000000');
-  await submit(page).click();
-  await sleep(1500);
-  check('a wrong code is refused', (await sql("select 1 from auth.mfa_factors where user_id = $1 and status = 'verified'", [adminId])).length === 0);
-  await page.fill('input[name="code"]', totp(secret));
-  await submit(page).click();
-  await sleep(2500);
-  check('the right code verifies the factor', (await sql("select 1 from auth.mfa_factors where user_id = $1 and status = 'verified'", [adminId])).length === 1);
-
-  for (const where of ['/admin', '/admin/jobs', '/admin/users', '/admin/companies', '/admin/reports', '/admin/audit', '/admin/operations']) {
-    const opened = await page.goto(`${SITE}${where}`, { waitUntil: 'load' });
-    check(`at aal2 the console's ${where} opens`, opened?.status() === 200 && path(page) === where, `${opened?.status()} ${page.url()}`);
-  }
-  const waiting = await sql(
-    "select id from profiles where role = 'employer' and approval_status = 'pending' order by created_at desc limit 1",
-  );
-  if (waiting.length) {
-    const opened = await page.goto(`${SITE}/admin/users/${waiting[0].id}`, { waitUntil: 'load' });
-    check('a waiting employer opens in the console', opened?.status() === 200 && /\/admin\/users\//.test(path(page)), `${opened?.status()} ${page.url()}`);
-  }
-  check('the console threw no script errors', errors.length === 0, errors.slice(0, 3));
-
-  // A new session on another browser starts at aal1: it is asked for the code.
-  const second = await device();
-  await signInThroughForm(second.page, 'admin@demo.test');
-  check('the next sign-in is asked for the code before the console', await landsOn(second.page, /\/dashboard\/account\?mfa=challenge/), second.page.url());
-  // A code is good once: GoTrue refuses one already used, as the enrolment
-  // just did with this window's. The admin types the next one, as anybody
-  // whose app has moved on would.
-  await sleep(30_000 - (Date.now() % 30_000) + 1000);
-  await second.page.fill('input[name="code"]', totp(secret));
-  await submit(second.page).click();
-  await sleep(2500);
-  const afterCode = await second.page.goto(`${SITE}/admin`, { waitUntil: 'load' });
-  check('and with it, the console opens', afterCode?.status() === 200 && path(second.page) === '/admin', `${afterCode?.status()} ${second.page.url()}`);
-  await second.context.close();
-  await context.close();
-  // Leave the demo admin as it was found, for the API journeys that sign in as it.
-  await sql('delete from auth.mfa_factors where user_id = $1', [adminId]);
-}
+// Off unless the website was started with ADMIN_MFA_REQUIRED=true. The
+// enrolment button is that other run (BROWSER_JOURNEY=admin-mfa in CI).
+if (process.env.ADMIN_MFA_REQUIRED === 'true') await adminWithMfaRequired();
+else await adminConsoleOpens();
 
 section('the account deletes itself from the account page');
 {
@@ -537,9 +609,9 @@ section('the account deletes itself from the account page');
   check('they sign in once more', await landsOn(page, /\/dashboard/), page.url());
   // Deletion is its own page off the account hub, the same screen the app uses.
   await page.goto(`${SITE}/dashboard/account/delete`);
-  const remove = page.locator('button').filter({ hasText: 'احذف حسابي نهائياً' });
+  const remove = page.locator('button').filter({ hasText: 'احذف حسابي نهائيًا' });
   check('the delete button waits for the word to be typed', await remove.first().isDisabled());
-  await page.locator('label').filter({ hasText: 'عشان تأكّد' }).locator('input').fill('حذف');
+  await page.locator('label').filter({ hasText: 'للتأكيد' }).locator('input').fill('حذف');
   check('and opens once it is', await remove.first().isEnabled());
   await remove.first().click();
   check('deleting goes back to the home page, signed out', await landsOn(page, /^\/$/, 20000), page.url());

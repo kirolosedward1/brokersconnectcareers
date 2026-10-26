@@ -3,11 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { welcomeTile, welcomeWordmarkHeight } from '~/components/brand/launch-size';
 import { catalogues } from '~/i18n/provider';
 import { resetLaunchForTests } from '~/features/launch';
 import { resetWelcomeForTests } from '~/features/welcome';
 import { SESSION_KEY, supabase } from '~/lib/supabase';
 import { useSheet } from '~/lib/use-sheet';
+import { type } from '~/theme/tokens';
 import * as RootLayout from '../src/app/_layout';
 import * as TabsLayout from '../src/app/(tabs)/_layout';
 import * as TabStack from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/_layout';
@@ -146,8 +148,14 @@ it('opens a signed-out launch on the welcome, over the launch curtain, which lif
   expect(skip.props.accessibilityHint).toBe(ar.app.welcome.skipHint);
   expect(screen.getByRole('button', { name: ar.nav.signUp })).toBeTruthy();
   expect(screen.getByRole('button', { name: ar.nav.signIn })).toBeTruthy();
-  // The website's logo, read as its name.
+  // The website's logo, read as its name, at the launch logo's share of its old size.
   expect(screen.getByRole('image', { name: ar.meta.siteName })).toBeTruthy();
+  const mark = StyleSheet.flatten(screen.getByTestId('welcome-mark', HIDDEN).props.style);
+  const word = StyleSheet.flatten(screen.getByTestId('welcome-wordmark', HIDDEN).props.style);
+  const tiles = [welcomeTile(false), welcomeTile(true)];
+  expect(tiles.some((tile) => mark.width === tile * 0.68 && mark.height === tile * 0.68)).toBe(true);
+  expect([welcomeWordmarkHeight(false), welcomeWordmarkHeight(true)]).toContain(word.height);
+  expect(word.width).toBe((1375 / 286) * word.height);
   expect(screen.getByText(ar.landingPage.hero.title)).toBeTruthy();
   // The curtain stays until the welcome is on screen over it, laid out or not.
   expect(screen.getByTestId('launch-screen', HIDDEN)).toBeTruthy();
@@ -175,34 +183,70 @@ it('never scrolls, and sets the words smaller when they do not fit', async () =>
   layout('welcome-words', 400);
   layout('welcome-words-content', 300);
   await act(async () => {});
-  expect(size()).toBe(32);
+  expect(size()).toBe(type.display.fontSize);
 
   // Taller than its space (the largest text sizes): a step smaller, and again until it fits.
   layout('welcome-words-content', 520);
   await act(async () => {});
-  expect(size()).toBe(22);
+  expect(size()).toBe(type.title.fontSize);
   layout('welcome-words-content', 450);
   await act(async () => {});
-  expect(size()).toBe(18);
+  expect(size()).toBe(type.headline.fontSize);
   layout('welcome-words-content', 380);
   await act(async () => {});
-  expect(size()).toBe(18);
+  expect(size()).toBe(type.headline.fontSize);
   expect(headline().props.maxFontSizeMultiplier).toBe(1.3);
 });
 
-it('closes onto Home when the reader skips it, until the app is next started', async () => {
+it('keeps the ways on to twice the ordinary text size, so they never grow taller than a small phone', async () => {
+  // An iPhone SE at the largest accessibility size: 779 points of buttons
+  // on a 667-point screen, the company's way in drawn off its bottom edge.
+  await launch();
+  await drawn();
+  const grows = (text: string) => screen.getByText(text).props.maxFontSizeMultiplier;
+  expect(grows(ar.nav.signUp)).toBe(2);
+  expect(grows(ar.nav.signIn)).toBe(2);
+  expect(grows(ar.app.auth.forCompanies)).toBe(2);
+});
+
+it('closes onto Home when the reader skips it, and later launches open on Home', async () => {
   await launch();
   await drawn();
   fireEvent.press(await screen.findByRole('button', { name: ar.app.welcome.skip }));
   await act(async () => {});
   expect(screen.queryByTestId('welcome')).toBeNull();
   expect(screen.getByText('home-screen')).toBeTruthy();
-  // Nothing about it is kept on the phone.
-  expect((await AsyncStorage.getAllKeys()).filter((key) => key.includes('welcome'))).toEqual([]);
+  // The skip is kept on the phone.
+  expect(await AsyncStorage.getItem('bc-welcome-skipped')).toBe('1');
 
-  // The next launch, still signed out, opens on it again.
+  // The next launch, still signed out, opens on Home: the welcome is not shown again.
   screen.unmount();
   resetWelcomeForTests();
+  resetLaunchForTests();
+  await launch();
+  expect(await screen.findByText('home-screen')).toBeTruthy();
+  await act(async () => {
+    jest.advanceTimersByTime(2000);
+  });
+  expect(screen.queryByTestId('welcome')).toBeNull();
+});
+
+it('opens again after a sign-out, at once and at the next launch, though it was skipped before', async () => {
+  await AsyncStorage.setItem('bc-welcome-skipped', '1');
+  signedIn();
+  await launch();
+  expect(await screen.findByText('home-screen')).toBeTruthy();
+  await act(async () => {});
+  expect(screen.queryByTestId('welcome')).toBeNull();
+
+  await signOut();
+  expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
+  await waitFor(async () => expect(await AsyncStorage.getItem('bc-welcome-skipped')).toBeNull());
+
+  // Not skipped this time: the next launch welcomes them again.
+  screen.unmount();
+  resetWelcomeForTests();
+  resetLaunchForTests();
   await launch();
   expect(await screen.findByRole('button', { name: ar.app.welcome.skip })).toBeTruthy();
 });

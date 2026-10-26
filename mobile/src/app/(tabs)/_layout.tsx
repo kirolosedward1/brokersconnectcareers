@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { router, useSegments } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 import { useTranslations } from 'use-intl';
 import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar';
@@ -7,7 +9,18 @@ import { useConsultantAlerts } from '~/features/directory/alerts';
 import { useNewJobsBadge } from '~/features/jobs/new-since';
 import { markupTags } from '~/i18n/rich';
 import { useSession } from '~/lib/session';
-import { tabsFor, type TabName } from '~/lib/tabs';
+import { startPath, tabsFor, type TabName } from '~/lib/tabs';
+
+/**
+ * Whether this tab group is one this person has a screen in. A shared group
+ * names every tab it serves (`(home,jobs,…,admin)`); one of those names is
+ * enough. A group that is not a tab — still resolving, a sheet — is left alone.
+ */
+function groupIsOpen(group: string | undefined, tabs: readonly TabName[]): boolean {
+  if (!group?.startsWith('(') || !group.endsWith(')')) return true;
+  const names = group.slice(1, -1).split(',');
+  return names.some((name) => (tabs as readonly string[]).includes(name));
+}
 
 /**
  * The tab bar, by who is using the app (src/lib/tabs.ts, which asks
@@ -16,12 +29,16 @@ import { tabsFor, type TabName } from '~/lib/tabs';
  * their console instead of the directory: applications and saved. An
  * employer has theirs: listings and applicants, the consultant directory once
  * approved, with the overview at home and the company in the account. An
- * admin has the console's queues in a tab of their own, its badge the things
- * waiting on a decision.
+ * admin has two tabs: the console first, so the app opens on it, then the
+ * account. They have no Home, board, companies or company console in the
+ * bar, whether or not they run a company. Home's screen stays so `/` can
+ * open the console, and its button is hidden. The console's badge is the
+ * things waiting on a decision. A listing, a company, the directory or the
+ * shortlist opened from the console is pushed onto the Admin tab's stack.
  *
- * A tab left out is a protected route, which takes its screens out of the app
- * for that person altogether; links are routed with the same list (links.ts),
- * so none opens a tab that is not there.
+ * Any other tab left out is a protected route, which takes its screens out
+ * of the app for that person altogether; links are routed with the same list
+ * (links.ts), so none opens a tab that is not there.
  *
  * Each tab is a group with a stack of its own ((home), (jobs), …); a listing
  * or a company opened from any of them is pushed onto that tab's stack, so the
@@ -39,7 +56,20 @@ import { tabsFor, type TabName } from '~/lib/tabs';
  */
 export default function TabsLayout() {
   const t = useTranslations();
-  const tabs = tabsFor(useSession().actor);
+  const { actor } = useSession();
+  const tabs = tabsFor(actor);
+  // The typed route only names this layout's own segment; at run time the list
+  // is the whole path, and the next one is the open tab.
+  const segments = useSegments() as readonly string[];
+  // A sign-in closes onto whatever was underneath, which is Home. An admin
+  // has no Home tab: a group that is not theirs opens the console. The first
+  // mount already starts there (initialRouteName); this covers the bar
+  // changing under a screen that was already open.
+  useEffect(() => {
+    if (segments[0] !== '(tabs)') return;
+    if (groupIsOpen(segments[1], tabs)) return;
+    router.replace(startPath(actor));
+  }, [actor, segments, tabs]);
   // A company's kept consultant searches, asked again as the app opens (features/directory/alerts.ts).
   useConsultantAlerts((label, count) => ({
     title: t('app.agentAlerts.notifyTitle', { count }),
@@ -57,8 +87,9 @@ export default function TabsLayout() {
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
       {/* Always in the app, as `/` and every "back home" lead here; for an
-          admin, whose bar is the console alone, its button is hidden and the
-          screen opens the console instead ((home)/index.tsx). */}
+          admin, whose bar is the console and the account even when they run
+          a company, its button is hidden and the screen opens the console
+          instead ((home)/index.tsx). */}
       <Tabs.Screen
         name="(home)"
         options={{

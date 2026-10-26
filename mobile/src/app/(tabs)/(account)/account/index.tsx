@@ -24,6 +24,7 @@ import {
 import { OPERATOR } from '@/lib/business';
 import { canAccessAdminArea, canAccessCandidateArea, canAccessEmployerArea } from '@/lib/permissions';
 import { PhotoControls } from '~/components/account/photo-controls';
+import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { CompletenessRing } from '~/components/profile/completeness-ring';
 import { useCandidateSummary } from '~/features/profile/queries';
@@ -46,11 +47,13 @@ import { useTabList } from '~/features/tab-bar';
 import { buildMarker, publishedAt, shownVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
 import { useScreenRefresh } from '~/lib/use-pull-refresh';
+import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * The Account tab. Signed out, it is the door: sign in, create an account, or
@@ -95,9 +98,9 @@ export default function AccountScreen() {
     .join(' · ');
 
   const themes: { value: ThemePreference; label: string }[] = [
+    { value: 'system', label: t('theme.system') },
     { value: 'light', label: t('theme.light') },
     { value: 'dark', label: t('theme.dark') },
-    { value: 'system', label: t('theme.system') },
   ];
 
   if (!ready) return <LoadingState />;
@@ -112,10 +115,11 @@ export default function AccountScreen() {
     shareMyData(session.user.id, t('account.exportTitle'))
       .catch((failure: unknown) => {
         const status = failure instanceof ApiError ? failure.status : -1;
-        dialog.alert(
-          t('account.exportTitle'),
-          status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
-        );
+        // Said in passing (a toast), not an alert with one button to dismiss it.
+        toast.show({
+          message: status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
+          tone: 'destructive',
+        });
       })
       .then(() => setExporting(false));
   };
@@ -129,6 +133,9 @@ export default function AccountScreen() {
         refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
         contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
       >
+        {viewer?.profile?.role === 'admin' ? (
+          <StandingNotice profile={viewer.profile} company={viewer.company} companyOnly />
+        ) : null}
         {session ? (
           <Card style={{ gap: space[1] }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
@@ -145,7 +152,7 @@ export default function AccountScreen() {
               ) : null}
               <View style={{ flex: 1, gap: space[1] }}>
                 {viewer?.profile?.full_name ? (
-                  <Text variant="title" weight="bold">
+                  <Text variant="title" weight="semibold">
                     {viewer.profile.full_name}
                   </Text>
                 ) : null}
@@ -174,7 +181,7 @@ export default function AccountScreen() {
         ) : (
           <View style={{ gap: space[3] }}>
             <View style={{ gap: space[1] }}>
-              <Text variant="title" weight="bold" accessibilityRole="header">
+              <Text variant="title" weight="semibold" accessibilityRole="header">
                 {t('app.account.signedOutTitle')}
               </Text>
               <Text tone="mutedForeground">{t('app.account.signedOutBody')}</Text>
@@ -272,7 +279,7 @@ export default function AccountScreen() {
           <Row
             icon={<ExternalLink size={18} color={colors.primary} />}
             label={t('app.account.openWebsite')}
-            onPress={() => WebBrowser.openBrowserAsync(env.siteUrl).catch(() => {})}
+            onPress={() => WebBrowser.openBrowserAsync(withAppMarker(env.siteUrl)).catch(() => {})}
           />
           {supportEmail ? (
             <Row
@@ -357,7 +364,7 @@ export default function AccountScreen() {
 
 /** A page of the website, in the in-app browser: the policies live there, in one copy. */
 function openSitePage(path: '/privacy' | '/terms') {
-  WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
+  WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
 }
 
 function Row({

@@ -1,9 +1,12 @@
 import { cache } from 'react';
 import { unstable_rethrow } from 'next/navigation';
 import { redirect } from '@/i18n/navigation';
+import { adminMfaRequired } from '@/lib/admin-mfa';
+import { readMemberCompany } from '@/lib/company-member';
 import { createClient } from '@/lib/supabase/server';
 import type { CompanyRow, ProfileRow } from '@/lib/supabase/database.types';
 import type { Locale } from '@/i18n/routing';
+import { suggestedDisplayName } from '@/lib/auth/suggested-name';
 import {
   canAccessAdminArea,
   canAccessCandidateArea,
@@ -15,6 +18,8 @@ import {
   isAdmin,
   type Actor,
 } from '@/lib/permissions';
+
+export { adminMfaRequired };
 
 export type Viewer = {
   userId: string;
@@ -102,6 +107,9 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
       my_company_id() is the single answer to "which company am I acting
       for", and it breaks ties deterministically: admin first, then oldest.
+      The owner, the credit balance and whether the company is suspended
+      come from my_company_private() — a member's answer, not columns of the
+      public row — so those can be closed to a public read.
 
       Admins too. The rail offered an admin the whole employer console and
       this never looked their company up, so every page in it rendered the
@@ -110,16 +118,28 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
     */
     const { data: companyId } = await supabase.rpc('my_company_id');
     if (companyId) {
-      const { data } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
-      company = data ?? null;
+      // A failed read is not "no company": the header calls this on every
+      // page, so a throw would take the site down. Null is what a failed
+      // select already answered, and the console then says to create one.
+      try {
+        company = await readMemberCompany(supabase, companyId);
+      } catch (error) {
+        console.warn('[auth] could not read the company:', error instanceof Error ? error.message : error);
+        company = null;
+      }
     }
   }
 
-  const metadata = user.user_metadata ?? {};
-  const suggestedName =
-    (typeof metadata.full_name === 'string' && metadata.full_name) ||
-    (typeof metadata.name === 'string' && metadata.name) ||
-    (user.email ? user.email.split('@')[0] : '');
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const appMeta = (user.app_metadata ?? {}) as { provider?: unknown; providers?: unknown };
+  const providers = [
+    ...(Array.isArray(appMeta.providers) ? appMeta.providers.filter((item): item is string => typeof item === 'string') : []),
+    ...(typeof appMeta.provider === 'string' ? [appMeta.provider] : []),
+    ...(user.identities ?? []).map((identity) => identity.provider),
+  ];
+  // Empty when Apple sent no name, or the only "name" is a Hide My Email
+  // token. Onboarding's name field is required, so that is where it is asked.
+  const suggestedName = suggestedDisplayName({ metadata, email: user.email, providers });
 
   const suggestedRole =
     metadata.role === 'candidate' || metadata.role === 'employer' ? metadata.role : undefined;
@@ -186,22 +206,6 @@ export async function requireCandidate(locale: Locale) {
   return viewer;
 }
 
-/**
- * Whether an admin without a second factor may use the console at all.
- *
- * On by default in production, off in development, and settable either way:
- * ADMIN_MFA_REQUIRED=false is the escape hatch for a locked-out team, and it
- * is an escape hatch rather than the setting because the database enforces
- * the stronger half regardless (migration 311 — an admin who *has* enrolled is
- * refused at aal1 by every policy, whatever this says).
- */
-export function adminMfaRequired(): boolean {
-  const flag = process.env.ADMIN_MFA_REQUIRED;
-  if (flag === 'true') return true;
-  if (flag === 'false') return false;
-  return process.env.NODE_ENV === 'production';
-}
-
 export async function requireAdmin(locale: Locale) {
   const viewer = await requireProfile(locale);
   if (!canAccessAdminArea(viewer)) {
@@ -215,7 +219,8 @@ export async function requireAdmin(locale: Locale) {
     account could prove. An admin with a factor and an aal1 session is sent
     to answer the challenge — and would find every admin query returning
     nothing until they do, because is_admin() reads the same claim. An admin
-    with no factor is sent to enrol, where the deployment says so. The account
+    with no factor is sent to enrol only when ADMIN_MFA_REQUIRED=true
+    (src/lib/admin-mfa.ts); unset leaves the console open. The account
     page is outside this guard, so neither redirect can loop.
   */
   const supabase = await createClient();

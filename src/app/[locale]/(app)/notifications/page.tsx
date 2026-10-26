@@ -142,17 +142,12 @@ export default async function NotificationsPage({
 
       {notifications.length === 0 && !cursor ? (
         /*
-          A quiet inbox is the expected state most days, not a fault — so it
-          says so, and then points at the thing this person came to the
-          product to do. "Nothing here" with no way onward is a page that can
-          only be left with the back button.
+          A quiet inbox is the expected state most days. The title says so,
+          and the button is the way onward.
         */
         <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
           <EmptyIllustration name="updates" />
           <p className="font-medium">{t('empty')}</p>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-            {t('emptyHint')}
-          </p>
           <Button asChild variant="outline" className="mt-5">
             {canAccessEmployerArea(actorOf(viewer)) ? (
               <Link href="/employer/applicants">{t('emptyCtaEmployer')}</Link>

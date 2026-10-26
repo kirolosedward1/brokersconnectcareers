@@ -7,7 +7,9 @@ import { Appear } from '~/components/motion/appear';
 import { Pulse } from '~/components/motion/pulse';
 import { Check, X } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
+import { motion } from '~/theme/tokens';
 
 import { timelineSteps, type TimelineStep } from '@/lib/application-stages';
 
@@ -20,6 +22,7 @@ export function ApplicationTimeline({
 }: {
   application: { status: ApplicationStatus; created_at: string; employer_viewed_at: string | null };
 }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -48,11 +51,14 @@ export function ApplicationTimeline({
     .filter((step) => step.state === 'done' || step.state === 'stopped')
     .map((step) => name(step))
     .join(' · ');
+  // And where it waits now: the steps reached alone never said which one that is.
+  const current = steps.find((step) => step.state === 'current');
+  const now = current ? `. ${t('app.applications.timelineNow', { step: name(current) })}` : '';
 
   return (
     <View
       accessible
-      accessibilityLabel={`${t('myApplications.timeline')}: ${spoken}`}
+      accessibilityLabel={`${t('myApplications.timeline')}: ${spoken}${now}`}
       testID="application-timeline"
       style={{ flexDirection: 'row' }}
     >
@@ -61,19 +67,19 @@ export function ApplicationTimeline({
         const tint =
           step.state === 'stopped'
             ? application.status === 'withdrawn'
-              ? '#5B6475'
+              ? colors.mutedForeground
               : colors.destructive
             : reached
               ? colors.success
               : step.state === 'current'
                 ? colors.primary
-                : colors.border;
+                : colors.input;
         return (
           <View key={step.key} style={{ flex: 1, alignItems: 'center', gap: 4 }} testID={`step-${step.key}-${step.state}`}>
             <View style={{ alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center' }}>
               <View style={[styles.line, { backgroundColor: index === 0 ? 'transparent' : step.state === 'ahead' ? colors.border : tint }]} />
               {/* Reached steps fill in one after another; the one it waits at breathes. */}
-              <Appear from="none" scale={reached ? 0.4 : 1} delay={index * 140} duration={360}>
+              <Appear from="none" scale={reached ? 0.4 : 1} delay={index * motion.stagger}>
                 <Breathing on={step.state === 'current'}>
                   <View
                     style={{
@@ -103,13 +109,13 @@ export function ApplicationTimeline({
               variant="caption"
               weight={step.state === 'current' ? 'semibold' : 'medium'}
               tone={reached || step.state === 'current' ? 'foreground' : 'mutedForeground'}
-              numberOfLines={2}
+              numberOfLines={large ? undefined : 2}
               style={{ textAlign: 'center' }}
             >
               {name(step)}
             </Text>
             {step.date && reached ? (
-              <Text variant="caption" tone="mutedForeground" numberOfLines={1} style={{ textAlign: 'center' }}>
+              <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
                 {formatDayMonth(step.date, locale)}
               </Text>
             ) : null}

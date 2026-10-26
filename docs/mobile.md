@@ -133,9 +133,13 @@ this, and every server call went on being refused with the old key).
   `mobile/src/i18n/messages/`. Numbers inside Arabic sentences are wrapped in
   left-to-right isolates (U+2066…U+2069) — the website's `<v>` tag.
   `@formatjs` polyfills give Hermes Arabic plurals and formatting.
-  The app says its own direction (`mobile/src/lib/direction.ts`) rather than
-  rely on the one React Native fixes when the screen is created, which Expo Go
-  sets too late: the root layout lays every view out in it, every navigator's
+  The app says its own direction (`mobile/src/lib/direction.ts`). While English
+  is unpublished that direction is Arabic's, from the locale, so it does not
+  wait on `I18nManager.isRTL` or on `Updates.reloadAsync`. SDK 58 no longer
+  turns RTL on from the phone's language, `forceRTL` applies only on the next
+  process start, and Expo Go resets that preference and applies the manifest's
+  `forcesRTL` after the screen exists. The root layout lays every view out in
+  this direction, every navigator's
   header and back gesture is told it (React Navigation's `LocaleDirContext`).
   The tab bar is the app's own, laid out like every other view: iOS lays its
   native bars out in the language the app runs in, which is English on an
@@ -144,12 +148,13 @@ this, and every server call went on being refused with the old key).
   `textAlign` for text it lays out, not for what is typed into a field.
 - **Design.** The brand set in a quieter key for the phone
   (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
-  near-black with champagne in dark, champagne kept for what has been checked
-  (a verified company); every text pair 4.5:1, marks and field borders 3:1.
+  near-black with champagne in dark (which there is also the controls' colour),
+  champagne otherwise kept for what has been checked (a verified company); every text pair 4.5:1, marks and field borders 3:1.
   Cards raised with a hairline and a soft shadow, continuous corners, capsule
   buttons and chips, a gentle press (none with Reduce Motion), a few haptics
-  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
-  default with light / dark / system as on the site, 44-point touch targets.
+  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, the iPhone's
+  own light or dark by default, with system / light / dark to pick from as on
+  the site (whose default is light), 44-point touch targets.
 - **The logo** is the website's own artwork, `public/brand/logo-ar.png`: in
   Home's bar, above the sign-in forms, and its wordmark on the welcome. The app
   has it in two parts, the wordmark and the mark, cut at the gap between them,
@@ -296,8 +301,9 @@ this, and every server call went on being refused with the old key).
   the top of the screen (`mobile/src/components/ui/search-field.tsx`): iOS's
   header search bar is laid out by the phone's language, not the app's, so it
   ran left to right under the Arabic on a phone set to English and in Expo Go.
-  The board has no search bar: its words are the filter sheet's first field,
-  as they head the website's filter panel. **A consultant's page**
+  The board has the same field at the top of its list, searching the same
+  words as the filter sheet's first field (which heads the website's filter
+  panel); the Jobs tab pressed again at the top puts the cursor in it. **A consultant's page**
   (`/agents/<slug>`, or `/agents/<id>` for a locked card) reads
   `get_agent_card()` and the CV under the employer's own session, so the
   database decides what shows; the number and the CV are asked for with
@@ -326,11 +332,18 @@ this, and every server call went on being refused with the old key).
   356, `setSavedJobNote`): written in the app's note sheet or on the
   website's saved page, shown on both, gone with the bookmark (held in memory
   for Undo), the words from one `savedNotes` catalogue. Notes a phone kept
-  before (`bc.saved-notes.v1`) are carried over once the saved list is read
-  (`carryDeviceNotes`), then let go: offered to a
+  before (`bc.saved-notes.v1`) are posted once when the saved list is first
+  read (`moveToAccount`), then let go: offered to a
   candidate and, as a way into an account, to somebody signed out; shown at
   once and put back if the server refuses. A follow is a saved search with
-  one filter, so the ten-row cap and the weekly email are shared.
+  one filter, so the ten-row cap and the weekly email are shared. When to
+  **remind** them before the listing closes is `saved_jobs.remind_at`
+  (migration 366, `setSavedJobReminder`), read with the bookmarks
+  (`features/saved/queries.ts`). The website's saved page says it and can
+  take it back. The notification the app schedules — the day before the
+  closing, at ten in Cairo (`features/saved/reminders.ts`) — is a copy of
+  that time, made to match at launch and as the app comes back while either
+  side holds one (`reminders-follow.ts`).
 - **Applying** is `/jobs/<slug>/apply`, the website's path, so a sign-in that
   began with "apply" comes back to it. The page shows the website's states in
   its order (closed, signed out, not a candidate, held or suspended — told
@@ -364,7 +377,15 @@ this, and every server call went on being refused with the old key).
 ### Kept on the phone, and small conveniences
 
 Nothing below reaches the website; each is the app's own, per person on the
-phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
+phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`). A saved
+listing's note and its reminder before it closes are not among them: they are
+kept on the bookmark (see **Saved** above). What stays on the phone of those is
+the schedule of reminder notifications (`bc.saved-reminders.v1:<user>`), a copy
+of `remind_at` taken off the phone when its person signs out and put back when
+they return. Notes kept on a phone before then (`bc.saved-notes.v1:<user>`) are
+posted to their bookmarks once, the first time that person's saved list is
+read, and the phone's copy emptied (`features/saved/move.ts`); a bookmark that
+already has a note keeps it.
 
 - **Quick filters** under the board's title (`components/jobs/quick-filters.tsx`):
   a basic salary, primary and resale, and the two areas with the most live
@@ -438,7 +459,7 @@ they are in, instead of the round trip through the sign-in page.
   in the admin console until October 2026; signing out is the way out for
   someone without the phone. The database asks it of admins only
   (docs/security/THREAT_MODEL.md, section 5).
-- **The welcome** (`mobile/src/app/welcome.tsx`) opens every launch with
+- **The welcome** (`mobile/src/app/welcome.tsx`) opens the first launch with
   nobody signed in, under the splash screen: the website's own hero photograph
   (`mobile/assets/images/welcome-photo.jpg`, the same file as
   `public/media/hero-poster.jpg`, which `tests/brand.test.ts` holds equal)
@@ -446,11 +467,13 @@ they are in, instead of the round trip through the sign-in page.
   white the logo, the headline, and the ways on —
   create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
-  Skip closes it until the app is next started; signing in closes it with the
+  Skip closes it, and is remembered on the phone (`bc-welcome-skipped`) so
+  later launches open on Home — the Account tab is where to sign in; signing in closes it with the
   sign-in sheet; a launch by a link never shows it, and goes where the link
   leads. Signing out opens it again, faded in over the tabs once whatever was
-  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`).
-  Nothing about it is kept on the phone (`mobile/src/features/welcome.ts`).
+  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`),
+  and forgets the skip, so the next launch opens on it too until it is skipped
+  again (`mobile/src/features/welcome.ts`).
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
   to each other. It asks in short steps, with a progress bar and a way back:
@@ -690,11 +713,13 @@ the same requests to the real thing, in CI and on a computer:
 The quickest way onto a phone, with no Apple developer account: install Expo Go
 from the App Store, run `pnpm start:go` on a computer on the same Wi-Fi as the
 iPhone, and scan the QR code it prints with the iPhone's camera
-(`pnpm start:go --tunnel` when the two are not on the same network). Right to
-left comes from `extra.forcesRTL` in `app.config.ts`. Expo Go applies it only
-after it has created the screen when it opens an update from the network or
-comes back from its own home screen, so the app sets its direction itself
-(`mobile/src/lib/direction.ts`) and runs right to left either way.
+(`pnpm start:go --tunnel` when the two are not on the same network). While
+English is unpublished the app lays itself out right to left from the locale
+(`mobile/src/lib/direction.ts`). Expo Go applies `extra.forcesRTL` only after
+it has created the screen when it opens an update from the network or comes
+back from its own home screen, and it resets an `I18nManager.forceRTL` call,
+so a reload does not fix the direction there. The app's own direction does
+not wait for either.
 
 Sign in with Google returns to the app at `brokersconnect://auth/callback`,
 which has to be among Supabase's redirect URLs (Authentication → URL
@@ -902,11 +927,21 @@ In the Supabase dashboard (Authentication):
 ## Releasing
 
 What App Store Connect asks, and the answers the code gives — the privacy
-label, the guidelines that apply, review notes — is in `docs/app-store.md`.
+label, the guidelines that apply, review notes — is in `docs/app-store.md`;
+Google Play's, in `docs/play-store.md`. `pnpm release:check` (in `mobile/`,
+`scripts/release-check.mjs`) checks what a store build is made from before one
+is paid for: the production profile, the configuration as EAS evaluates it,
+the versions, the icons and both listings — and, given `--bundle dist` after
+`pnpm export:ios`, that the bundle holds no secret key or token.
 
 Builds are made with EAS (`eas.json`): `development` (a development client for
 a registered iPhone), `development-simulator`, `preview` (internal
 distribution) and `production` (App Store, build number incremented remotely).
+`development` and `development-simulator` set `developmentClient: true`, so
+they include the Expo dev menu — the blue gear that floats over the header.
+That menu is `expo-dev-menu`, compiled into debug builds only. `preview` and
+`production` set `developmentClient: false`: they are standalone releases and
+do not include it.
 Before the first build:
 
 - an Apple Developer Program membership (an organisation needs a D-U-N-S number).
@@ -995,11 +1030,13 @@ well.
 
 ## The admin console in the app
 
-An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`),
-and nothing of the public site's: its bar is the console and the account.
-Home's screens stay in the app with their button hidden, `/` opens the
-console, and a listing, a company or the bell's feed the console points at
-opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
+An account whose role is `admin` has two tabs (`src/lib/tabs.ts`): the
+**Admin** console first, so the app opens on it, then the account. They do
+not get Home, the board, the companies directory, or — even when they also
+run a company — the employer console. The company's page and its billing
+stay in the account. Home's screens stay in the app with their button hidden,
+`/` opens the console, and a listing, a company or the bell's feed the console
+points at opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
 
 Every page of the website's console is a native screen under `(admin)`, at the
 website's own path: the overview (`/admin`, which ends with every section in
@@ -1014,8 +1051,7 @@ the audit log, taxonomy, email activity, background work and security. A
 file screen carries the record's audit trail and notes as the website's does.
 Nothing in the console opens the website; an `/admin/…` path the app does not
 know opens the overview. Setting up an authenticator is native too
-(`src/app/mfa-enrol.tsx`). An admin who runs a company has the company's
-console in the bar beside the Admin tab, and the consultant directory opens
+(`src/app/mfa-enrol.tsx`). The consultant directory and the shortlist open
 inside the Admin tab (`(consultants,admin)` in the routes).
 
 - **Reads** go straight to Supabase under the admin's session — the same
@@ -1038,7 +1074,7 @@ inside the Admin tab (`(consultants,admin)` in the routes).
 - **The second factor** is asked of the app as the website asks it: the door
   (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
   server) opens only for a session that gave its authenticator's code, or —
-  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
+  where `ADMIN_MFA_REQUIRED` is not exactly `true` (unset is off; the
   app reads it from `/config`) — for an admin without one. An admin without
   an authenticator sets one up on the phone (`mfa-enrol`), then is asked for
   the code by the app's own second-factor screen. The server refuses the levers

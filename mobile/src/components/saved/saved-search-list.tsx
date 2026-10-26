@@ -6,6 +6,7 @@ import { followedCompany } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { Text } from '~/components/ui/text';
 import { useDeleteSavedSearch, useSetSearchAlerts } from '~/features/saved/queries';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 
@@ -33,8 +34,11 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
           borderColor: colors.border,
         }}
       >
-        <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
+        <Text weight="medium" style={{ textAlign: 'center' }}>
           {t('empty')}
+        </Text>
+        <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center', marginTop: 4 }}>
+          {t('emptyHint')}
         </Text>
       </View>
     );
@@ -52,6 +56,7 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
 function SavedSearchItem({ row }: { row: SavedSearchRow }) {
   const t = useTranslations('savedSearch');
   const { colors, lift } = useTheme();
+  const large = useLargeText();
   const alerts = useSetSearchAlerts();
   const remove = useDeleteSavedSearch();
 
@@ -86,7 +91,7 @@ function SavedSearchItem({ row }: { row: SavedSearchRow }) {
         onPress={open}
         style={{ flex: 1, minHeight: hitTarget, justifyContent: 'center' }}
       >
-        <Text weight="medium" numberOfLines={1}>
+        <Text weight="medium" numberOfLines={large ? undefined : 1}>
           {row.label}
         </Text>
       </Pressable>

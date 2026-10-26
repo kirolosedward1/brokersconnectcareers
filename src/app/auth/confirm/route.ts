@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
   return new NextResponse(
     page({
       title: titles[type],
-      body: t('body'),
       action: t('continue'),
       why: t('why'),
       fields: { token_hash: tokenHash, type, next: next ?? '' },
@@ -133,13 +132,11 @@ function escape(text: string): string {
  */
 function page({
   title,
-  body,
   action,
   why,
   fields,
 }: {
   title: string;
-  body: string;
   action: string;
   why: string;
   fields: Record<string, string>;
@@ -168,8 +165,7 @@ function page({
          background: var(--bg); color: var(--fg); font: 17px/1.75 "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
   main { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px; text-align: center; }
   img { width: 56px; height: 56px; }
-  h1 { font-size: 22px; line-height: 1.4; margin: 12px 0 4px; }
-  p { margin: 0; color: var(--muted); }
+  h1 { font-size: 22px; line-height: 1.4; margin: 12px 0 0; }
   button { margin-top: 20px; width: 100%; min-height: 48px; border: 0; border-radius: 8px; background: var(--primary); color: var(--primary-fg);
            font: inherit; font-weight: 600; cursor: pointer; }
   small { display: block; margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--muted); }
@@ -179,7 +175,6 @@ function page({
 <main>
   <img src="/brand/logo-mark.png" alt="" width="56" height="56">
   <h1>${escape(title)}</h1>
-  <p>${escape(body)}</p>
   <form method="post" action="/auth/confirm">${hidden}<button type="submit">${escape(action)}</button></form>
   <small>${escape(why)}</small>
 </main>

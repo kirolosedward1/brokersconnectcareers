@@ -17,7 +17,7 @@ import { ThemeProvider } from '~/theme/provider';
 import * as EditJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/[id]/edit';
 import * as NewJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/new';
 import { DeclaredTabs } from './declared-tabs';
-import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
+import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { detail, newCairo } from './fixtures';
 import { placeViewsAt } from './measure';
 import { draftKey } from '~/lib/kept-draft';
@@ -76,6 +76,7 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [employer]);
   server.on('POST /rest/v1/rpc/my_company_id', () => ownedCompany.id);
+  server.on('POST /rest/v1/rpc/my_company_private', () => memberPrivate(ownedCompany));
   server.on('GET /rest/v1/companies', [ownedCompany]);
   server.on('/rest/v1/districts', [newCairo, zayed]);
   server.on('/rest/v1/developers', [{ id: 3, name_ar: 'بالم هيلز', name_en: 'Palm Hills', slug: 'palm-hills' }]);
@@ -181,7 +182,7 @@ describe('a new listing', () => {
     first.unmount();
 
     await renderRouter(app, { initialUrl: '/employer/jobs/new' });
-    expect(await screen.findByText(/^احتفظنا باللي كتبته هنا/)).toBeTruthy();
+    expect(await screen.findByText(/^احتفظنا بما كتبته هنا/)).toBeTruthy();
     // On the step it was left on, with what was typed.
     expect(screen.getByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.jobForm.basics }));
@@ -190,7 +191,7 @@ describe('a new listing', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.drafts.startOver }));
     await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
     expect(screen.queryByDisplayValue('مستشار مبيعات')).toBeNull();
-    expect(screen.queryByText(/^احتفظنا باللي كتبته هنا/)).toBeNull();
+    expect(screen.queryByText(/^احتفظنا بما كتبته هنا/)).toBeNull();
   });
 
   it('walks the four steps, asks its two questions on the way, and submits what was filled in', async () => {
@@ -203,7 +204,7 @@ describe('a new listing', () => {
 
     // Asked on leaving the first step, answered on the second.
     expect(await screen.findByText(ar.employer.duplicateTitle)).toBeTruthy();
-    expect(await screen.findByText(/^الأساسي في الإعلانات الشبيهة بين/)).toBeTruthy();
+    expect(await screen.findByText(/^الأساسي في الإعلانات المشابهة بين/)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/findSimilarListing')[0]?.body).toEqual({
       input: { titleAr: 'مستشار مبيعات', districtId: newCairo.id, excludeId: null },
     });

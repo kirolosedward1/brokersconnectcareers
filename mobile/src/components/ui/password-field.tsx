@@ -3,7 +3,7 @@ import { Pressable, type TextInputProps, type TextInputInstance } from 'react-na
 import { useTranslations } from 'use-intl';
 import { Eye, EyeOff } from '~/components/ui/lucide';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { hitTarget } from '~/theme/tokens';
 import { TextField } from './text-field';
 
 /**
@@ -42,11 +42,11 @@ export const PasswordField = forwardRef<TextInputInstance, Omit<TextInputProps, 
           accessibilityRole="button"
           accessibilityLabel={shown ? t('hidePassword') : t('showPassword')}
           onPress={() => setShown((now) => !now)}
-          // The glyph, not its 44-point box, on the field's inner margin.
+          // 44 points, flush with the field's end. The field leaves it the
+          // padding, so the box stays inside the border on either direction.
           style={({ pressed }) => ({
             width: hitTarget,
             height: hitTarget,
-            marginEnd: -space[3],
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.55 : 1,

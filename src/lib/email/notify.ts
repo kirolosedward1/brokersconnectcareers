@@ -1,7 +1,7 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { AgentVisibility, ApplicationStatus } from '@/lib/supabase/database.types';
-import { env } from '@/lib/env';
+import type { AgentVisibility, ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
+import { configuredValue, env } from '@/lib/env';
 import { trustedLogoUrl } from '@/lib/avatar-url';
 import { localized } from '@/i18n/routing';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
@@ -165,9 +165,20 @@ type ApplicationForCandidate = {
     | null;
 };
 
+type ApplicationWithdrawnForBroker = {
+  id: string;
+  status: string;
+  candidate_id: string;
+  job:
+    | (JobBits & {
+        company: { id: string; owner_id: string; suspended_at: string | null } | null;
+      })
+    | null;
+};
+
 type JobForOwner = JobBits & {
   /** Where the listing stands now: a message about a decision checks it still does. */
-  status: string;
+  status: JobStatus;
   company: { id: string; owner_id: string; name_ar: string } | null;
   /**
    * The listing's own note column: before migration 347 the moderator's
@@ -528,7 +539,6 @@ export async function notifyEmployerOfApplication(applicationId: string): Promis
           memberId,
           job,
           applicationId,
-          candidateId: application.candidate_id,
           name,
         });
       } catch (error) {
@@ -556,14 +566,12 @@ async function oneApplicationNotice({
   memberId,
   job,
   applicationId,
-  candidateId,
   name,
 }: {
   admin: ReturnType<typeof createAdminClient>;
   memberId: string;
   job: JobBits;
   applicationId: string;
-  candidateId: string;
   name: string;
 }): Promise<SendOutcome> {
   const to = await recipient(admin, memberId, 'notify_applications');
@@ -595,16 +603,15 @@ async function oneApplicationNotice({
     to: to.email,
     userId: memberId,
     /*
-      The listing, the person, and the recipient.
+      The application and the member.
 
-      Withdrawing deletes the application and reapplying makes a new one with a
-      new id, so a key on the id let one candidate mail an employer about the
-      same listing as many times as they cared to apply and withdraw. The
-      employer's interest is "this person applied to this listing", which
-      happens once however many rows carry it — and once per member, since each
-      of them is a separate message to a separate inbox.
+      Migration 362 kept the withdrawn row and made a reapplication a new
+      application, with its own id. A key on the listing and the candidate
+      treated that second application as the first and sent nothing. The key
+      is the application, so the new one is told once, a replay of the same
+      one sends nothing, and each member is a separate message.
     */
-    dedupeKey: `new_application:${job.id}:${candidateId}:${memberId}`,
+    dedupeKey: `new_application:${applicationId}:${memberId}`,
     entity: { type: 'application', id: applicationId },
     envelope: buildEnvelope({
       audience: audienceOf(to, 'notify_applications'),
@@ -854,6 +861,110 @@ export async function notifyApplicationWithdrawn(args: {
   }
 }
 
+/**
+ * Owner: a candidate withdrew an application to their listing.
+ *
+ * Transactional, and a different message from the candidate's own receipt.
+ * The name is the one the applicants page still shows. The phone, the email,
+ * the WhatsApp number and the CV are not read and not written — a withdrawal
+ * closes those, and a forwarded inbox is not a place to put them. Keyed on
+ * the application, so a retry or a second publish of the same withdrawal
+ * sends nothing. When OWNER_NOTIFY_EMAIL is set, the same message is also
+ * sent there, under its own key; unset, that copy is not sent.
+ *
+ * `only` distinguishes a retry. Undefined is the event itself (broker and
+ * copy). A user id is that broker's row. Null is the copy, which has no user.
+ */
+export async function notifyBrokerOfWithdrawal(
+  applicationId: string,
+  only?: string | null,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('applications')
+      .select(
+        `id, status, candidate_id, job:jobs (${JOB_FIELDS}, company:companies (id, owner_id, suspended_at))`,
+      )
+      .eq('id', applicationId)
+      .maybeSingle();
+    if (error) readFailed('application', error);
+
+    const application = data as unknown as ApplicationWithdrawnForBroker | null;
+    const job = application?.job;
+    const ownerId = job?.company?.owner_id;
+    if (!application || !job || !ownerId) return 'skipped';
+    // Still true on a retry. A row that is no longer withdrawn has nothing to announce.
+    if (application.status !== 'withdrawn') return 'skipped';
+    // A suspended company does not see its applicants. Sending, or retrying,
+    // after the suspension would hand over the name the pages no longer show.
+    if (job.company?.suspended_at) return 'skipped';
+    const targets = noticeTargets(only, ownerId);
+    if (!targets) return 'skipped';
+
+    // The display name only. Selecting anything else here would be how a
+    // phone number or an address landed in the message.
+    const { data: candidate, error: candidateError } = await admin
+      .from('profiles')
+      .select('full_name')
+      .eq('id', application.candidate_id)
+      .maybeSingle();
+    if (candidateError) readFailed('candidate', candidateError);
+    const name = typeof candidate?.full_name === 'string' ? candidate.full_name.trim() : '';
+
+    const to = await recipient(admin, ownerId, null);
+    const audience = to ? audienceOf(to, null) : { locale: 'ar' as const };
+    const t = copyFor(audience.locale).candidateWithdrew;
+    const title = localized(audience.locale, job.title_ar, job.title_en);
+    const envelope = buildEnvelope({
+      audience,
+      subject: t.subject(title),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: name ? t.bodyNamed(name, title) : t.body(title) },
+        {
+          kind: 'facts',
+          rows: [[t.labelJob, title], ...(name ? ([[t.labelApplicant, name]] as [string, string][]) : [])],
+        },
+        {
+          kind: 'button',
+          label: t.cta,
+          href: `${env.siteUrl}/employer/jobs/${job.id}/applicants`,
+        },
+      ],
+    });
+    const entity = { type: 'application', id: application.id };
+
+    return foldSend([
+      targets.broker
+        ? to
+          ? await deliver({
+              template: 'candidate_withdrew',
+              to: to.email,
+              userId: ownerId,
+              dedupeKey: `candidate_withdrew:${application.id}`,
+              entity,
+              envelope,
+            })
+          : 'skipped'
+        : 'skipped',
+      targets.platform
+        ? await deliverPlatformCopy({
+            template: 'candidate_withdrew',
+            brokerEmail: to?.email,
+            dedupeKey: `candidate_withdrew:${application.id}:copy`,
+            entity,
+            envelope,
+          })
+        : 'skipped',
+    ]);
+  } catch (error) {
+    console.warn('[email] broker withdrawal notice failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Listings
 // ---------------------------------------------------------------------------
@@ -946,6 +1057,11 @@ export async function notifyJobSubmitted(
  * audience the bell has had since migration 51. Addressed to owner_id alone,
  * the recruiter who wrote the listing heard about it only if they happened to
  * look at the bell, and a company whose owner had left heard nothing.
+ *
+ * An approval is the exception for the owner: they are told by the
+ * transactional receipt (notifyBrokerOfJobApproval), and this preference copy
+ * skips them so the same decision is not mailed twice. A refusal still goes
+ * to the owner with everyone else.
  */
 export async function notifyEmployerOfModeration(
   jobId: string,
@@ -1001,6 +1117,10 @@ async function oneModerationNotice({
   approved: boolean;
   note?: string | null;
 }): Promise<SendOutcome> {
+  // The owner's approval mail is transactional and unconditional. Sending this
+  // preference copy as well would be a second message about the same decision.
+  if (approved && job.company?.owner_id === memberId) return 'skipped';
+
   const to = await recipient(admin, memberId, 'notify_status');
   if (!to) return 'skipped';
 
@@ -1065,6 +1185,91 @@ async function oneModerationNotice({
       ],
     }),
   });
+}
+
+/**
+ * Owner: an administrator approved their listing.
+ *
+ * Transactional. Members who are not the owner still hear through the
+ * preference copy, which skips the owner. The key is the listing version the
+ * bell uses (`job_published:{job}:{version}`): a retry or a second publish of
+ * that same approval sends nothing, and a later review cycle — which moves
+ * the version, because every status change does — is a new event and is sent
+ * once. When OWNER_NOTIFY_EMAIL is set, that same message is also sent there,
+ * under its own key; unset, the copy is not sent.
+ *
+ * `only` distinguishes a retry. Undefined is the event itself (broker and
+ * copy). A user id is that broker's row. Null is the copy, which has no user.
+ */
+export async function notifyBrokerOfJobApproval(
+  jobId: string,
+  only?: string | null,
+): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const job = await ownedJob(admin, jobId);
+    const ownerId = job?.company?.owner_id;
+    if (!job || !ownerId) return 'skipped';
+    // "Your listing is live" about one back in review, or already run out, is worse than silence.
+    if (!jobIsLive(job)) return 'skipped';
+    const targets = noticeTargets(only, ownerId);
+    if (!targets) return 'skipped';
+
+    const to = await recipient(admin, ownerId, null);
+    const audience = to ? audienceOf(to, null) : { locale: 'ar' as const };
+    const t = copyFor(audience.locale).jobApprovedOwner;
+    const title = localized(audience.locale, job.title_ar, job.title_en);
+    const envelope = buildEnvelope({
+      audience,
+      subject: t.subject(title),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(title) },
+        {
+          kind: 'facts',
+          rows: [
+            [t.labelJob, title],
+            ...(job.published_at
+              ? ([[t.labelPublished, formatDay(job.published_at, audience.locale)]] as [string, string][])
+              : []),
+            ...(job.expires_at
+              ? ([[t.labelExpires, formatDay(job.expires_at, audience.locale)]] as [string, string][])
+              : []),
+          ],
+        },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs/${job.slug}` },
+      ],
+    });
+    const entity = { type: 'job', id: job.id };
+
+    return foldSend([
+      targets.broker
+        ? to
+          ? await deliver({
+              template: 'job_approved_owner',
+              to: to.email,
+              userId: ownerId,
+              dedupeKey: `job_approved_owner:${job.id}:${job.version}:${ownerId}`,
+              entity,
+              envelope,
+            })
+          : 'skipped'
+        : 'skipped',
+      targets.platform
+        ? await deliverPlatformCopy({
+            template: 'job_approved_owner',
+            brokerEmail: to?.email,
+            dedupeKey: `job_approved_owner:${job.id}:${job.version}:copy`,
+            entity,
+            envelope,
+          })
+        : 'skipped',
+    ]);
+  } catch (error) {
+    console.warn('[email] owner approval notice failed:', asMessage(error));
+    return 'failed';
+  }
 }
 
 /** How far ahead the expiring warning looks. expire-jobs uses the same. */
@@ -1711,6 +1916,67 @@ async function forEachMember(
   // must not read a colleague's 'sent' as "nothing left to say" for the
   // member whose copy failed.
   return anyFailed ? 'failed' : outcome;
+}
+
+/**
+ * Who this call should write to.
+ *
+ * Undefined is the event itself: the brokerage's owner, and a copy to the
+ * platform owner when OWNER_NOTIFY_EMAIL is set. A user id is a retry of that
+ * person's row. Null is a retry of the copy, which is recorded with no user.
+ * Any other id is not this message.
+ */
+function noticeTargets(
+  only: string | null | undefined,
+  ownerId: string,
+): { broker: boolean; platform: boolean } | null {
+  if (only === undefined) return { broker: true, platform: true };
+  if (only === null) return { broker: false, platform: true };
+  if (only === ownerId) return { broker: true, platform: false };
+  return null;
+}
+
+/**
+ * The platform owner's address, or null when the copy should not be sent.
+ *
+ * Unset, blank, a placeholder, or not a bare address: no copy. The same
+ * inbox as the brokerage's owner: no copy, or that person would get the
+ * message twice.
+ */
+function platformCopyAddress(brokerEmail: string | undefined): string | null {
+  const raw = configuredValue(env.ownerNotifyEmail)?.trim() ?? '';
+  if (!raw) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+    console.warn('[email] OWNER_NOTIFY_EMAIL is not a usable address; the copy was not sent');
+    return null;
+  }
+  if (brokerEmail && raw.toLowerCase() === brokerEmail.toLowerCase()) return null;
+  return raw;
+}
+
+function foldSend(outcomes: SendOutcome[]): SendOutcome {
+  if (outcomes.some((item) => item === 'failed')) return 'failed';
+  if (outcomes.some((item) => item === 'sent')) return 'sent';
+  return 'skipped';
+}
+
+async function deliverPlatformCopy(spec: {
+  template: 'job_approved_owner' | 'candidate_withdrew';
+  brokerEmail: string | undefined;
+  dedupeKey: string;
+  entity: { type: string; id: string };
+  envelope: Parameters<typeof deliver>[0]['envelope'];
+}): Promise<SendOutcome> {
+  const to = platformCopyAddress(spec.brokerEmail);
+  if (!to) return 'skipped';
+  return deliver({
+    template: spec.template,
+    to,
+    userId: null,
+    dedupeKey: spec.dedupeKey,
+    entity: spec.entity,
+    envelope: spec.envelope,
+  });
 }
 
 function audienceOf(to: Recipient, preference: Preference): Audience {

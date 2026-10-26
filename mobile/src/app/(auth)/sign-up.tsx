@@ -12,6 +12,7 @@ import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
 import { PasswordField } from '~/components/ui/password-field';
+import { InlineLink, LinkLine } from '~/components/ui/inline-link';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useCaptcha } from '~/features/auth/captcha';
@@ -20,11 +21,13 @@ import { confirmationPath, intentFromParams, intentParams } from '~/features/aut
 import { useLand } from '~/features/auth/land';
 import type { ProviderOutcome } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
+import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
 import { useErrorFeedback } from '~/lib/haptics';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { livePasswordChecks, PASSWORD_MIN, PASSWORD_RULES } from '~/lib/password-checks';
 
 /**
  * Create an account — the website's sign-up, rule for rule: eight characters,
@@ -60,9 +63,12 @@ export default function SignUpScreen() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resent, setResent] = useState<'sent' | 'wait' | 'offline' | null>(null);
 
+  // Said under the fields while typing; checked again when sent.
+  const live = livePasswordChecks(password, passwordConfirm);
+
   async function submit() {
     setError(null);
-    if (password.length < 8) {
+    if (password.length < PASSWORD_MIN) {
       setError(t('validation.passwordShort'));
       return;
     }
@@ -211,7 +217,7 @@ export default function SignUpScreen() {
           />
         </Field>
 
-        <Field label={t('auth.password')}>
+        <Field label={t('auth.password')} error={live.short ? t('validation.passwordShort') : undefined}>
           <PasswordField
             ref={passwordField}
             value={password}
@@ -219,14 +225,14 @@ export default function SignUpScreen() {
             accessibilityLabel={t('auth.password')}
             autoComplete="new-password"
             textContentType="newPassword"
-            passwordRules="minlength: 8;"
+            passwordRules={PASSWORD_RULES}
             returnKeyType="next"
             submitBehavior="submit"
             onSubmitEditing={() => confirmField.current?.focus()}
           />
         </Field>
 
-        <Field label={t('auth.passwordConfirm')}>
+        <Field label={t('auth.passwordConfirm')} error={live.mismatch ? t('validation.passwordMismatch') : undefined}>
           <PasswordField
             ref={confirmField}
             value={passwordConfirm}
@@ -234,7 +240,7 @@ export default function SignUpScreen() {
             accessibilityLabel={t('auth.passwordConfirm')}
             autoComplete="new-password"
             textContentType="newPassword"
-            passwordRules="minlength: 8;"
+            passwordRules={PASSWORD_RULES}
             returnKeyType="go"
             onSubmitEditing={() => {
               if (!pending && !captchaBlocks(captcha)) void submit();
@@ -242,7 +248,10 @@ export default function SignUpScreen() {
           />
         </Field>
 
-        {error ? <Notice tone="destructive">{error}</Notice> : null}
+        {/* Not said twice: a refusal the field already says stays under the field. */}
+        {error && !(live.short && error === t('validation.passwordShort')) && !(live.mismatch && error === t('validation.passwordMismatch')) ? (
+          <Notice tone="destructive">{error}</Notice>
+        ) : null}
 
         <CaptchaStatus captcha={captcha} />
 
@@ -256,20 +265,20 @@ export default function SignUpScreen() {
         {/* The website's line: where the address is asked for, the policy that
             says what happens to it. Agreeing is onboarding's checkbox, the one
             step every way in goes through. */}
-        <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+        <LinkLine>
           {t.rich('auth.signUpNotice', {
             terms: (chunks: ReactNode) => (
-              <Text variant="caption" weight="semibold" tone="primary" onPress={() => openSitePage('/terms')} suppressHighlighting accessibilityRole="link">
+              <InlineLink variant="caption" onPress={() => openSitePage('/terms')}>
                 {chunks}
-              </Text>
+              </InlineLink>
             ),
             privacy: (chunks: ReactNode) => (
-              <Text variant="caption" weight="semibold" tone="primary" onPress={() => openSitePage('/privacy')} suppressHighlighting accessibilityRole="link">
+              <InlineLink variant="caption" onPress={() => openSitePage('/privacy')}>
                 {chunks}
-              </Text>
+              </InlineLink>
             ),
           })}
-        </Text>
+        </LinkLine>
       </View>
 
       <AuthSwitch question={t('auth.hasAccount')} action={t('auth.signIn')} onPress={toSignIn} />
@@ -278,5 +287,5 @@ export default function SignUpScreen() {
 }
 
 function openSitePage(path: '/terms' | '/privacy') {
-  WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
+  WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
 }

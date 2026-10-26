@@ -65,6 +65,7 @@ import { recordJobView, setSavedJobNote, toggleSavedJob } from '@/lib/actions/jo
 import { completeOnboarding } from '@/lib/actions/onboarding';
 import { acceptPolicies } from '@/lib/actions/policies';
 import { reportTarget } from '@/lib/actions/reports';
+import { setSavedJobReminder } from '@/lib/actions/saved-notes';
 import {
   deleteSavedSearch,
   followCompany,
@@ -199,6 +200,7 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   // Jobs, searches, follows
   toggleSavedJob: { run: positional(z.string(), 'jobId', toggleSavedJob) },
   setSavedJobNote: { run: (input) => setSavedJobNote(input) },
+  setSavedJobReminder: { run: (input) => setSavedJobReminder(input) },
   recordJobView: {
     run: async (input) => {
       const slug = record(input).slug;

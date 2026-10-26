@@ -18,6 +18,8 @@ import { CloudOff, Compass, TriangleAlert, WifiOff, type LucideIcon } from '~/co
 import { ApiError, noAnswer } from '~/lib/api';
 import { Appear } from '~/components/motion/appear';
 import { Pulse } from '~/components/motion/pulse';
+import { useSession } from '~/lib/session';
+import { startPath } from '~/lib/tabs';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
@@ -253,6 +255,22 @@ export function SkeletonList({
   );
 }
 
+/**
+ * A list screen on its way, under its own bars: the cards that will fill it,
+ * placed where the list will start (below a large title), not scrollable.
+ */
+export function SkeletonScreen({ count = 4, compact = true }: { count?: number; compact?: boolean }) {
+  return (
+    <ScrollView
+      scrollEnabled={false}
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ padding: gutter }}
+    >
+      <SkeletonList count={count} compact={compact} inset={false} />
+    </ScrollView>
+  );
+}
+
 export function EmptyState({
   title,
   body,
@@ -340,6 +358,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
 export function NotFoundState() {
   const t = useTranslations();
   const hasBoard = useHasBoard();
+  const actor = useSession().actor;
   return (
     <EmptyState
       title={t('common.notFound')}
@@ -349,7 +368,8 @@ export function NotFoundState() {
         hasBoard ? (
           <Button label={t('nav.browseJobs')} variant="outline" onPress={() => router.navigate('/jobs')} />
         ) : (
-          <Button label={t('app.tabs.home')} variant="outline" onPress={() => router.navigate('/')} />
+          // Home for whoever has it; the console for an admin, who has no Home tab.
+          <Button label={t('app.tabs.home')} variant="outline" onPress={() => router.navigate(startPath(actor))} />
         )
       }
     />

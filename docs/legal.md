@@ -43,15 +43,20 @@ document and `policy-versions.ts` (`pnpm test:legal` fails until they match).
 and held to the documents by `pnpm test:legal`. A street address and a
 commercial registration number belong there too, once the owner supplies them.
 
-**No cookie banner, on purpose.** The website keeps exactly three things in a
-browser: the sign-in session (Supabase's `sb-…-auth-token` cookies, and the
-PKCE verifier while a sign-in is under way), the light/dark choice someone made
-(`bc-theme`, only when they make one), and — only while visit counting is on —
-which share link a visit came from (`bc.src`, for the tab's lifetime). The first
-is strictly necessary for a service the person asked for, the second remembers
-a choice they made, and the third is cookieless counting that identifies nobody
-(Plausible or Umami). None needs consent under the ePrivacy rules a banner
-exists for, and Egypt's data protection law has no cookie rule of its own.
+**No cookie banner, on purpose.** The website keeps the sign-in session
+(Supabase's `sb-…-auth-token` cookies, and the PKCE verifier while a sign-in
+is under way), the light/dark choice someone made (`bc-theme`, only when they
+make one), unfinished form text (`bc-draft:…`, under that account, for at most
+seven days), a session cookie when a page is opened with `?app=1` (`bc_app`,
+so the app card stays hidden, holding nothing about the person), and — only
+while visit counting is on — which share link a visit came from (`bc.src`, for
+the tab's lifetime). The session is strictly necessary for a service the
+person asked for, the appearance choice remembers a choice they made, the
+draft keeps what they were typing, `bc_app` only records that this browser
+session asked not to see the card, and the share marker is cookieless counting
+that identifies nobody (Plausible or Umami). None needs consent under the
+ePrivacy rules a banner exists for, and Egypt's data protection law has no
+cookie rule of its own.
 `localeCookie: false` removed the one cookie that had no purpose. Adding any
 advertising, cross-site or identifying analytics would change this — and
 `pnpm test:legal` fails when anything new writes to a browser until the cookie

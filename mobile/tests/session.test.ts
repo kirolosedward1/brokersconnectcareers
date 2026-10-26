@@ -395,6 +395,49 @@ describe('an account with no profile', () => {
   });
 });
 
+describe('a company whose private view is null', () => {
+  it('is no company, not a failed session — as the website answers it', async () => {
+    const { SESSION_KEY, loadViewer } = fresh();
+    const session = authSession(authUser()) as unknown as Session;
+    store().set(SESSION_KEY, JSON.stringify(session));
+    const employer = { ...profile, role: 'employer' as const };
+    network((url) => {
+      if (url.pathname === '/rest/v1/profiles') return json([employer]);
+      if (url.pathname === '/rest/v1/rpc/my_company_id') return json('0f5e2a3e-0000-4000-8000-000000000001');
+      if (url.pathname === '/rest/v1/rpc/my_company_private') return json(null);
+      if (url.pathname === '/rest/v1/companies') {
+        return json([{ id: '0f5e2a3e-0000-4000-8000-000000000001', name_ar: 'نايل' }]);
+      }
+      return json({});
+    });
+
+    const viewer = await loadViewer(session);
+    expect(viewer.profile?.role).toBe('employer');
+    expect(viewer.company).toBeNull();
+    expect(viewer.profileUnreadable).toBe(false);
+  });
+
+  it('a company read that fails stays a failure, so the last company can be kept', async () => {
+    const { SESSION_KEY, loadViewer } = fresh();
+    const session = authSession(authUser()) as unknown as Session;
+    store().set(SESSION_KEY, JSON.stringify(session));
+    const employer = { ...profile, role: 'employer' as const };
+    network((url) => {
+      if (url.pathname === '/rest/v1/profiles') return json([employer]);
+      if (url.pathname === '/rest/v1/rpc/my_company_id') return json('0f5e2a3e-0000-4000-8000-000000000001');
+      if (url.pathname === '/rest/v1/rpc/my_company_private') {
+        return json({ code: '57014', message: 'canceling statement due to statement timeout' }, 500);
+      }
+      if (url.pathname === '/rest/v1/companies') {
+        return json([{ id: '0f5e2a3e-0000-4000-8000-000000000001', name_ar: 'نايل', owner_id: profile.id, post_credits: 2 }]);
+      }
+      return json({});
+    });
+
+    await expect(loadViewer(session)).rejects.toBeTruthy();
+  });
+});
+
 describe('an auth request on a connection that stalls', () => {
   it('a password sign-in is given up on, not left spinning', async () => {
     const { supabase } = fresh();

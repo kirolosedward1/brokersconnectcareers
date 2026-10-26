@@ -8,7 +8,9 @@ import { MailOffBanner } from '@/components/admin/mail-off-banner';
 import { PolicyNotice } from '@/components/legal/policy-notice';
 import { StandingNotice } from '@/components/moderation/standing-notice';
 import { SuspensionGate } from '@/components/moderation/suspension-gate';
-import { NotificationMenu } from '@/components/notifications/notification-menu';
+import { SiteBell } from '@/components/notifications/site-bell';
+import { syncMyJobNotifications } from '@/lib/actions/notifications';
+import { countUnreadNotifications } from '@/lib/notifications/feed';
 import { createClient } from '@/lib/supabase/server';
 import { optional } from '@/lib/queries/error';
 import type { AdminSummary, EmployerSummary } from '@/lib/supabase/database.types';
@@ -94,6 +96,11 @@ export default async function AppLayout({
   const adminCounts = adminSummary as AdminSummary | null;
   const employer = employerSummary as EmployerSummary | null;
   const employerCounts = employer && employer.has_company ? employer : null;
+
+  // Listings that ended have no row change to trigger on. The same sweep the
+  // feed runs, before the badge is drawn, so the first paint already counts it.
+  if (role === 'employer' || role === 'admin') await syncMyJobNotifications();
+  const bellFeed = await countUnreadNotifications(supabase, viewer!.userId);
 
   const t = await getTranslations('dashboard');
   const tNotifications = await getTranslations('notifications');
@@ -191,6 +198,7 @@ export default async function AppLayout({
       { href: '/admin/email', label: tAdmin('emailActivity'), icon: 'email' },
       { href: '/admin/operations', label: tAdmin('operations'), icon: 'operations' },
       { href: '/admin/security', label: tAdmin('security'), icon: 'security' },
+      { href: '/admin/help', label: tAdmin('help'), icon: 'help' },
       // The directory, for review. Admins read it whole.
       { href: '/agents', label: tNav('agents'), icon: 'directory' },
     ],
@@ -238,7 +246,7 @@ export default async function AppLayout({
     >
     <AppShell
       groups={suspended ? [accountGroup] : groups}
-      bell={<NotificationMenu locale={locale} userId={viewer!.userId} />}
+      bell={<SiteBell locale={locale} initialUnread={bellFeed.unread} />}
       name={profile.full_name}
       avatarUrl={profile.avatar_url}
       roleLabel={role === 'employer' ? tOnboarding('roleEmployer') : role === 'admin' ? tAdmin('title') : tOnboarding('roleCandidate')}

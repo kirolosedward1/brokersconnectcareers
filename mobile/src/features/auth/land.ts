@@ -2,8 +2,10 @@ import { useCallback } from 'react';
 import { router, useNavigation, useSegments } from 'expo-router';
 import { StackActions } from 'expo-router/react-navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import { homeFor } from '@/lib/permissions';
 import { openWhenReady } from '~/lib/open-path';
-import { fetchViewer, secondFactorDue } from '~/lib/session';
+import { actorOf, fetchViewer, secondFactorDue, useSession } from '~/lib/session';
+import { startPath } from '~/lib/tabs';
 import { intentParams, type AuthIntent } from './intent';
 import { forgetOnboardingIntent } from './kept-intent';
 
@@ -44,6 +46,9 @@ export function useLand() {
       void forgetOnboardingIntent();
       close('arrived');
       if (intent.next) openWhenReady(intent.next);
+      // With nowhere else to go, an admin opens on the console. The sheet was
+      // over Home, and that tab is not in their bar.
+      else if (viewer && homeFor(actorOf(viewer)) === '/admin') openWhenReady('/admin');
     },
     [queryClient, close],
   );
@@ -69,6 +74,7 @@ const FLOW_SCREENS = new Set(['(auth)', 'onboarding', 'mfa', 'auth/confirm', 'au
 export function useCloseFlow() {
   const navigation = useNavigation();
   const inSheet = useSegments()[0] === '(auth)';
+  const actor = useSession().actor;
 
   return useCallback(
     (how: 'this' | 'arrived' = 'this') => {
@@ -85,8 +91,9 @@ export function useCloseFlow() {
         }
       }
       if (target.canGoBack()) target.goBack();
-      else router.replace('/');
+      // The flow was the whole stack: an admin opens on the console, anyone else on Home.
+      else router.replace(startPath(actor));
     },
-    [navigation, inSheet],
+    [actor, navigation, inSheet],
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LIST_SELECT, type JobListItem } from '@/lib/job-list';
 import { followQuery } from '@/lib/saved-search';
@@ -6,7 +6,7 @@ import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { supabase } from '~/lib/supabase';
 import { useCandidateId } from './candidate';
-import { carryDeviceNotes, notesKey, rememberNotes, restoreNoteWithBookmark, takeNoteWithBookmark, type Notes } from './notes';
+import { holdNote, restoreNote } from './notes';
 import { cancelReminder, restoreReminder } from './reminders';
 
 /**
@@ -20,83 +20,117 @@ import { cancelReminder, restoreReminder } from './reminders';
  * that waits on a round trip reads as broken, and undoing one costs a tap.
  */
 
-const idsKey = (candidateId: string | null) => ['saved', 'jobIds', candidateId] as const;
+const marksKey = (candidateId: string | null) => ['saved', 'marks', candidateId] as const;
 const searchesKey = (candidateId: string | null) => ['saved', 'searches', candidateId] as const;
 
 /**
- * Every listing this candidate has bookmarked, as ids — what a card's bookmark
- * reads. One small read for the whole app rather than one per screen, so a
- * bookmark set on the board is already set on the listing and in Saved.
- * `known` is false until they have been read: the website's action is a
- * toggle, so a bookmark pressed before then could take one off.
+ * A bookmark as the app holds it everywhere: which listing, the candidate's
+ * note on it (saved_jobs.note, migration 356) and when to remind them before
+ * it closes (saved_jobs.remind_at, migration 366) — the same row the website's
+ * saved page reads, so both show the same note and a new phone finds it there.
  */
-export function useSavedJobIds(): { ids: Set<string>; known: boolean } {
+export type SavedMark = { job_id: string; note: string | null; remind_at: string | null };
+const MARKS_SELECT = 'job_id, note, remind_at';
+
+/**
+ * Every bookmark this candidate holds — what a card's bookmark, a note and a
+ * reminder read. One small read for the whole app rather than one per
+ * screen, so a bookmark set on the board is already set on the listing and in
+ * Saved. `known` is false until it has been read: the website's action is a
+ * toggle, so a bookmark pressed before then could take one off. `readAt` is
+ * when (0 before).
+ */
+export function useSavedMarks(): { marks: readonly SavedMark[]; known: boolean; readAt: number } {
   const candidateId = useCandidateId();
-  const { data } = useQuery({
-    queryKey: idsKey(candidateId),
+  const { data, dataUpdatedAt } = useQuery({
+    queryKey: marksKey(candidateId),
     enabled: Boolean(candidateId),
     staleTime: 60_000,
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('saved_jobs')
-        .select('job_id')
+        .select(MARKS_SELECT)
         .eq('candidate_id', candidateId as string);
       if (error) throw error;
-      return (rows ?? []).map((row) => row.job_id as string);
+      return (rows ?? []) as SavedMark[];
     },
   });
   // Nobody to read them for (signed out): nothing is saved, and that is known.
-  return { ids: new Set(data ?? []), known: !candidateId || data !== undefined };
+  return { marks: data ?? NONE, known: !candidateId || data !== undefined, readAt: data ? dataUpdatedAt : 0 };
+}
+
+const NONE: readonly SavedMark[] = [];
+
+/** Every listing this candidate has bookmarked, as ids. */
+export function useSavedJobIds(): { ids: Set<string>; known: boolean } {
+  const { marks, known } = useSavedMarks();
+  const ids = useMemo(() => new Set(marks.map((mark) => mark.job_id)), [marks]);
+  return { ids, known };
+}
+
+/** This candidate's bookmark of a listing, while it is saved. */
+export function useSavedMark(jobId: string): SavedMark | null {
+  return useSavedMarks().marks.find((mark) => mark.job_id === jobId) ?? null;
+}
+
+/**
+ * Changes one bookmark as held, at once, and hands back how to put it back —
+ * for a note or a reminder shown before the website has answered.
+ */
+export function useEditSavedMark() {
+  const queryClient = useQueryClient();
+  const candidateId = useCandidateId();
+  return useCallback(
+    (jobId: string, change: Partial<Omit<SavedMark, 'job_id'>>) => {
+      const key = marksKey(candidateId);
+      const before = queryClient.getQueryData<SavedMark[]>(key)?.find((mark) => mark.job_id === jobId);
+      const put = (next: Partial<Omit<SavedMark, 'job_id'>>) =>
+        queryClient.setQueryData<SavedMark[]>(key, (marks) => marks?.map((mark) => (mark.job_id === jobId ? { ...mark, ...next } : mark)));
+      put(change);
+      return () => {
+        if (before) put({ note: before.note, remind_at: before.remind_at });
+      };
+    },
+    [queryClient, candidateId],
+  );
+}
+
+/** Read the bookmarks again — after a reminder set or taken back outside a mutation. */
+export function useRefreshSavedMarks() {
+  const queryClient = useQueryClient();
+  return useCallback(() => queryClient.invalidateQueries({ queryKey: ['saved', 'marks'] }), [queryClient]);
 }
 
 /**
  * The bookmarked listings, newest bookmark first — the website's
- * /dashboard/saved read. The same set as the ids above, so it answers them
+ * /dashboard/saved read. The same set as the marks above, so it answers them
  * too: the cards in the list never draw as unsaved while those are read.
  */
 export function useSavedJobs({ active = true }: { active?: boolean } = {}) {
   const queryClient = useQueryClient();
   const candidateId = useCandidateId();
-  const query = useQuery({
+  return useQuery({
     queryKey: ['saved', 'jobs', candidateId],
     enabled: Boolean(candidateId) && active,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('saved_jobs')
-        .select(`created_at, note, job:jobs!inner (${LIST_SELECT})`)
+        .select(`created_at, note, remind_at, job:jobs!inner (${LIST_SELECT})`)
         .eq('candidate_id', candidateId as string)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const rows = (data ?? []) as unknown as { note: string | null; job: JobListItem | null }[];
-      const jobs = rows.map((row) => row.job).filter((job): job is JobListItem => Boolean(job));
-      // The notes come with the bookmarks (migration 356); the phone's own from
-      // before are carried to the server once, then let go.
-      const notes = rows.filter((row) => row.job).map((row) => ({ job_id: (row.job as JobListItem).id, note: row.note }));
-      rememberNotes(queryClient, candidateId, notes);
-      // Fresher than any earlier read of the ids: a bookmark removed on the
-      // website is gone here too.
-      queryClient.setQueryData<string[]>(
-        idsKey(candidateId),
-        jobs.map((job) => job.id),
+      const rows = ((data ?? []) as unknown as { note: string | null; remind_at: string | null; job: JobListItem | null }[]).filter(
+        (row): row is { note: string | null; remind_at: string | null; job: JobListItem } => Boolean(row.job),
       );
-      return jobs;
+      // Fresher than any earlier read of the marks: a bookmark removed, or a
+      // note written, on the website is so here too.
+      queryClient.setQueryData<SavedMark[]>(
+        marksKey(candidateId),
+        rows.map((row) => ({ job_id: row.job.id, note: row.note ?? null, remind_at: row.remind_at ?? null })),
+      );
+      return rows.map((row) => row.job);
     },
   });
-
-  // The phone's own notes from before they lived with the bookmark, carried
-  // over once the list is known — whether it was just read or is still fresh
-  // from an earlier screen.
-  useEffect(() => {
-    if (!candidateId || !query.data) return;
-    void carryDeviceNotes(
-      queryClient,
-      candidateId,
-      query.data.map((job) => job.id),
-      queryClient.getQueryData<Notes>(notesKey(candidateId)) ?? {},
-    );
-  }, [candidateId, query.data, queryClient]);
-
-  return query;
 }
 
 /** Whether the listing is bookmarked now, as the database says; null when that cannot be read. */
@@ -114,11 +148,16 @@ async function savedNow(candidateId: string, jobId: string): Promise<boolean | n
 export function useToggleSavedJob() {
   const queryClient = useQueryClient();
   const candidateId = useCandidateId();
-  const key = idsKey(candidateId);
+  const key = marksKey(candidateId);
 
+  // A bookmark put back starts bare; its note and reminder, if it had them, follow (restoreNote, restoreReminder).
   const set = (jobId: string, saved: boolean) =>
-    queryClient.setQueryData<string[]>(key, (ids = []) =>
-      saved ? (ids.includes(jobId) ? ids : [...ids, jobId]) : ids.filter((id) => id !== jobId),
+    queryClient.setQueryData<SavedMark[]>(key, (marks = []) =>
+      saved
+        ? marks.some((mark) => mark.job_id === jobId)
+          ? marks
+          : [...marks, { job_id: jobId, note: null, remind_at: null }]
+        : marks.filter((mark) => mark.job_id !== jobId),
     );
 
   return useMutation({
@@ -137,19 +176,25 @@ export function useToggleSavedJob() {
     },
     onMutate: async ({ jobId, saved }) => {
       await queryClient.cancelQueries({ queryKey: key });
+      // What the bookmark carried, for an Undo that puts it back.
+      const before = queryClient.getQueryData<SavedMark[]>(key)?.find((mark) => mark.job_id === jobId);
       set(jobId, !saved);
+      return { before };
     },
     // The server's answer is the truth: it toggles what it has, not what the screen showed.
-    onSuccess: (saved, { jobId }) => {
+    onSuccess: async (saved, { jobId }, context) => {
       set(jobId, saved);
-      // A reminder before it closes is for a listing kept: the bookmark gone, so
-      // is the reminder; the bookmark back (Undo), the reminder with it.
-      if (candidateId) {
-        void (saved ? restoreReminder(candidateId, jobId) : cancelReminder(candidateId, jobId, { withBookmark: true }));
-        // And the note, which the server keeps with the bookmark.
-        if (saved) void restoreNoteWithBookmark(queryClient, candidateId, jobId);
-        else takeNoteWithBookmark(queryClient, candidateId, jobId);
+      if (!candidateId) return;
+      // The note and the reminder go with the row; held a while, so an Undo that
+      // puts the bookmark back puts them back too.
+      if (!saved) {
+        holdNote(candidateId, jobId, context?.before?.note ?? null);
+        void cancelReminder(candidateId, jobId, { withBookmark: true });
+        return;
       }
+      const note = await restoreNote(candidateId, jobId);
+      if (note) queryClient.setQueryData<SavedMark[]>(key, (marks) => marks?.map((mark) => (mark.job_id === jobId ? { ...mark, note } : mark)));
+      if (await restoreReminder(candidateId, jobId)) void queryClient.invalidateQueries({ queryKey: key });
     },
     onError: (_error, { jobId, saved }) => set(jobId, saved),
     onSettled: (_saved, error) => {

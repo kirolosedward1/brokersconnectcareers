@@ -1,19 +1,29 @@
 import { useEffect } from 'react';
 import * as QuickActions from 'expo-quick-actions';
 import { useLocale, useTranslations } from 'use-intl';
-import { isCandidate, isEmployer, type Actor } from '@/lib/permissions';
+import { isAdmin, isCandidate, isEmployer, type Actor } from '@/lib/permissions';
 import { openWhenReady } from '~/lib/open-path';
 import { useSession } from '~/lib/session';
 
 type Translate = (key: 'searchJobs' | 'applications' | 'saved' | 'postJob' | 'newApplicants' | 'listings' | 'companies') => string;
+type AdminTranslate = (key: 'jobsQueue' | 'reports' | 'users') => string;
 
 /**
  * What holding the app's icon on the home screen offers, by who is signed in:
- * a candidate's search, applications and saved jobs; an employer's new
- * listing, new applicants and listings; somebody signed out, the board and
- * the companies. Each is a website path, opened as any link is (PendingPath).
+ * an admin's queues (listings waiting, reports, accounts); a candidate's
+ * search, applications and saved jobs; an employer's new listing, new
+ * applicants and listings; somebody signed out, the board and the companies.
+ * Each is a website path, opened as any link is (PendingPath). An admin who
+ * also runs a company still gets the console: their bar has no listings tab.
  */
-export function shortcutsFor(actor: Actor, t: Translate): QuickActions.Action[] {
+export function shortcutsFor(actor: Actor, t: Translate, adminT: AdminTranslate = (key) => key): QuickActions.Action[] {
+  if (isAdmin(actor)) {
+    return [
+      { id: 'queue', title: adminT('jobsQueue'), icon: 'symbol:checkmark.shield', params: { href: '/admin/jobs' } },
+      { id: 'reports', title: adminT('reports'), icon: 'symbol:flag', params: { href: '/admin/reports' } },
+      { id: 'accounts', title: adminT('users'), icon: 'symbol:person.2', params: { href: '/admin/users' } },
+    ];
+  }
   if (isCandidate(actor)) {
     return [
       { id: 'search', title: t('searchJobs'), icon: 'symbol:magnifyingglass', params: { href: '/jobs' } },
@@ -49,13 +59,14 @@ function open(action: QuickActions.Action | undefined) {
  */
 export function HomeShortcuts() {
   const t = useTranslations('app.shortcuts');
+  const adminT = useTranslations('admin');
   const locale = useLocale();
   const { actor, settled } = useSession();
-  const kind = isCandidate(actor) ? 'candidate' : isEmployer(actor) ? 'employer' : 'other';
+  const kind = isAdmin(actor) ? 'admin' : isCandidate(actor) ? 'candidate' : isEmployer(actor) ? 'employer' : 'other';
 
   useEffect(() => {
     if (!settled) return;
-    QuickActions.setItems(shortcutsFor(actor, t)).catch(() => {});
+    QuickActions.setItems(shortcutsFor(actor, t, adminT)).catch(() => {});
     // Redone when the kind of account or the language changes; the rest of `actor` does not change the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settled, kind, locale]);
