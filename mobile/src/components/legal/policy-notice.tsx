@@ -7,6 +7,7 @@ import { Button } from '~/components/ui/button';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { useAcceptPolicies, usePolicyStatus } from '~/features/policies';
+import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -25,7 +26,8 @@ export function PolicyNotice() {
 
   if (status !== 'outdated') return null;
 
-  const open = (path: '/terms' | '/privacy') => () => WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
+  const open = (path: '/terms' | '/privacy') => () =>
+    WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
   const link = (path: '/terms' | '/privacy') =>
     function PolicyLink(chunks: ReactNode) {
       return (
