@@ -6,6 +6,7 @@ import { CheckCircle2, type LucideProps } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { appDirection } from '~/lib/direction';
 import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
@@ -82,6 +83,7 @@ export function ToastHost() {
 }
 
 function ToastCard({ toast: shown }: { toast: Shown }) {
+  const large = useLargeText();
   const { colors, shadow } = useTheme();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
@@ -153,7 +155,7 @@ function ToastCard({ toast: shown }: { toast: Shown }) {
         }}
       >
         <Icon size={20} color={tint} strokeWidth={2.25} />
-        <Text variant="small" weight="semibold" numberOfLines={2} style={{ flex: 1 }}>
+        <Text variant="small" weight="semibold" numberOfLines={large ? undefined : 2} style={{ flex: 1 }}>
           {shown.message}
         </Text>
         {shown.action ? (

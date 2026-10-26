@@ -47,6 +47,7 @@ import { useSheet } from '~/lib/use-sheet';
 import { useRollingNumber } from '~/components/motion/rolling-number';
 import { useListOwner } from '~/features/jobs/recent';
 import { rememberSearch } from '~/features/jobs/recent-searches';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -402,6 +403,7 @@ function BoardHeader({
 }) {
   const locale = useLocale();
   const t = useTranslations('jobs');
+  const large = useLargeText();
   const labelFor = useFilterLabel();
   const active = activeFilterList(filters);
   const company = first?.company;
@@ -425,7 +427,7 @@ function BoardHeader({
         {loading ? (
           <View style={{ flex: 1 }} />
         ) : (
-          <Text variant="headline" weight="bold" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
+          <Text variant="headline" weight="bold" numberOfLines={large ? undefined : 1} style={{ flex: 1 }} accessibilityRole="header">
             {t('resultsCount', { count: total })}
           </Text>
         )}
@@ -444,7 +446,7 @@ function BoardHeader({
             size="sm"
           />
           <View style={{ flex: 1 }}>
-            <Text weight="medium" numberOfLines={1}>
+            <Text weight="medium" numberOfLines={large ? undefined : 1}>
               {t('atCompany', { company: localized(locale, company.name_ar, company.name_en) })}
             </Text>
             <Text

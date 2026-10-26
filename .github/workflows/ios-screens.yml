@@ -7,7 +7,8 @@
 # The app is built as the App Store gets it — Release, the JavaScript bundled
 # in, nothing served by a development server — and run on iOS simulators in
 # Arabic against the live site: the largest iPhone (the screenshots), the same
-# in the dark appearance and at the largest text size, and the largest iPad,
+# in the dark appearance and at the largest text size, the smallest iPhone (an
+# SE) at the largest text size, and the largest iPad,
 # where App Review also opens an iPhone app (checked by what macOS's text
 # recognition reads on it). mobile/scripts/store-screens.sh says what each
 # pass does; mobile/maestro/ holds the screens, each opened by link, checked
@@ -22,9 +23,9 @@ on:
   workflow_dispatch:
     inputs:
       passes:
-        description: The passes to run, space-separated (store dark large-text ipad)
+        description: The passes to run, space-separated (store dark large-text small ipad)
         type: string
-        default: store dark large-text ipad
+        default: store dark large-text small ipad
   push:
     branches: [main]
     paths:

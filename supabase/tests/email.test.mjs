@@ -675,7 +675,7 @@ report.section('the footer tells a reader where a reply goes');
     'English site mail says a reply reaches that address',
   );
   report.ok(
-    !neutral.includes('mailto:') && neutral.includes('هذه الرسالة مُرسلة تلقائياً.'),
+    !neutral.includes('mailto:') && neutral.includes('هذه الرسالة مُرسلة تلقائيًا.'),
     'with no support address the line stays neutral',
   );
   report.ok(
@@ -711,7 +711,7 @@ report.section('a count in an Arabic email takes its MSA form');
   // days is an ordinary case.
   report.ok(ar.jobExpiring.body('مستشار مبيعات', 2).startsWith('تبقّى يومان على انتهاء «مستشار مبيعات»'), 'two days left');
   report.ok(ar.jobExpiring.body('مستشار مبيعات', 3).startsWith('تبقّى 3 أيام على انتهاء'), 'three days left');
-  report.ok(ar.jobExpiring.body('مستشار مبيعات', 1).includes('غداً هو اليوم الأخير'), 'the last day is still tomorrow');
+  report.ok(ar.jobExpiring.body('مستشار مبيعات', 1).includes('غدًا هو اليوم الأخير'), 'the last day is still tomorrow');
 
   report.is(emailCopy.en.digest.subject(2, 'Madinaty'), '2 new roles matching "Madinaty"', 'English is unchanged');
 }

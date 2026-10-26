@@ -35,6 +35,7 @@ import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
 import { launchReady, useLaunchHeld, useLaunchReady } from '~/features/launch';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
+import { KeyboardDone } from '~/components/ui/text-field';
 import { installCrashLog } from '~/lib/crash-log';
 import { appDirection } from '~/lib/direction';
 import { persistOptions, queryClient } from '~/lib/query';
@@ -92,6 +93,7 @@ export default function RootLayout() {
                     <Navigation>
                       <AppStack />
                     </Navigation>
+                    <KeyboardDone />
                   </SessionProvider>
                 </I18nProvider>
               </ThemeProvider>

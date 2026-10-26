@@ -18,6 +18,7 @@ import { useTabList } from '~/features/tab-bar';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { useLargeText } from '~/theme/large-text';
 
 /**
  * What happened to the emails — the website's /admin/email, built for one
@@ -134,6 +135,7 @@ function Separator() {
 
 /** One message: who, which, what became of it, and when. */
 function EmailRow({ row }: { row: EmailActivityRow }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -142,7 +144,7 @@ function EmailRow({ row }: { row: EmailActivityRow }) {
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2] }}>
         <View style={{ flex: 1, gap: 2 }}>
           {/* An address as written: left to right whatever the language, and copyable. */}
-          <Text variant="small" weight="semibold" selectable numberOfLines={1} style={{ writingDirection: 'ltr' }}>
+          <Text variant="small" weight="semibold" selectable numberOfLines={large ? undefined : 1} style={{ writingDirection: 'ltr' }}>
             {row.recipient}
           </Text>
           <Text variant="caption" tone="mutedForeground">
@@ -179,7 +181,7 @@ function EmailRow({ row }: { row: EmailActivityRow }) {
       </View>
 
       {row.error ? (
-        <Text variant="caption" tone="destructive" numberOfLines={3}>
+        <Text variant="caption" tone="destructive" numberOfLines={large ? undefined : 3}>
           {`${t('admin.emailError')}: ${row.error}`}
         </Text>
       ) : null}

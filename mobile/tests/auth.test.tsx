@@ -369,7 +369,7 @@ describe('signing in with a password', () => {
     await renderRouter(app, { initialUrl: '/welcome' });
     await press(ar.nav.signIn);
     // No one-tap way offered: no round buttons beside Sign in, and the form at once.
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
 
@@ -722,11 +722,41 @@ describe('onboarding', () => {
     expect(await screen.findByText('home screen')).toBeTruthy();
   });
 
+  it('takes what the account kept on this phone with it, and nobody else\'s', async () => {
+    // Notes on saved listings, reminders, searches: kept per person, so the
+    // next one on a shared phone does not see them, and nobody could sign in
+    // as a deleted account again to clear them.
+    profileRow = null;
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    const mine = (await supabase.auth.getSession()).data.session!.user.id;
+    await AsyncStorage.multiSet([
+      [`bc.saved-notes.v1:${mine}`, JSON.stringify([{ id: 'j1', text: 'asked for 12k', updatedAt: 1 }])],
+      [`bc.recent-searches.v1:${mine}`, JSON.stringify(['مدينة نصر'])],
+      [`push:off:${mine}`, '1'],
+      ['bc.saved-notes.v1:someone-else', JSON.stringify([{ id: 'j2', text: 'theirs', updatedAt: 1 }])],
+      ['push:off:someone-else', '1'],
+    ]);
+    await renderRouter(app, { initialUrl: '/onboarding' });
+    await press(ar.onboarding.leaveDelete);
+    await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
+
+    expect(await AsyncStorage.getItem(`bc.saved-notes.v1:${mine}`)).toBeNull();
+    expect(await AsyncStorage.getItem(`bc.recent-searches.v1:${mine}`)).toBeNull();
+    expect(await AsyncStorage.getItem(`push:off:${mine}`)).toBeNull();
+    expect(await AsyncStorage.getItem('bc.saved-notes.v1:someone-else')).not.toBeNull();
+    expect(await AsyncStorage.getItem('push:off:someone-else')).not.toBeNull();
+  });
+
   it('stays, and says so, when the account could not be deleted', async () => {
     profileRow = null;
     server.on('POST /api/mobile/v1/actions/deleteMyAccount', { ok: false, error: 'unavailable' });
     jest.mocked(Alert.alert).mockClear();
     await signedIn();
+    // What the account keeps on this phone stays with it while it still exists.
+    const mine = (await supabase.auth.getSession()).data.session!.user.id;
+    await AsyncStorage.setItem(`bc.saved-notes.v1:${mine}`, JSON.stringify([{ id: 'j1', text: 'asked for 12k', updatedAt: 1 }]));
     await renderRouter(app, { initialUrl: '/onboarding' });
     await press(ar.onboarding.leaveDelete);
     await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
@@ -735,6 +765,7 @@ describe('onboarding', () => {
     expect(screen.getByText(ar.onboarding.title)).toBeTruthy();
     const { data } = await supabase.auth.getSession();
     expect(data.session).not.toBeNull();
+    expect(await AsyncStorage.getItem(`bc.saved-notes.v1:${mine}`)).not.toBeNull();
   });
 });
 
@@ -913,7 +944,7 @@ describe('one-tap sign-in', () => {
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
-    await press(ar.auth.continueWithGoogle);
+    await press(ar.auth.signInWithGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     const [authorize, returnTo] = jest.mocked(WebBrowser.openAuthSessionAsync).mock.calls[0];
@@ -941,7 +972,7 @@ describe('one-tap sign-in', () => {
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
-    await press(ar.auth.continueWithGoogle);
+    await press(ar.auth.signInWithGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(opened).toBeNull();
@@ -958,10 +989,10 @@ describe('one-tap sign-in', () => {
       ReturnType<typeof WebBrowser.openAuthSessionAsync>
     >);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    await press(ar.auth.continueWithGoogle);
+    await press(ar.auth.signInWithGoogle);
     await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled());
     // The sheet is usable again, and says nothing went wrong.
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle, disabled: false })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle, disabled: false })).toBeTruthy();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     expect(screen.getByText(ar.auth.signInTitle)).toBeTruthy();
   });
@@ -1013,14 +1044,14 @@ describe('one-tap sign-in, as App Review asks', () => {
     await act(async () => {
       await jest.advanceTimersByTimeAsync(100);
     });
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
   });
 
   it('offers both once Apple is on', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeTruthy();
   });
 
@@ -1028,16 +1059,16 @@ describe('one-tap sign-in, as App Review asks', () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
     expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
 
     await press(ar.app.auth.continueWithEmail);
     await fillSignIn('sara@example.com', PASSWORD);
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
 
     // The other ways are a tap away, and what was typed is still there on the way back.
     await press(ar.app.auth.otherWays);
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
     expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
     await press(ar.app.auth.continueWithEmail);
     expect((await screen.findByLabelText(ar.auth.email)).props.value).toBe('sara@example.com');
@@ -1062,9 +1093,9 @@ describe('one-tap sign-in, as App Review asks', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.auth.configRetry })).toBeNull());
     // Still the form, with what was typed; the one-tap ways a link away.
     expect(screen.getByLabelText(ar.auth.email).props.value).toBe('sara@example.com');
-    expect(screen.queryByRole('button', { name: ar.auth.continueWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
     await press(ar.app.auth.otherWays);
-    expect(await screen.findByRole('button', { name: ar.auth.continueWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
   });
 
   it('lets the welcome finish its own sign-in before anything else opens over it', async () => {
@@ -1094,10 +1125,10 @@ describe('one-tap sign-in, as App Review asks', () => {
       url: 'brokersconnect://auth/callback?code=google-code',
     });
     await renderRouter(app, { initialUrl: '/welcome' });
-    const google = await screen.findByRole('button', { name: ar.auth.continueWithGoogle });
+    const google = await screen.findByRole('button', { name: ar.auth.signInWithGoogle });
     expect(google.props.accessibilityHint).toBe(ar.app.welcome.signInGoogleHint);
     // Apple's beside Google's, no less to hand.
-    expect(screen.getByRole('button', { name: ar.auth.continueWithApple }).props.accessibilityHint).toBe(ar.app.welcome.signInAppleHint);
+    expect(screen.getByRole('button', { name: ar.auth.signInWithApple }).props.accessibilityHint).toBe(ar.app.welcome.signInAppleHint);
 
     fireEvent.press(google);
     expect(await screen.findByText('home screen')).toBeTruthy();
@@ -1548,6 +1579,8 @@ describe('deleting the account', () => {
 
   it('takes an account deleted whose answer was lost for deleted, as the auth server says', async () => {
     await signedIn();
+    const mine = (await supabase.auth.getSession()).data.session!.user.id;
+    await AsyncStorage.setItem(`bc.recent-searches.v1:${mine}`, JSON.stringify(['مدينة نصر']));
     // The website deletes the account, and its answer never reaches the phone.
     server.on('POST /api/mobile/v1/actions/deleteMyAccount', () => {
       server.on('GET /auth/v1/user', {
@@ -1563,6 +1596,41 @@ describe('deleting the account', () => {
     await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
     expect(screen.queryByText(ar.account.deleteUnavailable)).toBeNull();
     expect((await supabase.auth.getSession()).data.session).toBeNull();
+    // Gone, so what it kept on this phone goes too.
+    expect(await AsyncStorage.getItem(`bc.recent-searches.v1:${mine}`)).toBeNull();
+  });
+
+  it('leaves nobody signed in after a deletion even when auth-js answers the sign-out with an error', async () => {
+    // auth-js returns { error } without throwing when it cannot take its lock:
+    // the deleted account stayed on screen, and its lists were written again.
+    jest.mocked(Alert.alert).mockClear();
+    await signedIn();
+    jest.spyOn(supabase.auth, 'signOut').mockResolvedValueOnce({ error: new Error('lock not acquired') } as never);
+    await renderRouter(app, { initialUrl: '/account/delete' });
+    fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
+    await press(ar.account.deleteCta);
+
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
+    await waitFor(async () => expect((await supabase.auth.getSession()).data.session).toBeNull());
+  });
+
+  it('keeps what the account kept on this phone when the auth server only refused its token', async () => {
+    // A token refused as unverifiable (bad_jwt) is refused just as a deleted
+    // account's is, but says nothing about whether the account is gone: notes
+    // nobody could get back are not thrown away on that.
+    await signedIn();
+    const mine = (await supabase.auth.getSession()).data.session!.user.id;
+    await AsyncStorage.setItem(`bc.saved-notes.v1:${mine}`, JSON.stringify([{ id: 'j1', text: 'asked for 12k', updatedAt: 1 }]));
+    server.on('POST /api/mobile/v1/actions/deleteMyAccount', () => {
+      server.on('GET /auth/v1/user', { status: 403, body: { code: 403, error_code: 'bad_jwt', msg: 'invalid JWT' } });
+      throw new TypeError('Network request failed');
+    });
+    await renderRouter(app, { initialUrl: '/account/delete' });
+    fireEvent.changeText(await screen.findByLabelText(deleteLabel), ar.account.deleteConfirmWord);
+    await press(ar.account.deleteCta);
+
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.deleted));
+    expect(await AsyncStorage.getItem(`bc.saved-notes.v1:${mine}`)).not.toBeNull();
   });
 
   it('says it could not delete when the answer was lost and the account is still there', async () => {
