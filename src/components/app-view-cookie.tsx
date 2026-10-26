@@ -2,7 +2,7 @@
 
 import { useLayoutEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { persistAppView } from '@/lib/app-view';
+import { writeAppViewCookie } from '@/lib/app-view';
 
 /**
  * Remembers `?app=1` for the rest of the browser session.
@@ -16,12 +16,7 @@ export function AppViewCookie() {
   const searchParams = useSearchParams();
 
   useLayoutEffect(() => {
-    const wrote = persistAppView(
-      { search: window.location.search, protocol: window.location.protocol },
-      (value) => {
-        document.cookie = value;
-      },
-    );
+    const wrote = writeAppViewCookie();
     if (wrote) window.dispatchEvent(new Event('bc-app-view'));
     // The query is the signal. searchParams changes on a client navigation
     // that keeps this layout mounted, which a full reload would not need.

@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useState, type ReactNode } from 'react';
 import { useSession } from '@/components/session/session-provider';
-import { hidesAppPromo, persistAppView } from '@/lib/app-view';
+import { hidesAppPromo, writeAppViewCookie } from '@/lib/app-view';
 import { cn } from '@/lib/utils';
 
 /**
@@ -57,12 +57,7 @@ function useHideAppPromo(): boolean {
 
   useLayoutEffect(() => {
     const read = () => {
-      persistAppView(
-        { search: window.location.search, protocol: window.location.protocol },
-        (value) => {
-          document.cookie = value;
-        },
-      );
+      writeAppViewCookie();
       setInApp(hidesAppPromo({ search: window.location.search, cookie: document.cookie }));
     };
     read();

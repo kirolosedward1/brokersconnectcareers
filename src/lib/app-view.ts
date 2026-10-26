@@ -61,3 +61,14 @@ export function persistAppView(
   writeCookie(appViewCookieAssignment(loc.protocol === 'https:'));
   return true;
 }
+
+/** Browser only. The one place this cookie is written. */
+export function writeAppViewCookie(): boolean {
+  if (typeof document === 'undefined') return false;
+  return persistAppView(
+    { search: window.location.search, protocol: window.location.protocol },
+    (value) => {
+      document.cookie = value;
+    },
+  );
+}

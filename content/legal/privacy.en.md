@@ -135,7 +135,7 @@ To ask a question or make a request, write to **info@topsuite.net**. We reply wi
 
 ## Cookies
 
-We use only what is needed to keep you signed in and to sign in securely, and what remembers your appearance choice. There are no advertising or tracking cookies, which is why there is no consent banner. The full list is on the [cookie page](/cookies).
+We use only what is needed to keep you signed in and to sign in securely, what remembers your appearance choice, and a session cookie that hides the app card after a page is opened with `?app=1`. There are no advertising or tracking cookies, which is why there is no consent banner. The full list is on the [cookie page](/cookies).
 
 ## Security
 

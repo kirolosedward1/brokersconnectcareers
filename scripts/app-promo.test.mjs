@@ -115,11 +115,13 @@ is('flat tint, 16px radius, 24px padding, no shadow', promo.includes('rounded-[1
 is('the smart link stays, for when a QR is added', APP_SMART_LINK_PATH, '/api/app/open');
 is('the route redirects from the user-agent and does not cache it', route.includes('storeRedirectTarget') && route.includes("headers.get('user-agent')") && route.includes('no-store'), true);
 is('a registered phone hides the card', chrome.includes("from('push_devices')") && chrome.includes(".is('disabled_at', null)") && chrome.includes('hasApp') && column.includes('session.hasApp'), true);
-is('?app=1 is remembered from any page and hides both cards', column.includes('hidesAppPromo') && column.includes('bc-app-view') && marker.includes('persistAppView') && layout.includes('AppViewCookie') && view.includes('APP_VIEW_COOKIE'), true);
+is('?app=1 is remembered from any page and hides both cards', column.includes('hidesAppPromo') && column.includes('bc-app-view') && marker.includes('writeAppViewCookie') && layout.includes('AppViewCookie') && view.includes("APP_VIEW_COOKIE = 'bc_app'"), true);
 
 is('Arabic title', ar.jobs.appPromo.title, 'إشعارات فورية بالوظائف الجديدة');
 is('Arabic line', ar.jobs.appPromo.body, 'تابع طلباتك ورسائل الشركات من تطبيق بروكرز كونكت.');
-is('Arabic coming soon', ar.jobs.appPromo.comingSoon, 'التطبيق قريبًا على iOS وAndroid');
+is('Arabic coming soon', ar.jobs.appPromo.comingSoon, 'التطبيق قريبًا على <bdi>iOS</bdi> و<bdi>Android</bdi>');
+is('each store name is its own bdi', promo.includes("t.rich('comingSoon'") && promo.includes('<bdi>'), true);
+is('the tint is the brand blue at 7% on white', tintRule.includes('7%') && tintRule.includes('brand-blue') && tintRule.includes('white'), true);
 is('tanween sits on the letter before the alef', ar.jobs.appPromo.comingSoon.includes('اً'), false);
 is('English is the same lines', Object.keys(en.jobs.appPromo), Object.keys(ar.jobs.appPromo));
 is('no caption while there is no QR', ar.jobs.appPromo.qrCaption, undefined);
