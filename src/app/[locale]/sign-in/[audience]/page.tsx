@@ -82,11 +82,11 @@ export default async function AudienceSignInPage({
 
   return (
     <AuthShell audience={audience}>
-      <div className="mx-auto w-full max-w-sm">
-        <h1 className="text-3xl font-bold">
-          {audience === 'employer' ? t('signInTitleEmployer') : t('signInTitle')}
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <h1 className="w-full whitespace-nowrap text-center text-3xl font-bold">
+        {audience === 'employer' ? t('signInTitleEmployer') : t('signInTitle')}
+      </h1>
+      <div className="mx-auto mt-2 w-full max-w-sm">
+        <p className="text-sm text-muted-foreground">
           {t('noAccount')}{' '}
           {/* Carries `next` across. Somebody sent here by a "post a job" button
               who has no account yet was losing the wizard they were aimed at

@@ -5,6 +5,7 @@ import { renderRouter, screen, within } from 'expo-router/testing-library';
 import notices from '@/lib/licenses/app.json';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { ThemeProvider } from '~/theme/provider';
+import { licenceInk } from '../src/app/(tabs)/(account)/account/licenses';
 import * as LicensesScreen from '../src/app/(tabs)/(account)/account/licenses';
 
 /*
@@ -85,9 +86,17 @@ describe('the open-source licences screen', () => {
       `react-native, ${reactNative?.version}, MIT, Copyright (c) Meta Platforms, Inc. and affiliates.`,
     );
     const name = within(row).getByText('react-native');
-    // This run is the phone: `left` is mirrored once. `right` put the name on the wrong side.
-    expect(StyleSheet.flatten(name.props.style).textAlign).toBe('left');
+    // This run is the phone with I18nManager left to right: Arabic still sits the name on the right.
+    expect(StyleSheet.flatten(name.props.style).textAlign).toBe('right');
     expect(StyleSheet.flatten(name.props.style).writingDirection).toBe('ltr');
+    // The licence line is not a lighter grey than #5B6475. The theme's own grey is darker, so it stays.
+    const licence = within(row).getByText(`${reactNative?.version} · MIT`);
+    expect(StyleSheet.flatten(licence.props.style).color).toBe('#5C6270');
+    expect(licenceInk('light', '#626978')).toBe('#5B6475');
+    expect(licenceInk('light', '#5C6270')).toBe('#5C6270');
+    expect(licenceInk('light', '#121620')).toBe('#121620');
+    expect(licenceInk('dark', '#A3A7B0')).toBe('#A3A7B0');
+    expect(name).toBeTruthy();
     expect(within(row).getByText(`${reactNative?.version} · MIT`)).toBeTruthy();
     expect(within(row).getByText('Copyright (c) Meta Platforms, Inc. and affiliates.')).toBeTruthy();
   });

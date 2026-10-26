@@ -45,6 +45,7 @@ import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * The step that makes an account a profile — the website's onboarding
@@ -138,7 +139,8 @@ export default function OnboardingScreen() {
               return refusal;
             }
             close();
-            dialog.alert(t('app.account.deleted'));
+            // Said in passing, not in an alert to dismiss: the welcome is opening as it is said (HIG, Alerts).
+            toast.show({ message: t('app.account.deleted'), tone: 'success' });
             return null;
           }}
         />
@@ -272,6 +274,22 @@ function OnboardingForm({
     return missing;
   }
 
+  /**
+   * A number or an address checked as the reader leaves its field, once
+   * something is typed in it: said under it then, not only after Continue.
+   * Put right, the error goes.
+   */
+  function checkOnLeave(field: 'whatsapp' | 'companyWebsite', typed: string) {
+    const problem = typed.trim() ? problems()[field] : undefined;
+    setErrors((current) => {
+      if ((current[field] ?? undefined) === problem) return current;
+      const next = { ...current };
+      if (problem) next[field] = problem;
+      else delete next[field];
+      return next;
+    });
+  }
+
   /** The refusals given, shown on the first step that asks one of them. */
   function refuseWhereAsked(next: Record<string, string>) {
     const first = steps.findIndex((name) => Object.keys(next).some((field) => FIELD_STEP[field] === name));
@@ -393,10 +411,10 @@ function OnboardingForm({
             ) : null}
           </View>
           <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-            <Text variant="small" weight="semibold" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="small" weight="semibold" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {t('onboarding.title')}
             </Text>
-            <Text variant="caption" tone="mutedForeground" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {stepLabel}
             </Text>
           </View>
@@ -496,6 +514,7 @@ function OnboardingForm({
                     autoComplete="tel"
                     textContentType="telephoneNumber"
                     placeholder={t('onboarding.whatsappPlaceholder')}
+                    onBlur={() => checkOnLeave('whatsapp', whatsapp)}
                   />
                 </Field>
 
@@ -545,6 +564,7 @@ function OnboardingForm({
                         textContentType="URL"
                         placeholder="https://"
                         maxLength={200}
+                        onBlur={() => checkOnLeave('companyWebsite', companyWebsite)}
                       />
                     </Field>
                     <Field label={t('onboarding.companyDistrict')}>
@@ -695,7 +715,7 @@ function OnboardingForm({
             </>
           ) : null}
 
-          {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+          {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
           <Button
             label={last ? t('onboarding.submit') : t('jobForm.next')}
@@ -727,7 +747,7 @@ function OnboardingForm({
 function StepHeading({ title, body }: { title: string; body?: string | null }) {
   return (
     <View style={{ gap: space[2] }}>
-      <Text variant="title" weight="bold" accessibilityRole="header">
+      <Text variant="title" weight="semibold" accessibilityRole="header">
         {title}
       </Text>
       {body ? <Text tone="mutedForeground">{body}</Text> : null}

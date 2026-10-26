@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { X } from '~/components/ui/lucide';
 import { haptic } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
-import { PressableScale } from './pressable-scale';
 import { Text } from './text';
 
 /**
@@ -18,7 +17,9 @@ import { Text } from './text';
  * inside a labelled `radiogroup` — a radio button, checked when `selected`,
  * rather than a button that is selected.
  *
- * At least 36 points tall, with the slop taking the target to 44.
+ * At least 36 points tall, with the slop taking the target to 44. Pressed, it
+ * darkens and does not move: chips are tapped many at a time, and a shrink
+ * on each was motion for its own sake.
  *
  * A choice clicks (a light haptic) as it is made; not the option already
  * chosen of a single choice, which changes nothing, and not a chip that
@@ -52,7 +53,7 @@ export function Chip({
   const text = solid ? colors.primaryForeground : removable ? colors.primary : colors.foreground;
 
   return (
-    <PressableScale
+    <Pressable
       accessibilityRole={radio ? 'radio' : 'button'}
       accessibilityState={removable ? undefined : radio ? { checked: selected, disabled } : { selected, disabled }}
       accessibilityLabel={accessibilityLabel ?? label}
@@ -69,8 +70,8 @@ export function Chip({
         maxWidth: '100%',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: space[1] + 2,
-        paddingHorizontal: space[3] + 2,
+        gap: space[1.5],
+        paddingHorizontal: space[3.5],
         // A capsule on one line. Not corner('full'): a label wrapped at the
         // largest text sizes would make the radius half the chip's height, and
         // the ends of its lines would fall outside the fill.
@@ -99,6 +100,6 @@ export function Chip({
           <X size={14} color={colors.primary} strokeWidth={2.5} />
         </View>
       ) : null}
-    </PressableScale>
+    </Pressable>
   );
 }

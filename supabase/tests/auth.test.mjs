@@ -323,6 +323,14 @@ report.ok(protectedPrefixes.includes('/onboarding'), '/onboarding is protected')
   report.ok(!/window\.location\.(assign|href\s*=)/.test(rescue), 'the rescue navigates through the router, to literal paths only');
   const signIn = read(j(ROOT, 'src/app/[locale]/sign-in/page.tsx'), 'utf8');
   report.ok(/link_expired/.test(signIn) && /missing_code/.test(signIn) && /exchange_failed/.test(signIn), 'the sign-in page explains all three link failures');
+  report.ok(
+    /confirmed === '1'/.test(signIn) &&
+      /role="status"/.test(signIn) &&
+      /text-\[#1A7F37\]/.test(signIn) &&
+      /bg-\[#F0FDF4\]/.test(signIn) &&
+      /t\('emailConfirmed'\)/.test(signIn),
+    'a confirmed address is a green status, not another error',
+  );
 }
 
 /*
@@ -716,7 +724,7 @@ report.section('a phone number is normalised the way people type it');
   report.ok(isValidPhone('+971501234567'), 'a foreign number in full international form still passes');
 }
 
-report.section('an avatar is fetched from this site\'s storage or from Google, nowhere else');
+report.section('an avatar is fetched from this site\'s storage, nowhere else');
 {
   const { trustedAvatarUrl } = await import('../../src/lib/avatar-url.ts');
   const origin = 'https://abcdefghijklmnopqrst.supabase.co';
@@ -726,8 +734,8 @@ report.section('an avatar is fetched from this site\'s storage or from Google, n
   report.is(trustedAvatarUrl(own, origin), own, 'the account\'s own upload is fetched');
   report.is(
     trustedAvatarUrl('https://lh3.googleusercontent.com/a/ACg8ocK=s96-c', origin),
-    'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c',
-    'and a Google account picture',
+    null,
+    'a Google account picture is not: sign-up no longer copies one (migrations 339, 364)',
   );
   report.is(
     trustedAvatarUrl(`https://attacker.example/storage/v1/object/public/avatars/${uid}/photo.webp`, origin),

@@ -15,6 +15,7 @@ import { formatDate, isoDate } from '@/lib/utils';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
+import { WithdrawnBadge } from '@/components/applications/withdrawn-badge';
 
 export async function generateMetadata({
   params,
@@ -142,9 +143,13 @@ export default async function ApplicationsPage({
                 </p>
               </div>
 
-              <Badge variant={STAGE_TONE[application.status]}>
-                {tStatus(application.status)}
-              </Badge>
+              {application.status === 'withdrawn' ? (
+                <WithdrawnBadge label={tStatus('withdrawn')} />
+              ) : (
+                <Badge variant={STAGE_TONE[application.status]}>
+                  {tStatus(application.status)}
+                </Badge>
+              )}
             </div>
 
             {/*

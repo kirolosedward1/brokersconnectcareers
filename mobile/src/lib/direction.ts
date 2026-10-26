@@ -1,5 +1,6 @@
 import { I18nManager } from 'react-native';
 import Constants from 'expo-constants';
+import { defaultLocale, dirOf, type Locale } from '@/lib/locale';
 
 /**
  * The direction the app is laid out in: right to left while it is Arabic only
@@ -23,3 +24,21 @@ import Constants from 'expo-constants';
  */
 export const appDirection: 'rtl' | 'ltr' =
   Constants.expoConfig?.extra?.forcesRTL === true || I18nManager.isRTL ? 'rtl' : 'ltr';
+
+/**
+ * The language the screens are drawn in.
+ *
+ * Text alignment follows this, not the direction the screen was created with.
+ * Expo Go can come up left to right (above) while the app is still Arabic, so
+ * Arabic is not "whatever I18nManager says". The catalogue's provider sets it
+ * as it draws; until then it is the app's own language.
+ */
+let drawnLocale: Locale = defaultLocale;
+
+export function setDrawnLocale(locale: Locale) {
+  drawnLocale = locale;
+}
+
+export function drawnDirection(): 'rtl' | 'ltr' {
+  return dirOf(drawnLocale);
+}

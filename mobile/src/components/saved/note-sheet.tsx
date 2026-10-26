@@ -16,6 +16,7 @@ import { appDirection } from '~/lib/direction';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useSheet } from '~/lib/use-sheet';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useSheetFence } from '~/components/ui/sheet-fence';
@@ -42,6 +43,7 @@ export function NoteSheet({
   jobId: string;
   jobTitle: string;
 }) {
+  const large = useLargeText();
   const t = useTranslations('savedNotes');
   // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
   const fence = useSheetFence();
@@ -82,12 +84,24 @@ export function NoteSheet({
     action: { label: tToast('undo'), onPress: () => void keep(before.id, before.text) },
   });
 
+  // A refusal puts the note back and says so, with the same change to try again.
+  const attempt = (write: () => Promise<boolean>) => {
+    void write().then((ok) => {
+      if (ok) return;
+      haptic.error();
+      toast.show({
+        message: tCommon('errorBody'),
+        icon: CircleAlert,
+        tone: 'destructive',
+        action: { label: tCommon('retry'), onPress: () => attempt(write) },
+      });
+    });
+  };
+
   const save = () => {
     if (!changed) return;
     // Shown at once; the server's refusal, should one come, puts the note back and says so.
-    void keep(jobId, clean).then((ok) => {
-      if (!ok) toast.show({ message: tCommon('errorBody'), icon: CircleAlert });
-    });
+    attempt(() => keep(jobId, clean));
     haptic.tap();
     onClose();
     // Emptied and saved is the same as deleted, and says so.
@@ -97,9 +111,7 @@ export function NoteSheet({
 
   const remove = () => {
     if (!note) return;
-    void removeNote(jobId).then((ok) => {
-      if (!ok) toast.show({ message: tCommon('errorBody'), icon: CircleAlert });
-    });
+    attempt(() => removeNote(jobId));
     haptic.tap();
     onClose();
     toast.show(deleted(note));
@@ -116,7 +128,7 @@ export function NoteSheet({
           direction: appDirection,
           justifyContent: 'flex-start',
           paddingTop: insets.top + space[2],
-          backgroundColor: 'rgba(5, 10, 25, 0.5)',
+          backgroundColor: colors.scrim,
         }}
         testID="note-sheet-room"
         {...fence}
@@ -147,7 +159,7 @@ export function NoteSheet({
                 <Text weight="semibold" accessibilityRole="header">
                   {t('title')}
                 </Text>
-                <Text variant="small" tone="mutedForeground" numberOfLines={2}>
+                <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 2}>
                   {jobTitle}
                 </Text>
               </View>
@@ -269,6 +281,7 @@ export function NoteSheetHost() {
  * page); unframed it sits in the saved card's tray.
  */
 export function NoteLine({ note, onPress, framed = false, label }: { note: JobNote | null; onPress: () => void; framed?: boolean; label?: string }) {
+  const large = useLargeText();
   const t = useTranslations('savedNotes');
   const { colors } = useTheme();
   const offer = label ?? t('add');
@@ -300,7 +313,7 @@ export function NoteLine({ note, onPress, framed = false, label }: { note: JobNo
     >
       <NotebookPen size={16} color={note ? colors.primary : colors.mutedForeground} />
       {note ? (
-        <Text variant="small" numberOfLines={framed ? 4 : 2} style={{ flex: 1 }}>
+        <Text variant="small" numberOfLines={large ? undefined : framed ? 4 : 2} style={{ flex: 1 }}>
           <Text variant="small" weight="semibold">{`${t('prefix')} `}</Text>
           {note.text}
         </Text>

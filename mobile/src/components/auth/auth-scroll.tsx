@@ -46,11 +46,11 @@ export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollVi
  */
 export function AuthHeading({ title, body }: { title: string; body?: string | null }) {
   return (
-    <View style={{ gap: space[1], alignItems: 'center' }}>
-      <View style={{ marginBottom: space[3] }}>
+    <View style={{ gap: space[1], width: '100%' }}>
+      <View style={{ marginBottom: space[3], alignItems: 'center' }}>
         <BrandLogo size="form" />
       </View>
-      <Text variant="display" weight="bold" accessibilityRole="header" style={styles.title}>
+      <Text variant="title" weight="semibold" accessibilityRole="header" style={styles.centred}>
         {title}
       </Text>
       {body ? (
@@ -75,6 +75,5 @@ export function AuthSwitch({ question, action, onPress }: { question?: string; a
 }
 
 const styles = StyleSheet.create({
-  centred: { textAlign: 'center' },
-  title: { textAlign: 'center', fontSize: 26, lineHeight: 38 },
+  centred: { textAlign: 'center', width: '100%' },
 });

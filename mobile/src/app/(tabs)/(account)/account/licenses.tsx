@@ -8,7 +8,7 @@ import { spdxUrl, type AssetNotice, type LicenseText, type Notices, type Package
 import { Text, textAlignStart } from '~/components/ui/text';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, space, type Scheme } from '~/theme/tokens';
 
 /**
  * The open-source notices the app owes: every package it is built from, in
@@ -30,10 +30,32 @@ type Row =
   | { kind: 'text'; key: string; license: LicenseText };
 
 /**
- * Names, versions and licence texts are written left to right. On the phone
- * `left` is the logical start and I18nManager mirrors it once; writing `right`
- * as well put them on the wrong side. On the web nothing mirrors, and
- * react-native-web maps `start` to the left, so Arabic uses the physical right.
+ * The lightest grey licence copy may be. A lighter one is brought down to
+ * this; a darker one stays. Dark mode keeps its own light ink, which a dark
+ * page can read.
+ */
+const LICENCE_INK = '#5B6475';
+
+/** Grey for licence copy: never lighter than LICENCE_INK while the page is light. */
+export function licenceInk(scheme: Scheme, color: string) {
+  if (scheme !== 'light') return color;
+  return luminance(color) > luminance(LICENCE_INK) ? LICENCE_INK : color;
+}
+
+function luminance(hex: string) {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const channels = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((channel) => {
+    const s = channel / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+/**
+ * Names, versions and licence texts are written left to right, and sit on the
+ * right while the app is Arabic — including when the phone has not mirrored
+ * the layout. textAlignStart returns `left` only when the phone will swap it
+ * once; `right` then would put the name back on the left.
  */
 function ltr() {
   return { writingDirection: 'ltr' as const, textAlign: textAlignStart() };
@@ -41,6 +63,7 @@ function ltr() {
 
 export default function LicensesScreen() {
   const t = useTranslations();
+  const { colors, scheme } = useTheme();
 
   const rows: Row[] = [
     { kind: 'heading', key: 'assets', title: t('licenses.assets') },
@@ -62,7 +85,7 @@ export default function LicensesScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
-          <Text variant="small" tone="mutedForeground">
+          <Text variant="small" tone="mutedForeground" style={{ color: licenceInk(scheme, colors.mutedForeground) }}>
             {t('app.licenses.intro')}
           </Text>
         }
@@ -75,7 +98,7 @@ function LicenseRow({ row }: { row: Row }) {
   switch (row.kind) {
     case 'heading':
       return (
-        <Text variant="title" weight="bold" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[2] }}>
+        <Text variant="title" weight="semibold" accessibilityRole="header" style={{ marginTop: space[6], marginBottom: space[2] }}>
           {row.title}
         </Text>
       );
@@ -106,7 +129,8 @@ function LicenseRow({ row }: { row: Row }) {
  * swipe per package rather than three.
  */
 function Entry({ name, details, copyright }: { name: string; details: string[]; copyright: string }) {
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
+  const grey = licenceInk(scheme, colors.mutedForeground);
   return (
     <View
       accessible
@@ -121,11 +145,11 @@ function Entry({ name, details, copyright }: { name: string; details: string[]; 
       <Text weight="medium" style={ltr()}>
         {name}
       </Text>
-      <Text variant="small" tone="mutedForeground" style={ltr()}>
+      <Text variant="small" tone="mutedForeground" style={[ltr(), { color: grey }]}>
         {details.join(' · ')}
       </Text>
       {copyright ? (
-        <Text variant="caption" tone="mutedForeground" style={ltr()}>
+        <Text variant="caption" tone="mutedForeground" style={[ltr(), { color: grey }]}>
           {copyright}
         </Text>
       ) : null}
@@ -136,7 +160,8 @@ function Entry({ name, details, copyright }: { name: string; details: string[]; 
 /** One licence's text, as the package it was read from ships it — or, when none does, the way to SPDX's. */
 function FullText({ license }: { license: LicenseText }) {
   const t = useTranslations('licenses');
-  const { colors } = useTheme();
+  const { colors, scheme } = useTheme();
+  const grey = licenceInk(scheme, colors.mutedForeground);
   return (
     <View style={{ gap: space[2], paddingVertical: space[3] }}>
       <Text weight="semibold" accessibilityRole="header" style={ltr()}>
@@ -144,11 +169,11 @@ function FullText({ license }: { license: LicenseText }) {
       </Text>
       {license.text ? (
         <>
-          <Text variant="caption" tone="mutedForeground">
+          <Text variant="caption" tone="mutedForeground" style={{ color: grey }}>
             {t.markup('textFrom', { source: license.source, ...markupTags })}
           </Text>
           <View style={{ padding: space[3], ...corner('lg'), backgroundColor: colors.muted }}>
-            <Text variant="caption" selectable style={ltr()}>
+            <Text variant="caption" selectable style={[ltr(), { color: licenceInk(scheme, colors.foreground) }]}>
               {license.text}
             </Text>
           </View>

@@ -58,7 +58,7 @@ export function Field({
           accessibilityLiveRegion="polite"
           accessibilityRole="alert"
           accessibilityLabel={error}
-          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[1] + 2 }}
+          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[1.5] }}
         >
           {/* Level with the first line of the words, however many there are. */}
           <View style={{ marginTop: 3 }}>

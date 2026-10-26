@@ -13,6 +13,7 @@ import { createLocalList } from '~/lib/local-list';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useSheetFence } from '~/components/ui/sheet-fence';
 import { appDirection } from '~/lib/direction';
 
@@ -71,6 +72,10 @@ export function SavedRepliesSheet({
   const owner = useListOwner();
   const replies = savedReplies.useItems(owner);
   const [draft, setDraft] = useState('');
+  // A reply half written: pulled down, the sheet stays and asks first (iOS hands the attempt to onRequestClose).
+  const confirmDiscard = useConfirmDiscard();
+  const writing = draft.trim() !== '';
+  const requestClose = () => (writing ? confirmDiscard(onClose) : onClose());
 
   const send = (text: string) => {
     onClose();
@@ -89,7 +94,7 @@ export function SavedRepliesSheet({
     ]);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal={!writing} onRequestClose={requestClose} onDismiss={onDismiss}>
       <KeyboardRoom>
         <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View style={styles.header}>

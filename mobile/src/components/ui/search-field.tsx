@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useState, type Ref } from 'react';
+import { Pressable, TextInput, View, type StyleProp, type TextInputInstance, type ViewStyle } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { appDirection } from '~/lib/direction';
 import { useTheme } from '~/theme/provider';
@@ -21,6 +21,9 @@ const MAX_WORDS = 120;
  *
  * It shows `value` whichever way that changes — typed here, carried in a link,
  * or dropped with its chip — and keeps what is being typed until then.
+ *
+ * `inputRef` reaches the field itself, for a screen that puts the cursor in it
+ * (the board, its tab pressed again at the top).
  */
 export function SearchField({
   value,
@@ -28,6 +31,7 @@ export function SearchField({
   placeholder,
   onSearch,
   style,
+  inputRef,
 }: {
   value: string;
   /** What VoiceOver calls the field. */
@@ -36,6 +40,7 @@ export function SearchField({
   /** The words, trimmed and cut to the website's length; '' once cleared. */
   onSearch: (words: string) => void;
   style?: StyleProp<ViewStyle>;
+  inputRef?: Ref<TextInputInstance>;
 }) {
   const t = useTranslations();
   const { colors, scheme } = useTheme();
@@ -62,7 +67,7 @@ export function SearchField({
           flexDirection: 'row',
           alignItems: 'center',
           gap: space[2],
-          paddingStart: space[3] + 2,
+          paddingStart: space[3.5],
           ...corner('full'),
           borderWidth: 1,
           borderColor: focused ? colors.primary : colors.border,
@@ -73,6 +78,7 @@ export function SearchField({
     >
       <Search size={18} color={colors.mutedForeground} />
       <TextInput
+        ref={inputRef}
         value={text}
         onChangeText={setText}
         placeholder={placeholder}

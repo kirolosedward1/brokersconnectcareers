@@ -30,6 +30,7 @@ import { useSearchSuggestions, withSuggestion, type SearchSuggestion, type Span 
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useGatedModal } from '~/lib/sheet-gate';
@@ -56,14 +57,11 @@ export function FilterSheet({
   filters,
   onClose,
   onApply,
-  focusSearch = false,
 }: {
   visible: boolean;
   filters: JobFilters;
   onClose: () => void;
   onApply: (next: JobFilters) => void;
-  /** Opened to search (the Jobs tab pressed again at the top): the keyboard comes up in the words. */
-  focusSearch?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -125,7 +123,6 @@ export function FilterSheet({
         </Text>
         <TextField
           value={words}
-          autoFocus={focusSearch}
           onChangeText={setWords}
           onEndEditing={() => setDraft(typed)}
           // The keyboard's Search key searches: the board, for what is chosen and typed.
@@ -273,7 +270,7 @@ function RecentSearches({ onPick }: { onPick: (words: string) => void }) {
             {t('recentSearches')}
           </Text>
         </View>
-        <Pressable accessibilityRole="button" onPress={() => recentSearches.clear(owner)} hitSlop={10}>
+        <Pressable accessibilityRole="button" onPress={() => recentSearches.clear(owner)} hitSlop={12}>
           <Text variant="caption" weight="semibold" tone="primary">
             {t('recentSearchesClear')}
           </Text>
@@ -303,6 +300,7 @@ const SUGGESTION_ICONS: Record<SearchSuggestion['kind'], ComponentType<LucidePro
  * (the sheet's scroll view keeps taps that are handled).
  */
 function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggestion: SearchSuggestion) => void }) {
+  const large = useLargeText();
   const t = useTranslations('app.jobs');
   const { colors } = useTheme();
   const suggestions = useSearchSuggestions(typed);
@@ -363,7 +361,7 @@ function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggesti
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 {elsewhere ? (
-                  <Text weight="medium" numberOfLines={2}>
+                  <Text weight="medium" numberOfLines={large ? undefined : 2}>
                     {suggestion.label}
                   </Text>
                 ) : (
@@ -416,8 +414,9 @@ function Marked({
   mark: ColorValue;
   ground: ColorValue;
 }) {
+  const large = useLargeText();
   return (
-    <Text variant={variant} weight={weight} numberOfLines={2} style={{ color: ink }}>
+    <Text variant={variant} weight={weight} numberOfLines={large ? undefined : 2} style={{ color: ink }}>
       {text.slice(0, span.start)}
       <Text variant={variant} weight={weight} style={{ color: mark, backgroundColor: ground }}>
         {text.slice(span.start, span.end)}
@@ -462,7 +461,7 @@ export function FilterSheetFrame({
   const gate = useGatedModal(visible, onClose);
 
   return (
-    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={onClose}>
       <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
         <View
           style={{

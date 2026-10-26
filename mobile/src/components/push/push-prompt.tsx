@@ -10,8 +10,10 @@ import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 
 /**
- * The phone's question, asked with its reason: on Home, for somebody the
- * phone has not asked yet, saying what they would hear about. "Not now" puts
+ * The phone's question, asked with its reason, where the reason is plain: on
+ * Home once there is an application (or a listing) to hear about, and under
+ * "Application sent" — for somebody the phone has not asked yet, saying what
+ * they would hear about. "Not now" puts
  * it away for good; the switch in the account stays.
  */
 export function PushPrompt({ audience }: { audience: 'candidate' | 'employer' }) {
@@ -27,7 +29,7 @@ export function PushPrompt({ audience }: { audience: 'candidate' | 'employer' })
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
         <BellRing size={18} color={colors.primary} />
         <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
-          {t('promptTitle')}
+          {audience === 'employer' ? t('promptTitleEmployer') : t('promptTitleCandidate')}
         </Text>
       </View>
       <Text variant="small" tone="mutedForeground">

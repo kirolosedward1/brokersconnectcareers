@@ -3,6 +3,7 @@ import { FlatList, Keyboard, Modal, Pressable, StyleSheet, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
 import { westernDigits } from '@/lib/search/arabic';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Button } from './button';
@@ -66,6 +67,7 @@ export function MonthField({
   clearLabel?: string;
   untilNow?: boolean;
 }) {
+  const large = useLargeText();
   const t = useTranslations();
   // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
   const fence = useSheetFence();
@@ -115,20 +117,20 @@ export function MonthField({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: space[2],
-          paddingHorizontal: space[4] - 2,
+          paddingHorizontal: space[3.5],
           ...corner('lg'),
           borderWidth: 1,
           borderColor: colors.input,
           backgroundColor: pressed ? colors.muted : colors.card,
         })}
       >
-        <Text tone={shown ? 'foreground' : 'mutedForeground'} numberOfLines={1} style={{ flexShrink: 1 }}>
+        <Text tone={shown ? 'foreground' : 'mutedForeground'} numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
           {shown ?? t('app.profile.monthChoose')}
         </Text>
         <Calendar size={18} color={colors.mutedForeground} />
       </Pressable>
 
-      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
+      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={() => setOpen(false)}>
         <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background, paddingBottom: insets.bottom + space[4] }} {...fence}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <Text variant="headline" weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>

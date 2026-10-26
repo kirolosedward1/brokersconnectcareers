@@ -84,7 +84,7 @@ export default function CompanyScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
             <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
             <View style={{ flex: 1, gap: space[2] }}>
-              <Text variant="title" weight="bold" accessibilityRole="header">
+              <Text variant="title" weight="semibold" accessibilityRole="header">
                 {name}
               </Text>
               {company.verification_status === 'verified' ? (

@@ -26,7 +26,8 @@ import { WhatsAppMark } from '@/components/brand-marks';
 import { ApplicantNotes } from '@/components/employer/applicant-notes';
 import { Avatar } from '@/components/ui/avatar';
 import { useSessionRecovery } from '@/lib/session-expired';
-import { APPLICATION_STAGES, STAGE_TONE } from '@/lib/application-stages';
+import { PIPELINE_STAGES, STAGE_TONE } from '@/lib/application-stages';
+import { WithdrawnBadge } from '@/components/applications/withdrawn-badge';
 
 export type ApplicantProfile = {
   slug: string;
@@ -203,8 +204,17 @@ export function ApplicantCard({
     }
   }
 
+  const withdrawn = status === 'withdrawn';
+
   return (
-    <article className="rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5">
+    <article
+      className={cn(
+        'rounded-xl border border-border bg-card px-4 py-3.5 sm:px-5',
+        // Readable grey, not a faded card. #5B6475 on white is about 5.9:1;
+        // the dark-card colour is the same grey lifted so it stays above 4.5:1.
+        withdrawn && 'text-[#5B6475] dark:text-[#C5CAD3]',
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {/* Seeded on the directory slug where there is one, so the same
@@ -219,7 +229,7 @@ export function ApplicantCard({
 
           <div className="min-w-0">
             <Heading className="font-semibold">{candidate?.full_name ?? '—'}</Heading>
-            <FactLine className="mt-0.5 text-sm text-muted-foreground">
+            <FactLine className={cn('mt-0.5 text-sm', withdrawn ? 'text-[#5B6475] dark:text-[#C5CAD3]' : 'text-muted-foreground')}>
               {application.experience_band ? <span>{tExp(application.experience_band)}</span> : null}
               <time dateTime={isoDate(application.created_at)}>
                 {t('applicantReceivedOn', { date: formatDate(application.created_at, locale) })}
@@ -228,7 +238,7 @@ export function ApplicantCard({
           </div>
         </div>
 
-        <Badge variant={STAGE_TONE[status]}>{tStatus(status)}</Badge>
+        {withdrawn ? <WithdrawnBadge label={tStatus('withdrawn')} /> : <Badge variant={STAGE_TONE[status]}>{tStatus(status)}</Badge>}
       </div>
 
       {/* Who this actually is.
@@ -338,6 +348,9 @@ export function ApplicantCard({
         </p>
       ) : null}
 
+      {/* A withdrawn application is closed. WhatsApp, the CV, and the stage
+          move are not offered; the profile link above is the only action. */}
+      {!withdrawn ? (
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {/* Contact in this market is WhatsApp, with the opener already written. */}
         {candidate ? (
@@ -395,7 +408,7 @@ export function ApplicantCard({
             disabled={pending}
             className="w-auto"
           >
-            {APPLICATION_STAGES.map((value) => (
+            {PIPELINE_STAGES.map((value) => (
               <option key={value} value={value}>
                 {tStatus(value)}
               </option>
@@ -403,11 +416,12 @@ export function ApplicantCard({
           </Select>
         </label>
       </div>
+      ) : null}
 
       {/* Shown once a decision has been made. Not on `new`, where there is
           nothing to explain yet, and never required — a mandatory field here
           fills up with "not a fit", which looks like an answer and is not. */}
-      {status !== 'new' ? (
+      {status !== 'new' && !withdrawn ? (
         <div className="mt-4 border-t border-border pt-4">
           <label htmlFor={`reason-${application.id}`} className="text-xs font-medium text-muted-foreground">
             {t('decisionNote')}
@@ -445,6 +459,7 @@ export function ApplicantCard({
         authors={noteAuthors}
         locale={locale}
         viewerId={viewerId}
+        readOnly={withdrawn}
       />
     </article>
   );

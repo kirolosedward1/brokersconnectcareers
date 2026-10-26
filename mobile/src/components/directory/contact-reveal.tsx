@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, Eye, MessageCircle } from '~/components/ui/lucide';
+import { WhatsAppIcon } from '~/components/ui/icons';
+import { Download, Eye, Phone } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { openAgentCv, RevealRefused, useRevealContact, type RevealedContact } from '~/features/directory/queries';
 import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * The button that asks for a number — the website's ContactReveal. Nothing of
@@ -24,6 +26,7 @@ export function ContactReveal({ handle, hasCv }: { handle: string; hasCv: boolea
   const reveal = useRevealContact();
   const [revealed, setRevealed] = useState<RevealedContact | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  useAnnounce(message);
 
   const ask = () => {
     setMessage(null);
@@ -49,10 +52,18 @@ export function ContactReveal({ handle, hasCv }: { handle: string; hasCv: boolea
       <View style={{ gap: space[2] }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
           <Button
-            label={t('agents.contact')}
+            label={t('app.directory.whatsapp')}
+            accessibilityLabel={t('agents.contact')}
             size="lg"
-            icon={<MessageCircle size={18} color={colors.primaryForeground} />}
+            icon={<WhatsAppIcon size={18} color={colors.primaryForeground} />}
             onPress={() => Linking.openURL(revealed.whatsappUrl).catch(() => {})}
+          />
+          <Button
+            label={t('app.directory.call')}
+            variant="outline"
+            size="lg"
+            icon={<Phone size={18} color={colors.foreground} />}
+            onPress={() => Linking.openURL(`tel:${revealed.phone.replace(/[^\d+]/g, '')}`).catch(() => {})}
           />
           {/* The number as written, left to right, and copyable. */}
           <Text selectable tone="mutedForeground" style={{ writingDirection: 'ltr' }}>

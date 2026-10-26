@@ -21,6 +21,7 @@ import { useErrorFeedback } from '~/lib/haptics';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * Two-step verification with an authenticator app — the website's
@@ -42,6 +43,7 @@ export function TwoFactorSettings() {
   const [error, setError] = useState<string | null>(null);
   useErrorFeedback(error);
   const [noApp, setNoApp] = useState(false);
+  useAnnounce(t('app.account.mfaNoApp'), noApp);
   const [pending, setPending] = useState(false);
 
   // Resolves once the state has been read again, so nothing in between is drawn.

@@ -1,6 +1,6 @@
 ---
 title: Cookies and storage on your device
-updated: 2026-10-22
+updated: 2026-10-23
 ---
 
 This page explains everything the Brokers Connect website keeps in your browser, and everything the app keeps on your phone, and why. It is part of our [Privacy policy](/privacy).
@@ -44,7 +44,7 @@ The app uses no cookies. It keeps only the following on your phone:
 - **Forms you have not finished:** while you write a job advert or apply for a job, what you have typed is kept as you go, so that the phone closing the app does not lose it. Kept under your account only, never a file you attached, and deleted once the form is sent, when you choose "Start over" or leave it and discard it, when you sign out, and in any case after seven days.
 - **What you keep for yourself in the app:** the closing-date reminders on saved jobs (they are notifications the phone shows at the time you chose), your saved consultant searches and the alerts they send, your saved WhatsApp replies, the kinds of listing you asked to see fewer of, the listings and searches you looked at lately, and where you got to on the job board, so it can show what is new since. These are kept for your account alone, are never sent to us, and are deleted from the phone when you delete your account. (The note you write on a saved job is part of your account, kept with the bookmark and shown on the website too.)
 - **For signing in:** where you were going when you started creating your account (a listing you tapped Apply on, say), until you get there; and, if you signed in with Apple on this phone, which Apple ID you used, so the app can sign you out if you stop using Apple with it. Both are forgotten when you sign out or delete your account.
-- **The last crash:** if the app closes because of an error, a short record of the error and the app's version, so the app can tell you about it the next time it opens and you can choose to send it to us. Nothing is sent unless you do.
+- **The last crash:** if the app closes because of an error, a short record of the error (its message and where in the app's code it happened) and the app's version, so the app can tell you about it the next time it opens and you can choose to send it to us. Nothing is sent unless you do.
 - **A temporary copy of public lists:** governorates, districts and developers, so search screens open quickly; and the counts on Home with the first page of the job board and of the company directory, so the app opens on them at once, even on a slow connection, and refreshes them behind. None is kept longer than a day, and none holds anything from your account.
 
 All of this is deleted when you delete the app from your phone. (An iPhone may keep the encryption key itself in the Keychain after the app is deleted, but with the session it protected gone, it unlocks nothing.)

@@ -1,5 +1,5 @@
 import { createTranslator } from 'use-intl';
-import { employerToAgentOpener } from '@/lib/whatsapp';
+import { employerOpener, employerToAgentOpener } from '@/lib/whatsapp';
 import { catalogues } from '~/i18n/provider';
 
 /*
@@ -35,8 +35,8 @@ describe('a count', () => {
     expect(ar('agents.unitsClosedShort', { count: 5 })).toBe('5 وحدات مباعة');
     expect(en('agents.unitsClosedShort', { count: 1 })).toBe('1 unit closed');
 
-    expect(ar('filters.minYears', { count: 1 })).toBe('خبرة سنة أو أكتر');
-    expect(ar('filters.minYears', { count: 3 })).toBe('خبرة 3 سنين أو أكتر');
+    expect(ar('filters.minYears', { count: 1 })).toBe('خبرة سنة أو أكثر');
+    expect(ar('filters.minYears', { count: 3 })).toBe('خبرة 3 سنوات أو أكثر');
 
     const pipeline = (t: typeof ar, count: number) => t.markup('employer.pipelineCount', { count, v: (chunks) => chunks });
     expect(pipeline(en, 1)).toBe('1 applicant');
@@ -46,14 +46,14 @@ describe('a count', () => {
 
     expect(ar('notifications.unreadCount', { count: 1 })).toBe('تنبيه واحد غير مقروء');
     expect(ar('notifications.applicationReceivedMany', { count: 2, subject: 'مستشار مبيعات' })).toBe(
-      'متقدمين اتنين جداد على مستشار مبيعات',
+      'متقدمان جديدان على مستشار مبيعات',
     );
   });
 
   it('is said once where the number is already in front of the word', () => {
     // "2 وظيفتان خاليتان" said two twice.
     expect(`2 ${ar('jobs.seatsLabel', { count: 2 })}`).toBe('2 وظيفة خالية');
-    expect(ar('employer.duplicateBody', { title: 'مستشار مبيعات', seats: 1 })).toContain('لسه فيه وظيفة خالية واحدة.');
+    expect(ar('employer.duplicateBody', { title: 'مستشار مبيعات', seats: 1 })).toContain('ما زال فيه وظيفة خالية واحدة.');
   });
 });
 
@@ -88,8 +88,17 @@ describe('one name for one thing', () => {
 
   it('opens a WhatsApp chat from the directory by its name', () => {
     const opener = employerToAgentOpener({ agentName: 'سارة', companyName: 'نايل بروكرز', locale: 'ar' });
-    expect(opener).toContain('دليل الاستشاريين');
+    expect(opener).toBe('مرحبًا سارة، معك نايل بروكرز. اطّلعنا على ملفك في دليل الاستشاريين ولدينا فرصة قد تناسبك.');
     expect(employerToAgentOpener({ agentName: 'Sara', companyName: 'Nile', locale: 'en' })).toContain('consultant directory');
+  });
+
+  it('asks an applicant on WhatsApp in MSA, with the same placeholders', () => {
+    expect(employerOpener({
+      candidateName: 'سارة',
+      jobTitle: 'مستشار مبيعات',
+      companyName: 'نايل بروكرز',
+      locale: 'ar',
+    })).toBe('مرحبًا سارة، معك نايل بروكرز. وصلنا طلبك على وظيفة «مستشار مبيعات» ونود التحدث معك. هل الوقت مناسب الآن؟');
   });
 });
 
@@ -142,6 +151,6 @@ describe('an example inside Arabic', () => {
   });
 
   it('marks the word to type to delete an account, which the app draws without bold', () => {
-    expect(ar.markup('account.deleteConfirmLabel', { word: 'حذف', b: (chunks) => chunks })).toBe('اكتب «حذف» عشان تأكّد.');
+    expect(ar.markup('account.deleteConfirmLabel', { word: 'حذف', b: (chunks) => chunks })).toBe('اكتب «حذف» للتأكيد.');
   });
 });

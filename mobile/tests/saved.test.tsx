@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import type { ReactNode } from 'react';
 import { Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -379,6 +380,25 @@ describe('a card on the board, held', () => {
     expect(shown?.message).toBe(ar.app.toast.jobHidden);
     act(() => shown?.action?.onPress());
     expect(await card()).toBeTruthy();
+  });
+
+  it('hides the whole company from the menu at once, without an alert, and Undo brings it back', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    try {
+      await signedIn();
+      await renderRouter(app, { initialUrl: '/jobs' });
+      fireEvent(await card(), 'longPress');
+      fireEvent.press(await screen.findByRole('menuitem', { name: ar.app.jobMenu.hideCompany }));
+      await waitFor(() => expect(shownToast()).not.toBeNull());
+      expect(alert).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByText(listing.title_ar)).toBeNull());
+      const shown = shownToast();
+      expect(shown?.action?.label).toBe(ar.app.toast.undo);
+      act(() => shown?.action?.onPress());
+      expect(await card()).toBeTruthy();
+    } finally {
+      alert.mockRestore();
+    }
   });
 
   it('saves from the menu, says so, and offers the way to the saved list', async () => {

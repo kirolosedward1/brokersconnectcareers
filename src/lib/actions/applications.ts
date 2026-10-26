@@ -19,7 +19,7 @@ import type {
   ExperienceBand,
 } from '@/lib/supabase/database.types';
 import { logFailure } from '@/lib/observe';
-import { APPLICATION_STAGES } from '@/lib/application-stages';
+import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { insertOnce } from '@/lib/actions/idempotency';
 import { jobIsLive } from '@/lib/job-state';
 import { refused } from '@/lib/observe';
@@ -85,8 +85,18 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     const keep = await cvInUse(
       {
         profileCv: () => supabase.from('agent_profiles').select('cv_path').eq('user_id', user.id).maybeSingle(),
-        applicationsWith: (path) =>
-          supabase.from('applications').select('id').eq('candidate_id', user.id).eq('cv_path', path).limit(1),
+        applicationsWith: async (path) => {
+          const result = await supabase
+            .from('applications')
+            .select('id, status')
+            .eq('candidate_id', user.id)
+            .eq('cv_path', path)
+            .limit(5);
+          return {
+            ...result,
+            data: result.data?.filter((row) => row.status !== 'withdrawn').slice(0, 1) ?? null,
+          };
+        },
       },
       parsed.data.cvPath,
     );
@@ -196,38 +206,37 @@ export async function withdrawApplication(applicationId: string): Promise<Action
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Read the title before the delete, not after: withdrawing removes the row,
-  // and the confirmation has to name the role the person just withdrew from.
-  // Through the caller's session, so this reads nothing RLS would not already
-  // show them.
+  // The title, through the caller's session, so this reads nothing RLS would
+  // not already show them. The row stays; the confirmation still has to name
+  // the role.
   const { data: before } = await supabase
     .from('applications')
     .select('id, cv_path, job:jobs (title_ar, title_en)')
     .eq('id', applicationId)
     .maybeSingle();
 
-  // Same reason as the pipeline move: a delete RLS filters to zero rows is not
-  // an error, so "withdrawn" was reported for an application still sitting in
-  // an employer's inbox.
-  const { data: removed, error } = await supabase
-    .from('applications')
-    .delete()
-    .eq('id', applicationId)
-    .select('id');
+  // The function marks the row withdrawn and clears cv_path. An empty result
+  // is a refusal — not theirs, or past shortlisted — and is not an error, so
+  // "withdrawn" is not reported for a row that did not change. Deleting the
+  // row is not a fallback: that is the history this action exists to keep,
+  // and the candidate delete policy is gone. A database without the function
+  // yet is told so, and the application stays.
+  const { data: withdrawnRows, error } = await supabase.rpc('withdraw_application', { p_id: applicationId });
 
+  if (error && (error.code === 'PGRST202' || error.code === '42883')) {
+    logFailure('apply', 'withdraw_application is not available', { application: applicationId, code: error.code });
+    return { ok: false, error: 'unavailable' };
+  }
   if (error) return refused('application', error);
-
-  if (!removed?.length) {
-    // Refused by the withdrawal precondition migration 42 added, or by
-    // somebody reaching for an application that is not theirs. Both are worth
-    // seeing; neither is worth a name in the log.
+  if (!withdrawnRows?.length) {
     logFailure('apply', 'withdrawal refused', { application: applicationId, by: user?.id });
     return { ok: false, error: 'forbidden' };
   }
 
   const withdrawn = before as unknown as WithdrawnJob | null;
-  if (user && withdrawn?.cv_path) {
-    await removeOrphanedCv(supabase, user.id, withdrawn.cv_path, applicationId);
+  const cvPath = withdrawnRows?.[0]?.previous_cv_path ?? withdrawn?.cv_path ?? null;
+  if (user && cvPath) {
+    await removeOrphanedCv(supabase, user.id, cvPath, applicationId);
   }
 
   const job = withdrawn?.job;
@@ -291,10 +300,10 @@ async function removeOrphanedCv(
     const [others, profile] = await Promise.all([
       supabase
         .from('applications')
-        .select('id')
+        .select('id, status')
         .eq('candidate_id', userId)
         .eq('cv_path', cvPath)
-        .limit(1),
+        .limit(5),
       supabase
         .from('agent_profiles')
         .select('id')
@@ -310,7 +319,9 @@ async function removeOrphanedCv(
       });
       return;
     }
-    if (others.data.length || profile.data.length) return;
+    // A withdrawn row is not holding the file, even if its cv_path has not
+    // been cleared yet. A standing application, or the profile, is.
+    if (others.data.some((row) => row.status !== 'withdrawn') || profile.data.length) return;
 
     const { error } = await supabase.storage.from('cvs').remove([cvPath]);
     if (error) {
@@ -323,7 +334,7 @@ async function removeOrphanedCv(
 
 const statusSchema = z.object({
   applicationId: z.string().uuid(),
-  status: z.enum(APPLICATION_STAGES),
+  status: z.enum(PIPELINE_STAGES),
   /** Optional, and deliberately so — a required field becomes "not a fit" forever. */
   decisionNote: z.string().trim().max(500).optional().nullable(),
   /**
@@ -335,7 +346,7 @@ const statusSchema = z.object({
    * their own optimistic value until they happened to refresh, and the
    * candidate was emailed twice about two different outcomes.
    */
-  from: z.enum(APPLICATION_STAGES).optional(),
+  from: z.enum(PIPELINE_STAGES).optional(),
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */
