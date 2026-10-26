@@ -56,6 +56,7 @@ captions = {
     "t6-share": "Share",
     "t7-share-cancelled": "Share cancelled",
     "t8-back": "Back to the board",
+    "t8-back-board": "Back to the board, opened again",
     "t8b-card-held": "A card held",
     "t8c-menu-closed": "The card menu closed",
     "t9-companies": "The Companies tab",
@@ -96,7 +97,15 @@ if [ "${LOOK_SHOTS_DRY:-}" = 1 ]; then
   exit 0
 fi
 
-remote="${LOOK_SHOTS_REMOTE:-https://x-access-token:${GITHUB_TOKEN}@github.com/${repo}.git}"
+# The workflow exports GH_TOKEN. GITHUB_TOKEN is not set on its own, and
+# `set -u` would stop the job here before any shot was pushed.
+token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
+if [ -n "${LOOK_SHOTS_REMOTE:-}" ]; then
+  remote="$LOOK_SHOTS_REMOTE"
+else
+  [ -n "$token" ] || { echo "::error::post-look-shots: GH_TOKEN is required to push look-shots"; exit 1; }
+  remote="https://x-access-token:${token}@github.com/${repo}.git"
+fi
 work=$(mktemp -d)
 git init -q "$work"
 git -C "$work" remote add origin "$remote"
