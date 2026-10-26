@@ -1,5 +1,5 @@
 -- =============================================================================
--- 364 — English slugs, and a 301 from the slug they replaced
+-- 365 — English slugs, and a 301 from the slug they replaced
 --
 -- Public job and company slugs are English words, not an Arabic
 -- transliteration. The builders in src/lib/slug.ts already mint them that

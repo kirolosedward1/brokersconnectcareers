@@ -25,6 +25,7 @@ import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useStoredFields } from '~/lib/use-stored-fields';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
@@ -60,6 +61,7 @@ export function ProfileForm({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const save = useSaveAgentProfile();
   const districts = useDistricts().data ?? [];
   const developers = useDevelopers().data ?? [];
@@ -339,7 +341,7 @@ export function ProfileForm({
             }}
           >
             <Paperclip size={16} color={colors.mutedForeground} />
-            <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
+            <Text variant="small" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
               {cv.file.name}
             </Text>
             <Pressable

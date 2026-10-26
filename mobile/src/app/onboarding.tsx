@@ -411,10 +411,10 @@ function OnboardingForm({
             ) : null}
           </View>
           <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-            <Text variant="small" weight="semibold" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="small" weight="semibold" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {t('onboarding.title')}
             </Text>
-            <Text variant="caption" tone="mutedForeground" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {stepLabel}
             </Text>
           </View>

@@ -40,6 +40,7 @@ import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { tabsFor } from '~/lib/tabs';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -372,6 +373,7 @@ function RecentApplication({ application, first }: { application: CandidateAppli
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const job = application.job;
   if (!job) return null;
 
@@ -384,10 +386,12 @@ function RecentApplication({ application, first }: { application: CandidateAppli
       accessibilityRole="link"
       accessibilityLabel={formatList([title, company, status], locale)}
       onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
+      // At the accessibility sizes the status goes under the title rather than
+      // squeezing it to a word a line.
       style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: space[3],
+        flexDirection: large ? 'column' : 'row',
+        alignItems: large ? 'flex-start' : 'center',
+        gap: large ? space[2] : space[3],
         paddingHorizontal: space[4],
         paddingVertical: space[3],
         borderTopWidth: first ? 0 : 1,
@@ -395,11 +399,11 @@ function RecentApplication({ application, first }: { application: CandidateAppli
         backgroundColor: pressed ? colors.muted : 'transparent',
       })}
     >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text weight="medium" numberOfLines={1}>
+      <View style={[{ gap: 2 }, large ? { alignSelf: 'stretch' } : { flex: 1 }]}>
+        <Text weight="medium" numberOfLines={large ? undefined : 1}>
           {title}
         </Text>
-        <Text variant="small" tone="mutedForeground" numberOfLines={1}>
+        <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 1}>
           {`${company} · ${formatDate(application.created_at, locale)}`}
         </Text>
       </View>

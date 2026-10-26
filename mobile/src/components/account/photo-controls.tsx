@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslations } from 'use-intl';
+import { imageFailureCopy } from '@/lib/image-upload';
 import { ImageUp, Trash2 } from '~/components/ui/lucide';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
@@ -27,12 +28,15 @@ export function PhotoControls({ hasPhoto }: { hasPhoto: boolean }) {
 
   const explain = (failure: unknown) => {
     if (failure instanceof ApiError && failure.status === 0) return t('app.offline.body');
-    const reason = failure instanceof PhotoRefused ? failure.reason : 'failed';
-    return reason === 'file_type'
-      ? t('validation.fileType')
-      : reason === 'too_large'
-        ? t('validation.fileTooLarge')
-        : t('common.errorBody');
+    if (!(failure instanceof PhotoRefused)) return t('common.errorBody');
+    return imageFailureCopy(failure.reason, failure.detail, {
+      imageType: t('validation.imageType'),
+      imageUnreadable: t('validation.imageUnreadable'),
+      imageTooLarge: t('validation.imageTooLarge'),
+      uploadRateLimited: t('validation.uploadRateLimited'),
+      storageError: t('validation.storageError'),
+      generic: t('common.errorBody'),
+    });
   };
 
   // Promise chains, not try/finally, which the React Compiler does not compile.

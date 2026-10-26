@@ -197,6 +197,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/employers', catalogue),
     entry('/app', catalogue),
     entry('/blog', newestPost),
+    entry('/support', catalogue),
   ];
 
   // The policies, dated by their own `updated` line (the Arabic text, which

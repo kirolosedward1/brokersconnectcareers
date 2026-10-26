@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { ArrowRight } from 'lucide-react';
 import { FooterGroup } from '@/components/footer-group';
 import { Link } from '@/i18n/navigation';
-import { localized } from '@/i18n/routing';
+import { localized, type Locale } from '@/i18n/routing';
 import { Logo } from '@/components/logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { JOB_TRACKS } from '@/lib/taxonomy';
@@ -12,8 +12,6 @@ import { siteNavFor } from '@/lib/permissions';
 import { VisitorOnly } from '@/components/session/visitor-only';
 import { LiveAgentsLink } from '@/components/session/header-account';
 import { PopularLandings } from '@/components/jobs/popular-landings';
-import type { Locale } from '@/i18n/routing';
-import { env } from '@/lib/env';
 import { OPERATOR } from '@/lib/business';
 import { FooterYear } from '@/components/footer-year';
 
@@ -85,10 +83,6 @@ export async function SiteFooter({ locale }: { locale: string }) {
     (district): district is NonNullable<typeof district> => Boolean(district),
   );
 
-  // SUPPORT_EMAIL when somebody has set one, and otherwise the address the
-  // legal documents already publish for the operator — never a mailto to
-  // nowhere.
-  const contactEmail = env.supportEmail || OPERATOR.email;
 
   /**
    * min-h-11, matching the header and NavLink. The footer was the only place
@@ -222,9 +216,9 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 </li>
               ))}
               <li>
-                <a href={`mailto:${contactEmail}`} className={linkClass}>
+                <Link href="/support" className={linkClass}>
                   {t('contact')}
-                </a>
+                </Link>
               </li>
             </ul>
           </FooterGroup>

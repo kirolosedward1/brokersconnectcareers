@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { corner, motion, space } from '~/theme/tokens';
 import { Text } from './text';
@@ -92,6 +93,7 @@ function Action({
   visible: boolean;
   onPress: () => void;
 }) {
+  const large = useLargeText();
   // Seen only while the row is slid toward it: a row with no background of its
   // own (the notifications list) otherwise shows every action through its text.
   const opacity = x.interpolate({
@@ -120,7 +122,7 @@ function Action({
         }}
       >
         {action.icon}
-        <Text variant="caption" weight="semibold" numberOfLines={2} style={{ color: action.ink, textAlign: 'center' }}>
+        <Text variant="caption" weight="semibold" numberOfLines={large ? undefined : 2} style={{ color: action.ink, textAlign: 'center' }}>
           {action.label}
         </Text>
       </Pressable>
