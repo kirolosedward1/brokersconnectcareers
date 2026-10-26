@@ -8,10 +8,21 @@
  * So the two things pinned here are the refusals: a link into the other half
  * of the site, and anything that could leave the site at all. The cursor is
  * pinned because it goes from a query string straight into a PostgREST filter.
+ *
+ * The bell's own rules — which rows it may show twice, how the badge counts,
+ * and the relative time — are pure and live next to those.
  */
+import { readFileSync } from 'node:fs';
+import { createTranslator } from 'next-intl';
+import { register } from 'node:module';
+
+register('../supabase/tests/alias-hooks.mjs', import.meta.url);
+
 const { safeNotificationHref, decodeCursor, encodeCursor, afterCursorFilter } = await import(
   '../src/lib/notifications/links.ts'
 );
+const { bellBadge, dedupeFeed } = await import('../src/lib/notifications/feed.ts');
+const { formatBellTime } = await import('../src/lib/notifications/relative.ts');
 
 let pass = 0;
 let fail = 0;
@@ -36,6 +47,8 @@ console.log('\n— an employer is never sent into candidate-only pages');
 is('employer → candidate applications', safeNotificationHref('/dashboard/applications', 'employer'), null);
 is('employer → candidate profile', safeNotificationHref('/dashboard/profile', 'employer'), null);
 is('employer → their own account page, which is shared', safeNotificationHref('/dashboard/account', 'employer'), '/dashboard/account');
+is('employer → the bell\'s list, which is shared', safeNotificationHref('/dashboard/notifications', 'employer'), '/dashboard/notifications');
+is('candidate → the bell\'s list', safeNotificationHref('/dashboard/notifications', 'candidate'), '/dashboard/notifications');
 is('employer → applicants', safeNotificationHref('/employer/jobs/x/applicants', 'employer'), '/employer/jobs/x/applicants');
 is('employer → admin', safeNotificationHref('/admin', 'employer'), null);
 
@@ -60,6 +73,36 @@ for (const href of [
 }
 is('a prefix is a whole segment, not a string prefix', safeNotificationHref('/dashboardx', 'candidate'), null);
 is('a query string survives', safeNotificationHref('/notifications?link=gone', 'candidate'), '/notifications?link=gone');
+
+console.log('\n— the bell');
+is('no badge at zero', bellBadge(0), null);
+is('no badge below zero', bellBadge(-1), null);
+is('the count itself up to nine', bellBadge(9), '9');
+is('above nine is 9+', bellBadge(10), '9+');
+is('a folded row is not shown', dedupeFeed([
+  { id: 'a', dedupe_key: 'k1', folded_into: null },
+  { id: 'b', dedupe_key: 'k2', folded_into: 'a' },
+]), [{ id: 'a', dedupe_key: 'k1', folded_into: null }]);
+is('the same dedupe key keeps the newer row', dedupeFeed([
+  { id: 'new', dedupe_key: 'same', folded_into: null },
+  { id: 'old', dedupe_key: 'same', folded_into: null },
+]), [{ id: 'new', dedupe_key: 'same', folded_into: null }]);
+{
+  const now = new Date('2026-10-26T12:00:00Z');
+  const five = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+  is('five minutes ago, Arabic', formatBellTime(five, 'ar', now), 'قبل 5 دقائق');
+  is('five minutes ago, English', formatBellTime(five, 'en', now), '5 minutes ago');
+  const ar = JSON.parse(readFileSync(new URL('../messages/ar.json', import.meta.url), 'utf8'));
+  const en = JSON.parse(readFileSync(new URL('../messages/en.json', import.meta.url), 'utf8'));
+  const tAr = createTranslator({ locale: 'ar', messages: ar, namespace: 'notifications' });
+  const tEn = createTranslator({ locale: 'en', messages: en, namespace: 'notifications' });
+  is('the Arabic label for three unread', tAr('bellUnread', { count: 3 }), 'الإشعارات، 3 غير مقروءة');
+  is('the English label for three unread', tEn('bellUnread', { count: 3 }), 'Notifications, 3 unread');
+  is('the Arabic empty state', tAr('bellEmpty'), 'لا توجد إشعارات بعد');
+  is('the English empty state', tEn('bellEmpty'), 'No notifications yet.');
+  is('the Arabic mark-all', tAr('bellMarkAll'), 'تحديد الكل كمقروء');
+  is('the English mark-all', tEn('bellMarkAll'), 'Mark all as read');
+}
 
 console.log('\n— the cursor');
 const cursor = { createdAt: '2026-09-27T10:41:13.168564+00:00', id: '11111111-1111-4111-8111-111111111111' };

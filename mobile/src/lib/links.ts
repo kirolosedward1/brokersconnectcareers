@@ -103,6 +103,8 @@ function pathnameOf(path: string): string {
 export const APP_PATHS: Record<string, string> = {
   '/dashboard': '/',
   '/dashboard/account': '/account',
+  // The website bell's "see all". The app already has the feed.
+  '/dashboard/notifications': '/notifications',
   // The account hub's own pages, which the app already has under the Account tab.
   '/dashboard/account/alerts': '/account/alerts',
   '/dashboard/account/delete': '/account/delete',

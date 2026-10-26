@@ -17,8 +17,9 @@
  *
  *   /employer/…            requireEmployer   employer, admin
  *   /admin/…               requireAdmin      admin
- *   /dashboard/account     requireProfile    anyone signed in
- *   /dashboard/…           requireCandidate  candidate, admin
+ *   /dashboard/account          requireProfile    anyone signed in
+ *   /dashboard/notifications    requireProfile    anyone signed in
+ *   /dashboard/…                requireCandidate  candidate, admin
  *   /jobs /companies /agents /notifications    anyone
  *
  * Anything else — another origin, a protocol-relative URL, a path this table
@@ -34,6 +35,7 @@ type Rule = { prefix: string; roles: readonly Role[] | 'any' };
 // Most specific first: /dashboard/account must win over /dashboard.
 const RULES: readonly Rule[] = [
   { prefix: '/dashboard/account', roles: 'any' },
+  { prefix: '/dashboard/notifications', roles: 'any' },
   { prefix: '/dashboard', roles: ['candidate', 'admin'] },
   { prefix: '/employer', roles: ['employer', 'admin'] },
   { prefix: '/admin', roles: ['admin'] },

@@ -1,8 +1,9 @@
 'use client';
 
-import { Bell, LayoutDashboard, LogIn, PlusCircle, ShieldCheck, Users } from 'lucide-react';
+import { LayoutDashboard, LogIn, PlusCircle, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
+import { SiteBell } from '@/components/notifications/site-bell';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { NavLink } from '@/components/nav-link';
@@ -136,7 +137,7 @@ export function HeaderAccount({
           {homeLabel}
         </Link>
         <Link
-          href="/notifications"
+          href="/dashboard/notifications"
           className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
         >
           {notifications}
@@ -155,8 +156,6 @@ export function HeaderAccount({
     );
   }
 
-  const bellLabel = session.unread > 0 ? `${notifications} (${session.unread})` : notifications;
-
   return (
     <>
       {session.role === 'admin' ? (
@@ -173,14 +172,7 @@ export function HeaderAccount({
           </Link>
         </Button>
       )}
-      <Link
-        href="/notifications"
-        aria-label={bellLabel}
-        className={`grid size-11 place-items-center rounded-lg transition-colors hover:bg-muted ${ghostOnFilm}`}
-      >
-        <Bell className="size-4" aria-hidden />
-        {session.unread > 0 ? <span className="sr-only">{session.unread}</span> : null}
-      </Link>
+      <SiteBell locale={locale} initialUnread={session.unread} />
       <UserMenu
         name={session.name}
         avatarUrl={session.avatarUrl}
