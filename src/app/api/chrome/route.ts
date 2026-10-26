@@ -22,6 +22,16 @@ export async function GET() {
   const viewer = await getViewer();
   if (!viewer) return NextResponse.json({ signedIn: false }, { headers });
 
+  const supabase = await createClient();
+  // An active push device is a phone this person has signed in on with
+  // the app and allowed notifications. A failed read is not that.
+  const { count: devices, error: devicesError } = await supabase
+    .from('push_devices')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', viewer.userId)
+    .is('disabled_at', null);
+  const hasApp = !devicesError && (devices ?? 0) > 0;
+
   if (!viewer.profile) {
     return NextResponse.json(
       {
@@ -35,13 +45,13 @@ export async function GET() {
         showAgents: false,
         asksToAgree: false,
         unread: 0,
+        hasApp,
       },
       { headers },
     );
   }
 
   const actor = actorOf(viewer);
-  const supabase = await createClient();
   const { count } = await supabase
     .from('notifications')
     .select('id', { count: 'exact', head: true })
@@ -60,6 +70,7 @@ export async function GET() {
       showAgents: canBrowseAgentDirectory(actor),
       asksToAgree: await asksToAgree(viewer),
       unread: count ?? 0,
+      hasApp,
     },
     { headers },
   );
