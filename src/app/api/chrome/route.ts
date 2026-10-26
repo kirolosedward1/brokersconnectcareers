@@ -56,7 +56,8 @@ export async function GET() {
     .from('notifications')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', viewer.userId)
-    .is('read_at', null);
+    .is('read_at', null)
+    .is('folded_into', null);
 
   return NextResponse.json(
     {

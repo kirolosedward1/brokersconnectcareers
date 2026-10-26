@@ -245,6 +245,8 @@ describe('who a link is for', () => {
   it('lets anybody signed in open their own account settings and feed', () => {
     expect(routeFromOutside('/dashboard/account', employer)).toBe('/(account)/account');
     expect(routeFromOutside('/notifications', employer)).toBe('/(home)/notifications');
+    expect(routeFromOutside('/dashboard/notifications', employer)).toBe('/(home)/notifications');
+    expect(routeFromOutside('/dashboard/notifications', candidate)).toBe('/(home)/notifications');
   });
 
   it('sends a candidate who reaches for the directory to their own profile, with the reason', () => {

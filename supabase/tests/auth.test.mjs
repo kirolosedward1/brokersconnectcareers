@@ -681,6 +681,7 @@ report.section('the permission model says what the policies say');
   // Routes.
   report.is(routeAudience('/agents/ahmed-mahmoud-818804'), 'directory', '/agents/* is the directory\'s');
   report.is(routeAudience('/dashboard/account'), 'authenticated', '/dashboard/account is for everyone signed in');
+  report.is(routeAudience('/dashboard/notifications'), 'authenticated', '/dashboard/notifications is the bell\'s list, for everyone signed in');
   report.is(routeAudience('/dashboard/profile'), 'candidate', 'the rest of /dashboard is the candidate\'s');
   report.is(routeAudience('/jobs/x'), 'public', 'the board is public');
   report.ok(!mayEnter(candidate, 'directory') && mayEnter(employer, 'directory') && !mayEnter(anon, 'authenticated'),
