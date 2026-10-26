@@ -325,6 +325,83 @@ console.log('\n— the card’s pill and bar come from one progress');
     null,
   );
 
+  // Migration 42 and the demo seed write one event, from_status null, at the
+  // row's current status. The seed stamps that event at seed time, which is
+  // not the application date. Those steps stay done and undated.
+  const seedTime = '2026-10-26T09:00:00.000Z';
+  const backfill = (status) => ({
+    ...base,
+    status,
+    events: [{ from_status: null, to_status: status, created_at: seedTime }],
+  });
+  const noFakeDate = (progress) => {
+    const dates = [progress.summaryDate, ...progress.segments.map((segment) => segment.date)];
+    return !dates.includes(seedTime) && dates.filter((date) => date === created).length === 1;
+  };
+
+  const backfilledShortlist = applicationProgress(backfill('shortlisted'));
+  is('backfilled shortlist stays in review with no step date', shape(backfilledShortlist), {
+    pill: 'review',
+    summary: 'shortlisted',
+    summaryDate: null,
+    segments: [
+      { key: 'sent', tone: 'done', date: created },
+      { key: 'seen', tone: 'done', date: null },
+      { key: 'shortlisted', tone: 'done', date: null },
+      { key: 'decision', tone: 'current', date: null },
+    ],
+  });
+  is('backfilled shortlist does not borrow the seed time or the sent day', noFakeDate(backfilledShortlist), true);
+
+  const backfilledAtCreated = applicationProgress({
+    ...base,
+    status: 'shortlisted',
+    events: [{ from_status: null, to_status: 'shortlisted', created_at: created }],
+  });
+  is('a backfill stamped at created_at still leaves the shortlist undated', backfilledAtCreated.segments[2].date, null);
+  is('a backfill stamped at created_at does not date the summary', backfilledAtCreated.summaryDate, null);
+
+  const backfilledHired = applicationProgress(backfill('hired'));
+  is('backfilled hire is done with no decision date', shape(backfilledHired), {
+    pill: 'hired',
+    summary: 'hired',
+    summaryDate: null,
+    segments: [
+      { key: 'sent', tone: 'done', date: created },
+      { key: 'seen', tone: 'done', date: null },
+      { key: 'shortlisted', tone: 'done', date: null },
+      { key: 'decision', tone: 'done', date: null },
+    ],
+  });
+  is('backfilled hire does not borrow the seed time or the sent day', noFakeDate(backfilledHired), true);
+
+  const backfilledRejected = applicationProgress(backfill('rejected'));
+  is('backfilled rejection drops the shortlist and dates nothing but sent', shape(backfilledRejected), {
+    pill: 'rejected',
+    summary: 'rejected',
+    summaryDate: null,
+    segments: [
+      { key: 'sent', tone: 'done', date: created },
+      { key: 'seen', tone: 'done', date: null },
+      { key: 'decision', tone: 'rejected', date: null },
+    ],
+  });
+  is('backfilled rejection does not borrow the seed time or the sent day', noFakeDate(backfilledRejected), true);
+
+  is(
+    'a real shortlist still dates the step when an earlier null event names the same status',
+    applicationProgress({
+      ...base,
+      status: 'shortlisted',
+      employer_viewed_at: viewed,
+      events: [
+        { from_status: null, to_status: 'shortlisted', created_at: seedTime },
+        { from_status: 'new', to_status: 'shortlisted', created_at: shortAt },
+      ],
+    }).summaryDate,
+    shortAt,
+  );
+
   is(
     'withdrawn before anyone looked',
     shape(applicationProgress({ ...base, status: 'withdrawn', withdrawn_at: withdrawnAt })),

@@ -195,6 +195,10 @@ const SHORTLIST_MOVE: readonly ApplicationStatus[] = ['shortlisted', 'interview'
 function earliestTo(events: readonly ApplicationEventStamp[], to: readonly ApplicationStatus[]): string | null {
   let best: string | null = null;
   for (const event of events) {
+    // Insert and the migration-42 backfill write one event with a null
+    // from_status at the row's then-current status. That is not a transition
+    // and must not date a step. The step can still be done from the status.
+    if (event.from_status == null) continue;
     if (!to.includes(event.to_status)) continue;
     if (best === null || event.created_at < best) best = event.created_at;
   }
@@ -279,15 +283,20 @@ export function timelineSteps(application: {
  *               date and none is invented from a later move.
  *   shortlist   the earliest application_events row whose to_status is
  *               shortlisted, or interview when they were interviewed without
- *               a shortlist row. There is no shortlisted_at column.
- *   decision    the earliest event to hired or rejected. There is no
- *               hired_at, rejected_at, or decided_at column.
+ *               a shortlist row, ignoring events whose from_status is null.
+ *               There is no shortlisted_at column.
+ *   decision    the earliest event to hired or rejected, same filter. There
+ *               is no hired_at, rejected_at, or decided_at column.
  *   withdrawn   applications.withdrawn_at, which the check constraint keeps
- *               in step with the status. The withdrawal event is the fallback.
+ *               in step with the status. A withdrawal event is the fallback,
+ *               and a null from_status on that event is not a date.
+ *
+ * created_at dates only the sent step. A reached step with no real stamp
+ * stays done and undated: the status line is the step text alone.
  *
  * A row inserted already at its current status (the demo seed, and the
- * backfill in migration 42) has a single event at that status. Intermediate
- * steps then have no moment of their own.
+ * backfill in migration 42) has one event with from_status null. That event
+ * does not date the step it names, and it does not date the steps before it.
  *
  * Rejection drops steps that never happened instead of crossing them: the
  * bar stops at the decision, the last segment is the rejected one, and a
