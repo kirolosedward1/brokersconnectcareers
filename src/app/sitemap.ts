@@ -1,5 +1,3 @@
-import { statSync } from 'node:fs';
-import { join } from 'node:path';
 import type { MetadataRoute } from 'next';
 import { unstable_rethrow } from 'next/navigation';
 import { env } from '@/lib/env';
@@ -13,17 +11,13 @@ import { getLegalDoc, LEGAL_SLUGS } from '@/lib/legal';
 export const revalidate = 3600;
 
 /**
- * When the catalogue last changed. A stand-in lastmod for a page that has no
- * row of its own — never `new Date()`, which would tell a crawler the whole
- * site changed on every revalidation.
+ * lastmod for a page that has no row of its own.
+ *
+ * The file's mtime on Vercel is the deploy clock, so reading it would tell a
+ * crawler those pages changed on every build. This is the date the static
+ * copy last changed; bump it when that copy changes.
  */
-function catalogueMtime(): Date {
-  try {
-    return statSync(join(process.cwd(), 'messages/ar.json')).mtime;
-  } catch {
-    return new Date('2026-01-01T00:00:00Z');
-  }
-}
+const CATALOGUE_LASTMOD = new Date('2026-10-24T00:00:00.000Z');
 
 /** One entry per URL, with an ar/en pair only while English is published. */
 function entry(path: string, lastModified: string | Date): MetadataRoute.Sitemap[number] {
@@ -186,7 +180,7 @@ async function fromDatabase(): Promise<DbRows> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { jobs, companies, districts, liveLandings } = await fromDatabase();
-  const catalogue = catalogueMtime();
+  const catalogue = CATALOGUE_LASTMOD;
   const posts = getAllPosts('ar');
   const newestJob = jobs.find((job) => job.published_at)?.published_at ?? catalogue;
   const newestPost = posts[0]?.date ?? catalogue;

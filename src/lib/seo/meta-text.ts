@@ -25,6 +25,14 @@ export function fitTitle(input: string, max = 60): string {
 }
 
 /**
+ * Characters left for a page title once the layout appends ` | ${siteName}`.
+ * Fitting to this keeps the document title within 60.
+ */
+export function titleRoom(siteName: string, max = 60): number {
+  return max - ` | ${siteName}`.length;
+}
+
+/**
  * A description, 120–155 characters when `pad` can make up a shortfall.
  *
  * `pad` is a factual clause (salary, commission, lead source) — never a

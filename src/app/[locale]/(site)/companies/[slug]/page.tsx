@@ -19,7 +19,7 @@ import { followQuery } from '@/lib/saved-search';
 import { env } from '@/lib/env';
 import { trustedLogoUrl } from '@/lib/avatar-url';
 import { toPlainText } from '@/lib/utils';
-import { fitDescription, fitTitle } from '@/lib/seo/meta-text';
+import { fitDescription, fitTitle, titleRoom } from '@/lib/seo/meta-text';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { BreadcrumbTrail } from '@/components/breadcrumb-trail';
 
@@ -86,8 +86,10 @@ export async function generateMetadata({
   const hiring = openRoles > 0;
 
   return {
-    // The layout appends " | بروكرز كونكت". 45 leaves that suffix inside 60.
-    title: fitTitle(name, 45),
+    // The layout appends " | " and the site name. The phrase is long enough
+    // that a short company name still fills a result, and the room keeps the
+    // document title within 60.
+    title: fitTitle(t('pageTitle', { name, kind, place }), titleRoom(tMeta('siteName'))),
     description,
     ...(hiring
       ? { alternates: alternatesFor(path, locale) }

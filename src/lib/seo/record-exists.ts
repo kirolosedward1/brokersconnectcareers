@@ -237,6 +237,9 @@ export async function recordState(
  * listing whose title happens to parse as a landing is a listing: false here,
  * and the page that prefers the landing never sees it.
  */
+const LANDING_TTL_MS = 5 * 60 * 1000;
+const landingCache = new Map<string, { at: number; value: boolean }>();
+
 export async function isLandingDistrict(
   path: string,
   parseLandingSlug: ParseLanding,
@@ -253,6 +256,11 @@ export async function isLandingDistrict(
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!base || !key || base.startsWith('REPLACE_ME') || key.startsWith('REPLACE_ME')) return null;
 
+  // Districts barely change, and this runs on every job URL. A miss is
+  // cached too: a slug that is not a district stays a listing.
+  const hit = landingCache.get(landing.districtSlug);
+  if (hit && Date.now() - hit.at < LANDING_TTL_MS) return hit.value;
+
   const state = await lookup(
     { table: 'districts', column: 'slug', value: landing.districtSlug },
     base,
@@ -261,5 +269,7 @@ export async function isLandingDistrict(
     fetcher,
   );
   if (state === 'unknown') return null;
-  return state === 'exists';
+  const value = state === 'exists';
+  landingCache.set(landing.districtSlug, { at: Date.now(), value });
+  return value;
 }

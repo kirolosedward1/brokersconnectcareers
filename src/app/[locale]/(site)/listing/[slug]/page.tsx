@@ -117,6 +117,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   const tJobs = await getTranslations('jobs');
   const tTrack = await getTranslations('track');
   const tLanding = await getTranslations('landing');
+  const tMeta = await getTranslations('meta');
   const districtName = localized(locale, job.district.name_ar, job.district.name_en);
 
   const posting = open
@@ -129,6 +130,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
       <JsonLd
         data={breadcrumbJsonLd(
           [
+            { name: tMeta('siteName'), path: '/' },
             { name: tJobs('title'), path: '/jobs' },
             {
               name: tLanding('title', { track: tTrack(job.track), district: districtName }),

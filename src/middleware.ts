@@ -6,6 +6,7 @@ import { redirectForEntry } from '@/lib/auth/entry-redirects';
 import { secondFactorChallenge } from '@/lib/auth/second-factor';
 import { safeNext } from '@/lib/safe-next';
 import { goneRewritePath, isLandingDistrict, recordState } from '@/lib/seo/record-exists';
+import { segmentRewrite } from '@/lib/seo/segment-rewrite';
 import { slugRedirectTarget } from '@/lib/seo/slug-redirect';
 import { parseLandingSlug } from '@/lib/taxonomy';
 
@@ -264,20 +265,18 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     header and the 410. A direct request for the internal path is a normal
     miss, answered by the catch-all the same way every other unknown URL is.
   */
+  const read = request.method === 'GET' || request.method === 'HEAD';
+
   /*
     Signed-in `/` is a different page from the public landing, and the landing
     is cached. The rewrite keeps the URL at `/` and draws the feed. An
     anonymous request for the internal path goes back to `/`, which is the
-    page they asked for.
+    page they asked for. The redirect is a read: a POST redirected would
+    drop its body, and a server action on `/` has to reach the feed.
   */
-  if ((request.method === 'GET' || request.method === 'HEAD') && path === '/signed-home' && !user) {
+  if (read && path === '/signed-home' && !user) {
     const redirected = NextResponse.redirect(new URL(localized(locale, '/'), request.url));
     return carrySession(response, redirected);
-  }
-  if ((request.method === 'GET' || request.method === 'HEAD') && path === '/' && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/${locale}/signed-home`;
-    return carrySession(response, NextResponse.rewrite(url));
   }
 
   /*
@@ -285,17 +284,12 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     cached without the filter combinations sharing that cache. The address
     bar stays `/jobs?…`. A direct request for the internal path is sent back
     to that address; the rewrite does not re-enter middleware, so this does
-    not loop.
+    not loop. Again the redirect is a read, so a filter form's POST survives.
   */
-  if ((request.method === 'GET' || request.method === 'HEAD') && path === '/board') {
+  if (read && path === '/board') {
     const url = request.nextUrl.clone();
     url.pathname = localized(locale, '/jobs');
     return carrySession(response, NextResponse.redirect(url));
-  }
-  if ((request.method === 'GET' || request.method === 'HEAD') && path === '/jobs' && request.nextUrl.search.length > 1) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/${locale}/board`;
-    return carrySession(response, NextResponse.rewrite(url));
   }
 
   /*
@@ -306,7 +300,7 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     re-enter middleware.
   */
   const listing = path.match(/^\/listing\/([^/]+)$/);
-  if ((request.method === 'GET' || request.method === 'HEAD') && listing) {
+  if (read && listing) {
     const url = request.nextUrl.clone();
     url.pathname = localized(locale, `/jobs/${listing[1]}`);
     return carrySession(response, NextResponse.redirect(url));
@@ -319,22 +313,39 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     return carrySession(response, NextResponse.rewrite(url));
   }
 
-  if (request.method === 'GET' || request.method === 'HEAD') {
+  /*
+    Home and the filtered board, for the document and for the server action
+    posted back to the same URL. A job ad waits until we know it is not a
+    landing; that lookup is below, because a read also has to 410 and 301.
+  */
+  const homeOrBoard = segmentRewrite(path, request.nextUrl.search, Boolean(user), null);
+  if (homeOrBoard) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${locale}${homeOrBoard}`;
+    return carrySession(response, NextResponse.rewrite(url));
+  }
+
+  if (read) {
     const token = user ? accessToken : null;
     const state = await recordState(path, parseLandingSlug, fetch, token);
-    // A signed-in reader with no token cannot be judged by the anonymous
-    // answer: that answer calls their own draft missing.
-    if (state === 'missing' && !(user && !token)) {
+    if (state === 'missing') {
+      // An old public slug 301s even when this reader is signed in and the
+      // session has no token yet. Skipping the lookup there 404'd a URL
+      // that still has a successor. Their own draft is a different question:
+      // the anonymous answer calls it missing, so that case is left to the
+      // page instead of the catch-all.
       const redirected = await slugRedirectTarget(path, fetch);
       if (redirected) {
         const url = request.nextUrl.clone();
         url.pathname = localized(locale, redirected);
         return carrySession(response, NextResponse.redirect(url, 301));
       }
-      const url = request.nextUrl.clone();
-      url.pathname = `/${locale}/__missing${path}`;
-      url.search = '';
-      return carrySession(response, NextResponse.rewrite(url));
+      if (!(user && !token)) {
+        const url = request.nextUrl.clone();
+        url.pathname = `/${locale}/__missing${path}`;
+        url.search = '';
+        return carrySession(response, NextResponse.rewrite(url));
+      }
     }
     /*
       Expired, for everyone: an anonymous reader and a signed-in one see the
@@ -359,14 +370,25 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     const jobAd = path.match(/^\/jobs\/([^/]+)$/);
     if (jobAd && state !== 'missing') {
       const landing = await isLandingDistrict(path, parseLandingSlug, fetch);
+      const target = segmentRewrite(path, request.nextUrl.search, Boolean(user), landing);
       // Confirmed landings, and landing-shaped slugs we could not check,
       // stay on this segment and are cached. A slug that is not a landing
       // is the dynamic listing page.
-      if (landing === false) {
+      if (target) {
         const url = request.nextUrl.clone();
-        url.pathname = `/${locale}/listing/${jobAd[1]}`;
+        url.pathname = `/${locale}${target}`;
         return carrySession(response, NextResponse.rewrite(url));
       }
+    }
+  } else {
+    // Save, apply and follow post to the URL in the address bar. Without
+    // this rewrite the action is handled by the cached landing segment.
+    const landing = await isLandingDistrict(path, parseLandingSlug, fetch);
+    const target = segmentRewrite(path, request.nextUrl.search, Boolean(user), landing);
+    if (target) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}${target}`;
+      return carrySession(response, NextResponse.rewrite(url));
     }
   }
 

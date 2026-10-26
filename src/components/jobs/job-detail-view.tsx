@@ -53,6 +53,7 @@ export async function JobDetailView({
   published?: boolean;
 }) {
   const t = await getTranslations('jobs');
+  const tMeta = await getTranslations('meta');
   const tTrack = await getTranslations('track');
   const tType = await getTranslations('employmentType');
   const tExp = await getTranslations('experienceBand');
@@ -151,6 +152,12 @@ export async function JobDetailView({
         pages had no way in but each other; every listing now links to one.
       */}
       <nav aria-label="breadcrumb" className="mb-3 text-sm text-muted-foreground">
+        <Link href="/" className="hover:text-foreground">
+          {tMeta('siteName')}
+        </Link>
+        <span className="mx-2" aria-hidden>
+          /
+        </span>
         <Link href="/jobs" className="hover:text-foreground">
           {t('title')}
         </Link>

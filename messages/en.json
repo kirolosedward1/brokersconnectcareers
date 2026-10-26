@@ -209,6 +209,7 @@
     "kindBrokerage": "a brokerage",
     "kindDeveloper": "a developer",
     "placeFallback": "Egypt",
+    "pageTitle": "{name} jobs open in {place} — {kind}",
     "generatedDescription": "{name}, {kind} in {place}. {openings} on Brokers Connect, and every ad shows the salary, the commission and who supplies the leads.",
     "verified": "Verified",
     "unverified": "Unverified",
@@ -1372,7 +1373,7 @@
   },
   "landing": {
     "title": "{track} jobs in {district}",
-    "metaTitle": "{track} jobs open now in {district}",
+    "metaTitle": "{track} jobs open to apply for in {district}",
     "subtitle": "Every {track} role open on Brokers Connect right now in {district} — with who supplies the leads, and the salary and commission whenever the company publishes them.",
     "otherDistricts": "{track} in other districts",
     "otherTracks": "Other tracks in {district}",

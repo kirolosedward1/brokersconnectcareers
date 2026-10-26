@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor, localized } from '@/i18n/routing';
 import { TrackDistrictLanding } from '@/components/jobs/track-district-landing';
 import { anonymousJobs, EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
-import { fitDescription, fitTitle } from '@/lib/seo/meta-text';
+import { fitDescription, fitTitle, titleRoom } from '@/lib/seo/meta-text';
 import { parseLandingSlug } from '@/lib/taxonomy';
 import { getDistrictBySlug } from '@/lib/queries/taxonomy';
 import type { DistrictRow, JobTrack } from '@/lib/supabase/database.types';
@@ -35,6 +34,17 @@ async function landingFor(slug: string): Promise<Landing | null> {
   return { track: parsed.track, district };
 }
 
+/**
+ * The listing page, loaded only when this slug is not a landing.
+ *
+ * A dynamic import keeps `cookies()` out of the landing render, so a
+ * track-in-district page can stay cached. When the middleware rewrite did
+ * not run, a real job slug would otherwise 404 here.
+ */
+function listingPage() {
+  return import('../../listing/[slug]/page');
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -43,7 +53,10 @@ export async function generateMetadata({
   const { locale: rawLocale, slug } = await params;
   const locale = asLocale(rawLocale);
   const landing = await landingFor(slug);
-  if (!landing) notFound();
+  if (!landing) {
+    const listing = await listingPage();
+    return listing.generateMetadata({ params });
+  }
 
   const t = await getTranslations({ locale, namespace: 'landing' });
   const tTrack = await getTranslations({ locale, namespace: 'track' });
@@ -60,7 +73,7 @@ export async function generateMetadata({
   );
 
   const tMeta = await getTranslations({ locale, namespace: 'meta' });
-  const metaTitle = fitTitle(t('metaTitle', { track, district }), 45);
+  const metaTitle = fitTitle(t('metaTitle', { track, district }), titleRoom(tMeta('siteName')));
 
   return {
     title: metaTitle,
@@ -77,7 +90,10 @@ export default async function LandingPage({ params }: { params: Promise<Params> 
   setRequestLocale(locale);
 
   const landing = await landingFor(slug);
-  if (!landing) notFound();
+  if (!landing) {
+    const listing = await listingPage();
+    return listing.default({ params });
+  }
 
   return (
     <TrackDistrictLanding track={landing.track} district={landing.district} locale={locale} />

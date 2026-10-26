@@ -4,7 +4,7 @@
  *   node --experimental-strip-types scripts/seo-meta.test.mjs   (in pnpm test:seo)
  */
 import { readFileSync } from 'node:fs';
-import { fitDescription, fitTitle } from '../src/lib/seo/meta-text.ts';
+import { fitDescription, fitTitle, titleRoom } from '../src/lib/seo/meta-text.ts';
 import { buildCompanySlug, buildJobSlug, slugify, slugifyEnglish } from '../src/lib/slug.ts';
 
 let pass = 0;
@@ -64,6 +64,37 @@ for (const key of titles) {
   check(`${key} is 50–60 characters`, n >= 50 && n <= 60, String(n));
 }
 check('back office is إداريين', JSON.parse(readFileSync('messages/ar.json', 'utf8')).track.back_office === 'إداريين');
+
+console.log('— landing and company titles fill a result');
+{
+  const ar = JSON.parse(readFileSync('messages/ar.json', 'utf8'));
+  const en = JSON.parse(readFileSync('messages/en.json', 'utf8'));
+  function documentTitle(template, values, siteName) {
+    const text = template.replace(/\{(\w+)\}/g, (_, key) => values[key]);
+    return `${fitTitle(text, titleRoom(siteName))} | ${siteName}`;
+  }
+  const cases = [
+    ['a short landing', ar.landing.metaTitle, { track: 'ريسيل', district: 'بدر' }, ar.meta.siteName],
+    ['a long landing', ar.landing.metaTitle, { track: 'إداريين', district: 'التجمع الخامس' }, ar.meta.siteName],
+    ['a short company', ar.companies.pageTitle, { name: 'هدى', place: 'مصر', kind: 'شركة عقارات' }, ar.meta.siteName],
+    ['a named company', ar.companies.pageTitle, { name: 'النيل', place: 'مصر', kind: 'شركة وساطة عقارية' }, ar.meta.siteName],
+    ['an English company', en.companies.pageTitle, { name: 'Nile', place: 'Egypt', kind: 'a brokerage' }, en.meta.siteName],
+  ];
+  for (const [label, template, values, site] of cases) {
+    const title = documentTitle(template, values, site);
+    check(`${label} is 50–60 characters`, title.length >= 50 && title.length <= 60, `${title.length} ${title}`);
+  }
+  check('the landing title does not say شاغر', !/شاغر|شواغر|عدد الأماكن/.test(ar.landing.metaTitle));
+  const layout = readFileSync('src/app/[locale]/layout.tsx', 'utf8');
+  check('metadataBase is the site url', layout.includes('metadataBase: new URL(env.siteUrl)'));
+  const sitemap = readFileSync('src/app/sitemap.ts', 'utf8');
+  check('sitemap lastmod is a constant', sitemap.includes('CATALOGUE_LASTMOD') && !sitemap.includes('statSync'));
+  check(
+    'company and landing titles leave room for the brand',
+    readFileSync('src/app/[locale]/(site)/companies/[slug]/page.tsx', 'utf8').includes('titleRoom(') &&
+      readFileSync('src/app/[locale]/(site)/jobs/[slug]/page.tsx', 'utf8').includes('titleRoom('),
+  );
+}
 
 console.log('— job card marks stay on the client');
 {

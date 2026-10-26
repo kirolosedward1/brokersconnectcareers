@@ -209,6 +209,7 @@
     "kindBrokerage": "شركة وساطة عقارية",
     "kindDeveloper": "شركة تطوير عقاري",
     "placeFallback": "مصر",
+    "pageTitle": "وظائف {name} المتاحة في {place} — {kind}",
     "generatedDescription": "{name}، {kind} في {place}. {openings} على بروكرز كونكت، وتظهر في كل إعلان تفاصيل الراتب والعمولة ومصدر العملاء.",
     "verified": "موثّقة",
     "unverified": "غير موثّقة",
@@ -1372,7 +1373,7 @@
   },
   "landing": {
     "title": "وظائف {track} في {district}",
-    "metaTitle": "وظائف {track} الشاغرة الآن في {district}",
+    "metaTitle": "وظائف {track} المتاحة للتقديم الآن في {district}",
     "subtitle": "كل وظائف {track} المتاحة على بروكرز كونكت الآن في {district} — بمصدر العملاء، والراتب والعمولة عندما تعلنهما الشركة.",
     "otherDistricts": "{track} في مناطق أخرى",
     "otherTracks": "تخصصات أخرى في {district}",
