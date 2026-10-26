@@ -29,7 +29,6 @@ const candidate7 = USERS.candidate7;
 const employer3 = USERS.employer3;
 
 const one = async (sql) => (await db.query(sql)).rows[0];
-const all = async (sql) => (await db.query(sql)).rows;
 
 /** Several statements as one user in one transaction, rolled back afterwards. */
 async function session(userId, fn, role = 'authenticated') {

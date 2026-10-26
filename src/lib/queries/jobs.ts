@@ -3,8 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import { raise } from './error';
 import { getDistricts, getGovernorates, getSearchPhrases } from './taxonomy';
 import type {
-  CompanyRow,
-  DistrictRow,
   JobRow,
   JobTrack,
   SalaryReferenceRow,

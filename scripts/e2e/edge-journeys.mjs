@@ -522,7 +522,7 @@ const employerPassword = `E2e-${randomUUID()}`;
 const employerSignup = await signUp(employerEmail, employerPassword);
 const employerId = employerSignup.user?.id;
 made.push({ email: employerEmail, password: employerPassword, id: employerId });
-let employerToken = employerSignup.token;
+const employerToken = employerSignup.token;
 check('an employer signs up', employerSignup.status === 200 && employerToken);
 
 const employerBase = { role: 'employer', fullName: 'صاحب شركة', whatsapp: '+201221112233', locale: 'ar', agreed: true };

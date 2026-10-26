@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ShieldCheck } from 'lucide-react';
 import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
-import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor } from '@/i18n/routing';
 import { AgentCard } from '@/components/agents/agent-card';
 import { AgentFilters } from '@/components/agents/agent-filters';
 import { MobileFilters } from '@/components/mobile-filters';
@@ -22,10 +22,8 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);

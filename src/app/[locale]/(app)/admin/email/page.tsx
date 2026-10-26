@@ -261,6 +261,9 @@ export default async function AdminEmailPage({
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         <Mail className="size-4 shrink-0" aria-hidden />
         {t('emailPreviewHint')}{' '}
+        {/* An API route that answers with a page of its own: a full load, not
+            a client navigation. The rule matches it to the [locale] route. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a href="/api/email/preview" className="font-medium text-primary hover:underline">
           /api/email/preview
         </a>

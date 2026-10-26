@@ -20,7 +20,6 @@ import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
 import type {
   AdminAuditRow,
-  ApplicationStatus,
   JobRow,
   ModerationNoteRow,
   ReportReason,

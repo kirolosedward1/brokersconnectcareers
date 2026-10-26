@@ -415,7 +415,7 @@ section('a logging failure does not throw');
       spec,
       new Error('invalid service-role key'),
     );
-  } catch (error) {
+  } catch {
     threw = true;
   } finally {
     console.error = original;

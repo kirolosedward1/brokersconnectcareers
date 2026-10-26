@@ -198,6 +198,12 @@ arguments and have no runtime imports, so their tests run under plain
 | `pnpm dev` | Dev server |
 | `pnpm build` | Production build |
 | `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm lint` | ESLint with Next's core-web-vitals and TypeScript rules (`eslint.config.mjs`); `next build` runs it too |
+| `pnpm check` | Everything a pull request must pass: typecheck, lint and every suite below, the database ones included — what the Web workflow runs before the build |
+| `pnpm test:uploads` | The browser's half of an upload — the file's type, its key, the path it builds — against the server's own-path rule |
+| `pnpm test:slugs` | Public addresses: transliteration, unbiased ids, and that a consultant's never carries their name |
+| `pnpm test:job-state` | Whether a listing is live, what it shows and who can open it, by its date rather than its stored label |
+| `pnpm test:session-recovery` | An expired session sends the person to sign in and back, never off the site |
 | `pnpm test:db` | Runs the schema, RLS, security, notifications and lifecycle suites against an in-process Postgres |
 | `pnpm test:security` | The hardening round's rules alone (audit trail, reveal, limits, MFA, storage) |
 | `pnpm test:security-libs` | Byte recognition, text sanitising, href and secret checks |

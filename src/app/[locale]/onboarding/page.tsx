@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { MailCheck } from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from '@/i18n/navigation';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale } from '@/i18n/routing';
 import { getViewer } from '@/lib/auth';
 import { homeFor } from '@/lib/permissions';
 import { safeNext } from '@/lib/safe-next';

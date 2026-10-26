@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
-import { asLocale, localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/pagination';
 import { ShortlistList, type ShortlistRow } from '@/components/employer/shortlist-list';

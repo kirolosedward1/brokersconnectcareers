@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect, Link } from '@/i18n/navigation';
-import { asLocale, localized, type Locale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
 import { ApplyForm } from '@/components/jobs/apply-form';
 import { Button } from '@/components/ui/button';
 import { getJobBySlug } from '@/lib/queries/jobs';

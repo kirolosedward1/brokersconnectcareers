@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { X } from 'lucide-react';
 import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
-import { asLocale, alternatesFor, localized, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized } from '@/i18n/routing';
 import { JobCard } from '@/components/jobs/job-card';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { JobFilters } from '@/components/jobs/job-filters';

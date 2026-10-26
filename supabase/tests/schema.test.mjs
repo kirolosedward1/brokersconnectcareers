@@ -2,11 +2,10 @@
  * Does the schema apply at all, and do the triggers do their job on seed data?
  * Run with: pnpm test:db
  */
-import { createTestDb, reporter, runner } from './setup.mjs';
+import { createTestDb, reporter } from './setup.mjs';
 
 const report = reporter();
 const db = await createTestDb();
-const as = runner(db);
 
 report.section('every migration has a version of its own');
 {

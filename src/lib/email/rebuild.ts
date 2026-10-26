@@ -1,7 +1,6 @@
 import 'server-only';
 import { RETRYABLE_TEMPLATES } from './retryable';
 import {
-  notifyApplicationWithdrawn,
   notifyBrokerOfJobApproval,
   notifyBrokerOfWithdrawal,
   notifyCandidateOfApplication,

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { redirect, Link } from '@/i18n/navigation';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { Link } from '@/i18n/navigation';
+import { asLocale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { JobForm } from '@/components/employer/job-form';
 import { requireEmployer } from '@/lib/auth';

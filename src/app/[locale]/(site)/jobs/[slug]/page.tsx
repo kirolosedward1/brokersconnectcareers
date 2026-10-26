@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { after } from 'next/server';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { asLocale, alternatesFor, localized, routing, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, localized } from '@/i18n/routing';
 import { JobDetailView } from '@/components/jobs/job-detail-view';
 import { TrackDistrictLanding } from '@/components/jobs/track-district-landing';
 import { JsonLd } from '@/components/json-ld';
