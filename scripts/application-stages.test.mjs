@@ -3,6 +3,7 @@
  *
  *   node --experimental-strip-types scripts/application-stages.test.mjs
  */
+import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
@@ -23,6 +24,8 @@ const {
   withdrawnAtMissing,
   withdrawnStatusMissing,
 } = await import('../src/lib/application-stages.ts');
+
+const { applicationStepper } = await import('../src/lib/application-stepper.ts');
 
 let pass = 0;
 let fail = 0;
@@ -455,6 +458,139 @@ console.log('\n— the card’s pill and bar come from one progress');
       ],
     },
   );
+}
+
+console.log('\n— the stepper draws that same progress, and does not decide it again');
+{
+  const created = '2026-10-01T10:00:00.000Z';
+  const viewed = '2026-10-02T08:00:00.000Z';
+  const shortAt = '2026-10-03T09:00:00.000Z';
+  const decided = '2026-10-04T11:00:00.000Z';
+  const withdrawnAt = '2026-10-05T12:00:00.000Z';
+  const base = { created_at: created, employer_viewed_at: null, withdrawn_at: null, events: [] };
+  const drawn = (progress) =>
+    applicationStepper(progress).map((item) => ({
+      key: item.key,
+      label: item.label,
+      state: item.state,
+      current: item.current,
+      mark: item.mark,
+      connector: item.connector,
+    }));
+
+  is('just sent: the company has not opened it, so that step is current', drawn(applicationProgress({ ...base, status: 'new' })), [
+    { key: 'sent', label: 'sent', state: 'done', current: false, mark: 'check', connector: 'progress' },
+    { key: 'seen', label: 'seen', state: 'current', current: true, mark: 'halo', connector: 'muted' },
+    { key: 'shortlisted', label: 'shortlist', state: 'upcoming', current: false, mark: 'dot', connector: 'muted' },
+    { key: 'decision', label: 'decision', state: 'upcoming', current: false, mark: 'dot', connector: null },
+  ]);
+
+  is('viewed, still waiting on the shortlist', drawn(applicationProgress({ ...base, status: 'new', employer_viewed_at: viewed })), [
+    { key: 'sent', label: 'sent', state: 'done', current: false, mark: 'check', connector: 'progress' },
+    { key: 'seen', label: 'seen', state: 'done', current: false, mark: 'check', connector: 'progress' },
+    { key: 'shortlisted', label: 'shortlist', state: 'current', current: true, mark: 'halo', connector: 'muted' },
+    { key: 'decision', label: 'decision', state: 'upcoming', current: false, mark: 'dot', connector: null },
+  ]);
+
+  is(
+    'shortlisted, waiting on the decision',
+    drawn(applicationProgress({
+      ...base,
+      status: 'shortlisted',
+      employer_viewed_at: viewed,
+      events: [{ from_status: 'new', to_status: 'shortlisted', created_at: shortAt }],
+    })),
+    [
+      { key: 'sent', label: 'sent', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'seen', label: 'seen', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'shortlisted', label: 'shortlist', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'decision', label: 'decision', state: 'current', current: true, mark: 'halo', connector: null },
+    ],
+  );
+
+  is(
+    'hired keeps the decision’s own name, and every step is done',
+    drawn(applicationProgress({
+      ...base,
+      status: 'hired',
+      employer_viewed_at: viewed,
+      events: [
+        { from_status: 'new', to_status: 'shortlisted', created_at: shortAt },
+        { from_status: 'shortlisted', to_status: 'hired', created_at: decided },
+      ],
+    })),
+    [
+      { key: 'sent', label: 'sent', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'seen', label: 'seen', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'shortlisted', label: 'shortlist', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'decision', label: 'decision', state: 'done', current: false, mark: 'check', connector: null },
+    ],
+  );
+
+  const rejectedEarly = drawn(applicationProgress({
+    ...base,
+    status: 'rejected',
+    employer_viewed_at: viewed,
+    events: [{ from_status: 'new', to_status: 'rejected', created_at: decided }],
+  }));
+  is('rejected after it was seen: the shortlist is gone, and the last mark is the cross', rejectedEarly, [
+    { key: 'sent', label: 'sent', state: 'done', current: false, mark: 'check', connector: 'progress' },
+    { key: 'seen', label: 'seen', state: 'done', current: false, mark: 'check', connector: 'progress' },
+    { key: 'decision', label: 'rejected', state: 'rejected', current: false, mark: 'x', connector: null },
+  ]);
+  is('the line into the rejection stays the progress colour', rejectedEarly.some((item) => item.connector !== 'progress' && item.connector !== null), false);
+
+  is(
+    'rejected after the shortlist keeps the step it reached',
+    drawn(applicationProgress({
+      ...base,
+      status: 'rejected',
+      employer_viewed_at: viewed,
+      events: [
+        { from_status: 'new', to_status: 'shortlisted', created_at: shortAt },
+        { from_status: 'shortlisted', to_status: 'rejected', created_at: decided },
+      ],
+    })),
+    [
+      { key: 'sent', label: 'sent', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'seen', label: 'seen', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'shortlisted', label: 'shortlist', state: 'done', current: false, mark: 'check', connector: 'progress' },
+      { key: 'decision', label: 'rejected', state: 'rejected', current: false, mark: 'x', connector: null },
+    ],
+  );
+
+  is(
+    'withdrawn before anyone looked is the one grey step',
+    drawn(applicationProgress({ ...base, status: 'withdrawn', withdrawn_at: withdrawnAt })),
+    [{ key: 'sent', label: 'sent', state: 'withdrawn', current: false, mark: 'dot', connector: null }],
+  );
+
+  is(
+    'withdrawn after it was seen stays grey up to there',
+    drawn(applicationProgress({
+      ...base,
+      status: 'withdrawn',
+      employer_viewed_at: viewed,
+      withdrawn_at: withdrawnAt,
+    })),
+    [
+      { key: 'sent', label: 'sent', state: 'withdrawn', current: false, mark: 'dot', connector: 'muted' },
+      { key: 'seen', label: 'seen', state: 'withdrawn', current: false, mark: 'dot', connector: null },
+    ],
+  );
+
+  const steps = readFileSync(new URL('../src/components/dashboard/application-steps.tsx', import.meta.url), 'utf8');
+  const page = readFileSync(new URL('../src/app/[locale]/(app)/dashboard/applications/page.tsx', import.meta.url), 'utf8');
+  is('the stepper is an ordered list', /<ol[\s\S]*aria-label=\{t\('timeline'\)\}/.test(steps), true);
+  is('the current step is aria-current', steps.includes("aria-current={item.current ? 'step' : undefined}"), true);
+  is('reached and not-reached is said again, out of sight', steps.includes('className="sr-only"'), true);
+  is('the row stops at 420px', steps.includes('max-w-[420px]'), true);
+  is('the line is 2px and starts from the dot, in the writing direction', steps.includes('h-0.5') && steps.includes('start-1/2'), true);
+  is('a hollow ring is not how the current step is drawn', /ring-inset|ring-1|ring-primary/.test(steps), false);
+  is('the old full-width bar is gone', steps.includes('h-1 min-w-0 flex-1'), false);
+  is('the row is not flipped a second time', steps.includes('flex-row-reverse'), false);
+  is('the page keeps one line, and the withdrawal is that line', page.includes("tMine('lineWithdrawn')") && !page.includes('justify-between'), true);
+  is('the page no longer asks the stepper for a locale', /<ApplicationSteps\s+progress=\{progress\}\s*\/>/.test(page), true);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
