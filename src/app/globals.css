@@ -591,3 +591,13 @@
     text-wrap: balance;
   }
 }
+
+/*
+  Focus on the dark footer. The shared ring follows each control's own ink,
+  so on the two doors it is the same blue as the words and disappears into
+  them. White on #0E1320 is 18.5:1. Unlayered so it wins over the base ring.
+*/
+footer :focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}

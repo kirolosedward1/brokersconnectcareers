@@ -52,7 +52,8 @@ const OPTIONS: { value: Theme; icon: typeof Sun; key: 'light' | 'dark' | 'system
  * browser stored and rendering the wrong state first is worse than a beat of
  * empty space the same size.
  */
-export function ThemeToggle() {
+export function ThemeToggle({ tone = 'default' }: { tone?: 'default' | 'onDark' }) {
+  const onDark = tone === 'onDark';
   const t = useTranslations('theme');
   const [theme, setTheme] = useState<Theme | null>(null);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -109,7 +110,10 @@ export function ThemeToggle() {
     <div
       role="radiogroup"
       aria-label={t('label')}
-      className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5"
+      className={cn(
+        'flex items-center gap-0.5 rounded-lg border p-0.5',
+        onDark ? 'border-white/10 bg-white/5' : 'border-border bg-card',
+      )}
     >
       {OPTIONS.map(({ value, icon: Icon, key }, index) => (
         <button
@@ -128,8 +132,12 @@ export function ThemeToggle() {
           className={cn(
             'grid size-11 place-items-center rounded-md transition-colors',
             theme === value
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              ? onDark
+                ? 'bg-white/15 text-white'
+                : 'bg-primary/10 text-primary'
+              : onDark
+                ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >
           <Icon className="size-4" aria-hidden />

@@ -28,21 +28,21 @@ export function FooterGroup({
   const panelId = useId();
 
   return (
-    <nav aria-label={title} className="border-b border-border lg:border-b-0">
+    <nav aria-label={title} className="border-b border-white/10 lg:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex min-h-12 w-full items-center justify-between gap-3 text-start text-sm font-semibold lg:hidden"
+        className="flex min-h-12 w-full items-center justify-between gap-3 text-start text-sm font-medium text-white lg:hidden"
       >
         {title}
         <ChevronDown
-          className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+          className={cn('size-4 shrink-0 text-white/70 transition-transform', open && 'rotate-180')}
           aria-hidden
         />
       </button>
-      <p className="hidden text-sm font-semibold lg:block">{title}</p>
+      <p className="hidden text-sm font-medium text-white lg:block">{title}</p>
 
       <div id={panelId} className={cn('pb-3 lg:block lg:pb-0', open ? 'block' : 'hidden')}>
         {children}
