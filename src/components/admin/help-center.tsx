@@ -341,7 +341,7 @@ function FeatureCard({
             <ul className="grid gap-2 sm:grid-cols-2">
               {feature.statuses.map((status) => (
                 <li key={status.label} className="flex items-start gap-2 rounded-lg border border-border px-2.5 py-2">
-                  <Badge variant={status.tone} className="mt-0.5 shrink-0">
+                  <Badge variant={status.tone} className="mt-0.5 h-auto max-w-full shrink whitespace-normal text-start leading-5">
                     <Highlight text={status.label} query={query} />
                   </Badge>
                   {status.detail ? (

@@ -162,7 +162,7 @@ export const SECTIONS_A: HelpSection[] = [
           { label: t('مرشحين', 'Candidates'), detail: t('يفتح الحسابات على دور المرشح.', 'Opens accounts filtered to candidates.') },
           { label: t('حسابات شركات', 'Employer accounts'), detail: t('يفتح الحسابات على دور صاحب العمل.', 'Opens accounts filtered to employers.') },
           { label: t('حسابات جديدة (7 أيام)', 'New accounts (7 days)'), detail: t('يفتح «الحسابات».', 'Opens Accounts.') },
-          { label: t('ملفات ظاهرة في الدليل', 'Profiles visible in the directory'), detail: t('يفتح «دليل الاستشاريين» في الإدارة، ومعه «+عدد مخفي».', 'Opens the admin consultant directory, with “+N hidden”.') },
+          { label: t('ملفات ظاهرة في الدليل', 'Profiles visible in the directory'), detail: t('يفتح «دليل الاستشاريين» في الإدارة، ويظهر بجانبه العدد المخفي بصيغة «+١٢ مخفي».', 'Opens the admin consultant directory, with the hidden count written as “+12 hidden”.') },
           { label: t('حسابات موقوفة', 'Suspended accounts'), detail: t('يفتح «موقوف».', 'Opens Suspended.') },
           { label: t('شركات موقوفة', 'Suspended companies'), detail: t('يفتح تبويب الإيقاف في الشركات.', 'Opens the suspended tab under Companies.') },
           { label: t('ملفات استشارية مقيّدة', 'Restricted consultant profiles'), detail: t('يفتح الدليل على «مقيّد».', 'Opens the directory on Restricted.') },

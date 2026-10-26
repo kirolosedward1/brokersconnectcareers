@@ -207,8 +207,8 @@ export const SECTIONS_B: HelpSection[] = [
         id: 'accounts-standing',
         title: t('التفعيل والإيقاف والتعليق', 'Approve, suspend and hold'),
         summary: t(
-          'من «الإجراءات». لا تُوقَف حسابات المشرفين من هنا: يظهر «لا تُوقَف حسابات المشرفين من هنا.» التفعيل والاستعادة بلا سبب ويصل صاحبهما بريد. التعليق والإيقاف يحتاجان «السبب (يصل إلى صاحب الحساب)».',
-          'From Actions. Admin accounts are not suspended from here: the page says Admin accounts cannot be turned off from here. Approval and restoration need no reason, and the person is emailed. A hold and a suspension need The reason (sent to the account’s owner).',
+          'من «الإجراءات». حسابات المشرفين لا تُوقَف من هنا، ويظهر بدل الأزرار «لا تُوقَف حسابات المشرفين من هنا.» التفعيل والاستعادة بلا سبب ويصل صاحبهما بريد. التعليق والإيقاف يحتاجان «السبب (يصل إلى صاحب الحساب)».',
+          'From Actions. Admin accounts are not suspended from here, and the buttons are replaced by “Admin accounts cannot be suspended from here.” Approval and restoration need no reason, and the person is emailed. A hold and a suspension need “Reason (sent to the account holder)”.',
         ),
         fields: [
           { label: t('فعّل الحساب', 'Approve the account'), detail: t('يستطيع الحساب العمل مرة أخرى، ويصل صاحبه بريد. يظهر ما دام غير مفعّل.', 'The account can work again, and its owner is emailed. Shown while it is not approved.') },
@@ -229,7 +229,7 @@ export const SECTIONS_B: HelpSection[] = [
         ),
         fields: [
           { label: t('اجعله مشرفًا', 'Make an admin'), detail: t('تصله لوحة الإدارة كاملة. التحقق بخطوتين اختياري ما لم تشترطه المنصة. أبلغه بنفسك. لا يظهر إن كان الحساب غير مفعّل — «اعتمد الحساب أولًا: الترقية لا ترفع الإيقاف» — ولا إن كان تسجيل الدخول موقوفًا.', 'They get the whole console. Two-step sign-in stays optional unless the platform requires it. Tell them yourself. Hidden when the account is not approved — “Approve the account first: a promotion does not lift a hold” — and when sign-in is blocked.') },
-          { label: t('أزل صلاحية الإدارة', 'Remove admin access'), detail: t('يعود مرشحًا أو صاحب عمل حسب عضوية الشركة. لا تستطيع إزالة صلاحيتك، ولا إزالة آخر مشرف: «هذا آخر مشرف… اجعل حسابًا آخر مشرفًا أولًا.»', 'They become a candidate or an employer again, depending on company membership. You cannot remove your own access, nor the last admin: “This is the last admin… Make another account an admin first.”') },
+          { label: t('أزل صلاحية الإدارة', 'Remove admin access'), detail: t('يعود مرشحًا أو صاحب عمل حسب عضوية الشركة. لا تستطيع إزالة صلاحيتك، ولا إزالة آخر مشرف: «هذا آخر مشرف: ستبقى لوحة الإدارة من دون أحد. اجعل حسابًا آخر مشرفًا أولًا.»', 'They become a candidate or an employer again, depending on company membership. You cannot remove your own access, nor the last admin: “This is the last admin: the console would be left with nobody. Make another account an admin first.”') },
           { label: t('أوقف تسجيل الدخول', 'Block sign-in'), detail: t('لحساب ليس مشرفًا. يُسجَّل خروجه من كل الأجهزة ولن يدخل حتى ترفع الإيقاف. الإعلانات والطلبات كما هي. لإيقافها استخدم «أوقف الحساب».', 'For an account that is not an admin. They are signed out of every device and cannot sign in until you lift it. Listings and applications stay as they are. To stop those, use Suspend the account.') },
           { label: t('اسمح بتسجيل الدخول', 'Allow sign-in'), detail: t('يعيد فتح الباب.', 'Opens the door again.') },
           { label: t('سجّل خروجه من كل الأجهزة', 'Sign out everywhere'), detail: t('يُسجَّل خروج كل جهاز خلال ساعة. يستطيع الدخول مرة أخرى مباشرة.', 'Every device is signed out within the hour. They can sign in again at once.') },
