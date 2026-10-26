@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Scale, TriangleAlert } from '~/components/ui/lucide';
@@ -47,6 +47,9 @@ import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { draftKey } from '~/lib/kept-draft';
+import { useKeptDraft } from '~/lib/use-kept-draft';
+import { DraftNotice } from '~/components/ui/draft-notice';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
@@ -86,7 +89,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const developers = useDevelopers().data ?? [];
   const save = useSaveJob();
   const { actor } = useSession();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, FIELD_ORDER);
 
   const [idempotencyKey] = useState(() => uuid());
@@ -99,7 +102,26 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   // Leaving with something typed asks first; once saved, the wizard closes itself.
   const [opened] = useState(() => JSON.stringify(initialValues(job, developerIds, null)));
   const [saved, setSaved] = useState(false);
-  useLeaveGuard(!saved && JSON.stringify(draft) !== opened, !saved && save.isPending);
+  /*
+    What the wizard holds, kept on the phone as it is typed (kept-draft.ts):
+    every field and the step. Back asks first (below); iOS ending the app in
+    the background asks nobody, and that took all of it. Measured against the
+    version the fields came from, so a draft typed over an older one is
+    offered rather than poured in.
+  */
+  const kept = useKeptDraft({
+    key: actor ? draftKey('job', actor.userId, job?.id ?? null) : null,
+    values: useMemo(() => ({ values: draft, step }), [draft, step]),
+    restore: useCallback((held: { values: JobValues; step: number }) => {
+      setValues(held.values);
+      setStep(Math.min(Math.max(0, held.step), STEPS.length - 1));
+    }, []),
+    // The step is where the wizard is, not something typed: going to look at
+    // another step does not answer an offered draft.
+    typed: (held) => held.values,
+    base: version ?? null,
+  });
+  useLeaveGuard(!saved && JSON.stringify(draft) !== opened, !saved && save.isPending, kept.drop);
   // Closed by its own navigation, not the app's: answered after the employer
   // switched tabs, the app's Back took whatever screen was in front there, and
   // the wizard stayed open, saved, never to close.
@@ -180,11 +202,16 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     setErrors({});
     save.mutate(toJobInput(values, { id: job?.id, version, idempotencyKey, submit: publish }), {
       // Closed once the guard has stood down (the effect above), not from here.
-      onSuccess: () => setSaved(true),
+      onSuccess: () => {
+        kept.clear();
+        setSaved(true);
+      },
       onError: (failure) => {
         if (failure instanceof ApiError && failure.status === 0) return refuse(t('app.offline.body'));
         const reason = failure instanceof JobSaveRefused ? failure.reason : 'failed';
         const fields = failure instanceof JobSaveRefused ? failure.fieldErrors : undefined;
+        // Not the website's "your changes are kept": on the phone the way to the
+        // new version is leaving the wizard, and leaving asks to discard them.
         if (reason === 'stale' || reason === 'invalid_transition') return refuse(t('employer.listingMoved'));
         // Under review is not restricted: an account still pending is told it is being looked at.
         if (reason === 'standing') {
@@ -210,19 +237,36 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     });
   };
 
+  // A single line's return key moves on to the field given after it.
+  const nextField = (next: React.RefObject<TextInputInstance | null>) => ({
+    returnKeyType: 'next' as const,
+    submitBehavior: 'submit' as const,
+    onSubmitEditing: () => next.current?.focus(),
+  });
+  // The return key on the Arabic title moves on to the English one.
+  const titleEnField = useRef<TextInputInstance>(null);
+
   const text = (
     key: 'titleAr' | 'titleEn' | 'commissionNoteAr' | 'descriptionAr' | 'descriptionEn' | 'requirementsAr',
     label: string,
     max: number,
-    options: { hint?: string; ltr?: boolean; lines?: number } = {},
+    options: {
+      hint?: string;
+      ltr?: boolean;
+      lines?: number;
+      input?: React.Ref<TextInputInstance>;
+      next?: React.RefObject<TextInputInstance | null>;
+    } = {},
   ) => (
     <Field ref={inView.place(key)} label={label} hint={options.hint} error={errors[key]}>
       <TextField
+        ref={options.input}
         value={values[key]}
         onChangeText={set(key)}
         accessibilityLabel={label}
         maxLength={max}
         ltr={options.ltr}
+        {...(options.next ? nextField(options.next) : null)}
         multiline={Boolean(options.lines)}
         style={options.lines ? { minHeight: options.lines * 22, paddingVertical: space[2], textAlignVertical: 'top' } : undefined}
       />
@@ -236,6 +280,25 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     return value === null || Number.isNaN(value) ? null : value;
   };
   const commission = decimalNumber(values.commissionValue);
+  // A figure typed is read back as money, so a zero too many shows before it is sent.
+  const asEgp = (raw: string) => {
+    const value = amount(raw);
+    return value ? t.markup('app.jobs.amountEgp', { amount: formatEgp(value, locale), ...markupTags }) : undefined;
+  };
+  // The range checked as the employer leaves either end, not only at Next.
+  const checkSalaryOrder = () => {
+    const min = amount(values.basicSalaryMin);
+    const max = amount(values.basicSalaryMax);
+    const wrong = min !== null && max !== null && max < min;
+    setErrors((current) => {
+      const said = current.basicSalaryMax === say('salaryOrder');
+      if (wrong === said) return current;
+      const next = { ...current };
+      if (wrong) next.basicSalaryMax = say('salaryOrder');
+      else delete next.basicSalaryMax;
+      return next;
+    });
+  };
 
   return (
     <ScrollView
@@ -246,13 +309,14 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       keyboardDismissMode="interactive"
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
+      <DraftNotice draft={kept} />
       {/*
         Where the form is, and a way back to any step: a segment each, filled
         up to this one — one row at any width, where four labelled pills
         wrapped — with the step's name under it.
       */}
       <View style={{ gap: space[2] }}>
-        <View style={{ flexDirection: 'row', gap: space[1] + 2 }}>
+        <View style={{ flexDirection: 'row', gap: space[1.5] }}>
           {STEPS.map((name, index) => (
             <Pressable
               key={name}
@@ -280,7 +344,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
       </View>
 
       {/* A refusal, where a refused save leaves the screen: at the top. */}
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+      {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
       {similar && step > 0 ? (
         <Notice tone="warning" title={t('employer.duplicateTitle')} icon={<TriangleAlert size={16} color={colors.warning} />}>
@@ -301,8 +365,8 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
 
       {step === 0 ? (
         <View style={{ gap: space[4] }}>
-          {text('titleAr', t('jobForm.titleAr'), 160)}
-          {text('titleEn', t('jobForm.titleEn'), 160, { hint: t('jobForm.titleEnHint'), ltr: true })}
+          {text('titleAr', t('jobForm.titleAr'), 160, { next: titleEnField })}
+          {text('titleEn', t('jobForm.titleEn'), 160, { hint: t('jobForm.titleEnHint'), ltr: true, input: titleEnField })}
           <Field label={t('jobForm.track')}>
             <Select
               label={t('jobForm.track')}
@@ -361,7 +425,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
           <Field
             ref={inView.place('basicSalaryMin')}
             label={t('jobForm.basicSalaryMin')}
-            hint={t('jobForm.salaryHint')}
+            hint={asEgp(values.basicSalaryMin) ?? t('jobForm.salaryHint')}
             error={errors.basicSalaryMin}
           >
             <TextField
@@ -371,9 +435,15 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               ltr
               keyboardType="number-pad"
               maxLength={11}
+              onBlur={checkSalaryOrder}
             />
           </Field>
-          <Field ref={inView.place('basicSalaryMax')} label={t('jobForm.basicSalaryMax')} error={errors.basicSalaryMax}>
+          <Field
+            ref={inView.place('basicSalaryMax')}
+            label={t('jobForm.basicSalaryMax')}
+            hint={asEgp(values.basicSalaryMax)}
+            error={errors.basicSalaryMax}
+          >
             <TextField
               value={values.basicSalaryMax}
               onChangeText={set('basicSalaryMax')}
@@ -381,6 +451,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               ltr
               keyboardType="number-pad"
               maxLength={11}
+              onBlur={checkSalaryOrder}
             />
           </Field>
           {/* What listings like this one pay — only when the board has five to say so. */}

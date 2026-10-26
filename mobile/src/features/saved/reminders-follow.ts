@@ -16,9 +16,11 @@ import { cancelReminder, isPending, jobReminders, reconcileReminders, restoreRem
  * front (the query client's focus); the Saved tab's own reads count too.
  *
  * A listing applied to since has nothing left to remind of: "apply before it
- * closes" for an application already sent is gone with it. One set aside with
- * "Hide this listing" keeps no reminder either — its card, the way to take it
- * back, has gone from Saved — and has it back if the hiding is undone.
+ * closes" for an application already sent is gone with it. A withdrawn
+ * application is not that — they can apply again, so the reminder stands.
+ * One set aside with "Hide this listing" keeps no reminder either — its card,
+ * the way to take it back, has gone from Saved — and has it back if the
+ * hiding is undone.
  *
  * Mounted once, beside the root stack (PushBridge).
  */
@@ -29,7 +31,10 @@ export function useRemindersFollowSaved() {
   const jobs = useSavedJobs({ active: holding });
   const reminderWords = useReminderWords();
   const applications = useMyApplications();
-  const applied = useMemo(() => new Set((applications.data ?? []).map((application) => application.job_id)), [applications.data]);
+  const applied = useMemo(
+    () => new Set((applications.data ?? []).filter((application) => application.status !== 'withdrawn').map((application) => application.job_id)),
+    [applications.data],
+  );
 
   const read = jobs.isSuccess ? jobs.dataUpdatedAt : 0;
   useEffect(() => {

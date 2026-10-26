@@ -560,26 +560,21 @@ function changedOutsideMigrations(mergeBase) {
  * Files moved to a new version after they reached main, each because two
  * migrations had merged under one version. The rename rule below exists so a
  * file production ran keeps saying what it ran; these are the exceptions,
- * allowed only because no database had applied that file under the old name.
+ * allowed only because no database had applied the old name.
  *
  *   068 → 069  what_the_provider_said_happened: merged the same day as 068's
  *              search migration. Production's ledger carried neither 068 on
  *              2026-09-28, so the later of the two moved to the free 069 and
  *              the application order stayed the same.
- *   350 → 357  a_cv_line_or_a_note_written_twice_by_one_retry: merged under
- *              the version production had already applied as
- *              my_company_is_nobodys_when_signed_out. The ledger matches a
- *              version to one file, so the retry file never ran. It moves
- *              to 357, after everything already on the branch. Its columns
- *              and indexes are created with IF NOT EXISTS.
  *
  * Frozen like LEGACY: a clash from now on is caught by the version rule
  * before it merges, and is renumbered on its branch.
  */
 const RENUMBERED = {
   '20260101000068_what_the_provider_said_happened.sql': '20260101000069_what_the_provider_said_happened.sql',
-  '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql':
-    '20260101000357_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
+  // Merged under the version my_company_is_nobodys_when_signed_out already had
+  // (and production had applied); renumbered before production ran it.
+  '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql': '20260101000357_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
 };
 
 function lint(options) {

@@ -83,7 +83,7 @@ async function handle() {
         'id, status, created_at, experience_band, note, decision_note, cv_path, job:jobs (title_ar, slug), history:application_events (from_status, to_status, created_at)',
       )
       .eq('candidate_id', user.id),
-    supabase.from('saved_jobs').select('created_at, job:jobs (title_ar, slug)').eq('candidate_id', user.id),
+    supabase.from('saved_jobs').select('created_at, note, job:jobs (title_ar, slug)').eq('candidate_id', user.id),
     supabase.from('saved_searches').select('*').eq('candidate_id', user.id),
     supabase.from('companies').select('*').eq('owner_id', user.id).maybeSingle(),
     supabase.from('company_members').select('role, created_at, company:companies (name_ar, slug)').eq('user_id', user.id),

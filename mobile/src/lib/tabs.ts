@@ -16,7 +16,13 @@ export type TabName =
 const PUBLIC: readonly TabName[] = ['home', 'jobs', 'companies', 'account'];
 const CANDIDATE: readonly TabName[] = ['home', 'jobs', 'applications', 'saved', 'account'];
 const EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'consultants', 'account'];
-/** The console first, so it is the tab the app opens on, then the account. */
+/**
+ * The console first, so it is the tab the app opens on, then the account.
+ * Home's screens stay in the app (its button is hidden, and `/` opens the
+ * console). A listing, a company or a consultant the console points at opens
+ * inside the Admin tab (links.ts). Running a company does not add its console
+ * to this bar.
+ */
 const ADMIN: readonly TabName[] = ['admin', 'account'];
 
 /**

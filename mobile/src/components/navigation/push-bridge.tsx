@@ -19,6 +19,7 @@ import { syncReminders } from '~/features/saved/reminders';
 import { useRemindersFollowSaved } from '~/features/saved/reminders-follow';
 import { openWhenReady } from '~/lib/open-path';
 import { clearPersonalCache } from '~/lib/personal-cache';
+import { forgetKeptDrafts } from '~/lib/kept-draft';
 import { storedSession, useSession } from '~/lib/session';
 
 /**
@@ -61,8 +62,10 @@ export function PushBridge() {
     previous.current = userId;
     if (!before || before === userId) return;
     stopListeningHere();
-    // And the files they picked or exported, left in the cache.
+    // And the files they picked or exported, left in the cache, and the forms
+    // they had half typed (kept-draft.ts).
     clearPersonalCache();
+    void forgetKeptDrafts();
   }, [userId]);
 
   // Ended before anything here was listening: a cold start whose refresh the
@@ -76,8 +79,11 @@ export function PushBridge() {
     if (!ready || userId) return;
     let live = true;
     (async () => {
-      if (!(await holdsPushToken()) || (await storedSession())) return;
+      if (await storedSession()) return;
       if (!live) return;
+      // Half-typed forms go whenever nobody is signed in, push token or not.
+      await forgetKeptDrafts();
+      if (!(await holdsPushToken())) return;
       stopListeningHere();
       clearPersonalCache();
     })().catch(() => {});

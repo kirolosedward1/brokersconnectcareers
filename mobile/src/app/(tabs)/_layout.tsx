@@ -4,7 +4,7 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useTranslations } from 'use-intl';
 import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar';
 import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, ShieldCheck, Users } from '~/components/ui/lucide';
-import { useAdminOverview, waitingCount } from '~/features/admin/queries';
+import { summaryWaiting, useAdminSummary } from '~/features/admin/queries';
 import { useConsultantAlerts } from '~/features/directory/alerts';
 import { useNewJobsBadge } from '~/features/jobs/new-since';
 import { markupTags } from '~/i18n/rich';
@@ -31,13 +31,14 @@ function groupIsOpen(group: string | undefined, tabs: readonly TabName[]): boole
  * approved, with the overview at home and the company in the account. An
  * admin has two tabs: the console first, so the app opens on it, then the
  * account. They have no Home, board, companies or company console in the
- * bar, whether or not they run a company. The console's badge is the things
- * waiting on a decision. A listing, a company, the directory or the shortlist
- * opened from the console is pushed onto the Admin tab's stack.
+ * bar, whether or not they run a company. Home's screen stays so `/` can
+ * open the console, and its button is hidden. The console's badge is the
+ * things waiting on a decision. A listing, a company, the directory or the
+ * shortlist opened from the console is pushed onto the Admin tab's stack.
  *
- * A tab left out is a protected route, which takes its screens out of the app
- * for that person altogether; links are routed with the same list (links.ts),
- * so none opens a tab that is not there.
+ * Any other tab left out is a protected route, which takes its screens out
+ * of the app for that person altogether; links are routed with the same list
+ * (links.ts), so none opens a tab that is not there.
  *
  * Each tab is a group with a stack of its own ((home), (jobs), …); a listing
  * or a company opened from any of them is pushed onto that tab's stack, so the
@@ -77,8 +78,11 @@ export default function TabsLayout() {
   const has = (tab: TabName) => tabs.includes(tab);
   // Listings published since the board was last looked at (features/jobs/new-since.ts).
   const newJobs = useNewJobsBadge();
-  // What waits on a moderator: read only for an admin the console opens for (features/admin/queries.ts).
-  const waiting = waitingCount(useAdminOverview().data);
+  // What waits on a moderator, in the website rail's own sense (admin_summary:
+  // the queue, companies pending, reported targets, open appeals, accounts
+  // awaiting approval — summaryWaiting in features/admin/queries.ts says why
+  // that and not the overview's row). Read only for an admin the console opens for.
+  const waiting = summaryWaiting(useAdminSummary().data);
 
   return (
     <Tabs
@@ -86,12 +90,18 @@ export default function TabsLayout() {
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Protected guard={has('home')}>
-        <Tabs.Screen
-          name="(home)"
-          options={{ title: t('app.tabs.home'), tabBarIcon: tabIcon({ default: 'house', selected: 'house.fill' }, House) }}
-        />
-      </Tabs.Protected>
+      {/* Always in the app, as `/` and every "back home" lead here; for an
+          admin, whose bar is the console and the account even when they run
+          a company, its button is hidden and the screen opens the console
+          instead ((home)/index.tsx). */}
+      <Tabs.Screen
+        name="(home)"
+        options={{
+          title: t('app.tabs.home'),
+          tabBarIcon: tabIcon({ default: 'house', selected: 'house.fill' }, House),
+          tabBarItemStyle: has('home') ? undefined : { display: 'none' },
+        }}
+      />
 
       <Tabs.Protected guard={has('jobs')}>
         <Tabs.Screen

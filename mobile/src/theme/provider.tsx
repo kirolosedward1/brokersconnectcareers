@@ -5,13 +5,17 @@ import type { ViewStyle } from 'react-native';
 import { lifts, palette, shadows, type Colors, type Scheme, type Shadows } from './tokens';
 
 /**
- * Light, dark, or whatever the phone says — the website's three choices, with
- * the website's default: light, until the person picks otherwise.
+ * Whatever the phone says, light, or dark — the website's three choices. The
+ * default is the phone's own setting: someone who runs their iPhone dark, or on
+ * Automatic, gets the app dark at night without being asked, as Apple asks of
+ * every app (an app-specific appearance setting is a second switch people
+ * should not have to find). The website defaults to light; a phone has a
+ * setting the browser tab does not. Someone who has already picked one here
+ * keeps it — the stored choice is read as before.
  *
- * The choice is also given to iOS (Appearance.setColorScheme), so the parts
- * the app does not draw itself — the tab bar, alerts, the keyboard — match.
- * react-native-web's Appearance has no setColorScheme; calling it crashes
- * the Expo web build, so it is skipped there.
+ * A fixed choice is also given to iOS (Appearance.setColorScheme), so the parts
+ * the app does not draw itself — the tab bar, alerts, the keyboard — match;
+ * 'system' hands the decision back ('unspecified').
  */
 export type ThemePreference = 'light' | 'dark' | 'system';
 
@@ -32,7 +36,7 @@ const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme();
-  const [preference, setPreferenceState] = useState<ThemePreference>('light');
+  const [preference, setPreferenceState] = useState<ThemePreference>('system');
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
@@ -43,7 +47,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (typeof Appearance.setColorScheme !== 'function') return;
     Appearance.setColorScheme(preference === 'system' ? 'unspecified' : preference);
   }, [preference]);
 

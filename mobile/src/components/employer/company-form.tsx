@@ -1,6 +1,6 @@
 import { useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { View, type ScrollView, type TextInput } from 'react-native';
+import { View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2 } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -18,7 +18,7 @@ import { ApiError } from '~/lib/api';
 import { useSession, type Viewer } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
-import { webAddress } from '~/lib/web-address';
+import { webAddress } from '@/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 import { toast } from '~/components/feedback/toast';
@@ -72,7 +72,7 @@ export function CompanyForm({
 }: {
   company: CompanyRow | null;
   /** The page's scroll view: Save is below the fields, and an error is brought into view. */
-  scroll: RefObject<ScrollView | null>;
+  scroll: RefObject<ScrollViewInstance | null>;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -93,8 +93,8 @@ export function CompanyForm({
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({});
   const inView = useErrorsInView(scroll, ['nameAr', 'aboutAr', 'aboutEn', 'website']);
   // The return key moves on through the names to the description.
-  const nameEnField = useRef<TextInput>(null);
-  const aboutArField = useRef<TextInput>(null);
+  const nameEnField = useRef<TextInputInstance>(null);
+  const aboutArField = useRef<TextInputInstance>(null);
   const refuse = (next: Partial<Record<Key, string>>) => {
     setErrors(next);
     inView.show(next);
@@ -196,6 +196,8 @@ export function CompanyForm({
           value={nameAr}
           onChangeText={setNameAr}
           accessibilityLabel={t('companies.nameAr')}
+          autoComplete="organization"
+          textContentType="organizationName"
           maxLength={160}
           returnKeyType="next"
           submitBehavior="submit"
@@ -208,6 +210,9 @@ export function CompanyForm({
           value={nameEn}
           onChangeText={setNameEn}
           accessibilityLabel={t('companies.nameEn')}
+          autoComplete="organization"
+          textContentType="organizationName"
+          autoCorrect={false}
           maxLength={160}
           ltr
           returnKeyType="next"

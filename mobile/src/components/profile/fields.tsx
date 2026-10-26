@@ -6,6 +6,7 @@ import { Text } from '~/components/ui/text';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * Pieces the profile's forms share: the website's CheckboxGroup as chips, and
@@ -37,6 +38,8 @@ export function ChipGroup<T extends string | number>({
   const t = useTranslations();
   const { colors } = useTheme();
   const full = max != null && selected.length >= max;
+  // Reaching the limit is said as it is reached: a live region is Android's alone.
+  useAnnounce(max != null ? t.markup('app.profile.chooseUpTo', { count: max, ...markupTags }) : null, full);
   const chips = (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
       {options.map((option) => {

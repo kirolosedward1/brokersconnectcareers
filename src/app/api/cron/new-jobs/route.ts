@@ -95,9 +95,11 @@ export async function GET(request: NextRequest) {
         applied: async (person, jobIds) =>
           (
             await retryDb(() =>
-              admin.from('applications').select('job_id').eq('candidate_id', person).in('job_id', jobIds),
+              admin.from('applications').select('job_id, status').eq('candidate_id', person).in('job_id', jobIds),
             )
-          ).map((row) => row.job_id),
+          )
+            .filter((row) => row.status !== 'withdrawn')
+            .map((row) => row.job_id),
         record: (person, notice) =>
           retryDb(() =>
             admin.rpc('record_new_jobs_notification', {

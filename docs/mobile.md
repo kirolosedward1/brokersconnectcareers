@@ -1,9 +1,9 @@
 # The iOS app
 
-`mobile/` is the phone version of the website: an Expo (SDK 57) / React Native
+`mobile/` is the phone version of the website: an Expo (SDK 58) / React Native
 app for candidates and employers, on the same Supabase project, built from the
-same rules. Admins get the console's queues in an Admin tab (see "The admin
-console in the app" below); the rest of the console stays on the website.
+same rules. Admins get the whole moderation console in an Admin tab (see
+"The admin console in the app" below).
 
 It is being built in phases. This document describes what exists and the
 rules that keep the two clients one product.
@@ -23,11 +23,11 @@ iOS app ──supabase-js (publishable key + the user's JWT, row-level security)
 server action the website's form runs, as the signed-in user. The emails, the
 upload checks, the slugs, the sanitising and the rate limits therefore happen
 for the app exactly as for the site. The actions the app may call are listed in
-`src/lib/mobile-api/registry.ts` — nothing else is reachable. Of the admin
-console, only the levers the app's own console screens offer are
-(`ADMIN_ACTIONS`), each behind the admin door
-(`src/lib/mobile-api/admin-door.ts`). Their inputs and outputs are typed in
-`src/lib/mobile-api/contract.ts`, which the app imports.
+`src/lib/mobile-api/registry.ts` — nothing else is reachable. Every lever of
+the admin console is there (`ADMIN_ACTIONS`, twenty of them), each behind the
+admin door (`src/lib/mobile-api/admin-door.ts`); checkout is not. Their inputs
+and outputs are typed in `src/lib/mobile-api/contract.ts`, which the app
+imports.
 
 Three kinds of write go straight to Supabase, as the website's browser code
 does: notification read-state (the `mark_notifications_read` /
@@ -77,7 +77,24 @@ web's `scripts/messages.mjs` scans `mobile/` too, so a key only the app uses is
 not reported as unused and a key the app asks for must exist.
 
 Changing a shared module changes the app: `.github/workflows/mobile.yml` runs on
-`src/lib/**` and `messages/**` as well as `mobile/**`.
+`src/lib/**` and `messages/**` as well as `mobile/**` — and on the API routes
+the app calls (`src/app/api/**`), the website's pages, and the brand files
+`mobile/tests/brand.test.ts` holds byte for byte.
+
+**Every website page has its place in the app.** `scripts/route-parity.test.mjs`
+(`pnpm test:route-parity`, in `pnpm check`) reads both route trees: each
+`page.tsx` under `src/app/[locale]` is put through the app's own mapper
+(`mobile/src/lib/links.ts`) and must name a screen under `mobile/src/app`, or
+be on the script's list of pages that stay on the website on purpose (the
+blog, the legal documents, the admin console, `/employers`, `/unsubscribe`) —
+and a page on that list must not be one iOS opens in the app. A new website
+page fails it until the app has a screen, a line in `APP_PATHS` saying where
+its screen is, or a line on that list.
+
+Four of the website's own checks read files under `mobile/` (the catalogue
+scan, the legal test, the app-links test and the route-parity test), and the
+Web workflow does not run for a change made only under `mobile/`, so the
+Mobile workflow's `website` job runs those four too.
 
 The other way round, a change only to `mobile/` does not build the website:
 `vercel.json`'s `ignoreCommand` skips the deployment when nothing outside
@@ -87,6 +104,10 @@ alone before, so a push of several commits whose last one touched only the app
 skipped the website changes in the commits before it. When that deployment's
 commit is not in Vercel's shallow clone, the build runs; with no deployment to
 compare with (a new branch), it compares with the previous commit.
+A redeploy of the commit already deployed always builds: there is nothing to
+compare, and a redeploy is how a changed environment variable reaches the site
+(a new `SUPABASE_SERVICE_ROLE_KEY` was cancelled twice by the check before
+this, and every server call went on being refused with the old key).
 
 ## Inside the app
 
@@ -123,12 +144,13 @@ compare with (a new branch), it compares with the previous commit.
   `textAlign` for text it lays out, not for what is typed into a field.
 - **Design.** The brand set in a quieter key for the phone
   (`mobile/src/theme/tokens.ts`): ivory paper with deep sapphire ink in light,
-  near-black with champagne in dark, champagne kept for what has been checked
-  (a verified company); every text pair 4.5:1, marks and field borders 3:1.
+  near-black with champagne in dark (which there is also the controls' colour),
+  champagne otherwise kept for what has been checked (a verified company); every text pair 4.5:1, marks and field borders 3:1.
   Cards raised with a hairline and a soft shadow, continuous corners, capsule
   buttons and chips, a gentle press (none with Reduce Motion), a few haptics
-  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, light by
-  default with light / dark / system as on the site, 44-point touch targets.
+  (`mobile/src/lib/haptics.ts`). IBM Plex Sans Arabic 400–700, the iPhone's
+  own light or dark by default, with system / light / dark to pick from as on
+  the site (whose default is light), 44-point touch targets.
 - **The logo** is the website's own artwork, `public/brand/logo-ar.png`: in
   Home's bar, above the sign-in forms, and its wordmark on the welcome. The app
   has it in two parts, the wordmark and the mark, cut at the gap between them,
@@ -275,8 +297,9 @@ compare with (a new branch), it compares with the previous commit.
   the top of the screen (`mobile/src/components/ui/search-field.tsx`): iOS's
   header search bar is laid out by the phone's language, not the app's, so it
   ran left to right under the Arabic on a phone set to English and in Expo Go.
-  The board has no search bar: its words are the filter sheet's first field,
-  as they head the website's filter panel. **A consultant's page**
+  The board has the same field at the top of its list, searching the same
+  words as the filter sheet's first field (which heads the website's filter
+  panel); the Jobs tab pressed again at the top puts the cursor in it. **A consultant's page**
   (`/agents/<slug>`, or `/agents/<id>` for a locked card) reads
   `get_agent_card()` and the CV under the employer's own session, so the
   database decides what shows; the number and the CV are asked for with
@@ -300,7 +323,13 @@ compare with (a new branch), it compares with the previous commit.
   directory, which a candidate's tab bar has no tab for.
 - **Saved.** Bookmarks, saved searches and follows are the website's rows and
   actions (`toggleSavedJob`, `saveSearch`, `setSearchAlerts`,
-  `deleteSavedSearch`, `followCompany` / `unfollowCompany`): offered to a
+  `deleteSavedSearch`, `followCompany` / `unfollowCompany`), and so is the
+  note a candidate keeps on a saved listing (`saved_jobs.note`, migration
+  356, `setSavedJobNote`): written in the app's note sheet or on the
+  website's saved page, shown on both, gone with the bookmark (held in memory
+  for Undo), the words from one `savedNotes` catalogue. Notes a phone kept
+  before (`bc.saved-notes.v1`) are carried over once the saved list is read
+  (`carryDeviceNotes`), then let go: offered to a
   candidate and, as a way into an account, to somebody signed out; shown at
   once and put back if the server refuses. A follow is a saved search with
   one filter, so the ten-row cap and the weekly email are shared.
@@ -379,7 +408,11 @@ phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
 ## Signing in
 
 The sign-in sheet (`mobile/src/app/(auth)/`) is the website's auth form, rule
-for rule, over Supabase Auth directly — as the website's browser code does:
+for rule, over Supabase Auth directly — as the website's browser code does.
+The website has the same sheet since October 2026: Save, Follow and Apply
+pressed by a visitor open a sign-in dialog over the page
+(`src/components/auth/sign-in-gate.tsx`), and the press goes through once
+they are in, instead of the round trip through the sign-in page.
 
 - **Password.** Eight characters before anything is sent; GoTrue's refusals in
   the reader's language through the website's own mapping
@@ -407,7 +440,7 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   in the admin console until October 2026; signing out is the way out for
   someone without the phone. The database asks it of admins only
   (docs/security/THREAT_MODEL.md, section 5).
-- **The welcome** (`mobile/src/app/welcome.tsx`) opens every launch with
+- **The welcome** (`mobile/src/app/welcome.tsx`) opens the first launch with
   nobody signed in, under the splash screen: the website's own hero photograph
   (`mobile/assets/images/welcome-photo.jpg`, the same file as
   `public/media/hero-poster.jpg`, which `tests/brand.test.ts` holds equal)
@@ -415,11 +448,13 @@ for rule, over Supabase Auth directly — as the website's browser code does:
   white the logo, the headline, and the ways on —
   create an account, sign in, or Skip at the top,
   which the App Store asks an app to allow wherever an account is not needed.
-  Skip closes it until the app is next started; signing in closes it with the
+  Skip closes it, and is remembered on the phone (`bc-welcome-skipped`) so
+  later launches open on Home — the Account tab is where to sign in; signing in closes it with the
   sign-in sheet; a launch by a link never shows it, and goes where the link
   leads. Signing out opens it again, faded in over the tabs once whatever was
-  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`).
-  Nothing about it is kept on the phone (`mobile/src/features/welcome.ts`).
+  signed out from has closed (`mobile/src/components/navigation/welcome-gate.tsx`),
+  and forgets the skip, so the next launch opens on it too until it is skipped
+  again (`mobile/src/features/welcome.ts`).
 - **Onboarding** runs the website's `completeOnboarding` and adds agreeing to
   the Terms of use, which the App Store requires of an app where people publish
   to each other. It asks in short steps, with a progress bar and a way back:
@@ -682,7 +717,7 @@ tunnel needs the login too. The iOS Simulator does not ask.
 The app can also be published to Expo's servers as an update that Expo Go
 opens by itself, so the phone needs only the internet. It is the same code,
 with the store build's settings (it talks to production), on its own
-`expo-go` channel. It uses Expo Go's runtime version (`exposdk:57.0.0`), not
+`expo-go` channel. It uses Expo Go's runtime version (`exposdk:58.0.0`), not
 the fingerprint store builds take (`EXPO_GO_UPDATE` in `app.config.ts`).
 
 The app's EAS project is `@kirolosedward1/brokers-connect-careers`; its id,
@@ -697,21 +732,23 @@ find or create one on the token's account with Expo's own `eas init`,
 
 Then, each time the phone should get the newest code:
 
-- from GitHub: Actions → Expo Go → Run workflow (on any branch). It also runs
-  by itself on pushes to `main` and on this repository's pull requests. The
-  run's summary links the QR code and gives the `exp://` link to paste. A
-  channel holds one newest update, so a pull request publishes on its own,
-  `expo-go-pr-<number>` (`EXPO_GO_CHANNEL`, which `pnpm run ota expo-go`
-  honours too): the `expo-go` link below keeps opening `main`, and a branch's
-  link opens that branch until its next push, whatever other branches publish
-  meanwhile;
+- from GitHub: Actions → Over the air → Run workflow (on any branch). It also
+  runs by itself on pushes to `main` and on this repository's pull requests.
+  The run's summary links the QR code and gives the `exp://` link to paste.
+  Before it publishes anything it runs the app's checks (`pnpm check`), and on
+  `main` it waits for the website to serve the same push (below,
+  "Over-the-air updates"). A channel holds one newest update, so a pull
+  request publishes on its own, `expo-go-pr-<number>` (`EXPO_GO_CHANNEL`,
+  which `pnpm run ota expo-go` honours too): the `expo-go` link below keeps
+  opening `main`, and a branch's link opens that branch until its next push,
+  whatever other branches publish meanwhile;
 - or from a computer, signed in with `npx eas-cli@latest login`:
   `pnpm run ota expo-go --message "what changed"` in `mobile/`, which finds or
   creates the project the same way and prints the same link.
 
 On the phone, open the channel's link: scan the QR code on that page with the
 camera, long-press it on the phone itself, or paste
-`exp://u.expo.dev/<EAS_PROJECT_ID>?channel-name=expo-go&runtime-version=exposdk:57.0.0`
+`exp://u.expo.dev/<EAS_PROJECT_ID>?channel-name=expo-go&runtime-version=exposdk:58.0.0`
 into Safari. That link is the channel, so it always opens the newest publish,
 and Expo Go keeps it under Recently opened: later it is one tap. Not an update
 picked from the project's page under Projects: each of those is that one
@@ -909,7 +946,24 @@ its profile's channel in `eas.json` (`production`, `preview`); a development
 build loads code from your computer instead. Without an EAS project id updates
 are off, and a build runs the code it was built with.
 
-Publish with the script, never a plain `eas update`:
+Every push to `main` is published on the `production` channel by itself, as
+Vercel deploys the website on every push (`.github/workflows/expo-go.yml`):
+an installed app takes the same code the website runs from its next launch,
+and nobody has to remember to publish. The workflow runs the app's checks
+first, then waits for the website: the update and the Vercel deployment of
+the same push start together and each takes a few minutes, so a phone could
+take the app's new code before the API it calls was there. The website says
+which commit it serves (`/api/mobile/v1/config`, `commit`), and the publish
+waits until that commit carries every change outside `mobile/` that the push
+does — the inverse of `vercel.json`'s `ignoreCommand` — and fails after
+twenty minutes rather than publish an app against a website that did not
+deploy. Account's footer shows the website's commit beside the app's own
+build marker, so "is the site on the same code as my phone?" is read, not
+guessed. (No store build exists yet, so these publishes reach nobody until
+there is one; a build takes only an update whose fingerprint matches its
+native code.)
+
+By hand, publish with the script, never a plain `eas update`:
 
     cd mobile
     pnpm run ota production --message "what changed"
@@ -931,7 +985,9 @@ fingerprint and need a new build (and a review); updates published after it
 go to that build only. What is not native stays out of the fingerprint
 (`mobile/fingerprint.config.js`): Expo counts `package.json`'s scripts and
 `.gitignore` by default, and adding a check to `scripts` would have cut every
-installed build off from later updates without a word. The same test computes
+installed build off from later updates without a word. The config's `extra`
+section is left out for the same reason: it carries the commit shown on
+Account, so every commit had its own fingerprint. The same test computes
 the fingerprint and checks what it is made of. So the first App Store build already carries the
 native modules this round's later features need — `expo-store-review` for the
 rating prompt, `expo-local-authentication` for the app lock (which has since
@@ -952,41 +1008,50 @@ An account whose role is `admin` has two tabs (`src/lib/tabs.ts`): the
 **Admin** console first, so the app opens on it, then the account. They do
 not get Home, the board, the companies directory, or — even when they also
 run a company — the employer console. The company's page and its billing
-stay in the account. The console is the website's `/admin` overview and its
-queues — listings waiting for review (`/admin/jobs`, and one listing's review
-at `/admin/jobs/<id>`), open reports in their two queues, new and under review
-(`/admin/reports`), the accounts (`/admin/users`: every account by standing
-or role, searched as the website searches them, and one account's file at
-`/admin/users/<id>` with every lever the website's page has — approval, role,
-sign-in block, sessions, reporting, contact revealed for a reason, notes) and
-companies whose papers wait (`/admin/companies`). Links to those paths open
-there; any other `/admin/…` page opens the overview, which links to the full
-console on the website (search, the audit log, taxonomy, applications, email,
-appeals). A public listing or company opened from the console (or from a
-link) opens inside the Admin tab, with the console under it. The consultant
-directory and the shortlist do too (`(consultants,admin)` in the routes).
+stay in the account. Home's screens stay in the app with their button hidden,
+`/` opens the console, and a listing, a company or the bell's feed the console
+points at opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
+
+Every page of the website's console is a native screen under `(admin)`, at the
+website's own path: the overview (`/admin`, which ends with every section in
+the website rail's order and with the rail's badges), the listing queue and a
+listing's review (`/admin/jobs`, `/admin/jobs/<id>`), companies and one
+company's file (`/admin/companies`, `/admin/companies/<id>`), reports in their
+queues (`/admin/reports`), appeals (`/admin/appeals`), the accounts and one
+account's file (`/admin/users`, `/admin/users/<id>`), applications and one
+application (`/admin/applications`, `/admin/applications/<id>`), the
+consultants and one profile (`/admin/agents`, `/admin/agents/<id>`), search,
+the audit log, taxonomy, email activity, background work and security. A
+file screen carries the record's audit trail and notes as the website's does.
+Nothing in the console opens the website; an `/admin/…` path the app does not
+know opens the overview. Setting up an authenticator is native too
+(`src/app/mfa-enrol.tsx`). The consultant directory and the shortlist open
+inside the Admin tab (`(consultants,admin)` in the routes).
 
 - **Reads** go straight to Supabase under the admin's session — the same
   tables and `admin_*` functions the website's pages read
   (`mobile/src/features/admin/queries.ts`). Row policies and the functions
   answer an admin only.
 - **Writes** are the website's own admin actions (`ADMIN_ACTIONS` in
-  `src/lib/mobile-api/contract.ts`: `moderateJob`, `reviewCompany`,
-  `setAccountApproval`, `moderateReports`, `getDocumentUrl`, `revealContact`,
-  `addModerationNote`, `setReportingRestriction`, `setUserRole`,
-  `setSignInBlock`, `endSessions`) through `/api/mobile/v1/actions`, each one
+  `src/lib/mobile-api/contract.ts`: every lever of the console — listings
+  decided and featured, companies reviewed and suspended, accounts in every
+  respect, consultants restricted, reports and appeals answered, taxonomy
+  kept, a dead letter retried, a deletion request closed, a paper opened, a
+  contact revealed, a note left) through `/api/mobile/v1/actions`, each one
   admin_* function that checks, decides and writes the audit record in one
-  transaction. Every lever opens one confirmation sheet
+  transaction. One read is the console's alone too: `GET /api/mobile/v1/admin/mail`
+  says whether mail is configured and which variable names stand in the way,
+  behind the same door. Every lever opens one confirmation sheet
   (`mobile/src/components/admin/decision-sheet.tsx`, drawn once at the root):
   a reason where somebody is owed one, the version the screen showed, and
   "done" only once the website answers `ok`.
 - **The second factor** is asked of the app as the website asks it: the door
   (`mobile/src/features/admin/door.ts` on the phone, `admin-door.ts` on the
   server) opens only for a session that gave its authenticator's code, or —
-  where `ADMIN_MFA_REQUIRED` is off (it is on by default in production; the
+  where `ADMIN_MFA_REQUIRED` is not exactly `true` (unset is off; the
   app reads it from `/config`) — for an admin without one. An admin without
-  an authenticator is sent to set one up on the website, then asked for the
-  code by the app's own second-factor screen. The server refuses the levers
+  an authenticator sets one up on the phone (`mfa-enrol`), then is asked for
+  the code by the app's own second-factor screen. The server refuses the levers
   with `mfa_required` / `mfa_challenge` regardless of what the app shows.
 
 `mobile/tests/admin.test.tsx` and `mobile/tests/admin-accounts.test.tsx`

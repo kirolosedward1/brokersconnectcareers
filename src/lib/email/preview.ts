@@ -35,7 +35,7 @@ const SHORT = {
     job: 'مستشار عقاري أول',
     company: 'العاصمة للتطوير العقاري',
     name: 'أحمد محمود',
-    note: 'خبرتك في التجاري قوية بس الدور ده primary.',
+    note: 'خبرتك في القطاع التجاري قوية، لكن هذا الدور للسوق الأولي.',
   },
   en: {
     job: 'Senior Property Consultant',
@@ -50,7 +50,7 @@ const LONG = {
     job: 'مستشار عقاري أول متخصص في السوق الأولي والمشروعات السكنية بالقاهرة الجديدة والعاصمة الإدارية',
     company: 'شركة العاصمة الكبرى للاستثمار والتطوير العقاري والإدارة المتكاملة للمشروعات',
     name: 'عبد الرحمن محمد عبد العزيز الشناوي',
-    note: 'شكراً على وقتك. المقابلة كانت كويسة جداً والخبرة واضحة، بس الدور محتاج حد عنده تجربة أطول في السوق الأولي تحديداً مع مطوّرين بعينهم، وده اللي رجّح المرشح التاني في المرحلة الأخيرة.',
+    note: 'شكراً لك على وقتك. كانت المقابلة جيدة جداً والخبرة واضحة، لكن الدور يحتاج إلى شخص لديه خبرة أطول في السوق الأولي تحديداً مع مطوّرين بعينهم، وهذا ما رجّح المرشح الآخر في المرحلة الأخيرة.',
   },
   en: {
     job: 'Senior Property Consultant — Primary Market, New Cairo and the New Administrative Capital',
@@ -269,6 +269,26 @@ const BUILDERS: Record<string, Builder> = {
         { kind: 'text', value: t.body(w.job) },
         { kind: 'facts', rows: [[t.labelJob, w.job]] },
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs` },
+        { kind: 'text', value: t.reapply },
+      ],
+    };
+  },
+
+  candidate_withdrew: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).candidateWithdrew;
+    const name = optional(f, w.name);
+    return {
+      subject: t.subject(w.job),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: name ? t.bodyNamed(name, w.job) : t.body(w.job) },
+        {
+          kind: 'facts',
+          rows: [[t.labelJob, w.job], ...(name ? ([[t.labelApplicant, name]] as [string, string][]) : [])],
+        },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs/example/applicants` },
       ],
     };
   },
@@ -298,6 +318,29 @@ const BUILDERS: Record<string, Builder> = {
   job_approved: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).jobApproved;
+    const expires = optional(f, day(f));
+    return {
+      subject: t.subject(w.job),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(w.job) },
+        {
+          kind: 'facts',
+          rows: [
+            [t.labelJob, w.job],
+            [t.labelPublished, day(f)],
+            ...(expires ? ([[t.labelExpires, expires]] as [string, string][]) : []),
+          ],
+        },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs/example` },
+      ],
+    };
+  },
+
+  job_approved_owner: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).jobApprovedOwner;
     const expires = optional(f, day(f));
     return {
       subject: t.subject(w.job),
@@ -463,7 +506,7 @@ const BUILDERS: Record<string, Builder> = {
   saved_search_digest: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).digest;
-    const label = f.locale === 'ar' ? 'primary في التجمع' : 'Primary in Tagamoa';
+    const label = f.locale === 'ar' ? 'رئيسي في التجمع' : 'Primary in Tagamoa';
     const meta = optional(f, [
       f.locale === 'ar' ? 'التجمع الخامس' : 'Fifth Settlement',
       f.locale === 'ar' ? 'دوام كامل' : 'Full time',

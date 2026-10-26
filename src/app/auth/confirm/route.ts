@@ -8,6 +8,7 @@ import {
   readRedirectTo,
   type ConfirmType,
 } from '@/lib/auth/confirm-link';
+import { isSignupConfirmation, linkFailureRedirect } from '@/lib/auth/cross-device';
 import { landingAfterSignIn } from '@/lib/auth/landing';
 import { defaultLocale, dirOf } from '@/lib/locale';
 import { safeNext } from '@/lib/safe-next';
@@ -18,11 +19,11 @@ import { createClient } from '@/lib/supabase/server';
  * email change, an invitation.
  *
  * The links carry a token hash rather than a code (scripts/auth-templates.mjs),
- * which verifies wherever the link is opened. The code flow, still at
- * /auth/callback, needed the same browser that asked for the email — so an
- * address confirmed on the phone after signing up on a laptop failed, and so
- * would every link opened in the iOS app. The app opens this very URL as a
- * universal link and verifies the token itself; this is the website's half.
+ * which verifies wherever the link is opened. The older code flow, still at
+ * /auth/callback, needed the same browser that asked for the email. When that
+ * verifier is missing the address is already confirmed, and the callback sends
+ * the reader to sign in. The app opens this very URL as a universal link and
+ * verifies the token itself; this is the website's half.
  *
  * GET only draws a button, and the POST it submits is what spends the link.
  * Mail scanners (Outlook's Safe Links and others) open every link in a message
@@ -45,13 +46,17 @@ function linkFailed(origin: string) {
   return NextResponse.redirect(new URL('/sign-in?error=link_expired', origin), 303);
 }
 
+function confirmedSignIn(origin: string) {
+  return NextResponse.redirect(new URL('/sign-in?confirmed=1', origin), 303);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin, search } = request.nextUrl;
   const type = asConfirmType(searchParams.get('type'));
   const tokenHash = searchParams.get('token_hash');
   if (!type || !isTokenHash(tokenHash)) return linkFailed(origin);
 
-  const next = confirmDestination(type, readRedirectTo(search), origin);
+  const next = confirmDestination(type, readRedirectTo(search), origin, searchParams.get('next'));
   const t = await getTranslations({ locale: defaultLocale, namespace: 'auth.confirm' });
   const titles: Record<ConfirmType, string> = {
     signup: t('titleEmail'),
@@ -88,8 +93,17 @@ export async function POST(request: NextRequest) {
   if (!type || !isTokenHash(tokenHash)) return linkFailed(origin);
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-  if (error) return linkFailed(origin);
+  const { data, error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+  if (error) {
+    // A sign-up token opened where the PKCE verifier is not. The address is
+    // confirmed; the session is not. A magic link or a reset stays the
+    // expired error, and so does a token that is actually spent.
+    if (linkFailureRedirect({ flow: 'token_hash', error, type, next }) === 'confirmed') {
+      return confirmedSignIn(origin);
+    }
+    return linkFailed(origin);
+  }
+  if (!data.session && isSignupConfirmation(type, next)) return confirmedSignIn(origin);
 
   // A reset always goes to the form that sets the new password, and an email
   // change to where it asked or the account page; everything else lands the

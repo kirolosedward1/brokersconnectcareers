@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Archive, BriefcaseBusiness, Building2, Eye, MapPin, Pencil, Plus, RotateCcw, ShieldAlert, Users } from '~/components/ui/lucide';
+import { Archive, BriefcaseBusiness, Building2, Eye, MapPin, Pencil, Plus, RotateCcw, Users } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -18,7 +18,8 @@ import { PageFooter } from '~/components/ui/page-footer';
 import { SendForward } from '~/components/ui/icons';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { Illustration } from '~/components/ui/illustration';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
+import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import {
   flattenListings,
@@ -74,7 +75,7 @@ export default function ListingsScreen() {
     body = <ViewerPending />;
   } else if (isSuspended(actor)) {
     // The website's console for a suspended account: nothing to act on, said once.
-    body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+    body = <SuspendedState />;
   } else if (!viewer.company) {
     body = (
       <EmptyState
@@ -86,7 +87,7 @@ export default function ListingsScreen() {
       />
     );
   } else if (listings.isPending) {
-    body = <LoadingState />;
+    body = <SkeletonScreen />;
   } else if (listings.isError && !listings.data) {
     // Never "post your first listing" to a company whose listings could not be read.
     body = <ErrorState error={listings.error} onRetry={() => listings.refetch()} />;

@@ -45,16 +45,22 @@ export type DraftState = {
  *
  * Nothing is written for a form nobody has touched: a draft is only what
  * differs from the state the form opened with.
+ *
+ * `typed` picks out what is typed from what is only where the form is (a
+ * wizard's step): moving between steps to look at the current version is not
+ * an answer to an offered draft, and must not throw it away.
  */
 export function useFormDraft<T>({
   key,
   values,
   restore,
+  typed = (all) => all,
   base = null,
 }: {
   key: string | null;
   values: T;
   restore: (values: T) => void;
+  typed?: (values: T) => unknown;
   /** The server version the form was built from; see Draft.base. */
   base?: string | number | null;
 }): DraftState {
@@ -65,6 +71,8 @@ export function useFormDraft<T>({
   latest.current = values;
   const restoreRef = useRef(restore);
   restoreRef.current = restore;
+  const typedRef = useRef(typed);
+  typedRef.current = typed;
 
   /** What is stored now, as JSON, so an unchanged form is not written again. */
   const written = useRef<string | null>(null);
@@ -135,7 +143,7 @@ export function useFormDraft<T>({
     if (offerRef.current) {
       // Typing without answering the offer is the answer: what is typed now
       // is the work, and it takes the old draft's place.
-      if (same(values, pristine.current)) return;
+      if (same(typedRef.current(values), typedRef.current(pristine.current))) return;
       setOffer(null);
       offerRef.current = null;
     }

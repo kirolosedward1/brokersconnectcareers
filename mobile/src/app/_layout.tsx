@@ -19,7 +19,6 @@ import { PendingPath } from '~/components/navigation/pending-path';
 import { WebAnchorParams } from '~/components/navigation/web-anchor';
 import { AppleCredentialWatch } from '~/components/navigation/apple-credential-watch';
 import { AppLock } from '~/components/navigation/app-lock';
-import { CrashNotice } from '~/components/navigation/crash-notice';
 import { PushBridge } from '~/components/navigation/push-bridge';
 import { SessionGate } from '~/components/navigation/session-gate';
 import { UpdateGate } from '~/components/navigation/update-gate';
@@ -37,6 +36,7 @@ import { HomeShortcuts } from '~/components/navigation/home-shortcuts';
 import { launchReady, useLaunchHeld, useLaunchReady } from '~/features/launch';
 import { useWelcomeDrawn } from '~/features/welcome';
 import { I18nProvider } from '~/i18n/provider';
+import { KeyboardDone } from '~/components/ui/text-field';
 import { installCrashLog } from '~/lib/crash-log';
 import { appDirection } from '~/lib/direction';
 import { persistOptions, queryClient } from '~/lib/query';
@@ -94,6 +94,7 @@ export default function RootLayout() {
                     <Navigation>
                       <AppStack />
                     </Navigation>
+                    <KeyboardDone />
                   </SessionProvider>
                 </I18nProvider>
               </ThemeProvider>
@@ -157,6 +158,8 @@ function AppStack() {
         <Stack.Screen name="(auth)" options={{ presentation: 'modal' }} />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         <Stack.Screen name="mfa" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+        {/* Two-step verification set up on the phone (the admin console's door asks for it). */}
+        <Stack.Screen name="mfa-enrol" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/confirm" options={{ presentation: 'modal' }} />
         <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
         {/* Answered rather than swiped away. It fades in: at a launch over
@@ -169,7 +172,6 @@ function AppStack() {
       <WebAnchorParams />
       <PushBridge />
       <AppleCredentialWatch />
-      <CrashNotice />
       <HomeShortcuts />
       <VerifiedExplainerHost />
       <NoteSheetHost />

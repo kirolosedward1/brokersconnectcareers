@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '~/theme/provider';
-import { corner } from '~/theme/tokens';
+import { corner, palette } from '~/theme/tokens';
 
 /**
  * The website's illustrations (src/components/illustration.tsx), the same
@@ -11,7 +11,8 @@ import { corner } from '~/theme/tokens';
  *
  * Decorative: the words beside each carry the meaning, so VoiceOver skips it.
  * The drawings are black line on transparent; on the dark theme, where the
- * website inverts them, they sit on a pane of their own paper instead.
+ * website inverts them, they sit on a pane of their own paper instead — the
+ * light theme's, since the line is black whatever the scheme.
  */
 export const ILLUSTRATIONS = {
   /** A candidate pressing "apply" on a tall screen. */
@@ -43,7 +44,7 @@ export function Illustration({ name, width }: { name: IllustrationName; width: n
       accessible={false}
       importantForAccessibility="no-hide-descendants"
       testID={`illustration-${name}`}
-      style={{ padding: 12, ...corner('xl'), backgroundColor: '#F3F0EA' }}
+      style={{ padding: 12, ...corner('xl'), backgroundColor: palette.light.background }}
     >
       {image}
     </View>

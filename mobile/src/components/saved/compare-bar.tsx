@@ -8,6 +8,7 @@ import { COMPARE_MIN } from '~/features/saved/compare';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * The foot of Saved while listings are being chosen to compare: how many are
@@ -20,6 +21,8 @@ export function CompareBar({ count, onCompare, onCancel }: { count: number; onCo
   const tCommon = useTranslations('common');
   const { colors } = useTheme();
   const ready = count >= COMPARE_MIN;
+  // Each pick said as it is made (none yet is what the line above the list already says).
+  useAnnounce(t.markup('picked', { count, ...markupTags }), count > 0);
   return (
     <Appear from="below" distance={24} duration={280}>
       <View

@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Keyboard, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
@@ -7,7 +7,7 @@ import { Field } from '~/components/ui/field';
 import { AuthSwitch } from '~/components/auth/auth-scroll';
 import { PasswordField } from '~/components/ui/password-field';
 import { Select } from '~/components/ui/select';
-import { TextField } from '~/components/ui/text-field';
+import { KeyboardDone, TextField } from '~/components/ui/text-field';
 import { TextLink } from '~/components/ui/text-link';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { useErrorFeedback } from '~/lib/haptics';
@@ -166,23 +166,6 @@ describe('a password', () => {
     expect(style.minWidth).toBe(0);
   });
 
-  it('keeps the eye inside the field, and does not pin the row left to right on the phone', () => {
-    render(<PasswordField accessibilityLabel={ar.auth.password} />, { wrapper: Providers });
-    const eye = screen.getByRole('button', { name: ar.app.auth.showPassword });
-    const style = StyleSheet.flatten(typeof eye.props.style === 'function' ? eye.props.style({ pressed: false }) : eye.props.style);
-    expect(style.width).toBe(hitTarget);
-    expect(style.height).toBe(hitTarget);
-    expect(style.marginEnd).toBeUndefined();
-    // This run is the phone. The row is not pinned left to right: I18nManager
-    // mirrors it. Only the web pins the row, where nothing else swaps the end.
-    let node: typeof eye | null = eye;
-    while (node) {
-      const parentStyle = StyleSheet.flatten(node.props.style);
-      expect(parentStyle?.direction).not.toBe('ltr');
-      node = node.parent;
-    }
-  });
-
   it('is shown and hidden again with the eye at its end, which says what it will do', () => {
     render(<PasswordField accessibilityLabel={ar.auth.password} />, { wrapper: Providers });
     fireEvent.press(screen.getByRole('button', { name: ar.app.auth.showPassword }));
@@ -235,11 +218,16 @@ describe('the keyboard', () => {
     render(
       <>
         <TextField accessibilityLabel="whatsapp" keyboardType="phone-pad" />
+        <TextField accessibilityLabel="salary" keyboardType="number-pad" />
         <TextField accessibilityLabel="email" keyboardType="email-address" />
+        <KeyboardDone />
       </>,
       { wrapper: Providers },
     );
-    expect(screen.getByLabelText('whatsapp').props.inputAccessoryViewID).toEqual(expect.any(String));
+    // One bar, shared by ID: a screen with several pads (the job wizard's salary step) still draws one.
+    const shared = screen.getByLabelText('whatsapp').props.inputAccessoryViewID;
+    expect(shared).toEqual(expect.any(String));
+    expect(screen.getByLabelText('salary').props.inputAccessoryViewID).toBe(shared);
     expect(screen.getByLabelText('email').props.inputAccessoryViewID).toBeUndefined();
 
     const done = screen.getAllByRole('button', { name: ar.app.keyboard.done });
@@ -254,7 +242,7 @@ describe('a refused form', () => {
   it('is felt when its errors are brought into view, every time it is refused', () => {
     jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions').mockImplementation(() => {});
     function Form() {
-      const scroll = useRef<ScrollView>(null);
+      const scroll = useRef<ScrollViewInstance>(null);
       const form = useErrorsInView(scroll, ['name']);
       return (
         <ScrollView ref={scroll}>

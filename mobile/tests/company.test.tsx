@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AccessibilityInfo, ActionSheetIOS, Alert, RefreshControl, type AlertButton } from 'react-native';
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { ImageManipulator } from 'expo-image-manipulator';
@@ -16,6 +16,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as BillingScreen from '../src/app/(tabs)/(account)/employer/billing';
 import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { phoneFormData, sentBody } from './multipart';
@@ -178,7 +179,7 @@ function Root() {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(account)/employer/company': CompanyScreen,
   '(tabs)/(account)/employer/billing': BillingScreen,
 };
@@ -192,7 +193,7 @@ function answerAlert(alert: jest.SpyInstance, label: string) {
 
 describe("the company's page, for a company admin", () => {
   it('offers the logo, the profile, the papers and the team', async () => {
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     expect(await screen.findByRole('button', { name: ar.employer.logoUpload })).toBeTruthy();
     expect(screen.getByLabelText(ar.companies.nameAr).props.value).toBe(baseCompany.name_ar);
@@ -206,7 +207,7 @@ describe("the company's page, for a company admin", () => {
   });
 
   it('saves on the version it loaded, adds the scheme to a bare address, and says when a colleague saved first', async () => {
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
     fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'nile.example');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
 
@@ -241,7 +242,7 @@ describe("the company's page, for a company admin", () => {
       canceled: false,
       assets: [{ uri: 'file:///cache/card.pdf', name: 'card.pdf', mimeType: 'application/pdf', size: 4096, lastModified: 0 }],
     } as DocumentPicker.DocumentPickerResult);
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     const typed = 'نبذة جديدة لسه ما اتحفظتش';
     fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), typed);
@@ -268,7 +269,7 @@ describe("the company's page, for a company admin", () => {
 
   it("shows a colleague's version once the save it overtook is refused", async () => {
     server.on('POST /api/mobile/v1/actions/saveCompany', () => ({ ok: false, error: 'stale' }));
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'ما كتبته أنا');
     // A colleague saves in between.
@@ -295,7 +296,7 @@ describe("the company's page, for a company admin", () => {
       hold = true;
       return { ok: true, data: { id: baseCompany.id } };
     });
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     const first = 'وساطة عقارية في القاهرة الجديدة.';
     const corrected = 'وساطة عقارية في التجمع الخامس.';
@@ -328,7 +329,7 @@ describe("the company's page, for a company admin", () => {
     announce.mockClear();
     const layout = placeViewsAt(520);
     try {
-      renderRouter(app, { initialUrl: '/employer/company' });
+      await renderRouter(app, { initialUrl: '/employer/company' });
       fireEvent.changeText(await screen.findByLabelText(ar.companies.website), 'javascript:alert(1)');
       fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
       expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
@@ -345,7 +346,7 @@ describe("the company's page, for a company admin", () => {
       canceled: false,
       assets: [{ uri: 'file:///library/logo.png', width: 600, height: 300 }],
     } as ImagePicker.ImagePickerResult);
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.logoUpload }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/uploadImage')).toHaveLength(1));
@@ -365,7 +366,7 @@ describe("the company's page, for a company admin", () => {
       canceled: false,
       assets: [{ uri: 'file:///cache/card.pdf', name: 'card.pdf', mimeType: 'application/pdf', size: 4096, lastModified: 0 }],
     } as DocumentPicker.DocumentPickerResult);
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
     await waitFor(() => expect(input('/api/mobile/v1/actions/recordCompanyDocument')).toBeTruthy());
@@ -384,7 +385,7 @@ describe("the company's page, for a company admin", () => {
       canceled: false,
       assets: [{ uri: 'file:///cache/card.pdf', name: 'card.pdf', mimeType: 'application/pdf', size: 4096, lastModified: 0 }],
     } as DocumentPicker.DocumentPickerResult);
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
     await waitFor(() => expect(server.asked('/rest/v1/rpc/employer_summary').length).toBeGreaterThan(0));
     const before = server.asked('/rest/v1/rpc/employer_summary').length;
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.commercialRegister}` }));
@@ -398,7 +399,7 @@ describe("the company's page, for a company admin", () => {
       canceled: false,
       assets: [{ uri: 'file:///library/IMG_0042.HEIC', width: 4032, height: 3024 }],
     } as ImagePicker.ImagePickerResult);
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.commercialRegister}` }));
     await waitFor(() => expect(input('/api/mobile/v1/actions/recordCompanyDocument')).toBeTruthy());
@@ -412,7 +413,7 @@ describe("the company's page, for a company admin", () => {
   it('says how to allow the camera when the phone refuses it', async () => {
     paperFrom = 0;
     jest.mocked(ImagePicker.requestCameraPermissionsAsync).mockResolvedValueOnce({ granted: false } as ImagePicker.CameraPermissionResponse);
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
     expect(await screen.findByText(ar.app.company.cameraDenied)).toBeTruthy();
@@ -421,7 +422,7 @@ describe("the company's page, for a company admin", () => {
 
   it("adds a colleague, says the website's word when it cannot, and takes one off after asking", async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     fireEvent.changeText(await screen.findByLabelText(ar.employer.teamEmail), 'mona@example.com');
     fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
@@ -449,7 +450,7 @@ describe("the company's page, for a company admin", () => {
       post_credits: baseCompany.post_credits,
       suspended_at: null,
     });
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.teamRemove}: أحمد سمير` }));
     const reads = server.asked('/rest/v1/profiles').length;
     answerAlert(alert, ar.employer.teamRemove);
@@ -459,7 +460,7 @@ describe("the company's page, for a company admin", () => {
   });
 
   it('says an address is not one before sending it, and when the website says so', async () => {
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     fireEvent.changeText(await screen.findByLabelText(ar.employer.teamEmail), 'mona@example');
     fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
@@ -479,7 +480,7 @@ describe("the company's page, for a company admin", () => {
 describe("the company's page, for a recruiter", () => {
   it('shows the team and who can change it, and none of the controls the database would refuse', async () => {
     role = 'recruiter';
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     expect(await screen.findByText(ar.employer.teamOnlyAdmins)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.employer.logoUpload }) === null).toBe(true);
@@ -495,7 +496,7 @@ describe('a company that could not be read', () => {
     server.on('POST /rest/v1/rpc/my_company_id', () => {
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
 
     expect(await screen.findByText(ar.app.offline.title)).toBeTruthy();
     expect(screen.queryByLabelText(ar.companies.nameAr)).toBeNull();
@@ -508,7 +509,7 @@ describe('a company that could not be read', () => {
   });
 
   it('keeps the page, and what is typed on it, when a read in the background fails', async () => {
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
     fireEvent.changeText(await screen.findByLabelText(ar.companies.aboutAr), 'نص بكتبه');
 
     let failed = 0;
@@ -533,7 +534,7 @@ describe('a company that could not be read', () => {
 describe('nobody signed in', () => {
   it('asks to sign in on the company and billing pages, rather than waiting for an account that is not coming', async () => {
     await supabase.auth.signOut({ scope: 'local' });
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
     expect(await screen.findByRole('button', { name: ar.nav.signIn })).toBeTruthy();
     expect(screen.queryByLabelText(ar.common.loading)).toBeNull();
   });
@@ -542,7 +543,7 @@ describe('nobody signed in', () => {
 describe('an employer without a company', () => {
   it('makes one from the same form', async () => {
     company = null;
-    renderRouter(app, { initialUrl: '/employer/company' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
     fireEvent.changeText(await screen.findByLabelText(ar.companies.nameAr), 'النيل للوساطة');
     fireEvent.press(screen.getByRole('button', { name: ar.employer.createCompanyFirst }));
     await waitFor(() => expect(input('/api/mobile/v1/actions/saveCompany')).toMatchObject({ nameAr: 'النيل للوساطة' }));
@@ -598,7 +599,7 @@ describe('billing', () => {
     server.on('GET /rest/v1/orders', [
       { id: 'o1', company_id: baseCompany.id, pack_key: 'single', credits: 1, amount_egp: 1000, paymob_order_id: null, status: 'paid', created_at: '2026-09-01T10:00:00Z', updated_at: '2026-09-01T10:00:00Z' },
     ]);
-    renderRouter(app, { initialUrl: '/employer/billing' });
+    await renderRouter(app, { initialUrl: '/employer/billing' });
 
     expect(await screen.findByText('2')).toBeTruthy();
     expect(screen.getByText(ar.billing.disabled)).toBeTruthy();
@@ -616,14 +617,14 @@ describe('billing', () => {
   });
 
   it('offers no free post to a company that is not verified', async () => {
-    renderRouter(app, { initialUrl: '/employer/billing' });
+    await renderRouter(app, { initialUrl: '/employer/billing' });
     expect(await screen.findByText(ar.billing.credits)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.employer.freePostClaim }) === null).toBe(true);
   });
 
   it('reads the balance and the badge again on a pull, not only the orders', async () => {
     company = { ...baseCompany, post_credits: 2 };
-    renderRouter(app, { initialUrl: '/employer/billing' });
+    await renderRouter(app, { initialUrl: '/employer/billing' });
     expect(await screen.findByText('2')).toBeTruthy();
 
     // Spent on the website, and the company verified meanwhile.

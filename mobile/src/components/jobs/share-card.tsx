@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View, type ViewInstance } from 'react-native';
 import { Image } from 'expo-image';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
@@ -54,7 +54,7 @@ export function JobShareCard({ job }: { job: ShareableJob }) {
         overflow: 'hidden',
       }}
     >
-      {/* The Home panel's sightlines, in champagne, behind the words. */}
+      {/* Sightlines, in champagne, behind the words: the card is a thing earned and sent on. */}
       <Svg width={CARD.width} height={CARD.height} style={StyleSheet.absoluteFill} pointerEvents="none">
         {[150, 210, 270].map((r, index) => (
           <Circle key={r} cx={CARD.width} cy={0} r={r} stroke={colors.champagne} strokeOpacity={[0.35, 0.22, 0.12][index]} fill="none" />
@@ -157,7 +157,7 @@ export function ShareCardSheet({
   const locale = useLocale();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const card = useRef<View>(null);
+  const card = useRef<ViewInstance>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -176,7 +176,7 @@ export function ShareCardSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={onClose} onDismiss={onDismiss}>
       <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
         <View style={styles.header}>
           <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>

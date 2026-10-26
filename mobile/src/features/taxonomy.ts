@@ -10,11 +10,14 @@ import { supabase } from '~/lib/supabase';
  */
 const DAY = 24 * 60 * 60 * 1000;
 
+/** Each table in the website's order (src/lib/queries/taxonomy.ts): places by id, developers by name. */
+const ORDER = { districts: 'id', governorates: 'id', developers: 'name_en' } as const;
+
 function taxonomy<T>(table: 'districts' | 'governorates' | 'developers') {
   return {
     queryKey: ['taxonomy', table] as const,
     queryFn: async (): Promise<T[]> => {
-      const { data, error } = await supabase.from(table).select('*').order('id');
+      const { data, error } = await supabase.from(table).select('*').order(ORDER[table]);
       if (error) throw error;
       return (data ?? []) as T[];
     },

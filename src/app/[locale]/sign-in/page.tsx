@@ -43,12 +43,12 @@ export default async function SignInPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: string; confirmed?: string }>;
 }) {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
-  const { next, error } = await searchParams;
+  const { next, error, confirmed } = await searchParams;
   // Validated once here for the two links that carry it onward; ReturnIntent
   // and the form validate their own copies.
   const intended = safeNext(next) ?? undefined;
@@ -74,14 +74,22 @@ export default async function SignInPage({
   */
   const sessionExpired = error === 'session_expired';
 
+  /*
+    A confirmation opened on another device. The address is confirmed and
+    there is no session here, so this is a success, not one of the failures
+    above. An `error` on the same URL wins: the link did not work. #1A7F37
+    on #F0FDF4 is 4.85:1.
+  */
+  const emailConfirmed = confirmed === '1' && !error;
+
   const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
 
   return (
     <AuthShell>
-      <div className="mx-auto w-full max-w-sm">
-        <h1 className="text-3xl font-bold">{t('signInTitle')}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <h1 className="w-full whitespace-nowrap text-center text-3xl font-bold">{t('signInTitle')}</h1>
+      <div className="mx-auto mt-2 w-full max-w-sm">
+        <p className="text-sm text-muted-foreground">
           {t('noAccount')}{' '}
           {/* Carries `next` across. This is where Apply sends a signed-out
               reader, and most of them have no account yet: without it they
@@ -98,6 +106,13 @@ export default async function SignInPage({
         {linkFailed || sessionExpired ? (
           <p role="alert" className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
             {sessionExpired ? t('sessionExpired') : t('linkExpired')}
+          </p>
+        ) : emailConfirmed ? (
+          <p
+            role="status"
+            className="mt-6 rounded-xl border border-[#1A7F37]/25 bg-[#F0FDF4] p-4 text-sm text-[#1A7F37]"
+          >
+            {t('emailConfirmed')}
           </p>
         ) : null}
 

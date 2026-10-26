@@ -190,7 +190,7 @@ export async function GetAppLanding() {
         finalId="get-app-final"
         name={siteName}
         label={t('store.get')}
-        ariaLabel={t('store.appStoreLabel')}
+        ariaLabel={t('store.getLabel')}
       />
 
       {/* 2. Four things, scannable. */}

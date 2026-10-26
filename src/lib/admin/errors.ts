@@ -26,6 +26,7 @@ export const ADMIN_ERROR_CODES = [
   'invalid_name',
   'invalid_governorate',
   'slug_taken',
+  'not_retryable',
   'unavailable',
   'not_migrated',
   'unknown',

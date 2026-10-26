@@ -8,20 +8,18 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useLocale, useTranslations } from 'use-intl';
 import { SocialCircles } from '~/components/auth/social-sign-in';
 import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
-import { welcomeTile, welcomeWordmarkHeight } from '~/components/brand/launch-size';
 import { toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
 import { Button, GLASS } from '~/components/ui/button';
 import { ForwardChevron, SignInMark } from '~/components/ui/icons';
 import { CircleAlert, UserRoundPlus } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
-import { InlineLink } from '~/components/ui/inline-link';
 import { Text } from '~/components/ui/text';
 import { useAuthErrorText } from '~/features/auth/errors';
 import { intentFromParams } from '~/features/auth/intent';
 import { useLand } from '~/features/auth/land';
 import type { ProviderOutcome } from '~/features/auth/providers';
-import { welcomeDrawn } from '~/features/welcome';
+import { rememberWelcomeSkipped, welcomeDrawn } from '~/features/welcome';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, motion, space } from '~/theme/tokens';
 
@@ -31,8 +29,8 @@ const PHOTO = require('../../assets/images/welcome-photo.jpg');
 /**
  * When the screen's parts arrive, after the first frame: the screen fades in
  * over the launch curtain or the tabs (the root layout), and its parts follow
- * it in. Skip first — it opens at every launch with nobody signed in, and
- * someone who has seen it before is not kept waiting for the way past it
+ * it in. Skip first — it opens again after every sign-out, and someone who
+ * has seen it before is not kept waiting for the way past it
  * (iOS takes no taps on what has not begun to show) — with the photograph
  * settling behind it; then the logo, the words and the ways on.
  */
@@ -48,8 +46,8 @@ const AT = {
 };
 
 /**
- * The first screen of every launch with nobody signed in, and where signing
- * out leads (src/components/navigation/welcome-gate.tsx): the website's hero
+ * The first screen of the first launch with nobody signed in, and where
+ * signing out leads (src/components/navigation/welcome-gate.tsx): the website's hero
  * photograph across the whole screen under a deep sapphire veil, darkening to
  * midnight where the words are — the logo and what the board is in one line —
  * and the ways on: create an account, sign in — with Google's or Apple's
@@ -62,7 +60,7 @@ const AT = {
  * and the status bar's light over it.
  *
  * Over the tabs, already drawn underneath — Home, at a launch: skipping fades
- * it away onto them until the app is next started. Signing in closes it with
+ * it away onto them, and later launches open on them (src/features/welcome.ts). Signing in closes it with
  * the sign-in sheet (useCloseFlow, which counts it among the flow's screens).
  */
 export default function WelcomeScreen() {
@@ -110,7 +108,9 @@ export default function WelcomeScreen() {
   }, [shown]);
 
   // This screen's own Back, whatever has been opened since.
+  // Remembered, so the next launch opens on Home (src/features/welcome.ts).
   const skip = () => {
+    rememberWelcomeSkipped();
     if (navigation.canGoBack()) navigation.goBack();
     else router.replace('/');
   };
@@ -177,6 +177,7 @@ export default function WelcomeScreen() {
           label={t('nav.signUp')}
           variant="champagne"
           size={compact ? 'default' : 'lg'}
+          maxFontSizeMultiplier={WAYS_GROW}
           icon={<UserRoundPlus size={20} color={colors.champagneForeground} />}
           disabled={busy}
           onPress={() => router.push('/sign-up')}
@@ -187,6 +188,7 @@ export default function WelcomeScreen() {
             label={t('nav.signIn')}
             variant="glass"
             size={compact ? 'default' : 'lg'}
+            maxFontSizeMultiplier={WAYS_GROW}
             icon={<SignInMark size={20} color={colors.onHero} />}
             disabled={busy}
             onPress={() => router.push('/sign-in')}
@@ -194,29 +196,35 @@ export default function WelcomeScreen() {
           />
           <SocialCircles size={compact ? 48 : 56} disabled={busy} onBusy={setBusy} onOutcome={afterProvider} />
         </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingTop: space[1],
-          }}
-        >
-          <Text variant="small" style={{ color: colors.onHeroMuted, maxWidth: '100%', textAlign: 'center' }}>
-            {`${t('app.welcome.employer')} `}
-          </Text>
-          <InlineLink
-            color={colors.champagne}
+        <Text variant="small" maxFontSizeMultiplier={WAYS_GROW} style={{ color: colors.onHeroMuted, textAlign: 'center', paddingTop: space[1] }}>
+          {`${t('app.welcome.employer')} `}
+          <Text
+            variant="small"
+            weight="semibold"
+            maxFontSizeMultiplier={WAYS_GROW}
+            accessibilityRole="link"
             onPress={() => router.push({ pathname: '/sign-up', params: { role: 'employer' } })}
+            suppressHighlighting
+            style={{ color: colors.champagne }}
           >
             {t('app.auth.forCompanies')}
-          </InlineLink>
-        </View>
+          </Text>
+        </Text>
       </Appear>
     </View>
   );
 }
+
+/**
+ * How far the phone's text size may enlarge the ways on. They are pinned at
+ * the foot and never scroll, so at the largest accessibility sizes they grew
+ * taller than the screen: on an iPhone SE at the largest, 779 points of
+ * buttons on a 667-point screen, the company's way in drawn off its bottom
+ * edge and the words above given no room at all. Twice the ordinary size
+ * keeps them at about 300 points on every phone, with room above them for the
+ * words, which step down to fit.
+ */
+const WAYS_GROW = 2;
 
 /**
  * Steps the words take down when they do not fit, from the largest: the
@@ -333,8 +341,7 @@ function Backdrop({ height, screen, play }: { height: number; screen: number; pl
 function Brand({ compact, locale }: { compact: boolean; locale: string }) {
   const t = useTranslations();
   const { colors } = useTheme();
-  const tile = welcomeTile(compact);
-  const mark = tile * 0.68;
+  const tile = compact ? 44 : 52;
   return (
     <View
       accessible
@@ -353,16 +360,10 @@ function Brand({ compact, locale }: { compact: boolean; locale: string }) {
           boxShadow: '0px 10px 28px rgba(5, 10, 25, 0.4)',
         }}
       >
-        <Image
-          testID="welcome-mark"
-          source={LOGO_MARK}
-          contentFit="contain"
-          style={{ width: mark, height: mark }}
-          accessible={false}
-        />
+        <Image source={LOGO_MARK} contentFit="contain" style={{ width: tile * 0.68, height: tile * 0.68 }} accessible={false} />
       </View>
       {locale === 'ar' ? (
-        <Wordmark testID="welcome-wordmark" height={welcomeWordmarkHeight(compact)} tint={colors.onHero} />
+        <Wordmark height={compact ? 22 : 26} tint={colors.onHero} />
       ) : (
         <Text variant="headline" weight="bold" style={{ color: colors.onHero }} accessible={false}>
           {t('meta.siteName')}

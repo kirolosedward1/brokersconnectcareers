@@ -5,11 +5,14 @@ import type {
   AdminOverview,
   AdminReportCase,
   AdminReportDetail,
+  AdminSummary,
+  AdminTrend,
   CompanyDocumentRow,
   JobRow,
   ReportReason,
   ReportStatus,
   SafetyFlag,
+  SupportRequestRow,
   VerificationStatus,
 } from '@/lib/supabase/database.types';
 import { useSession } from '~/lib/session';
@@ -55,10 +58,118 @@ export function useAdminOverview() {
   });
 }
 
-/** The things waiting on a person, as the overview's first row adds them up — the tab's badge. */
+/** The things waiting on a person, as the overview's first row adds them up. */
 export function waitingCount(overview: AdminOverview | undefined): number {
   if (!overview) return 0;
   return overview.jobs.pending + overview.reports.open_targets + overview.companies.pending + overview.accounts.pending;
+}
+
+/**
+ * admin_summary: the website rail's figures — what its badges count. Read for
+ * the Admin tab's badge (see summaryWaiting), beside admin_overview rather
+ * than instead of it: the overview's figures are the screen's, these are the
+ * rail's, and the website keeps the two apart too.
+ */
+export function useAdminSummary() {
+  const open = useOpen();
+  return useQuery({
+    queryKey: ['admin', 'summary'],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_summary');
+      if (error) throw error;
+      return data as AdminSummary;
+    },
+  });
+}
+
+/**
+ * The Admin tab's badge — the website rail's sense of "waiting", exactly:
+ * listings in the queue, companies whose verification is pending, reported
+ * targets (every one, a deleted listing's reports included), open appeals and
+ * accounts awaiting approval, as admin_summary adds them up (migration 328).
+ *
+ * admin_summary rather than admin_overview's waitingCount plus an appeals
+ * count of the app's own: the rail is the one place the website states what
+ * waits on an admin, and when that sense changed (328 added appeals and the
+ * deleted-target cases) the rail followed without a line of page code — so
+ * does this badge, without a release. The badge and the overview's first row
+ * can differ by a figure (a company pending without papers yet), as the
+ * website's rail and page do; the badge is the rail's. Before 328 the
+ * database has no appeals_open: counted as none, never as unreadable.
+ */
+export function summaryWaiting(summary: AdminSummary | undefined): number {
+  if (!summary) return 0;
+  return (
+    summary.queue_total + summary.companies_pending + summary.reports_open + (summary.appeals_open ?? 0) + summary.accounts_pending
+  );
+}
+
+/** admin_trend: thirty days of applications, listings published and sign-ups, every day counted. */
+export function useAdminTrend() {
+  const open = useOpen();
+  return useQuery({
+    queryKey: ['admin', 'trend'],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_trend');
+      if (error) throw error;
+      return (data ?? { days: [] }) as AdminTrend;
+    },
+  });
+}
+
+export type DeletionRequest = Pick<SupportRequestRow, 'id' | 'reference' | 'created_at' | 'user_id'> & {
+  /** The account's name, when the account is still there. */
+  name: string | null;
+  /** The company the account owns, when it owns one. */
+  company: { id: string; name: string } | null;
+};
+
+/** The most deletion requests the overview lists; older ones wait their turn (the website's limit). */
+export const DELETION_REQUESTS_LIMIT = 50;
+
+/**
+ * Company owners asking for their account to be deleted (migration 330):
+ * the open requests, oldest first — the order they should be answered in —
+ * with the account's name and its company beside each, read as the website's
+ * overview reads them. Only the reference and the dates, never the message:
+ * the request is answered from the account's file, not from here.
+ */
+export function useDeletionRequests() {
+  const open = useOpen();
+  return useQuery({
+    queryKey: ['admin', 'deletion-requests'],
+    enabled: open,
+    queryFn: async (): Promise<DeletionRequest[]> => {
+      const { data, error } = await supabase
+        .from('support_requests')
+        .select('id, reference, created_at, user_id')
+        .eq('topic', 'account_deletion')
+        .eq('status', 'open')
+        .order('created_at', { ascending: true })
+        .limit(DELETION_REQUESTS_LIMIT);
+      if (error) throw error;
+      const rows = (data ?? []) as Pick<SupportRequestRow, 'id' | 'reference' | 'created_at' | 'user_id'>[];
+      const userIds = rows.map((row) => row.user_id).filter((id): id is string => Boolean(id));
+      if (!userIds.length) return rows.map((row) => ({ ...row, name: null, company: null }));
+
+      const [people, companies] = await Promise.all([
+        supabase.from('profiles').select('id, full_name').in('id', userIds),
+        supabase.from('companies').select('id, name_ar, owner_id').in('owner_id', userIds),
+      ]);
+      if (people.error) throw people.error;
+      if (companies.error) throw companies.error;
+      return rows.map((row) => {
+        const company = (companies.data ?? []).find((item) => item.owner_id === row.user_id);
+        return {
+          ...row,
+          name: (people.data ?? []).find((person) => person.id === row.user_id)?.full_name ?? null,
+          company: company ? { id: company.id, name: company.name_ar } : null,
+        };
+      });
+    },
+  });
 }
 
 export type QueueListing = Pick<JobRow, 'id' | 'slug' | 'title_ar' | 'title_en' | 'status' | 'created_at' | 'version'> & {

@@ -1,8 +1,32 @@
-# The app for Expo Go, published as an EAS Update, so an iPhone opens the
-# newest pushed code from Expo's servers with no computer running
-# (docs/mobile.md, "Trying it in Expo Go"): `pnpm run ota expo-go`, which
-# publishes on the `expo-go` channel with Expo Go's runtime version and the
+# The app, published over the air after every push to main — as Vercel
+# deploys the website after every push — and for this repository's own pull
+# requests, so an iPhone opens the newest pushed code from Expo's servers with
+# no computer running (docs/mobile.md, "Trying it in Expo Go" and
+# "Over-the-air updates"). `pnpm run ota <channel>`, which publishes with the
 # store build's settings (mobile/scripts/publish-update.mjs).
+#
+# Two channels. `expo-go`, on every run: Expo Go, the App Store app, opens it
+# from a link or a QR code, on Expo Go's own runtime. `production`, on pushes
+# to main only: the channel a store build of the app listens on, so an
+# installed app takes the same code the website runs from its next launch,
+# instead of waiting for somebody to remember to publish. A build takes only
+# an update whose fingerprint matches its own native code, so while there is
+# no build this reaches nobody, and after a native change it reaches the
+# builds made since (docs/mobile.md, "Over-the-air updates").
+#
+# Before anything is published the app's own checks run (pnpm check). A
+# publish ships whatever was pushed, and a bundle that failed its tests
+# reached the phone before the Mobile workflow had finished saying so.
+#
+# And on main the publish waits for the website. The update and the Vercel
+# deployment of the same push start together and each takes a few minutes, so
+# a phone could take the app's new code before the API it calls was there. The
+# website says which commit it serves (/api/mobile/v1/config, `commit`); the
+# publish waits until that commit carries every change outside mobile/ that
+# this push does — the inverse of vercel.json's ignoreCommand, which skips the
+# deployment for a change under mobile/ alone — and gives up, failing, after
+# twenty minutes: a website that did not deploy is not one to publish an app
+# against.
 #
 # It needs one thing from the owner's Expo account (kirolosedward1, which
 # owns the EAS project mobile/app.config.ts names): a personal access token
@@ -11,14 +35,15 @@
 # create one on the token's account (`eas init`, in
 # scripts/publish-update.mjs), and the summary gives its id.
 #
-# Runs by hand (Actions → Expo Go → Run workflow, on any branch), on pushes to
-# main, and on this repository's own pull requests. A channel holds one newest
-# update, so pushes to main and runs by hand publish on `expo-go`, the channel
-# the owner's phone opens, and each pull request on its own
+# Runs by hand (Actions → Over the air → Run workflow, on any branch), on
+# pushes to main, and on this repository's own pull requests. A channel holds
+# one newest update, so pushes to main and runs by hand publish on `expo-go`,
+# the channel the owner's phone opens, and each pull request on its own
 # (`expo-go-pr-<number>`, EXPO_GO_CHANNEL below), with its own link in the
 # run's summary: a branch never replaces what main's link opens, nor is it
-# replaced by the next branch minutes later.
-name: Expo Go
+# replaced by the next branch minutes later. Only main publishes on
+# `production`.
+name: Over the air
 
 on:
   workflow_dispatch:
@@ -26,6 +51,10 @@ on:
       message:
         description: What changed, shown with the update
         required: false
+      production:
+        description: Publish to the production channel too (what an installed app takes)
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -58,12 +87,15 @@ jobs:
     # A fork's pull request gets no secrets; it would only fail.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     outputs:
       published: ${{ steps.token.outputs.present }}
     defaults:
       run:
         working-directory: mobile
+    env:
+      # The production channel: after every push to main, or when asked for by hand.
+      PRODUCTION: ${{ github.event_name == 'push' || inputs.production == true }}
     steps:
       - name: Is there an Expo token
         id: token
@@ -79,6 +111,10 @@ jobs:
 
       - if: steps.token.outputs.present == 'yes'
         uses: actions/checkout@v4
+        with:
+          # The whole history: the wait below compares this push with the
+          # commit the website serves, which may be several behind.
+          fetch-depth: 0
 
       - if: steps.token.outputs.present == 'yes'
         uses: pnpm/action-setup@v4
@@ -94,6 +130,62 @@ jobs:
 
       - if: steps.token.outputs.present == 'yes'
         run: pnpm install --frozen-lockfile
+
+      # What the Mobile workflow runs, before any of it reaches a phone:
+      # typecheck, lint, the shared-code guard, the publishing check, Jest.
+      - name: The app's checks
+        if: steps.token.outputs.present == 'yes'
+        run: pnpm check
+        env:
+          # The job's channel is for the publish; the checks test the default
+          # channel and would read a pull request's instead (an empty name is no name).
+          EXPO_GO_CHANNEL: ''
+
+      - name: Wait for the website to carry this push
+        if: steps.token.outputs.present == 'yes' && github.event_name == 'push'
+        env:
+          # The host a store build talks to, as eas.json has it: the one whose
+          # commit matters.
+          SITE_URL: ${{ fromJSON(format('"{0}"', 'https://www.brokersconnect.net')) }}
+        run: |
+          site=$(node -p "require('./eas.json').build.base.env.EXPO_PUBLIC_SITE_URL")
+          # The website's content: everything but the app, the workflows and the prose.
+          web=(. ':(exclude)mobile' ':(exclude).github' ':(exclude)docs' ':(exclude)*.md')
+          deadline=$((SECONDS + 1200))
+          while :; do
+            # "none" for a website from before it said its commit; "" for no answer.
+            served=$(curl -sf --max-time 20 "$site/api/mobile/v1/config" | node -e '
+              let d = ""; process.stdin.on("data", (c) => (d += c)).on("end", () => {
+                try { const c = JSON.parse(d).commit; process.stdout.write(typeof c === "string" && c ? c : "none"); } catch {}
+              });' || true)
+            if [ "$served" = "none" ]; then
+              echo "::notice::The website does not yet say which commit it serves; publishing without waiting for it."
+              break
+            fi
+            if [ -n "$served" ]; then
+              git cat-file -e "$served^{commit}" 2>/dev/null || git fetch --quiet origin "$served" 2>/dev/null || true
+              if git cat-file -e "$served^{commit}" 2>/dev/null; then
+                if git merge-base --is-ancestor "$GITHUB_SHA" "$served"; then
+                  echo "The website serves ${served::7}, at or past this push (${GITHUB_SHA::7})."
+                  break
+                fi
+                if git diff --quiet "$served" "$GITHUB_SHA" -- "${web[@]}"; then
+                  echo "The website serves ${served::7}, which has everything of the website this push (${GITHUB_SHA::7}) has."
+                  break
+                fi
+                echo "The website serves ${served::7}; this push is ${GITHUB_SHA::7} and changes the website. Waiting."
+              else
+                echo "The website serves $served, which this checkout does not have. Waiting."
+              fi
+            else
+              echo "The website did not answer. Waiting."
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::After twenty minutes the website still serves ${served:-nothing}, not this push (${GITHUB_SHA::7}): its deployment failed or is stuck (Vercel). Nothing was published; fix the website and run this workflow again."
+              exit 1
+            fi
+            sleep 20
+          done
 
       - name: Publish for Expo Go
         if: steps.token.outputs.present == 'yes'
@@ -113,6 +205,7 @@ jobs:
           # pipe whose reader stops early (head) can fail the step.
           message="${message%%$'\n'*}"
           message="${message:0:200}"
+          echo "MESSAGE=$message" >> "$GITHUB_ENV"
           pnpm run ota expo-go --message "$message (${GITHUB_SHA::7})" --non-interactive 2>&1 | tee "$RUNNER_TEMP/publish.log"
           # One match each, and none is not an error here.
           link=$(grep -m 1 -o 'https://qr.expo.dev/eas-update?[^ ]*' "$RUNNER_TEMP/publish.log" || true)
@@ -140,6 +233,29 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # The same code for a store build of the app, on its own channel. Nothing
+      # takes it until there is a build; from then on every push to main
+      # reaches installed phones from their next launch, as it reaches the
+      # website at once.
+      - name: Publish for the installed app
+        if: steps.token.outputs.present == 'yes' && env.PRODUCTION == 'true'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -o pipefail
+          pnpm run ota production --message "$MESSAGE (${GITHUB_SHA::7})" --non-interactive 2>&1 | tee "$RUNNER_TEMP/publish-production.log"
+          dashboard=$(grep -m 1 -o 'https://expo.dev/accounts/[^ ]*/updates/[^ ]*' "$RUNNER_TEMP/publish-production.log" || true)
+          {
+            echo
+            echo "### The installed app"
+            echo
+            echo "Published on the \`production\` channel too: a store build takes it from its next launch (none exists yet: docs/app-store.md)."
+            if [ -n "$dashboard" ]; then
+              echo
+              echo "On Expo's dashboard: $dashboard"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
   look:
     # What was just published, opened in Expo Go on an iPhone simulator as the
     # owner's phone opens it — from Expo's servers, in English, then again from
@@ -148,13 +264,17 @@ jobs:
     # (mobile/scripts/expo-go-look.sh).
     needs: publish
     if: needs.publish.outputs.published == 'yes'
-    # Xcode 26, as for the native build in mobile.yml.
+    # Xcode 26, as for the native build in mobile.yml. A slow simulator is
+    # still on the account screen at sixty minutes, with the sign-in and the
+    # second launch still to come.
     runs-on: macos-26
-    timeout-minutes: 60
-    # One simulator at a time, whichever channel: the Mac runner is the
-    # expensive one, and the newest publish anywhere is the one worth looking at.
+    timeout-minutes: 90
+    # One look at a time for this pull request, or for main — the same split as
+    # the publish above. A single group for every channel cancelled whichever
+    # look was already open when any other publish queued, and GitHub reports
+    # that cancellation as a failed check on the pull request that was interrupted.
     concurrency:
-      group: expo-go-look
+      group: expo-go-look-${{ github.event_name == 'pull_request' && github.event.number || 'main' }}
       cancel-in-progress: true
     defaults:
       run:

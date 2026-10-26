@@ -1,11 +1,13 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { corner, motion, space } from '~/theme/tokens';
 import { Text } from './text';
 
-export type SwipeAction = { label: string; icon: ReactNode; color: string; onPress: () => void };
+/** `color` is the action's fill, `ink` the label drawn on it (the theme's matching foreground, which keeps contrast in dark too). */
+export type SwipeAction = { label: string; icon: ReactNode; color: string; ink: string; onPress: () => void };
 
 /** How far the row opens to show an action, and how far a drag must go to leave it open. */
 const OPEN = 104;
@@ -68,8 +70,8 @@ export function SwipeRow({ left, right, children }: { left?: SwipeAction; right?
       }}
     >
       <View style={[StyleSheet.absoluteFill, styles.under]} pointerEvents="box-none">
-        {left ? <Action action={left} side="left" visible={shown === 'left'} onPress={() => run(left)} /> : <View />}
-        {right ? <Action action={right} side="right" visible={shown === 'right'} onPress={() => run(right)} /> : <View />}
+        {left ? <Action action={left} side="left" x={x} visible={shown === 'left'} onPress={() => run(left)} /> : <View />}
+        {right ? <Action action={right} side="right" x={x} visible={shown === 'right'} onPress={() => run(right)} /> : <View />}
       </View>
       <Animated.View {...responder.panHandlers} style={{ transform: [{ translateX: x }] }}>
         {children}
@@ -78,31 +80,53 @@ export function SwipeRow({ left, right, children }: { left?: SwipeAction; right?
   );
 }
 
-function Action({ action, side, visible, onPress }: { action: SwipeAction; side: 'left' | 'right'; visible: boolean; onPress: () => void }) {
+function Action({
+  action,
+  side,
+  x,
+  visible,
+  onPress,
+}: {
+  action: SwipeAction;
+  side: 'left' | 'right';
+  x: Animated.Value;
+  visible: boolean;
+  onPress: () => void;
+}) {
+  const large = useLargeText();
+  // Seen only while the row is slid toward it: a row with no background of its
+  // own (the notifications list) otherwise shows every action through its text.
+  const opacity = x.interpolate({
+    inputRange: side === 'left' ? [0, 1] : [-1, 0],
+    outputRange: side === 'left' ? [0, 1] : [1, 0],
+    extrapolate: 'clamp',
+  });
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={action.label}
-      // Hidden from VoiceOver: the row offers the same as an action of its own.
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      onPress={onPress}
-      disabled={!visible}
-      testID={`swipe-${side}`}
-      style={{
-        width: OPEN - space[2],
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: space[1],
-        ...corner('xl'),
-        backgroundColor: action.color,
-      }}
-    >
-      {action.icon}
-      <Text variant="caption" weight="semibold" numberOfLines={2} style={{ color: '#FFFFFF', textAlign: 'center' }}>
-        {action.label}
-      </Text>
-    </Pressable>
+    <Animated.View style={{ flexDirection: 'row', opacity }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
+        // Hidden from VoiceOver: the row offers the same as an action of its own.
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        onPress={onPress}
+        disabled={!visible}
+        testID={`swipe-${side}`}
+        style={{
+          width: OPEN - space[2],
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: space[1],
+          ...corner('xl'),
+          backgroundColor: action.color,
+        }}
+      >
+        {action.icon}
+        <Text variant="caption" weight="semibold" numberOfLines={large ? undefined : 2} style={{ color: action.ink, textAlign: 'center' }}>
+          {action.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 

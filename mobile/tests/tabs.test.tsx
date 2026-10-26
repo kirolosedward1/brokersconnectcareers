@@ -154,7 +154,7 @@ const app = {
 
 describe('a tab nobody has opened', () => {
   it("neither reads the inbox nor tells candidates their application was opened, until the employer opens it", async () => {
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
     await screen.findByText('home-screen');
     await waitFor(() => expect(server.asked('/rest/v1/companies').length).toBeGreaterThan(0));
     await act(async () => {
@@ -182,7 +182,7 @@ describe('an approval that arrives while the app is open', () => {
       company: { id: ownedCompany.id, verification_status: ownedCompany.verification_status },
     });
     wizardMounts = 0;
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     expect(await screen.findByText('draft-1')).toBeTruthy();
 
     act(() => router.navigate('/agents'));

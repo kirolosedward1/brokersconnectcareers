@@ -155,7 +155,7 @@ without sending anything twice.
 
 **Retries and backoff.** A failed email is retried on the *same* `email_log`
 row, at most 5 attempts, with exponential backoff and jitter — roughly 10 min,
-40 min, 2 h 40 m, 10 h 40 m — inside a 3-day window. A permanent provider error
+40 min, 2 h 40 m, 10 h 40 m — inside a 48-hour window. A permanent provider error
 (a 4xx other than 408, 425 and 429) gives up at once. Transient database errors
 inside a run get a short in-process retry (`withRetry` in
 `src/lib/jobs/policy.ts`); anything else fails the run and is recorded.

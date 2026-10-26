@@ -63,3 +63,14 @@ function formatLine(area: string, event: string, detail: Detail): string {
 
   return `[${area}] ${event}${pairs ? ` ${pairs}` : ''}`;
 }
+
+/**
+ * A refused database write, answered to the caller as `failed`.
+ *
+ * The database's own sentence names tables, columns and constraints; it goes
+ * to the log with its code, never back to the person who pressed the button.
+ */
+export function refused(area: string, error: { code?: string | null; message: string }): { ok: false; error: 'failed' } {
+  logFailure(area, 'write refused', { code: error.code ?? undefined, reason: withoutAddresses(error.message).slice(0, 200) });
+  return { ok: false, error: 'failed' };
+}

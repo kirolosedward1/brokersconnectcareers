@@ -159,6 +159,32 @@ export default async function LocaleLayout({
             __html: `(function(){try{var t=localStorage.getItem('bc-theme');var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`,
           }}
         />
+        {/*
+          React reveals a postponed chunk with an inline `$RS(from, to)` that
+          moves one node onto another. Both ids are in the HTML, so the move
+          is safe once the parser has them. It is not safe when hydration has
+          already run.
+
+          The console shell flushes first (the sidebar, the header, and
+          loading.tsx), and the bootstrap bundle is an async script right
+          after that shell. On a slow parse the bundle is already cached from
+          the page before, so it hydrates while the document is still
+          `loading` and the postponed applicants markup is still a hole.
+          Hydration mismatches (#418), React's recovery removes the
+          placeholders, and the reveal script — which does
+          `getElementById(id).parentNode` with no null check — throws. The
+          mismatch is recovered; the throw is an uncaught page error, one per
+          postponed chunk.
+
+          The setter wraps the function React assigns. When both nodes are
+          there the original move runs, unchanged. When recovery has already
+          taken them, the call returns instead of throwing.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var value;Object.defineProperty(window,'$RS',{configurable:true,get:function(){return value},set:function(fn){value=function(a,b){var from=document.getElementById(a);var to=document.getElementById(b);if(!from||!to||!from.parentNode||!to.parentNode)return;return fn(a,b)}}})}catch(e){}})()`,
+          }}
+        />
       </head>
       <body className="flex min-h-dvh flex-col">
         {/* Only what the public site's client components read. The console

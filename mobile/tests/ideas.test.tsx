@@ -119,8 +119,8 @@ describe('a row swiped aside', () => {
     render(
       <ThemeProvider>
         <SwipeRow
-          left={{ label: 'رفض', icon: null, color: '#B00', onPress: onReject }}
-          right={{ label: 'قائمة مختصرة', icon: null, color: '#0B0', onPress: onShortlist }}
+          left={{ label: 'رفض', icon: null, color: '#B00', ink: '#FFF', onPress: onReject }}
+          right={{ label: 'قائمة مختصرة', icon: null, color: '#0B0', ink: '#FFF', onPress: onShortlist }}
         >
           <Text>المتقدم</Text>
         </SwipeRow>

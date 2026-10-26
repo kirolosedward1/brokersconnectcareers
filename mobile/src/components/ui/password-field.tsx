@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { Pressable, type TextInput, type TextInputProps } from 'react-native';
+import { Pressable, type TextInputProps, type TextInputInstance } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { Eye, EyeOff } from '~/components/ui/lucide';
 import { useTheme } from '~/theme/provider';
@@ -15,7 +15,7 @@ import { TextField } from './text-field';
  * Hidden again whenever the field is left, so a password shown for a moment
  * does not stay on the screen.
  */
-export const PasswordField = forwardRef<TextInput, Omit<TextInputProps, 'secureTextEntry'>>(function PasswordField(
+export const PasswordField = forwardRef<TextInputInstance, Omit<TextInputProps, 'secureTextEntry'>>(function PasswordField(
   { onBlur, ...props },
   ref,
 ) {

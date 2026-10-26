@@ -8,7 +8,7 @@ import { LogoMark } from '@/components/logo';
 
 /**
  * On a phone, once the hero has scrolled away: a small floating bar near
- * the foot of the screen with the mark, the name and a short "get" button
+ * the foot of the screen with the mark, the name and a "get the app" button
  * to the App Store. It leaves while the closing band — which has the full
  * buttons — is on screen, and it never exists from `lg`.
  *
@@ -29,9 +29,9 @@ export function StickyDownloadBar({
   /** The closing band's id: the bar leaves while it is in view. */
   finalId: string;
   name: string;
-  /** The button's word. */
+  /** The button's words. */
   label: string;
-  /** What the button does, in full, for a screen reader. */
+  /** What the button does, in full, for a screen reader; it starts with `label`. */
   ariaLabel: string;
 }) {
   const [heroGone, setHeroGone] = useState(false);

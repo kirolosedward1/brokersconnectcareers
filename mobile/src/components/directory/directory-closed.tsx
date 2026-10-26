@@ -3,12 +3,13 @@ import { useTranslations } from 'use-intl';
 import { canAccessEmployerArea, hasVerifiedCompany, isSuspended } from '@/lib/permissions';
 import { Button } from '~/components/ui/button';
 import { EmptyState, NotFoundState } from '~/components/ui/states';
+import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import { useCompanyPage } from '~/features/employer/company';
 import { routeInside } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { Lock, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
+import { Lock, ShieldCheck } from '~/components/ui/lucide';
 
 /**
  * The Consultants tab for an employer the directory does not answer yet.
@@ -28,7 +29,7 @@ export function DirectoryClosed() {
   const page = useCompanyPage({ enabled: unverified });
 
   if (!canAccessEmployerArea(actor)) return <NotFoundState />;
-  if (isSuspended(actor)) return <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  if (isSuspended(actor)) return <SuspendedState />;
   if (!unverified) return <EmptyState icon={Lock} title={t('employer.pendingTitle')} body={t('app.directory.reviewing')} />;
 
   // With no company yet, making one is the first step, and that is theirs to

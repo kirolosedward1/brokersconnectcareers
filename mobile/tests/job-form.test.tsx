@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AccessibilityInfo, Alert, Text, type AlertButton } from 'react-native';
-import { router, Stack, Tabs } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react-native';
@@ -16,9 +16,11 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as EditJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/[id]/edit';
 import * as NewJobScreen from '../src/app/(tabs)/(listings)/employer/jobs/new';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { detail, newCairo } from './fixtures';
 import { placeViewsAt } from './measure';
+import { draftKey } from '~/lib/kept-draft';
 import { fakeServer } from './server';
 
 /*
@@ -132,7 +134,7 @@ function Console() {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(listings)/_layout': { default: () => <Stack />, unstable_settings: { anchor: 'employer/jobs/index' } },
   '(tabs)/(listings)/employer/jobs/index': Console,
   '(tabs)/(listings)/employer/jobs/new': NewJobScreen,
@@ -142,6 +144,8 @@ const app = {
 /** The same, with a second tab beside the listings: the applicants, as an employer has them. */
 const tabbed = {
   ...app,
+  // A tab navigator of its own: app's declares only the tabs app has, the listings.
+  '(tabs)/_layout': () => <DeclaredTabs routes={tabbed} />,
   '(tabs)/(applicants)/_layout': { default: () => <Stack />, unstable_settings: { anchor: 'employer/applicants/index' } },
   '(tabs)/(applicants)/employer/applicants/index': () => <Text>the inbox</Text>,
   '(tabs)/(applicants)/employer/applicants/one': () => <Text>one applicant</Text>,
@@ -159,15 +163,39 @@ describe('a new listing', () => {
       profile: { role: 'employer', approval_status: 'pending' },
       company: { id: ownedCompany.id, verification_status: ownedCompany.verification_status },
     });
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     expect(await screen.findByText(ar.employer.pendingTitle)).toBeTruthy();
     expect(screen.getByText(ar.employer.pendingBody)).toBeTruthy();
     expect(screen.queryByLabelText(ar.jobForm.titleAr)).toBeNull();
     expect(server.asked('/api/mobile/v1/actions/saveJob')).toHaveLength(0);
   });
 
+  it('keeps what was typed when the app is ended, and opens again where it was, until the employer starts over', async () => {
+    const kept = draftKey('job', USER_ID, null);
+    const first = await renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    next();
+    expect(await screen.findByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.step).toBe(1));
+
+    // iOS ends the app in the background: no Back, no question asked.
+    first.unmount();
+
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    expect(await screen.findByText(/^احتفظنا بما كتبته هنا/)).toBeTruthy();
+    // On the step it was left on, with what was typed.
+    expect(screen.getByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.basics }));
+    expect(await screen.findByDisplayValue('مستشار مبيعات')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.drafts.startOver }));
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
+    expect(screen.queryByDisplayValue('مستشار مبيعات')).toBeNull();
+    expect(screen.queryByText(/^احتفظنا بما كتبته هنا/)).toBeNull();
+  });
+
   it('walks the four steps, asks its two questions on the way, and submits what was filled in', async () => {
-    const result = renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    const result = await renderRouter(app, { initialUrl: '/employer/jobs/new' });
 
     // The first district is chosen for a new listing, as on the website.
     expect(await screen.findByLabelText(`${ar.jobForm.district}: ${newCairo.name_ar}`)).toBeTruthy();
@@ -176,7 +204,7 @@ describe('a new listing', () => {
 
     // Asked on leaving the first step, answered on the second.
     expect(await screen.findByText(ar.employer.duplicateTitle)).toBeTruthy();
-    expect(await screen.findByText(/^الأساسي في الإعلانات الشبيهة بين/)).toBeTruthy();
+    expect(await screen.findByText(/^الأساسي في الإعلانات المشابهة بين/)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/findSimilarListing')[0]?.body).toEqual({
       input: { titleAr: 'مستشار مبيعات', districtId: newCairo.id, excludeId: null },
     });
@@ -232,7 +260,7 @@ describe('a new listing', () => {
     announce.mockClear();
     const layout = placeViewsAt(400);
     try {
-      renderRouter(app, { initialUrl: '/employer/jobs/new' });
+      await renderRouter(app, { initialUrl: '/employer/jobs/new' });
       expect(await screen.findByLabelText(`${ar.jobForm.district}: ${newCairo.name_ar}`)).toBeTruthy();
       fireEvent.changeText(screen.getByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
       fireEvent.changeText(screen.getByLabelText(ar.jobForm.seats), '');
@@ -248,7 +276,7 @@ describe('a new listing', () => {
   it("goes back to the step with the website's objection and brings the field into view", async () => {
     server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'invalid', fieldErrors: { titleAr: 'required' } });
     const announce = AccessibilityInfo.announceForAccessibilityWithOptions as jest.Mock;
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     expect(await screen.findByLabelText(`${ar.jobForm.district}: ${newCairo.name_ar}`)).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
     next();
@@ -274,7 +302,7 @@ describe('a new listing', () => {
 
   it('saves a draft as it stands, and repeats the same key when the save is tried again', async () => {
     server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'failed' });
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
     next();
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2');
@@ -306,7 +334,7 @@ describe('a new listing', () => {
       stored = { ...(stored as JobRow), status: input.submit ? 'pending_review' : 'draft', version: (input.version ?? 0) + 1 } as JobRow;
       return { ok: true, data: { id: 'j-new' } };
     });
-    const result = renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    const result = await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
     next();
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2');
@@ -329,7 +357,7 @@ describe('a new listing', () => {
 
   it("sends the employer back to the step that holds the website's objection", async () => {
     server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'invalid', fieldErrors: { descriptionAr: 'tooManyLinks' } });
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
     next();
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2');
@@ -344,7 +372,7 @@ describe('a new listing', () => {
 
   it('goes back to the title when the database refuses a third copy', async () => {
     server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'duplicate_listing' });
-    renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
     next();
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2');
@@ -361,9 +389,11 @@ describe('a new listing', () => {
 describe('leaving the wizard', () => {
   it('asks before a half-written listing is thrown away, and goes when told to', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const result = renderRouter(app, { initialUrl: '/employer/jobs' });
+    const result = await renderRouter(app, { initialUrl: '/employer/jobs' });
     act(() => router.push('/employer/jobs/new'));
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    const kept = draftKey('job', USER_ID, null);
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).not.toBeNull());
 
     act(() => router.back());
     expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
@@ -372,13 +402,15 @@ describe('leaving the wizard', () => {
     const leave = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
     act(() => leave?.onPress?.());
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    // Thrown away on purpose: the copy kept on the phone goes too.
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
     alert.mockRestore();
   });
 });
 
 describe('a listing on the board', () => {
   it('is edited, not submitted: the version it was built from goes with it, and there is no draft', async () => {
-    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    const result = await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
 
     expect((await screen.findByLabelText(ar.jobForm.titleAr)).props.value).toBe(liveJob.title_ar);
     fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
@@ -413,7 +445,7 @@ describe('a listing on the board', () => {
     }) as typeof fetch;
 
     try {
-      const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+      const result = await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
       fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
       fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
 
@@ -434,7 +466,7 @@ describe('a listing on the board', () => {
       theirs = true;
       return { ok: false, error: 'stale' };
     });
-    renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
     expect(await screen.findByText(ar.employer.listingMoved)).toBeTruthy();
@@ -445,7 +477,7 @@ describe('a listing on the board', () => {
     // A colleague raises the salary on the website while this edit is open.
     server.on('GET /rest/v1/jobs', () => [theirs ? { ...liveJob, version: 5, basic_salary_min: 20000, basic_salary_max: 25000 } : liveJob]);
     server.on('POST /api/mobile/v1/actions/saveJob', { ok: false, error: 'stale' });
-    renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات للمشروعات');
 
     // Back from another app: the listing is read again, at their version.
@@ -483,7 +515,7 @@ describe('a listing on the board', () => {
         const { input } = JSON.parse(String(init?.body)) as { input: { version?: number } };
         return input.version === stored.version ? { ok: true, data: { id: liveJob.id } } : { ok: false, error: 'stale' };
       });
-      renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+      await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
       expect(await screen.findByLabelText(ar.jobForm.titleAr)).toBeTruthy();
 
       // Left without typing anything; the listing moves on meanwhile (a moderator's decision).
@@ -514,7 +546,7 @@ describe('a listing on the board', () => {
         const { input } = JSON.parse(String(init?.body)) as { input: { version?: number } };
         return input.version === stored.version ? { ok: true, data: { id: liveJob.id } } : { ok: false, error: 'stale' };
       });
-      renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+      await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
       expect(await screen.findByLabelText(ar.jobForm.titleAr)).toBeTruthy();
       act(() => router.back());
       expect(await screen.findByText('the console')).toBeTruthy();
@@ -548,7 +580,7 @@ describe('a listing on the board', () => {
     let answer: (value: unknown) => void = () => {};
     server.on('GET /rest/v1/jobs', [liveJob]);
     server.on('POST /api/mobile/v1/actions/saveJob', () => new Promise((resolve) => (answer = resolve)));
-    const result = renderRouter(tabbed, { initialUrl: '/employer/jobs' });
+    const result = await renderRouter(tabbed, { initialUrl: '/employer/jobs' });
     expect(await screen.findByText('the console')).toBeTruthy();
     act(() => router.push(`/employer/jobs/${liveJob.id}/edit` as never));
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات للمشروعات');
@@ -582,7 +614,7 @@ describe('a listing on the board', () => {
       stored = { ...liveJob, version: 5, title_ar: input.titleAr.replace(/\s+/g, ' ').trim() };
       throw new TypeError('Network request failed');
     });
-    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    const result = await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات  للمشروعات ');
     fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
@@ -600,7 +632,7 @@ describe('a listing on the board', () => {
       stored = { ...liveJob, version: 5, commission_value: 2.56 };
       throw new TypeError('Network request failed');
     });
-    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    const result = await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     await screen.findByLabelText(ar.jobForm.titleAr);
     next();
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2.555');
@@ -619,7 +651,7 @@ describe('a listing on the board', () => {
       stored = { ...liveJob, version: 5, title_ar: input.titleAr };
       return { ok: false, error: 'stale' };
     });
-    const result = renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
+    const result = await renderRouter(app, { initialUrl: `/employer/jobs/${liveJob.id}/edit` });
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات للمشروعات');
     fireEvent.press(screen.getByRole('button', { name: ar.jobForm.review }));
     fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveChanges }));
@@ -629,7 +661,7 @@ describe('a listing on the board', () => {
 
   it("is not found when it is not the company's", async () => {
     server.on('GET /rest/v1/jobs', []);
-    renderRouter(app, { initialUrl: '/employer/jobs/5b0c7d1e-0000-4000-8000-000000000999/edit' });
+    await renderRouter(app, { initialUrl: '/employer/jobs/5b0c7d1e-0000-4000-8000-000000000999/edit' });
     expect(await screen.findByText(ar.common.notFound)).toBeTruthy();
   });
 });

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl, ScrollView, type ScrollViewInstance } from 'react-native';
 import { Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -12,12 +12,13 @@ import { VerificationPanel } from '~/components/employer/verification-panel';
 import { SignedOut } from '~/components/navigation/signed-out';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
-import { Compass, ShieldAlert } from '~/components/ui/lucide';
+import { Compass } from '~/components/ui/lucide';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
@@ -38,13 +39,13 @@ export default function CompanyScreen() {
   const pull = usePullRefresh(() => Promise.all([page.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
   const company = viewer?.company ?? null;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
 
   let body: React.ReactNode;
   if (!session) body = <SignedOut next="/employer/company" />;
   else if (!viewer?.profile) body = <ViewerPending />;
   else if (!canAccessEmployerArea(actor)) body = <EmptyState icon={Compass} title={t('common.notFound')} body={t('common.notFoundBody')} />;
-  else if (isSuspended(actor)) body = <EmptyState icon={ShieldAlert} title={t('account.suspendedTitle')} body={t('account.suspendedBody')} />;
+  else if (isSuspended(actor)) body = <SuspendedState />;
   else if (company && page.isPending) body = <LoadingState />;
   else if (company && page.isError && !page.data) body = <ErrorState error={page.error} onRetry={() => page.refetch()} />;
   else {

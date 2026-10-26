@@ -10,6 +10,7 @@ import { ShortlistIcon, useShortlistToggle } from '~/components/directory/shortl
 import { Avatar } from '~/components/ui/avatar';
 import { Card } from '~/components/ui/card';
 import { Text } from '~/components/ui/text';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 
@@ -38,6 +39,7 @@ export function AgentCard({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const shortlist = useShortlistToggle(agent.id);
 
   const name = agent.is_unlocked && agent.full_name ? agent.full_name : t('agents.anonymous');
@@ -71,13 +73,13 @@ export function AgentCard({
 
         <View style={{ flex: 1, gap: space[1] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
-            <Text weight="semibold" numberOfLines={1} style={{ flexShrink: 1 }}>
+            <Text weight="semibold" numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
               {name}
             </Text>
             {agent.is_unlocked ? null : <Lock size={14} color={colors.mutedForeground} />}
           </View>
           {headline ? (
-            <Text variant="small" tone="mutedForeground" numberOfLines={2}>
+            <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 2}>
               {headline}
             </Text>
           ) : null}

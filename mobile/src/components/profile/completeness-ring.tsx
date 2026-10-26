@@ -16,8 +16,9 @@ export function ringShare(percent: number): number {
 
 /**
  * The reader's photo with how complete their profile is drawn round it, as
- * the stories ring on a photo is: champagne for the part done, a faint track
- * for the rest. A tap opens the profile, where the next thing missing heads
+ * the stories ring on a photo is: the ink colour for the part done (white on
+ * the hero, `onHero`), a faint track for the rest — progress, not something
+ * earned, so not champagne. A tap opens the profile, where the next thing missing heads
  * the list (ProfileGaps). Nothing is drawn round it until the percentage is
  * known — a ring that fills in late looked like progress being made.
  *
@@ -28,12 +29,15 @@ export function CompletenessRing({
   size,
   radius,
   onPress,
+  onHero = false,
   children,
 }: {
   percent: number | null;
   size: number;
   radius: number;
   onPress: () => void;
+  /** Drawn on the hero panel, where the ink colour would vanish into it. */
+  onHero?: boolean;
   children: ReactNode;
 }) {
   const t = useTranslations('app.profile');
@@ -58,7 +62,7 @@ export function CompletenessRing({
       style={{ width: box, height: box, alignItems: 'center', justifyContent: 'center' }}
     >
       <Svg width={box} height={box} style={{ position: 'absolute' }}>
-        <Rect x={inset} y={inset} width={side} height={side} rx={corner} stroke={colors.border} strokeWidth={STROKE} fill="none" />
+        <Rect x={inset} y={inset} width={side} height={side} rx={corner} stroke={onHero ? colors.onHeroMuted : colors.border} strokeOpacity={onHero ? 0.3 : 1} strokeWidth={STROKE} fill="none" />
         {done > 0 ? (
           <Rect
             x={inset}
@@ -66,7 +70,7 @@ export function CompletenessRing({
             width={side}
             height={side}
             rx={corner}
-            stroke={colors.champagne}
+            stroke={onHero ? colors.onHero : colors.primary}
             strokeWidth={STROKE}
             strokeLinecap="round"
             strokeDasharray={`${done} ${length}`}

@@ -1,6 +1,10 @@
 /*
   A member's own view of their company.
 
+  Renumbered from 20260101000356_a_members_own_view_of_their_company.sql.
+  Main already uses 356 for the note on a saved listing, and 364 is the
+  newest migration there. This file is 366 so it sorts after those.
+
   companies is readable by everyone: the directory policy is `using (true)`,
   and a select of the row therefore returns every column, including the
   owner, the credit balance and whether an admin has suspended the company.

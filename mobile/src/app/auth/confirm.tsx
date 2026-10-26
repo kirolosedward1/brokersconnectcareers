@@ -35,7 +35,12 @@ import { space } from '~/theme/tokens';
  */
 export default function ConfirmLinkScreen() {
   const t = useTranslations();
-  const params = useLocalSearchParams<{ token_hash?: string; type?: string; redirect_to?: string }>();
+  const params = useLocalSearchParams<{
+    token_hash?: string;
+    type?: string;
+    redirect_to?: string;
+    next?: string;
+  }>();
   const { ready, session } = useSession();
   const land = useLand();
   const close = useCloseFlow();
@@ -43,7 +48,10 @@ export default function ConfirmLinkScreen() {
   const type = asConfirmType(params.type);
   const tokenHash = isTokenHash(params.token_hash) ? params.token_hash : null;
   const valid = Boolean(type && tokenHash);
-  const destination = type ? confirmDestination(type, params.redirect_to ?? null, env.siteUrl) : null;
+  const askedNext = Array.isArray(params.next) ? params.next[0] : params.next;
+  const destination = type
+    ? confirmDestination(type, params.redirect_to ?? null, env.siteUrl, askedNext ?? null)
+    : null;
 
   // 'offline': no answer — the link may well still be good, so it is not called expired.
   const [state, setState] = useState<'idle' | 'verifying' | 'failed' | 'offline'>(valid ? 'idle' : 'failed');

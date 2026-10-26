@@ -106,7 +106,7 @@ async function fromDatabase(): Promise<DbRows> {
         Every live listing — live by the date, not only the label, because
         the nightly cron that writes `expired` can be a day late. The same
         predicate the board and jobIsLive() use, so the sitemap never lists a
-        page that answers with a closed banner and noindex.
+        page that answers 410, or a closed one with its banner and noindex.
       */
       readAll<{
         slug: string;
@@ -184,6 +184,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/employers', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/app', { changeFrequency: 'monthly', priority: 0.5 }),
     entry('/blog', { changeFrequency: 'weekly', priority: 0.6 }),
+    entry('/support', { changeFrequency: 'monthly', priority: 0.4 }),
   ];
 
   // The policies, dated by their own `updated` line (the Arabic text, which
