@@ -2,11 +2,14 @@ import type { JobDetail, JobListItem } from '@/lib/job-list';
 import type { BrowseCounts, CompanyListItem, LandingFacts } from '@/lib/read-types';
 import type {
   AgentCardRow,
+  CompanyPrivate,
   CompanyRow,
   DistrictRow,
   JobTrack,
   SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
+
+export type { CompanyPrivate };
 
 /**
  * What each GET under /api/mobile/v1 answers — the read half of contract.ts.
@@ -96,6 +99,15 @@ export type CompanyListResponse = {
   pageCount: number;
   page: number;
 };
+
+/**
+ * GET /company — my_company_private().
+ *
+ * The owner, the credit balance, and whether the company is suspended. A
+ * member gets them; everybody else is a 404. The app's viewer asks the
+ * function directly, as it asks my_company_id(), so the account still loads
+ * when this website is down. CompanyPrivate is that answer.
+ */
 
 /** GET /companies/<slug> — the company's public columns only. */
 export type CompanyPageResponse = {

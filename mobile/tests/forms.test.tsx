@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Field } from '~/components/ui/field';
+import { AuthSwitch } from '~/components/auth/auth-scroll';
 import { PasswordField } from '~/components/ui/password-field';
 import { Select } from '~/components/ui/select';
 import { KeyboardDone, TextField } from '~/components/ui/text-field';
@@ -180,6 +181,19 @@ describe('a password', () => {
     fireEvent(password(), 'blur');
     expect(password().props.secureTextEntry).toBe(true);
     expect(onBlur).toHaveBeenCalled();
+  });
+});
+
+describe('a link inside a sentence', () => {
+  it('is a 44-point target', () => {
+    const onPress = jest.fn();
+    render(<AuthSwitch question={ar.auth.hasAccount} action={ar.auth.signIn} onPress={onPress} />, { wrapper: Providers });
+    const link = screen.getByRole('link', { name: ar.auth.signIn });
+    const style = StyleSheet.flatten(typeof link.props.style === 'function' ? link.props.style({ pressed: false }) : link.props.style);
+    expect(style.minHeight).toBe(hitTarget);
+    expect(style.minWidth).toBe(hitTarget);
+    fireEvent.press(link);
+    expect(onPress).toHaveBeenCalled();
   });
 });
 

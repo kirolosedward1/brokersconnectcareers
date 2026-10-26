@@ -328,11 +328,18 @@ this, and every server call went on being refused with the old key).
   356, `setSavedJobNote`): written in the app's note sheet or on the
   website's saved page, shown on both, gone with the bookmark (held in memory
   for Undo), the words from one `savedNotes` catalogue. Notes a phone kept
-  before (`bc.saved-notes.v1`) are carried over once the saved list is read
-  (`carryDeviceNotes`), then let go: offered to a
+  before (`bc.saved-notes.v1`) are posted once when the saved list is first
+  read (`moveToAccount`), then let go: offered to a
   candidate and, as a way into an account, to somebody signed out; shown at
   once and put back if the server refuses. A follow is a saved search with
-  one filter, so the ten-row cap and the weekly email are shared.
+  one filter, so the ten-row cap and the weekly email are shared. When to
+  **remind** them before the listing closes is `saved_jobs.remind_at`
+  (migration 366, `setSavedJobReminder`), read with the bookmarks
+  (`features/saved/queries.ts`). The website's saved page says it and can
+  take it back. The notification the app schedules — the day before the
+  closing, at ten in Cairo (`features/saved/reminders.ts`) — is a copy of
+  that time, made to match at launch and as the app comes back while either
+  side holds one (`reminders-follow.ts`).
 - **Applying** is `/jobs/<slug>/apply`, the website's path, so a sign-in that
   began with "apply" comes back to it. The page shows the website's states in
   its order (closed, signed out, not a candidate, held or suspended — told
@@ -366,7 +373,15 @@ this, and every server call went on being refused with the old key).
 ### Kept on the phone, and small conveniences
 
 Nothing below reaches the website; each is the app's own, per person on the
-phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`):
+phone (`mobile/src/lib/local-list.ts`, keyed by user id or `anon`). A saved
+listing's note and its reminder before it closes are not among them: they are
+kept on the bookmark (see **Saved** above). What stays on the phone of those is
+the schedule of reminder notifications (`bc.saved-reminders.v1:<user>`), a copy
+of `remind_at` taken off the phone when its person signs out and put back when
+they return. Notes kept on a phone before then (`bc.saved-notes.v1:<user>`) are
+posted to their bookmarks once, the first time that person's saved list is
+read, and the phone's copy emptied (`features/saved/move.ts`); a bookmark that
+already has a note keeps it.
 
 - **Quick filters** under the board's title (`components/jobs/quick-filters.tsx`):
   a basic salary, primary and resale, and the two areas with the most live
@@ -916,6 +931,11 @@ the versions, the icons and both listings — and, given `--bundle dist` after
 Builds are made with EAS (`eas.json`): `development` (a development client for
 a registered iPhone), `development-simulator`, `preview` (internal
 distribution) and `production` (App Store, build number incremented remotely).
+`development` and `development-simulator` set `developmentClient: true`, so
+they include the Expo dev menu — the blue gear that floats over the header.
+That menu is `expo-dev-menu`, compiled into debug builds only. `preview` and
+`production` set `developmentClient: false`: they are standalone releases and
+do not include it.
 Before the first build:
 
 - an Apple Developer Program membership (an organisation needs a D-U-N-S number).
@@ -1004,11 +1024,13 @@ well.
 
 ## The admin console in the app
 
-An account whose role is `admin` has an **Admin** tab (`src/lib/tabs.ts`),
-and nothing of the public site's: its bar is the console and the account.
-Home's screens stay in the app with their button hidden, `/` opens the
-console, and a listing, a company or the bell's feed the console points at
-opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
+An account whose role is `admin` has two tabs (`src/lib/tabs.ts`): the
+**Admin** console first, so the app opens on it, then the account. They do
+not get Home, the board, the companies directory, or — even when they also
+run a company — the employer console. The company's page and its billing
+stay in the account. Home's screens stay in the app with their button hidden,
+`/` opens the console, and a listing, a company or the bell's feed the console
+points at opens inside the Admin tab (`TAB_OF_SECTION` in `src/lib/links.ts`).
 
 Every page of the website's console is a native screen under `(admin)`, at the
 website's own path: the overview (`/admin`, which ends with every section in
@@ -1023,8 +1045,7 @@ the audit log, taxonomy, email activity, background work and security. A
 file screen carries the record's audit trail and notes as the website's does.
 Nothing in the console opens the website; an `/admin/…` path the app does not
 know opens the overview. Setting up an authenticator is native too
-(`src/app/mfa-enrol.tsx`). An admin who runs a company has the company's
-console in the bar beside the Admin tab, and the consultant directory opens
+(`src/app/mfa-enrol.tsx`). The consultant directory and the shortlist open
 inside the Admin tab (`(consultants,admin)` in the routes).
 
 - **Reads** go straight to Supabase under the admin's session — the same

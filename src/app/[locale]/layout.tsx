@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { FragmentSession } from '@/components/auth/fragment-session';
@@ -19,6 +20,7 @@ import { JsonLd } from '@/components/json-ld';
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/site-jsonld';
 import '../globals.css';
 import { Analytics } from '@/components/analytics';
+import { AppViewCookie } from '@/components/app-view-cookie';
 
 /**
  * One family, both scripts.
@@ -217,6 +219,11 @@ export default async function LocaleLayout({
           {/* Spends a session that Supabase handed over in the URL fragment —
               see the component. Renders nothing. */}
           <FragmentSession />
+          {/* `?app=1` becomes a session cookie. Suspense keeps the query
+              read from pulling the cached pages into client rendering. */}
+          <Suspense fallback={null}>
+            <AppViewCookie />
+          </Suspense>
         </NextIntlClientProvider>
         <Analytics />
       </body>

@@ -25,6 +25,8 @@ export type SessionState =
       showAgents: boolean;
       asksToAgree: boolean;
       unread: number;
+      /** An active push device: this person has the app, and allowed notifications. */
+      hasApp: boolean;
     };
 
 const SessionContext = createContext<SessionState>({ kind: 'anon' });
@@ -96,6 +98,7 @@ type ChromePayload = {
   showAgents?: boolean;
   asksToAgree?: boolean;
   unread?: number;
+  hasApp?: boolean;
 };
 
 function toUser(data: ChromePayload): SessionState {
@@ -110,5 +113,6 @@ function toUser(data: ChromePayload): SessionState {
     showAgents: Boolean(data.showAgents),
     asksToAgree: Boolean(data.asksToAgree),
     unread: data.unread ?? 0,
+    hasApp: Boolean(data.hasApp),
   };
 }

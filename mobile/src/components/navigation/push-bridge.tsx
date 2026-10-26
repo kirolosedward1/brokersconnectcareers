@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale } from 'use-intl';
@@ -151,7 +152,10 @@ export function PushBridge() {
   useRemindersFollowSaved();
 
   // Taps: the one that launched the app, then each one after.
+  // Web has no last-response (getLastNotificationResponse throws), and a push
+  // does not launch the page.
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     const response = Notifications.getLastNotificationResponse();
     const launched = notificationIdOf(response);
     // One of the app's own that launched it (a reminder before a listing closes) opens where it says.

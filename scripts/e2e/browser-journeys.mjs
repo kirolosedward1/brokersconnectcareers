@@ -382,7 +382,14 @@ section('applying on a slow line, pressing send twice');
   check('exactly one application, new, with the note', rows.length === 1 && rows[0].status === 'new' && rows[0].note?.includes('browser'), rows);
 
   await page.goto(`${SITE}/dashboard/applications`);
-  check('the applications page lists it, by its title', (await page.locator('main').innerText()).includes(target.title_ar), target.title_ar);
+  // The console streams a skeleton first ((app)/loading.tsx). `load` can
+  // arrive before the list, so wait for the title the way the apply form
+  // waits for its own confirmation. The title is the row's title_ar: English
+  // is unpublished, and this string is what the database holds.
+  const listed = page.locator('main').getByText(target.title_ar, { exact: false }).first();
+  const appeared = await listed.waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+  const seen = appeared ? target.title_ar : `${page.url()} — ${(await page.locator('main').innerText().catch(() => '')).replace(/\s+/g, ' ').slice(0, 180)}`;
+  check('the applications page lists it, by its title', appeared, seen);
   check('no script errors along the way', errors.length === 0, errors.slice(0, 3));
 
   // Offline, then back: the page does not pretend it sent anything.

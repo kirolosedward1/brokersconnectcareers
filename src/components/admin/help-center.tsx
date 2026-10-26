@@ -5,6 +5,7 @@ import { ChevronDown, Info, Mail, Search, SearchX, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Badge } from '@/components/ui/badge';
+import { SubmitButton } from '@/components/ui/submit-button';
 import { cn } from '@/lib/utils';
 import {
   filterHelp,
@@ -92,6 +93,18 @@ export function HelpCenter({
     <div className="space-y-5">
       <div className="sticky top-14 z-10 -mx-4 border-b border-border bg-muted px-4 py-3 sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-xl lg:border lg:bg-card lg:px-4 lg:py-4 lg:shadow-xs">
         <form role="search" onSubmit={(event) => event.preventDefault()}>
+          {/* The field searches as it is typed. SubmitButton is what stops
+              Enter from reloading the page before that handler exists: it
+              stays disabled until hydration. h-11 would beat sr-only on the
+              button itself, so the overrides below are the ones tailwind-merge
+              keeps: a 1px control, out of the row, with nothing to paint. */}
+          <SubmitButton
+            tabIndex={-1}
+            aria-hidden="true"
+            className="pointer-events-none absolute h-px w-px overflow-hidden border-0 p-0 opacity-0 disabled:opacity-0"
+          >
+            {t('helpSearchLabel')}
+          </SubmitButton>
           <label htmlFor={searchId} className="relative block">
             <span className="sr-only">{t('helpSearchLabel')}</span>
             <Search aria-hidden className="pointer-events-none absolute start-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />

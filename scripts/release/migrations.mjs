@@ -575,6 +575,12 @@ const RENUMBERED = {
   // Merged under the version my_company_is_nobodys_when_signed_out already had
   // (and production had applied); renumbered before production ran it.
   '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql': '20260101000357_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
+  // #65 and #94 both merged a version 365. Production had already applied
+  // english_slugs_and_redirects under that version; the reminder had not run.
+  // #55 had merged the members view as 366, which the reminder now needs, and
+  // that file had not run either. Both move forward before production sees them.
+  '20260101000365_a_reminder_on_the_bookmark.sql': '20260101000366_a_reminder_on_the_bookmark.sql',
+  '20260101000366_a_members_own_view_of_their_company.sql': '20260101000367_a_members_own_view_of_their_company.sql',
 };
 
 function lint(options) {

@@ -2,6 +2,7 @@ import type { ReactNode, Ref } from 'react';
 import { Platform, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandLogo } from '~/components/brand/brand-logo';
+import { InlineLink } from '~/components/ui/inline-link';
 import { gutter, space } from '~/theme/tokens';
 import { Text } from '~/components/ui/text';
 
@@ -65,12 +66,14 @@ export function AuthHeading({ title, body }: { title: string; body?: string | nu
 /** "Have an account? Sign in" under the form; the question may be left out. */
 export function AuthSwitch({ question, action, onPress }: { question?: string; action: string; onPress: () => void }) {
   return (
-    <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
-      {question ? `${question} ` : null}
-      <Text variant="small" weight="semibold" tone="primary" accessibilityRole="link" onPress={onPress} suppressHighlighting>
-        {action}
-      </Text>
-    </Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+      {question ? (
+        <Text variant="small" tone="mutedForeground" style={{ maxWidth: '100%', textAlign: 'center' }}>
+          {`${question} `}
+        </Text>
+      ) : null}
+      <InlineLink onPress={onPress}>{action}</InlineLink>
+    </View>
   );
 }
 

@@ -19,6 +19,15 @@ const employer: Actor = {
   company: { id: '33333333-3333-4333-8333-333333333333', verification_status: 'verified' },
 };
 const newcomer: Actor = { userId: '44444444-4444-4444-8444-444444444444', profile: null, company: null };
+const admin: Actor = {
+  userId: '77777777-7777-4777-8777-777777777777',
+  profile: { role: 'admin', approval_status: 'approved' },
+  company: null,
+};
+const adminWithCompany: Actor = {
+  ...admin,
+  company: { id: '88888888-8888-4888-8888-888888888888', verification_status: 'verified' },
+};
 /** An employer still waiting for approval: their console, not yet the directory. */
 const waiting: Actor = {
   userId: '55555555-5555-4555-8555-555555555555',
@@ -133,6 +142,24 @@ describe('inOwnTab', () => {
 
   it('falls back to the next tab a section names when the first is not there', () => {
     expect(inOwnTab('/companies/nile', ['home', 'jobs', 'account'])).toBe('/(home)/companies/nile');
+  });
+
+  it("opens an admin on the console, and a listing or a company inside that tab", () => {
+    const tabs = tabsFor(admin);
+    expect(tabs).toEqual(['admin', 'account']);
+    expect(tabsFor(adminWithCompany)).toEqual(tabs);
+    expect(inOwnTab('/', tabs)).toBe('/admin');
+    expect(inOwnTab('/jobs', tabs)).toBe('/admin');
+    expect(inOwnTab('/jobs/sales-a1b2', tabs)).toBe('/(admin)/jobs/sales-a1b2');
+    expect(inOwnTab('/companies', tabs)).toBe('/(admin)/companies');
+    expect(inOwnTab('/companies/nile', tabs)).toBe('/(admin)/companies/nile');
+    expect(inOwnTab('/notifications', tabs)).toBe('/(admin)/notifications');
+    expect(inOwnTab('/employer/jobs', tabsFor(adminWithCompany))).toBe('/admin');
+    expect(inOwnTab('/employer/applicants', tabsFor(adminWithCompany))).toBe('/admin');
+    expect(inOwnTab('/employer/company', tabsFor(adminWithCompany))).toBe('/(account)/employer/company');
+    expect(inOwnTab('/employer/billing', tabsFor(adminWithCompany))).toBe('/(account)/employer/billing');
+    expect(inOwnTab('/agents', tabs)).toBe('/(admin)/agents');
+    expect(inOwnTab('/agents/mona-ali', tabs)).toBe('/(admin)/agents/mona-ali');
   });
 });
 

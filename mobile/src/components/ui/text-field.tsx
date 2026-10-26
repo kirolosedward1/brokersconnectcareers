@@ -42,8 +42,10 @@ export const TextField = forwardRef<
     ltr?: boolean;
     /** The focus ring's colour, where the brand colour is the surface around it (Home's panel). */
     focusColor?: string;
+    /** Brand wash and brand edge: a field the other person will read. */
+    tone?: 'default' | 'brand';
   }
->(function TextField({ leading, trailing, ltr = false, focusColor, style, onFocus, onBlur, ...props }, ref) {
+>(function TextField({ leading, trailing, ltr = false, focusColor, tone = 'default', style, onFocus, onBlur, ...props }, ref) {
   const { colors, scheme } = useTheme();
   const error = useFieldError();
   const [focused, setFocused] = useState(false);
@@ -60,8 +62,8 @@ export const TextField = forwardRef<
         paddingHorizontal: space[3.5],
         ...corner('lg'),
         borderWidth: 1,
-        borderColor: focused ? ring : error ? colors.destructive : colors.input,
-        backgroundColor: colors.card,
+        borderColor: focused ? ring : error ? colors.destructive : tone === 'brand' ? colors.primary : colors.input,
+        backgroundColor: tone === 'brand' ? `${colors.primary}14` : colors.card,
         // The focus ring: the border a little heavier, without moving the text.
         outlineWidth: focused ? 1 : 0,
         outlineColor: ring,

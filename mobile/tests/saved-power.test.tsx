@@ -14,7 +14,8 @@ import { localHrefOf, PushBridge } from '~/components/navigation/push-bridge';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { hideJob, unhideJob } from '~/features/moderation/hidden-jobs';
 import { bestOf, parseCompareIds, togglePick } from '~/features/saved/compare';
-import { cleanNote, deviceNotes, forgetCarriedNotesForTests, forgetTakenNotesForTests, NOTE_MAX } from '~/features/saved/notes';
+import { moveToAccount } from '~/features/saved/move';
+import { cleanNote, deviceNotes, forgetTakenNotesForTests, NOTE_MAX } from '~/features/saved/notes';
 import {
   closingInDays,
   forgetTakenRemindersForTests,
@@ -48,8 +49,8 @@ import { fakeServer } from './server';
   comparing two or three side by side, a private note on each, and a
   reminder the day before one closes — against stand-ins for Supabase, the
   website and the phone's notifications. What is checked is what is kept on
-  the phone and for whom, what is asked of the system and when, and what
-  the screens say.
+  the bookmark (the note, when to remind) and on the phone and for whom,
+  what is asked of the system and when, and what the screens say.
 */
 
 jest.mock('~/lib/session-storage', () => {
@@ -136,8 +137,9 @@ function job(id: string, overrides: Partial<JobListItem> = {}, closesIn = 30 * D
 }
 
 let savedJobs: JobListItem[];
-/** Each saved listing's note on the server (saved_jobs.note), by listing id. */
-let notes: Record<string, string>;
+/** The note and the reminder on each bookmark, as the website holds them (saved_jobs.note, remind_at). */
+let marks: Map<string, { note: string | null; remind_at: string | null }>;
+const markOf = (id: string) => marks.get(id) ?? { note: null, remind_at: null };
 
 beforeAll(() => {
   globalThis.fetch = server.fetch as unknown as typeof fetch;
@@ -145,7 +147,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   savedJobs = [];
-  notes = {};
+  marks = new Map();
   phone.__scheduled.clear();
   phone.__counter.next = 0;
   jest.mocked(Notifications.getPermissionsAsync).mockReset().mockResolvedValue(granted as never);
@@ -155,10 +157,9 @@ beforeEach(async () => {
   jest.mocked(Notifications.addNotificationResponseReceivedListener).mockClear();
   jest.mocked(Notifications.getLastNotificationResponse).mockReturnValue(null);
   deviceNotes.resetForTests();
-  forgetTakenNotesForTests();
-  forgetCarriedNotesForTests();
   jobReminders.resetForTests();
   forgetTakenRemindersForTests();
+  forgetTakenNotesForTests();
   toast.hide();
 
   server.on('GET /api/mobile/v1/config', mobileConfig());
@@ -173,26 +174,32 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/recordJobView', { ok: true });
   server.on('GET /rest/v1/applications', []);
   server.on('GET /rest/v1/saved_searches', []);
-  server.on('GET /rest/v1/saved_jobs', (url) => {
-    const select = url.searchParams.get('select');
-    if (select === 'job_id') return savedJobs.map((item) => ({ job_id: item.id }));
-    if (select === 'job_id,note') return savedJobs.filter((item) => notes[item.id]).map((item) => ({ job_id: item.id, note: notes[item.id] }));
-    return savedJobs.map((item) => ({ created_at: '2026-09-25T10:00:00Z', note: notes[item.id] ?? null, job: item }));
-  });
-  // The website's action: the note lives with the bookmark.
-  server.on('POST /api/mobile/v1/actions/setSavedJobNote', (_url, init) => {
-    const { input } = JSON.parse(String(init?.body));
-    if (!savedJobs.some((item) => item.id === input.jobId)) return { ok: false, error: 'not_saved' };
-    const text = cleanNote(input.note ?? '') || null;
-    if (text) notes[input.jobId] = text;
-    else delete notes[input.jobId];
-    return { ok: true, data: { note: text } };
-  });
+  server.on('GET /rest/v1/saved_jobs', (url) =>
+    url.searchParams.get('select')?.startsWith('job_id')
+      ? savedJobs.map((item) => ({ job_id: item.id, ...markOf(item.id) }))
+      : savedJobs.map((item) => ({ created_at: '2026-09-25T10:00:00Z', ...markOf(item.id), job: item })),
+  );
   server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
     const { input } = JSON.parse(String(init?.body));
     const had = savedJobs.some((item) => item.id === input.jobId);
     if (had) savedJobs = savedJobs.filter((item) => item.id !== input.jobId);
+    // The row goes, and the note and reminder in it.
+    marks.delete(input.jobId);
     return { ok: true, data: { saved: !had } };
+  });
+  // The website's setSavedJobNote and setSavedJobReminder: on a bookmark, or refused.
+  server.on('POST /api/mobile/v1/actions/setSavedJobNote', (_url, init) => {
+    const { input } = JSON.parse(String(init?.body));
+    if (!savedJobs.some((item) => item.id === input.jobId)) return { ok: false, error: 'not_saved' };
+    const note = cleanNote(String(input.note ?? '')) || null;
+    marks.set(input.jobId, { ...markOf(input.jobId), note });
+    return { ok: true, data: { note } };
+  });
+  server.on('POST /api/mobile/v1/actions/setSavedJobReminder', (_url, init) => {
+    const { input } = JSON.parse(String(init?.body));
+    if (!savedJobs.some((item) => item.id === input.jobId)) return { ok: false, error: 'not_saved' };
+    marks.set(input.jobId, { ...markOf(input.jobId), remind_at: input.remindAt });
+    return { ok: true, data: { remindAt: input.remindAt } };
   });
 
   await supabase.auth.signOut({ scope: 'local' });
@@ -366,6 +373,8 @@ describe('a reminder before a saved listing closes', () => {
     expect(await kept(`bc.saved-reminders.v1:${USER_ID}`)).toEqual([
       expect.objectContaining({ id: soon.id, slug: soon.slug, notificationId: 'reminder-1', fireAt: when.getTime(), expiresAt: soon.expires_at }),
     ]);
+    // And on the bookmark, where the website and another phone read it.
+    expect(markOf(soon.id).remind_at).toBe(when.toISOString());
   });
 
   it('is cancelled with the bookmark', async () => {
@@ -413,6 +422,7 @@ describe('a reminder before a saved listing closes', () => {
 
   it('follows the saved list without the Saved tab being opened: a listing closed early takes its reminder with it', async () => {
     const soon = job('1', {}, 5 * DAY);
+    savedJobs = [soon];
     await setReminder(USER_ID, soon, words);
     expect(phone.__scheduled.size).toBe(1);
     // Closed by the company since; the reader only ever opens the board.
@@ -422,12 +432,14 @@ describe('a reminder before a saved listing closes', () => {
 
     await waitFor(() => expect(phone.__scheduled.size).toBe(0));
     expect(await jobReminders.read(USER_ID)).toEqual([]);
+    // Nothing left to remind of anywhere: the bookmark lets go of it too.
+    await waitFor(() => expect(markOf(soon.id).remind_at).toBeNull());
   });
 
   it('takes back the reminder of a listing applied to since, wherever the application was sent from', async () => {
     const soon = job('1', {}, 5 * DAY);
-    await setReminder(USER_ID, soon, words);
     savedJobs = [soon];
+    await setReminder(USER_ID, soon, words);
     // Applied on the website: the list still holds it, and it is still open.
     server.on('GET /rest/v1/applications', [
       { id: 'application-1', job_id: soon.id, status: 'submitted', created_at: '2026-10-01T10:00:00Z', job: { ...soon } },
@@ -437,6 +449,7 @@ describe('a reminder before a saved listing closes', () => {
 
     await waitFor(() => expect(phone.__scheduled.size).toBe(0));
     expect(await jobReminders.read(USER_ID)).toEqual([]);
+    await waitFor(() => expect(markOf(soon.id).remind_at).toBeNull());
   });
 
   it('takes back the reminder of a listing applied to even when it was set after the saved list was last read', async () => {
@@ -464,8 +477,8 @@ describe('a reminder before a saved listing closes', () => {
 
   it('does not put back the reminder of a listing applied to while it was hidden', async () => {
     const soon = job('1', {}, 5 * DAY);
-    await setReminder(USER_ID, soon, words);
     savedJobs = [soon];
+    await setReminder(USER_ID, soon, words);
     let applications: unknown[] = [];
     server.on('GET /rest/v1/applications', () => applications);
     await signedIn();
@@ -493,8 +506,8 @@ describe('a reminder before a saved listing closes', () => {
 
   it('takes back the reminder of a listing hidden, and puts it back when the listing is', async () => {
     const soon = job('1', {}, 5 * DAY);
-    await setReminder(USER_ID, soon, words);
     savedJobs = [soon];
+    await setReminder(USER_ID, soon, words);
     await signedIn();
     await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
@@ -529,7 +542,7 @@ describe('a reminder before a saved listing closes', () => {
     await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     await act(async () => {});
-    expect(server.asked('/rest/v1/saved_jobs').filter((request) => request.url.searchParams.get('select') !== 'job_id')).toEqual([]);
+    expect(server.asked('/rest/v1/saved_jobs').filter((request) => !request.url.searchParams.get('select')?.startsWith('job_id'))).toEqual([]);
   });
 
   it('is taken back from the card, with Undo', async () => {
@@ -543,6 +556,7 @@ describe('a reminder before a saved listing closes', () => {
 
     await waitFor(() => expect(shownToast()?.message).toBe(ar.app.saved.remind.cancelled));
     expect(phone.__scheduled.size).toBe(0);
+    expect(markOf(soon.id).remind_at).toBeNull();
     expect(await screen.findByRole('button', { name: ar.app.saved.remind.setSpoken })).toBeTruthy();
     await act(async () => shownToast()?.action?.onPress());
     await waitFor(() => expect(phone.__scheduled.size).toBe(1));
@@ -580,6 +594,7 @@ describe('a reminder before a saved listing closes', () => {
 
   it('is taken off the phone when its person signs out, and put back when they return', async () => {
     const soon = job('1', {}, 5 * DAY);
+    savedJobs = [soon];
     expect((await setReminder('person-a', soon, words)).status).toBe('set');
     expect(phone.__scheduled.size).toBe(1);
 
@@ -597,6 +612,7 @@ describe('a reminder before a saved listing closes', () => {
 
   it('lets one that has gone off go, and never asks the phone while putting them back', async () => {
     const soon = job('1', {}, 5 * DAY);
+    savedJobs = [soon];
     await setReminder('person-a', soon, words, new Date());
     await syncReminders('anon');
     jest.mocked(Notifications.requestPermissionsAsync).mockClear();
@@ -611,22 +627,54 @@ describe('a reminder before a saved listing closes', () => {
   it('follows the saved list: gone when the listing was unsaved elsewhere, moved when its closing date moved', async () => {
     const one = job('1', {}, 5 * DAY);
     const two = job('2', {}, 6 * DAY);
+    savedJobs = [one, two];
     await setReminder('person-a', one, words);
     await setReminder('person-a', two, words);
     const set = Date.now();
 
     // Read after both were set: the first is no longer saved, the second closes a week later.
     const later = { ...two, expires_at: new Date(Date.now() + 13 * DAY).toISOString() };
-    await reconcileReminders('person-a', [later], set + 1, () => words);
+    await reconcileReminders('person-a', [{ ...later, remind_at: markOf(two.id).remind_at }], set + 1, () => words);
     const left = await jobReminders.read('person-a');
     expect(left.map((reminder) => reminder.id)).toEqual([two.id]);
     expect(left[0].fireAt).toBe(reminderAt(later.expires_at)?.getTime());
     expect(phone.__scheduled.size).toBe(1);
     expect(phone.__scheduled.has(left[0].notificationId)).toBe(true);
+    // Moved on the bookmark too.
+    expect(markOf(two.id).remind_at).toBe(reminderAt(later.expires_at)?.toISOString());
+  });
+
+  it('follows the bookmark: taken back on the website, it goes from the phone', async () => {
+    const one = job('1', {}, 5 * DAY);
+    savedJobs = [one];
+    await setReminder('person-a', one, words);
+    const set = Date.now();
+    marks.set(one.id, { note: null, remind_at: null });
+
+    await reconcileReminders('person-a', [{ ...one, remind_at: null }], set + 1, () => words);
+    expect(await jobReminders.read('person-a')).toEqual([]);
+    expect(phone.__scheduled.size).toBe(0);
+  });
+
+  it('is scheduled on a phone that never set it, when the bookmark holds it — without asking the phone', async () => {
+    const soon = job('1', {}, 5 * DAY);
+    const when = reminderAt(soon.expires_at) as Date;
+    savedJobs = [soon];
+    // Set on another phone, or on this one before it was reinstalled.
+    marks.set(soon.id, { note: null, remind_at: when.toISOString() });
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/jobs' });
+
+    await waitFor(() => expect(phone.__scheduled.size).toBe(1));
+    const [scheduled] = [...phone.__scheduled.values()];
+    expect(scheduled.trigger).toEqual({ type: 'date', date: when.getTime() });
+    expect(scheduled.content).toMatchObject({ data: { localHref: `/jobs/${soon.slug}`, reminderFor: soon.id } });
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
   });
 
   it('is not taken for unsaved by a read of the list from before it was set', async () => {
     const one = job('1', {}, 5 * DAY);
+    savedJobs = [one];
     await setReminder('person-a', one, words);
     await reconcileReminders('person-a', [], Date.now() - 60_000, () => words);
     expect(await jobReminders.read('person-a')).toHaveLength(1);
@@ -665,9 +713,49 @@ describe('a reminder before a saved listing closes', () => {
 
 describe('a private note on a saved listing', () => {
   it('is trimmed and cut at the limit before it is sent, as the website keeps it; empty is none', () => {
+    expect(NOTE_MAX).toBe(300);
     expect(cleanNote('  كلمت منى  ')).toBe('كلمت منى');
     expect(cleanNote('x'.repeat(NOTE_MAX + 50))).toHaveLength(NOTE_MAX);
     expect(cleanNote('   ')).toBe('');
+  });
+
+  it('moves what the phone kept to the bookmarks once, never over what the account holds', async () => {
+    const one = job('1', {}, 5 * DAY);
+    const two = job('2', {}, 5 * DAY);
+    const gone = job('3', {}, 5 * DAY);
+    savedJobs = [one, two];
+    marks.set(two.id, { note: 'من الموقع', remind_at: null });
+    deviceNotes.add('person-a', { id: one.id, text: 'كلمت منى' });
+    deviceNotes.add('person-a', { id: two.id, text: 'قديمة' });
+    deviceNotes.add('person-a', { id: gone.id, text: 'مش محفوظة' });
+    await setReminder('person-a', one, () => ({ title: 't', body: 'b' }));
+    marks.set(one.id, { note: null, remind_at: null });
+    const fireAt = (await jobReminders.read('person-a'))[0].fireAt;
+    const read = savedJobs.map((item) => ({ job_id: item.id, ...markOf(item.id) }));
+
+    expect(await moveToAccount('person-a', read)).toEqual({ done: true, posted: true });
+    expect(markOf(one.id)).toEqual({ note: 'كلمت منى', remind_at: new Date(fireAt).toISOString() });
+    // The website's own note wins; a listing no longer saved has nowhere to put one.
+    expect(markOf(two.id).note).toBe('من الموقع');
+    expect(marks.has(gone.id)).toBe(false);
+    // The phone's notes are emptied; its reminders stay, as the copy they now are.
+    expect(await deviceNotes.read('person-a')).toEqual([]);
+    expect(await jobReminders.read('person-a')).toHaveLength(1);
+
+    // Once: nothing is posted again.
+    server.requests.length = 0;
+    expect(await moveToAccount('person-a', read)).toEqual({ done: true, posted: false });
+    expect(server.requests).toEqual([]);
+  });
+
+  it('is not moved, nor emptied from the phone, while the website cannot be reached', async () => {
+    const one = job('1', {}, 5 * DAY);
+    savedJobs = [one];
+    deviceNotes.add('person-a', { id: one.id, text: 'كلمت منى' });
+    server.on('POST /api/mobile/v1/actions/setSavedJobNote', { status: 503, body: { error: 'unavailable' } });
+
+    expect(await moveToAccount('person-a', [{ job_id: one.id, note: null, remind_at: null }])).toEqual({ done: false, posted: true });
+    expect(await deviceNotes.read('person-a')).toEqual([expect.objectContaining({ text: 'كلمت منى' })]);
   });
 
   it('is written, changed and deleted from the saved card, and shown under it', async () => {
@@ -676,18 +764,15 @@ describe('a private note on a saved listing', () => {
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
-    // Written.
     fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
     fireEvent.changeText(await screen.findByLabelText(ar.savedNotes.title), '  المقابلة يوم الحد  ');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
     await waitFor(() => expect(shownToast()?.message).toBe(ar.savedNotes.saved));
     const shown = `${ar.savedNotes.prefix} المقابلة يوم الحد`;
     expect(await screen.findByRole('button', { name: shown })).toBeTruthy();
-    // Sent to the website's action, trimmed, and kept there.
     await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'المقابلة يوم الحد' }]));
-    expect(notes[one.id]).toBe('المقابلة يوم الحد');
+    expect(markOf(one.id).note).toBe('المقابلة يوم الحد');
 
-    // Changed: the sheet opens on the note as it is.
     await sheetClosed();
     fireEvent.press(screen.getByRole('button', { name: shown }));
     const field = await screen.findByLabelText(ar.savedNotes.title);
@@ -696,16 +781,17 @@ describe('a private note on a saved listing', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
     const changed = `${ar.savedNotes.prefix} المقابلة اتأجلت`;
     expect(await screen.findByRole('button', { name: changed })).toBeTruthy();
+    await waitFor(() => expect(markOf(one.id).note).toBe('المقابلة اتأجلت'));
 
-    // Deleted, with Undo.
     await sheetClosed();
     fireEvent.press(screen.getByRole('button', { name: changed }));
     fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.delete }));
     await waitFor(() => expect(shownToast()).toMatchObject({ message: ar.savedNotes.deleted, action: { label: ar.app.toast.undo } }));
     expect(await screen.findByRole('button', { name: ar.savedNotes.add })).toBeTruthy();
-    await waitFor(() => expect(notes[one.id]).toBeUndefined());
+    await waitFor(() => expect(markOf(one.id).note).toBeNull());
     act(() => shownToast()?.action?.onPress());
     expect(await screen.findByRole('button', { name: changed })).toBeTruthy();
+    await waitFor(() => expect(markOf(one.id).note).toBe('المقابلة اتأجلت'));
   });
 
   it('focuses the field once the sheet is up, not as it mounts', async () => {
@@ -714,7 +800,6 @@ describe('a private note on a saved listing', () => {
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
     fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
     const field = await screen.findByLabelText(ar.savedNotes.title);
-    // autoFocus raised the keyboard while iOS was still presenting the sheet.
     expect(field.props.autoFocus).toBeFalsy();
     const modal = screen.UNSAFE_getAllByType(Modal).find((node) => node.props.visible && node.props.onShow);
     expect(modal).toBeTruthy();
@@ -728,11 +813,9 @@ describe('a private note on a saved listing', () => {
     await screen.findByLabelText(ar.savedNotes.title);
     const room = () => StyleSheet.flatten(screen.getByTestId('note-sheet-room').props.style);
     expect(room().justifyContent).toBe('flex-start');
-    // The keyboard rising moves nothing: there is nothing under it to move.
     act(() => DeviceEventEmitter.emit('keyboardWillShow', { duration: 250, easing: 'keyboard', endCoordinates: { height: 336, screenX: 0, screenY: 508, width: 390 } }));
     expect(room().justifyContent).toBe('flex-start');
     expect(room().paddingBottom).toBeUndefined();
-    // Typed and saved, from the card at the top.
     fireEvent.changeText(screen.getByLabelText(ar.savedNotes.title), 'اتصل بيهم الأحد');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
     expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اتصل بيهم الأحد` })).toBeTruthy();
@@ -754,10 +837,8 @@ describe('a private note on a saved listing', () => {
     const gone = job('2');
     savedJobs = [one];
     deviceNotes.add(USER_ID, { id: one.id, text: '  اتكلمت مع منى  ', updatedAt: 1 });
-    // A listing no longer saved: its note is let go. Somebody else's stays theirs.
     deviceNotes.add(USER_ID, { id: gone.id, text: 'اتقفلت', updatedAt: 1 });
     deviceNotes.add('somebody-else', { id: one.id, text: 'ليست لك', updatedAt: 1 });
-    // Written before the screen reads them (no timer: an earlier test may have left fake ones on).
     await deviceNotes.read(USER_ID);
     await deviceNotes.read('somebody-else');
     await signedIn();
@@ -771,13 +852,12 @@ describe('a private note on a saved listing', () => {
   it('goes with the bookmark, and comes back with it on Undo', async () => {
     const one = job('1');
     savedJobs = [one];
-    notes = { [one.id]: 'اسأل عن العمولة' };
-    // A toggle that puts the bookmark back as well as taking it off.
+    marks.set(one.id, { note: 'اسأل عن العمولة', remind_at: null });
     server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
       const { input } = JSON.parse(String(init?.body));
       const had = savedJobs.some((item) => item.id === input.jobId);
       savedJobs = had ? savedJobs.filter((item) => item.id !== input.jobId) : [...savedJobs, one];
-      if (had) delete notes[input.jobId];
+      if (had) marks.delete(input.jobId);
       return { ok: true, data: { saved: !had } };
     });
     await signedIn();
@@ -785,16 +865,15 @@ describe('a private note on a saved listing', () => {
     expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اسأل عن العمولة` })).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.jobs.removeSaved }));
     await waitFor(() => expect(savedJobs).toEqual([]));
-    expect(notes[one.id]).toBeUndefined();
-    // Saved again (Undo): the note is posted back.
+    expect(markOf(one.id).note).toBeNull();
     act(() => shownToast()?.action?.onPress());
     await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'اسأل عن العمولة' }]));
-    expect(notes[one.id]).toBe('اسأل عن العمولة');
+    expect(markOf(one.id).note).toBe('اسأل عن العمولة');
   });
 
   it('is on the listing page while the listing is saved', async () => {
     savedJobs = [listing];
-    notes = { [listing.id]: 'اسأل عن العمولة' };
+    marks.set(listing.id, { note: 'اسأل عن العمولة', remind_at: null });
     await signedIn();
     await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اسأل عن العمولة` })).toBeTruthy();

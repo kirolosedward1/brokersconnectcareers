@@ -31,6 +31,22 @@ export async function readLastActor(): Promise<Actor> {
   }
 }
 
+/**
+ * The same answer, read synchronously. The web decides where a pasted URL
+ * opens before the router starts, and app storage there is `localStorage`
+ * under this same key. Anywhere else there is nothing to read in time.
+ */
+export function readLastActorSync(): Actor {
+  const storage = (globalThis as { localStorage?: { getItem(key: string): string | null } }).localStorage;
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(KEY);
+    return raw ? parseActor(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Kept for the next launch; `null` forgets. Never throws. */
 export async function rememberActor(actor: Actor): Promise<void> {
   try {

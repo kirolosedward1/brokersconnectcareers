@@ -155,6 +155,17 @@ export type CompanyRow = Timestamped & {
   search_name?: string;
 };
 
+/**
+ * my_company_private() (migration 367): the columns of the caller's company
+ * that are not for a public read. Null when the caller is not a member.
+ * Same shape as GET /api/mobile/v1/company.
+ */
+export type CompanyPrivate = {
+  owner_id: string;
+  post_credits: number;
+  suspended_at: string | null;
+};
+
 export type CompanyDocumentRow = Timestamped & {
   id: string;
   company_id: string;
@@ -752,6 +763,8 @@ export type SavedJobRow = Timestamped & {
   job_id: string;
   /** The candidate's own line about the listing (migration 356): 1–300 characters, or null. */
   note: string | null;
+  /** When the app reminds them before it closes (migration 366); null when no reminder is set. */
+  remind_at: string | null;
 };
 
 /**
@@ -1522,6 +1535,13 @@ export type Database = {
       claim_monthly_free_post: { Args: Empty; Returns: boolean };
       /** The company the caller belongs to, resolved through membership. */
       my_company_id: { Args: Empty; Returns: string | null };
+      /**
+       * That company's owner, credit balance, and suspension — a member's to
+       * read (migration 367), and nobody else's. Null when my_company_id() is.
+       */
+      my_company_private: { Args: Empty; Returns: CompanyPrivate | null };
+      /** Whether that company is suspended. A boolean the public page may ask (migration 367). */
+      company_suspended: { Args: { p_id: string }; Returns: boolean };
       /**
        * Service-role only, and called with the admin client: the answer is
        * whether an address has an account, which is not for every signed-in

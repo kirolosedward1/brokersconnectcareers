@@ -22,13 +22,24 @@ type CryptoShape = {
 };
 
 const scope = globalThis as unknown as { crypto?: CryptoShape };
-const webCrypto: CryptoShape = scope.crypto ?? {};
-webCrypto.getRandomValues ??= getRandomValues;
-webCrypto.randomUUID ??= randomUUID;
-webCrypto.subtle ??= {
-  digest: (algorithm, data) =>
-    digest((typeof algorithm === 'string' ? algorithm : algorithm.name) as CryptoDigestAlgorithm, data),
-};
-scope.crypto = webCrypto;
+
+/**
+ * Hermes has no `crypto`. The web engine does, and its property is read-only:
+ * assigning `globalThis.crypto` throws and the Expo web build never starts.
+ * Fill in only what is missing, and install an object only where there is none.
+ */
+export function installCryptoPolyfill(target: { crypto?: CryptoShape } = scope): void {
+  const existing = target.crypto;
+  const webCrypto: CryptoShape = existing ?? {};
+  webCrypto.getRandomValues ??= getRandomValues;
+  webCrypto.randomUUID ??= randomUUID;
+  webCrypto.subtle ??= {
+    digest: (algorithm, data) =>
+      digest((typeof algorithm === 'string' ? algorithm : algorithm.name) as CryptoDigestAlgorithm, data),
+  };
+  if (!existing) target.crypto = webCrypto;
+}
+
+installCryptoPolyfill();
 
 installIntlPolyfills();

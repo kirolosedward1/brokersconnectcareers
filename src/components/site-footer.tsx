@@ -96,37 +96,52 @@ export async function SiteFooter({ locale }: { locale: string }) {
    * footer taller than the viewport above it.
    */
   const linkClass =
-    'inline-flex min-h-11 items-center py-1 text-sm text-muted-foreground transition-colors hover:text-foreground lg:min-h-8';
+    'inline-flex min-h-11 items-center py-1 text-sm text-white/70 transition-colors hover:text-white lg:min-h-8';
+
+  /*
+    The two doors, in a light tint of the brand blue. #2A4FF6 on #0E1320 is
+    3.13:1, under AA, so this is the dark theme's brand lightness pulled into
+    gamut: oklch(0.70 0.156 266.6), 6.8:1. White at 55% on the same ground is
+    6.19:1, so the small print can stay at the specified opacity.
+  */
+  const doorClass =
+    'group flex min-h-14 items-center justify-between gap-3 py-3 text-[oklch(0.70_0.156_266.6)] transition-colors hover:text-white';
 
   return (
-    <footer className="mt-12 border-t border-border bg-muted/40">
+    /*
+      Solid #0E1320 in both themes, with a 1px white/10 edge so a dark band
+      above (the app page's closing section, or the page itself in dark mode)
+      does not run into it. The light employer band keeps its own surface;
+      this rule is only the footer's.
+    */
+    <footer className="mt-12 border-t border-white/10 bg-[#0E1320] text-white/70 [--ring:#ffffff]">
       <div className="shell">
         {/* The two doors, for visitors only. Same words as the landing page's
             segmented control, so a reader who scrolled past it meets the same
             choice here — and the landing page makes the same swap, showing a
             signed-in reader their own dashboard instead of the pitch. */}
         <VisitorOnly>
-          /* Two lines, not two cards. Each door was a bordered panel with an
+          {/* Two lines, not two cards. Each door was a bordered panel with an
              icon tile, a heading, a paragraph and a button, above the footer
              of every public page — a second call to action under whatever the
              page itself had just asked for. The choice is worth keeping at the
-             foot of a long read; it does not need two hundred pixels. */
-          /* grid-cols-1, not the implicit track: an implicit column is as
+             foot of a long read; it does not need two hundred pixels. */}
+          {/* grid-cols-1, not the implicit track: an implicit column is as
              wide as its widest unbreakable content, which is the truncated
              line at full length — so `truncate` never engaged and the doors
-             pushed every public page 86px wider than a 375px phone. */
+             pushed every public page 86px wider than a 375px phone. */}
           <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
             <Link
               href="/jobs"
-              className="group flex min-h-14 items-center justify-between gap-3 border-b border-border py-3 sm:border-b-0"
+              className={`${doorClass} border-b border-white/10 sm:border-b-0`}
             >
               <span className="min-w-0">
                 <span className="block text-sm font-semibold">{t('doorCandidateTitle')}</span>
-                <span className="block truncate text-xs text-muted-foreground">
+                <span className="block truncate text-xs text-white/70">
                   {t('doorCandidateBody')}
                 </span>
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary group-hover:underline">
+              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium group-hover:underline">
                 {t('doorCandidateCta')}
                 <ArrowRight className="rtl-flip size-3.5" aria-hidden />
               </span>
@@ -138,15 +153,15 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 sign-in instead. */}
             <Link
               href={{ pathname: '/sign-in/employer', query: { next: '/employer/jobs/new' } }}
-              className="group flex min-h-14 items-center justify-between gap-3 py-3"
+              className={doorClass}
             >
               <span className="min-w-0">
                 <span className="block text-sm font-semibold">{t('doorEmployerTitle')}</span>
-                <span className="block truncate text-xs text-muted-foreground">
+                <span className="block truncate text-xs text-white/70">
                   {t('doorEmployerBody')}
                 </span>
               </span>
-              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary group-hover:underline">
+              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium group-hover:underline">
                 {tNav('postJob')}
                 <ArrowRight className="rtl-flip size-3.5" aria-hidden />
               </span>
@@ -158,7 +173,7 @@ export async function SiteFooter({ locale }: { locale: string }) {
             top border is the doors' bottom edge when they are there and the
             page's when they are not, so a visitor and a signed-in reader both
             get one rule above this and not two or none. */}
-        <div className="grid border-t border-border py-4 lg:grid-cols-4 lg:gap-x-6 lg:py-8">
+        <div className="grid border-t border-white/10 py-4 lg:grid-cols-4 lg:gap-x-6 lg:py-8">
           <FooterGroup title={t('product')}>
             {/* The same list the header draws, so the directory appears here
                 for exactly the people it appears there for. */}
@@ -229,22 +244,23 @@ export async function SiteFooter({ locale }: { locale: string }) {
           locale={locale as Locale}
           limit={8}
           id="footer-landings"
-          className="border-t border-border py-6"
+          tone="onDark"
+          className="border-t border-white/10 py-6"
         />
       </div>
 
-      <div className="border-t border-border py-5">
+      <div className="border-t border-white/10 py-5">
         {/* Centred and stacked on a phone — mark, tagline, copyright, then the
             theme switch under them — where the two-column arrangement left the
             switch floating beside a line of small print. The row returns from
             `sm`, where there is room for the two ends to be two ends. */}
         <div className="shell flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-start">
           <div className="flex flex-col items-center sm:items-start">
-            <Logo name={tMeta('siteName')} />
-            <p className="mt-1 text-sm text-muted-foreground">{tMeta('tagline')}</p>
+            <Logo name={tMeta('siteName')} tone="onDark" />
+            <p className="mt-1 text-sm text-white/70">{tMeta('tagline')}</p>
           </div>
 
-          <div className="flex flex-col items-center gap-3 text-xs text-muted-foreground sm:flex-row sm:gap-x-4">
+          <div className="flex flex-col items-center gap-3 text-xs text-white/55 sm:flex-row sm:gap-x-4">
             <div className="space-y-1">
               <p>
                 <FooterYear /> · {tMeta('siteName')} ·{' '}
@@ -253,14 +269,14 @@ export async function SiteFooter({ locale }: { locale: string }) {
               {/* Who is behind the site, on every page of it. */}
               <p>
                 {t('operatedBy', { name: OPERATOR.name })} ·{' '}
-                <a href={`mailto:${OPERATOR.email}`} dir="ltr" className="underline-offset-4 hover:text-foreground hover:underline">
+                <a href={`mailto:${OPERATOR.email}`} dir="ltr" className="underline-offset-4 hover:text-white hover:underline">
                   {OPERATOR.email}
                 </a>
               </p>
             </div>
             {/* In the footer rather than the header: it is a preference somebody
                 sets once, not a control they reach for on every page. */}
-            <ThemeToggle />
+            <ThemeToggle tone="onDark" />
           </div>
         </div>
       </div>

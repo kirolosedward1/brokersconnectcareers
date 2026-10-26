@@ -106,7 +106,12 @@
     "relaxHeading": "There are listings if you drop one filter:",
     "withoutFilter": "Without {name} · {count, plural, one {# job} other {# jobs}}",
     "emptySaveHint": "Save this search and we will tell you about new matching listings — in your notifications once a day, and in the weekly email.",
-    "safetyNote": "Brokers Connect never asks you to pay to apply. If a listing asks you for money, or for your ID or bank details, report it."
+    "safetyNote": "Brokers Connect never asks you to pay to apply. If a listing asks you for money, or for your ID or bank details, report it.",
+    "appPromo": {
+      "title": "Instant alerts for new jobs",
+      "body": "Follow your applications and company messages in the Brokers Connect app.",
+      "comingSoon": "The app is coming soon on <bdi>iOS</bdi> and <bdi>Android</bdi>."
+    }
   },
   "compensation": {
     "title": "Pay and commission",
@@ -588,12 +593,12 @@
     "freePostClaimed": "This month's free post has been claimed.",
     "freePostRefused": "We could not grant the free post. Verification has to be complete, and it is once a calendar month.",
     "postCapBlocked": "You already have an active listing. Unverified companies may keep only one.",
-    "decisionNote": "Reason (optional)",
-    "decisionNoteHint": "The applicant sees this. One clear line beats silence.",
+    "decisionNote": "Decision reason",
+    "decisionNoteVisible": "Shown to the applicant",
+    "decisionNoteHint": "The applicant sees this on their applications page.",
     "decisionNotePlaceholder": "e.g. Less experience than this role needs — we have kept your profile for future openings.",
-    "decisionNoteSaved": "Saved",
-    "notesTitle": "Company notes",
-    "notesHint": "The applicant cannot see any of this. For your team only.",
+    "decisionNoteSend": "Save and send to the applicant",
+    "notesTitle": "Internal notes — team only",
     "notesPlaceholder": "For example: called today, will get back on Thursday.",
     "notesAdd": "Add a note",
     "notesFormerColleague": "A former colleague",
@@ -2100,7 +2105,10 @@
     "countSpoken": "{count} of {max} characters",
     "saved": "Note saved",
     "deleted": "Note deleted",
-    "delete": "Delete"
+    "delete": "Delete",
+    "failed": "Couldn't save the note. Try again.",
+    "reminder": "The app reminds you on {when}, before it closes.",
+    "reminderRemove": "Remove reminder"
   },
   "myApplications": {
     "timeline": "Where it stands",

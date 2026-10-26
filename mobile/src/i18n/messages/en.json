@@ -394,6 +394,7 @@
       "denied": "Notifications are off for the app, so we can't remind you. Turn them on in Settings.",
       "tooLate": "This listing closes within the hour: too late for a reminder",
       "failed": "The reminder wasn't set. Try again.",
+      "cancelFailed": "The reminder wasn't cancelled. Try again.",
       "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
       "notifyBody": "{job} at {company}. Apply before it closes."
     }

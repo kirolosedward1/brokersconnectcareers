@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Download, FileX2, Search } from 'lucide-react';
+import { Download, Eye, FileX2, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { FactLine } from '@/components/ui/fact-line';
@@ -420,15 +420,26 @@ export function ApplicantCard({
 
       {/* Shown once a decision has been made. Not on `new`, where there is
           nothing to explain yet, and never required — a mandatory field here
-          fills up with "not a fit", which looks like an answer and is not. */}
+          fills up with "not a fit", which looks like an answer and is not.
+          The candidate reads whatever is saved here, on their applications
+          page. The eye and the brand field say that; the notes below do not. */}
       {status !== 'new' && !withdrawn ? (
         <div className="mt-4 border-t border-border pt-4">
-          <label htmlFor={`reason-${application.id}`} className="text-xs font-medium text-muted-foreground">
-            {t('decisionNote')}
+          <label
+            htmlFor={`reason-${application.id}`}
+            className="flex flex-wrap items-center gap-2 text-xs font-medium text-foreground"
+          >
+            <span>{t('decisionNote')} </span>
+            <Badge variant="primary" className="rounded-full">
+              <Eye aria-hidden />
+              {t('decisionNoteVisible')}
+            </Badge>
           </label>
-          <p className="mt-0.5 text-xs text-muted-foreground">{t('decisionNoteHint')}</p>
+          <p id={`reason-hint-${application.id}`} className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {t('decisionNoteHint')}
+          </p>
 
-          <div className="mt-2 flex flex-wrap items-start gap-2">
+          <div className="mt-2 flex flex-col items-start gap-2">
             <textarea
               id={`reason-${application.id}`}
               value={reason}
@@ -436,16 +447,20 @@ export function ApplicantCard({
               maxLength={500}
               rows={2}
               placeholder={t('decisionNotePlaceholder')}
-              className="min-w-0 flex-1 rounded-lg border border-input bg-background p-2.5 text-sm shadow-xs"
+              aria-describedby={`reason-hint-${application.id}`}
+              className="w-full min-w-0 rounded-lg border border-primary bg-primary/5 p-2.5 text-sm shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             />
+            {/* On its own row, and not allowed to shrink: beside the field the
+                short «حفظ» was clipped and the ح read as خ. */}
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={pending || reason.trim() === savedReason.trim()}
+              className="shrink-0"
+              disabled={pending || !reason.trim() || reason.trim() === savedReason.trim()}
               onClick={() => save(status, reason)}
             >
-              {reason.trim() === savedReason.trim() && savedReason ? t('decisionNoteSaved') : tCommon('save')}
+              {t('decisionNoteSend')}
             </Button>
           </div>
         </div>

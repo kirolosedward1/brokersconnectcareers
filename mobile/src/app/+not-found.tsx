@@ -5,6 +5,8 @@ import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
 import { EmptyState } from '~/components/ui/states';
 import { env } from '~/lib/env';
+import { useSession } from '~/lib/session';
+import { startPath } from '~/lib/tabs';
 import { space } from '~/theme/tokens';
 import { Compass } from '~/components/ui/lucide';
 
@@ -34,6 +36,7 @@ export function websiteAddress(pathname: string, params: Record<string, string |
 export default function NotFoundScreen() {
   const t = useTranslations();
   const pathname = usePathname();
+  const actor = useSession().actor;
   const params = useGlobalSearchParams<Record<string, string | string[]>>();
   const address = websiteAddress(pathname, params);
 
@@ -46,7 +49,7 @@ export default function NotFoundScreen() {
         body={t('common.notFoundBody')}
         action={
           <View style={{ gap: space[2], alignSelf: 'stretch' }}>
-            <Button label={t('common.goHome')} onPress={() => router.replace('/')} />
+            <Button label={t('common.goHome')} onPress={() => router.replace(startPath(actor))} />
             {pathname && pathname !== '/' ? (
               <Button
                 label={t('app.account.openWebsite')}

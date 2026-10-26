@@ -5,7 +5,7 @@ import { getBrowseCounts } from '@/lib/queries/browse';
 import { optional } from '@/lib/queries/error';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { buildLandingSlug } from '@/lib/taxonomy';
-import { formatNumber } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 /**
  * The track-in-district pages that have live listings, busiest first.
@@ -22,11 +22,14 @@ export async function PopularLandings({
   limit = 12,
   className = 'mt-10 border-t border-border pt-6',
   id = 'popular-landings',
+  tone = 'default',
 }: {
   locale: Locale;
   limit?: number;
   className?: string;
   id?: string;
+  /** Footer passes `onDark` so these links match the other footer links. */
+  tone?: 'default' | 'onDark';
 }) {
   const [counts, districts] = await Promise.all([
     optional(getBrowseCounts(), null),
@@ -45,7 +48,7 @@ export async function PopularLandings({
 
   return (
     <nav aria-labelledby={id} className={className}>
-      <h2 id={id} className="text-sm font-semibold">
+      <h2 id={id} className={cn('text-sm', tone === 'onDark' ? 'font-medium text-white' : 'font-semibold')}>
         {t('popularTitle')}
       </h2>
       <ul className="mt-3 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -56,7 +59,12 @@ export async function PopularLandings({
             <li key={`${pair.track}:${pair.districtId}`}>
               <Link
                 href={`/jobs/${buildLandingSlug(pair.track, district.slug)}`}
-                className="inline-flex min-h-8 items-center gap-2 text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                className={cn(
+                  'inline-flex min-h-8 items-center gap-2 underline-offset-4 hover:underline',
+                  tone === 'onDark'
+                    ? 'text-white/70 hover:text-white'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
               >
                 {t('title', { track: tTrack(pair.track), district: districtName })}
                 <span className="numeral text-xs">{formatNumber(pair.count, locale)}</span>
