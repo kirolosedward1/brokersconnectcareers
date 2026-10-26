@@ -71,7 +71,7 @@
     "test:earnings": "node --experimental-strip-types scripts/earnings.test.mjs",
     "test:share": "node --experimental-strip-types scripts/share-source.test.mjs",
     "test:mobile-api": "node --experimental-strip-types scripts/mobile-api.test.mjs && node --experimental-strip-types scripts/mobile-api-body.test.mjs",
-    "test:auth-confirm": "node --experimental-strip-types scripts/auth-confirm.test.mjs && node --experimental-strip-types scripts/second-factor.test.mjs && node --experimental-strip-types scripts/entry-redirects.test.mjs && node --experimental-strip-types scripts/suggested-name.test.mjs",
+    "test:auth-confirm": "node --experimental-strip-types scripts/auth-confirm.test.mjs && node --experimental-strip-types scripts/second-factor.test.mjs && node --experimental-strip-types scripts/entry-redirects.test.mjs && node --experimental-strip-types scripts/suggested-name.test.mjs && node --experimental-strip-types scripts/google-one-tap.test.mjs",
     "test:app-links": "node --experimental-strip-types scripts/app-links.test.mjs",
     "test:app-promo": "node --experimental-strip-types scripts/app-promo.test.mjs",
     "test:route-parity": "node --experimental-strip-types scripts/route-parity.test.mjs",

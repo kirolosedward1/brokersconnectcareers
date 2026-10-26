@@ -177,6 +177,7 @@ const KNOWN_WRITERS = {
   'src/components/theme-toggle.tsx': "THEME_STORAGE_KEY = 'bc-theme'",
   'src/lib/share-source.ts': "KEY = 'bc.src'",
   'src/lib/form-draft.ts': "PREFIX = 'bc-draft:'",
+  'src/lib/auth/google-one-tap.ts': "ONE_TAP_CLOSED_KEY = 'bc.google-one-tap'",
   'src/lib/app-view.ts': "APP_VIEW_COOKIE = 'bc_app'",
 };
 function walk(dir) {
@@ -193,7 +194,7 @@ for (const [path, declaration] of Object.entries(KNOWN_WRITERS)) {
 }
 for (const lang of ['ar', 'en']) {
   const cookies = docs.cookies?.[lang]?.raw ?? '';
-  for (const name of ['sb-', 'bc-theme', 'bc.src', 'bc-draft:', 'bc_app']) {
+  for (const name of ['sb-', 'bc-theme', 'bc.src', 'bc-draft:', 'bc.google-one-tap', 'bc_app']) {
     check(`cookies.${lang}.md lists ${name}`, cookies.includes(name));
   }
 }

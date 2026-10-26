@@ -26,6 +26,9 @@ Kept only when visit counting is on, and only if you arrived through a link some
 **Opened from the app** — `bc_app`.
 Set only when a page is opened with `?app=1`, so the card about the app stays hidden for the rest of that browser session. A session cookie: nothing about you, and deleted when you close the browser.
 
+**Google One Tap closed** — `bc.google-one-tap`, in session storage (sessionStorage).
+On the home page, the jobs list and a job's page, while you are signed out, the site may ask Google to offer signing in with a Google account already on this browser. If you close that offer, this entry remembers the close for this tab only, so it is not shown again until the tab is closed. It holds nothing about you. It is not used on the sign-in or sign-up pages, and not inside the mobile app.
+
 **Forms you have not finished** — `bc-draft:…`, in your browser's local storage (localStorage).
 While you are signed in and typing into a job application, a job advert or the form that sets up your account, what you have typed is kept as you go, so that closing the tab, losing the connection or being asked to sign in again does not lose it. It is kept under your account only and shown back only to you, and it never includes a file you attached or your agreement to our terms. It is deleted as soon as the form is sent, when you choose "Start over", when you sign out, and in any case after seven days.
 
@@ -33,7 +36,7 @@ While you are signed in and typing into a job application, a job advert or the f
 
 **Checking you are a person.** On the sign-in, sign-up and password-reset pages a Cloudflare Turnstile check may appear. It reads signals from your browser to tell people from automated programs. It runs in a frame from Cloudflare, under Cloudflare's privacy policy, and is not used for advertising.
 
-**Signing in with Google or Apple.** If you choose one of them you go to Google's or Apple's own page, and what they keep there is under their policies.
+**Signing in with Google or Apple.** Choosing Google or Apple on the sign-in page opens Google's or Apple's own page, and what they keep there is under their policies. On the home page, the jobs list and a job's page, while you are signed out, Google One Tap may also be shown by a script loaded from `accounts.google.com`. Google may then store its own cookie (such as `g_state`) to decide how soon that offer may appear again. That cookie is Google's, under Google's policy. Closing the offer does not remove it — that spacing is Google's, and we do not override it. The offer is not shown on the sign-in or sign-up pages, and not inside the app.
 
 There are no advertising tools on the website, no share buttons that track you, and no maps or videos embedded from other sites. The typeface the website uses is served from our own servers, so opening a page does not contact Google or anyone else for it.
 
