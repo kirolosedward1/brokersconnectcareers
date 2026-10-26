@@ -29,8 +29,11 @@ function commitSha(): string | undefined {
  * website. Change the host only together with that file.
  *
  * Arabic only, right to left, like the website while ENGLISH_ENABLED is false.
- * The day English is published, `forcesRTL` goes and the language switch
- * decides the direction at run time.
+ * The screens take that direction from the locale (src/lib/direction.ts), not
+ * from `forcesRTL`: the flag reaches I18nManager on the next process start,
+ * and Expo Go resets it. The flag stays so a binary, and Expo Go's native
+ * bars, still ask for right to left. The day English is published,
+ * `forcesRTL` goes and the language switch decides the direction at run time.
  */
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL ?? 'https://www.brokersconnect.net';
 const SITE_HOST = new URL(SITE_URL).host;
