@@ -26,7 +26,7 @@ const searchesKey = (candidateId: string | null) => ['saved', 'searches', candid
 /**
  * A bookmark as the app holds it everywhere: which listing, the candidate's
  * note on it (saved_jobs.note, migration 356) and when to remind them before
- * it closes (saved_jobs.remind_at, migration 365) — the same row the website's
+ * it closes (saved_jobs.remind_at, migration 366) — the same row the website's
  * saved page reads, so both show the same note and a new phone finds it there.
  */
 export type SavedMark = { job_id: string; note: string | null; remind_at: string | null };

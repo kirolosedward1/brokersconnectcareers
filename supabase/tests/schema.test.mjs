@@ -422,7 +422,7 @@ report.section('who may call a definer function, on purpose');
     'is_candidate',
     'is_company_admin',
     // Whether a company is suspended, so the public page can hide one without
-    // the column being readable (migration 366). A boolean; no owner, no balance.
+    // the column being readable (migration 367). A boolean; no owner, no balance.
     'company_suspended',
     // my_company_id is not here: no policy calls it, and migration 350 closed
     // it to the signed-out side, where it only ever answered null.

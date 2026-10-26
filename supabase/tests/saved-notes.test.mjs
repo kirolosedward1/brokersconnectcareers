@@ -1,5 +1,5 @@
 /**
- * A note (migration 356) and a reminder (migration 365) on a bookmark: the
+ * A note (migration 356) and a reminder (migration 366) on a bookmark: the
  * columns' shape, and that only the candidate whose bookmark it is reads or
  * changes them — and only them. Run with: pnpm test:db
  */
@@ -99,6 +99,56 @@ report.section('an update changes the note and the reminder, nothing else');
     update saved_jobs set created_at = now() + interval '1 year' where candidate_id = '${candidate}' and job_id = '${liveJob}' returning job_id`);
   report.check('nor re-dated to the top of the list',
     !redated.ok && /do not change/.test(redated.error ?? ''), redated.ok ? 'update was allowed' : redated.error);
+}
+
+report.section('a reminder is still to come, and not more than two years off');
+{
+  const past = await as(candidate, `
+    update saved_jobs set remind_at = now() - interval '1 minute'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning remind_at`);
+  report.check('a reminder in the past is refused',
+    !past.ok && /within two years/.test(past.error ?? ''), past.ok ? 'update was allowed' : past.error);
+
+  const far = await as(candidate, `
+    update saved_jobs set remind_at = now() + interval '2 years' + interval '1 day'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning remind_at`);
+  report.check('a reminder more than two years ahead is refused',
+    !far.ok && /within two years/.test(far.error ?? ''), far.ok ? 'update was allowed' : far.error);
+
+  const year = await as(candidate, `
+    update saved_jobs set remind_at = now() + interval '1 year'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning remind_at`);
+  report.check('a reminder a year ahead is kept',
+    year.ok && year.rows.length === 1 && year.rows[0].remind_at !== null, year.error);
+
+  const edge = await as(candidate, `
+    update saved_jobs set remind_at = now() + interval '2 years'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning remind_at`);
+  report.check('two years ahead is still kept', edge.ok && edge.rows.length === 1, edge.error);
+
+  // A reminder that was valid when it was set, and has since passed. The
+  // trigger judges the value only when it changes, so the note can still move.
+  await db.exec('alter table saved_jobs disable trigger saved_jobs_guard_update');
+  await db.exec(`update saved_jobs set remind_at = now() - interval '1 day' where candidate_id = '${candidate}' and job_id = '${liveJob}'`);
+  await db.exec('alter table saved_jobs enable trigger saved_jobs_guard_update');
+
+  const noteOnly = await as(candidate, `
+    update saved_jobs set note = 'ما زالت الملاحظة'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note, remind_at`);
+  report.check('changing only the note keeps a reminder that has since passed',
+    noteOnly.ok && noteOnly.rows[0]?.note === 'ما زالت الملاحظة' && noteOnly.rows[0]?.remind_at !== null, noteOnly.error);
+
+  const movedPast = await as(candidate, `
+    update saved_jobs set remind_at = now() - interval '1 hour'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning remind_at`);
+  report.check('changing that reminder to another moment in the past is refused',
+    !movedPast.ok && /within two years/.test(movedPast.error ?? ''), movedPast.ok ? 'update was allowed' : movedPast.error);
+
+  const insertedPast = await as(candidate, `
+    insert into saved_jobs (candidate_id, job_id, remind_at)
+    values ('${candidate}', '${otherJob}', now() - interval '1 minute') returning job_id`);
+  report.check('a bookmark is not saved with a reminder already past',
+    !insertedPast.ok && /within two years/.test(insertedPast.error ?? ''), insertedPast.ok ? 'insert was allowed' : insertedPast.error);
 }
 
 report.section('taking the bookmark off takes them with it');

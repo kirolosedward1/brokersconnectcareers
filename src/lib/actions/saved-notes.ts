@@ -10,13 +10,14 @@ import type { ActionResult } from '@/lib/action-result';
 
 /*
   When the app reminds the candidate before a saved listing closes
-  (saved_jobs.remind_at, migration 365). The note on the same bookmark
+  (saved_jobs.remind_at, migration 366). The note on the same bookmark
   already lives there (migration 356, setSavedJobNote in actions/jobs.ts).
 
   The phone works out the moment (the day before the closing, ten in the
   morning in Cairo) and schedules its own notification from what this keeps.
-  Here it is only held to be still to come, and before a listing that is
-  still open closes (`closing` otherwise). Taking the bookmark off
+  Here it is held to be still to come, within two years, and before a listing
+  that is still open closes (`closing` otherwise). The trigger underneath
+  says the same when the value is set or changed. Taking the bookmark off
   (toggleSavedJob) deletes the reminder with the row.
 
   The update is the caller's own row; RLS (saved_jobs_owner_update, migration
@@ -57,7 +58,14 @@ export async function setSavedJobReminder(input: unknown): Promise<ActionResult<
     if (!saved) return { ok: false, error: 'not_saved' };
     const job = (saved as unknown as { job: { status: JobStatus; expires_at: string | null } }).job;
     const closes = job.expires_at ? new Date(job.expires_at).getTime() : null;
-    if (at.getTime() <= Date.now() || !jobIsLive(job) || (closes !== null && at.getTime() >= closes)) {
+    const twoYears = new Date(Date.now());
+    twoYears.setUTCFullYear(twoYears.getUTCFullYear() + 2);
+    if (
+      at.getTime() <= Date.now() ||
+      at.getTime() > twoYears.getTime() ||
+      !jobIsLive(job) ||
+      (closes !== null && at.getTime() >= closes)
+    ) {
       return { ok: false, error: 'closing' };
     }
   }

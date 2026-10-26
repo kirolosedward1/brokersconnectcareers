@@ -1,9 +1,23 @@
 /*
   A member's own view of their company.
 
-  Renumbered from 20260101000356_a_members_own_view_of_their_company.sql.
-  Main already uses 356 for the note on a saved listing, and 364 is the
-  newest migration there. This file is 366 so it sorts after those.
+  Renumbered from 20260101000356_a_members_own_view_of_their_company.sql,
+  then from 20260101000366_a_members_own_view_of_their_company.sql. Main's
+  newest applied migration is 365 (english_slugs_and_redirects); 364 is on
+  main too. #55 merged this file as 366. Production had not run it, and 366
+  is the saved-listing reminder, so scripts/release/migrations.mjs records
+  the move. This file is 367.
+
+  my_company_id() already leaves out a removed member and a suspended one,
+  so this migration does not redefine it. company_members has no status
+  column (migration 22): leaving a company deletes the row, and a row that
+  is not there is not a member. A suspended member is a profile whose
+  approval_status is 'rejected'; my_company_id() (migration 308) only
+  returns a company_members row when in_good_standing() is true, and that
+  helper is approval_status <> 'rejected'. A pending member still counts.
+  A suspended company is a different thing: companies.suspended_at does
+  not drop the member, and my_company_id() still names that company so
+  my_company_private() can return the suspension.
 
   companies is readable by everyone: the directory policy is `using (true)`,
   and a select of the row therefore returns every column, including the
