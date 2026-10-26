@@ -1,70 +1,46 @@
 import { getTranslations } from 'next-intl/server';
-import { formatDayMonth } from '@/lib/format';
-import type { ApplicationProgress, ProgressSegment, ProgressStepKey, ProgressSummary, SegmentTone } from '@/lib/application-stages';
+import { Check, X } from 'lucide-react';
+import {
+  applicationStepper,
+  type StepperItem,
+  type StepperLabel,
+} from '@/lib/application-stepper';
+import type { ApplicationProgress, SegmentTone } from '@/lib/application-stages';
 import { cn } from '@/lib/utils';
 
-function summaryLine(
-  t: (key: 'lineSent' | 'lineSeen' | 'lineShortlisted' | 'lineHired' | 'lineRejected' | 'lineWithdrawn') => string,
-  summary: ProgressSummary,
-): string {
-  switch (summary) {
-    case 'sent':
-      return t('lineSent');
-    case 'seen':
-      return t('lineSeen');
-    case 'shortlisted':
-      return t('lineShortlisted');
-    case 'hired':
-      return t('lineHired');
-    case 'rejected':
-      return t('lineRejected');
-    case 'withdrawn':
-      return t('lineWithdrawn');
-  }
-}
-
-const TONE_CLASS: Record<SegmentTone, string> = {
-  done: 'bg-primary',
-  current: 'bg-card ring-1 ring-inset ring-primary',
-  upcoming: 'bg-foreground/15',
-  rejected: 'bg-destructive',
-  withdrawn: 'bg-foreground/25',
-};
-
 /**
- * The candidate's progress, as one short bar.
+ * The candidate's progress, as a short labelled stepper.
  *
- * Four segments when the outcome is still open or it ended in a hire: 4px
- * tall, 4px apart, the width of the card. Brand blue once a step has
- * happened, white with a blue ring on the step it is waiting at, grey for
- * what has not happened. A rejection drops the steps that never happened and
- * paints only the last segment red. A withdrawal draws the steps it had
- * reached, in grey. Nothing under the bar but one line: the latest fact and,
- * when a real timestamp exists, its date.
+ * Four dots when the outcome is still open or it ended in a hire, fewer when
+ * a rejection skipped a step that never happened or a withdrawal stopped
+ * early. Each dot is 10px. A finished step is filled brand blue with a check,
+ * the step being waited on is a filled blue dot with a soft halo, and what
+ * has not happened yet is light grey. A rejection keeps the steps that did
+ * happen blue and ends on a red cross. A withdrawal draws only the steps it
+ * reached, in grey. The line between two dots is 2px, blue up to the step
+ * now in progress and grey after it — a rejection does not paint that line red.
  *
- * The same progress object drives the pill on the card. The list below is
- * for a screen reader; the bar itself is drawn, not announced.
+ * The row is at most 420px and follows the writing direction, so in Arabic
+ * the first step is the rightmost. The same progress object drives the pill
+ * on the card. The names are the visible labels; whether a step has been
+ * reached is said again for a screen reader.
  */
-export async function ApplicationSteps({
-  progress,
-  locale,
-}: {
-  progress: ApplicationProgress;
-  locale: string;
-}) {
+export async function ApplicationSteps({ progress }: { progress: ApplicationProgress }) {
   const t = await getTranslations('myApplications');
+  const items = applicationStepper(progress);
 
-  const stepName = (key: ProgressStepKey, tone: SegmentTone) => {
-    if (tone === 'rejected') return t('lineRejected');
-    switch (key) {
+  const stepName = (label: StepperLabel) => {
+    switch (label) {
       case 'sent':
         return t('stepSent');
       case 'seen':
         return t('stepSeen');
-      case 'shortlisted':
+      case 'shortlist':
         return t('stepShortlist');
       case 'decision':
-        return progress.summary === 'hired' ? t('pillHired') : t('stepDecision');
+        return t('stepDecision');
+      case 'rejected':
+        return t('lineRejected');
     }
   };
 
@@ -83,35 +59,76 @@ export async function ApplicationSteps({
     }
   };
 
-  const dated = (date: string | null) => (date ? formatDayMonth(date, locale) : '');
+  return (
+    <ol
+      aria-label={t('timeline')}
+      className={cn(
+        'm-0 flex max-w-[420px] list-none p-0',
+        // One step has nothing to share the row with. Stretching it would
+        // park the dot in the middle of the card.
+        items.length === 1 ? 'w-max' : 'w-full',
+      )}
+    >
+      {items.map((item) => (
+        <li
+          key={item.key}
+          aria-current={item.current ? 'step' : undefined}
+          className={cn(
+            'relative flex min-w-0 flex-col items-center',
+            // A quarter of the 420px row. Fewer steps stay grouped at the
+            // start instead of stretching apart.
+            items.length > 1 && 'max-w-[105px] flex-1',
+          )}
+        >
+          {item.connector ? (
+            <span
+              aria-hidden
+              className={cn(
+                'absolute top-[4px] z-0 h-0.5 w-full start-1/2',
+                item.connector === 'progress' ? 'bg-primary' : 'bg-foreground/20',
+              )}
+            />
+          ) : null}
+          <StepDot item={item} />
+          <span
+            title={stepName(item.label)}
+            className={cn(
+              'mt-1 truncate px-0.5 text-center text-[11px] leading-4',
+              items.length > 1 ? 'w-full' : 'whitespace-nowrap',
+              item.current
+                ? 'font-bold text-foreground'
+                : item.state === 'rejected'
+                  ? 'font-medium text-destructive'
+                  : 'text-muted-foreground',
+            )}
+          >
+            {stepName(item.label)}
+          </span>
+          <span className="sr-only">{stateName(item.state)}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
-  const spoken = (segment: ProgressSegment) => {
-    const name = stepName(segment.key, segment.tone);
-    const when = segment.tone === 'done' || segment.tone === 'withdrawn' || segment.tone === 'rejected' ? dated(segment.date) : '';
-    const parts = segment.tone === 'rejected' ? [name] : [name, stateName(segment.tone)];
-    if (when) parts.push(when);
-    return parts.join(' · ');
-  };
-
-  const sentence = summaryLine(t, progress.summary);
-  const summaryDate = dated(progress.summaryDate);
-  const line = summaryDate ? `${sentence} · ${summaryDate}` : sentence;
+/** One 10px mark. The halo sits behind the current dot and does not take layout space. */
+function StepDot({ item }: { item: StepperItem }) {
+  const filled =
+    item.mark === 'check' || item.mark === 'halo'
+      ? 'bg-primary text-primary-foreground'
+      : item.mark === 'x'
+        ? 'bg-destructive text-destructive-foreground'
+        : item.state === 'withdrawn'
+          ? 'bg-foreground/25'
+          : 'bg-foreground/15';
 
   return (
-    <div>
-      <ol className="sr-only" aria-label={t('timeline')}>
-        {progress.segments.map((segment) => (
-          <li key={segment.key} aria-current={segment.tone === 'current' ? 'step' : undefined}>
-            {spoken(segment)}
-          </li>
-        ))}
-      </ol>
-      <div className="flex w-full gap-1" aria-hidden>
-        {progress.segments.map((segment) => (
-          <span key={segment.key} className={cn('h-1 min-w-0 flex-1 rounded-full', TONE_CLASS[segment.tone])} />
-        ))}
-      </div>
-      <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">{line}</p>
-    </div>
+    <span aria-hidden className="relative z-10 grid size-2.5 shrink-0 place-items-center">
+      {item.mark === 'halo' ? <span className="absolute -inset-[3px] rounded-full bg-primary/30" /> : null}
+      <span className={cn('relative grid size-2.5 place-items-center rounded-full', filled)}>
+        {item.mark === 'check' ? <Check className="size-[7px]" strokeWidth={3} /> : null}
+        {item.mark === 'x' ? <X className="size-[7px]" strokeWidth={3} /> : null}
+      </span>
+    </span>
   );
 }

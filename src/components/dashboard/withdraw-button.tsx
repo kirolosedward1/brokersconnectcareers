@@ -49,7 +49,7 @@ export function WithdrawButton({
       <Button
         variant="ghost"
         size="sm"
-        className="h-auto shrink-0 px-0 py-0.5 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-destructive"
+        className="h-auto shrink-0 px-0 py-0 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-destructive"
         disabled={pending}
         onClick={() => setAsking(true)}
       >

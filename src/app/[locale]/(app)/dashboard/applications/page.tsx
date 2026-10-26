@@ -11,7 +11,7 @@ import { WithdrawButton } from '@/components/dashboard/withdraw-button';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { raise } from '@/lib/queries/error';
-import { formatDate, isoDate } from '@/lib/utils';
+import { formatDate, formatDayMonth, isoDate } from '@/lib/utils';
 import type { ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { applicationProgress, canWithdraw, type ApplicationEventStamp, type ProgressPill } from '@/lib/application-stages';
@@ -160,27 +160,39 @@ export default async function ApplicationsPage({
               </span>
             </div>
 
-            {/* The bar and the line under it read the same progress as the pill. */}
-            <div className="mt-1.5">
-              <ApplicationSteps progress={progress} locale={locale} />
-            </div>
+            {/*
+              The stepper and the one line under it share the same measure, so
+              neither runs the width of the card. The line is the day it was
+              sent, except a withdrawal, which the dots do not say themselves.
+            */}
+            <div className="mt-1.5 w-full max-w-[420px]">
+              <ApplicationSteps progress={progress} />
 
-            <div className="mt-1 flex min-w-0 items-center justify-between gap-3">
-              {/* Not `.numeral`: "قدّمت في 10 سبتمبر 2026" is a sentence with a
-                  date in it, and forcing it left-to-right put the date before
-                  the words. Bidi lays out digits inside Arabic text correctly
-                  on its own. */}
-              <time
-                dateTime={isoDate(application.created_at)}
-                className="min-w-0 truncate text-xs leading-4 text-muted-foreground"
-              >
-                {t('appliedOn', { date: formatDate(application.created_at, locale) })}
-              </time>
+              <div className="mt-1 flex min-w-0 items-center gap-3">
+                {progress.summary === 'withdrawn' ? (
+                  <p className="min-w-0 truncate text-xs leading-4 text-muted-foreground">
+                    {progress.summaryDate
+                      ? `${tMine('lineWithdrawn')} · ${formatDayMonth(progress.summaryDate, locale)}`
+                      : tMine('lineWithdrawn')}
+                  </p>
+                ) : (
+                  /* Not `.numeral`: "قدّمت في 10 سبتمبر 2026" is a sentence with a
+                     date in it, and forcing it left-to-right put the date before
+                     the words. Bidi lays out digits inside Arabic text correctly
+                     on its own. */
+                  <time
+                    dateTime={isoDate(application.created_at)}
+                    className="min-w-0 truncate text-xs leading-4 text-muted-foreground"
+                  >
+                    {t('appliedOn', { date: formatDate(application.created_at, locale) })}
+                  </time>
+                )}
 
-              {/* Withdrawing is only offered while the outcome is still open. */}
-              {canWithdraw(application.status) ? (
-                <WithdrawButton applicationId={application.id} label={t('withdraw')} title={title} />
-              ) : null}
+                {/* Withdrawing is only offered while the outcome is still open. */}
+                {canWithdraw(application.status) ? (
+                  <WithdrawButton applicationId={application.id} label={t('withdraw')} title={title} />
+                ) : null}
+              </div>
             </div>
 
             {/*
