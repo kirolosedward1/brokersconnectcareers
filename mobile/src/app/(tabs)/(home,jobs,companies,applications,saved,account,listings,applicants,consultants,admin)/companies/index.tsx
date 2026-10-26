@@ -22,6 +22,7 @@ import { useHiddenCompanies } from '~/features/moderation/hidden-companies';
 import { totalShown } from '~/features/moderation/hidden-store';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -194,6 +195,7 @@ function CompanyRow({ company }: { company: CompanyListItem }) {
   const locale = useLocale();
   const t = useTranslations('companies');
   const { colors } = useTheme();
+  const large = useLargeText();
   const name = localized(locale, company.name_ar, company.name_en);
   const openRoles = company.open_roles?.[0]?.count ?? 0;
   const district = company.district ? localized(locale, company.district.name_ar, company.district.name_en) : null;
@@ -207,12 +209,12 @@ function CompanyRow({ company }: { company: CompanyListItem }) {
         ),
         locale,
       )}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3] + 2 }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3.5] }}
     >
       <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} />
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
-          <Text variant="headline" weight="semibold" numberOfLines={1} style={{ flexShrink: 1 }}>
+          <Text variant="headline" weight="semibold" numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
             {name}
           </Text>
           {company.verification_status === 'verified' ? <VerifiedMark /> : null}

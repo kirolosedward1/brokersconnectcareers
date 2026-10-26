@@ -1,4 +1,4 @@
-import { Stack, Tabs } from 'expo-router';
+import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
@@ -16,6 +16,7 @@ import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
 import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/companies/index';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as NotFoundScreen from '../src/app/+not-found';
+import { DeclaredTabs } from './declared-tabs';
 import { board, browse, cairo, company, companyPage, directory, jobPage, listing, newCairo } from './fixtures';
 import { fakeServer } from './server';
 
@@ -32,7 +33,7 @@ const ar = catalogues.ar;
 const landingTitle = ar.landing.title.replace('{track}', ar.track.primary).replace('{district}', newCairo.name_ar);
 const server = fakeServer();
 
-const SPONSORED_FIRST = 'الإعلانات الممولة بتظهر في الأول، وبعدها الباقي بالترتيب اللي اخترته.';
+const SPONSORED_FIRST = ar.jobs.sponsoredFirst;
 
 const warnings: string[] = [];
 beforeAll(() => {
@@ -83,7 +84,7 @@ function Root() {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home,jobs,companies)/_layout': TabStack,
   '(tabs)/(home,jobs,companies)/jobs/[slug]': JobScreen,
   '(tabs)/(home,jobs,companies)/companies/[slug]': CompanyScreen,
@@ -96,12 +97,12 @@ const app = {
 
 describe('home', () => {
   it('leads with the search, the ways in and the newest roles', async () => {
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText('منصة متخصصة لوظائف العقارات في مصر')).toBeTruthy();
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     // The browse index, with the district's name from the taxonomy.
     expect(await screen.findByLabelText('القاهرة الجديدة، وظيفة واحدة')).toBeTruthy();
-    expect(screen.getByText('وظائف شركات الوساطة')).toBeTruthy();
+    expect(screen.getByText('وظائف شركات البروكر')).toBeTruthy();
   });
 
   it('says it has no connection on a first launch without one, and fills in once Retry is pressed', async () => {
@@ -111,7 +112,7 @@ describe('home', () => {
     };
     server.on('/api/mobile/v1/jobs', () => (online ? board() : offline()));
     server.on('/api/mobile/v1/browse', () => (online ? browse : offline()));
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     expect(await screen.findByText(ar.app.offline.title)).toBeTruthy();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
 
@@ -122,7 +123,7 @@ describe('home', () => {
   });
 
   it('keeps the search above the keyboard on a small phone, as the other homes do', async () => {
-    renderRouter(app, { initialUrl: '/' });
+    await renderRouter(app, { initialUrl: '/' });
     let node = (await screen.findByLabelText(ar.landingPage.hero.searchLabel)).parent;
     while (node && node.props.keyboardShouldPersistTaps === undefined) node = node.parent;
     expect(node?.props.automaticallyAdjustKeyboardInsets).toBe(true);
@@ -131,7 +132,7 @@ describe('home', () => {
   });
 
   it('searches the board with the words typed', async () => {
-    const result = renderRouter(app, { initialUrl: '/' });
+    const result = await renderRouter(app, { initialUrl: '/' });
     fireEvent.changeText(await screen.findByLabelText('ابحث عن وظيفة'), 'مبيعات');
     fireEvent.press(screen.getByText('تصفّح الوظائف'));
     await waitFor(() => expect(result.getPathnameWithParams()).toBe('/jobs?q=%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA'));
@@ -149,7 +150,7 @@ function held<T>(answer: () => T) {
 
 describe('the board', () => {
   it('spins for a pull, and not when the board is read again on its own', async () => {
-    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     const spinning = () => screen.UNSAFE_getByType(RefreshControl).props.refreshing;
     expect(spinning()).toBe(false);
@@ -176,7 +177,7 @@ describe('the board', () => {
   });
 
   it('shows the listings, how many, and the pay in the website words', async () => {
-    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('نتيجة واحدة')).toBeTruthy();
     // The salary range with each number isolated left to right.
@@ -187,7 +188,7 @@ describe('the board', () => {
 
   it('labels a sponsored listing, and says sponsored listings come first whatever the sort', async () => {
     server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true }]));
-    renderRouter(app, { initialUrl: '/(jobs)/jobs?sort=salary' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs?sort=salary' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('إعلان ممول')).toBeTruthy();
     expect(screen.getByText(SPONSORED_FIRST)).toBeTruthy();
@@ -205,7 +206,7 @@ describe('the board', () => {
     server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true }, other]));
     act(() => hideCompany(company.id));
     try {
-      renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+      await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
       expect(await screen.findByText(other.title_ar)).toBeTruthy();
       expect(screen.queryByText(listing.title_ar)).toBeNull();
       expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
@@ -216,7 +217,7 @@ describe('the board', () => {
 
   it('tells VoiceOver everything a card shows: sponsored, closed, the pay and the rest, not only who and where', async () => {
     server.on('/api/mobile/v1/jobs', board([{ ...listing, is_featured: true, expires_at: new Date(Date.now() - 86_400_000).toISOString() }]));
-    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
 
     const card = screen.getByRole('link', { name: new RegExp(`^${listing.title_ar}`) });
@@ -239,56 +240,68 @@ describe('the board', () => {
       '/api/mobile/v1/jobs',
       board([{ ...listing, basic_salary_min: null, basic_salary_max: null, commission_type: 'none', commission_value: null }]),
     );
-    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
-    expect(screen.getByText('من غير راتب أساسي')).toBeTruthy();
-    expect(screen.queryByText('عمولة فقط')).toBeNull();
+    expect(screen.getByText(ar.compensation.noBasicSalary)).toBeTruthy();
+    expect(screen.queryByText(ar.compensation.commissionOnly)).toBeNull();
   });
 
   it('asks the server for exactly the filters in the address', async () => {
-    renderRouter(app, { initialUrl: '/(jobs)/jobs?district=new-cairo&track=primary' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs?district=new-cairo&track=primary' });
     await screen.findByText(listing.title_ar);
     const asked = server.asked('/api/mobile/v1/jobs').map((request) => request.url.search);
     expect(asked).toContain('?track=primary&district=new-cairo');
   });
 
   it('shows each filter as a chip that removes it', async () => {
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?district=new-cairo&track=primary' });
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?district=new-cairo&track=primary' });
     await screen.findByText(listing.title_ar);
-    fireEvent.press(await screen.findByLabelText('شيل فلتر القاهرة الجديدة'));
+    fireEvent.press(await screen.findByLabelText(ar.jobs.removeFilter.replace('{name}', 'القاهرة الجديدة')));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
-  it('has no search bar over it: the words are searched from the filter sheet, as on the website', async () => {
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?track=primary' });
+  it('has a search field over it, the same words as the filter sheet’s, searched with the Search key', async () => {
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?track=primary' });
     await screen.findByText(listing.title_ar);
-    expect(screen.UNSAFE_root.findAll((node) => node.props.placeholder === ar.filters.searchPlaceholder)).toHaveLength(0);
+    // In sight at the top of the board, not only a tap into the sheet.
+    const field = screen.getByLabelText(ar.app.jobs.searchLabel);
+    expect(field.props.placeholder).toBe(ar.filters.searchPlaceholder);
+    fireEvent.changeText(field, '  مدير مبيعات  ');
+    fireEvent(field, 'submitEditing');
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'مدير مبيعات', track: 'primary' }));
+    // The field says what the board is searched by.
+    await waitFor(() => expect(screen.getByLabelText(ar.app.jobs.searchLabel).props.value).toBe('مدير مبيعات'));
+    // A chip like any filter's, which takes the words off again, and out of the field.
+    fireEvent.press(await screen.findByLabelText(ar.jobs.removeFilter.replace('{name}', '«مدير مبيعات»')));
+    await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
+    await waitFor(() => expect(screen.getByLabelText(ar.app.jobs.searchLabel).props.value).toBe(''));
+  });
 
+  it('still searches the words from the filter sheet, as on the website', async () => {
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?track=primary' });
+    await screen.findByText(listing.title_ar);
     fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 1' }));
     const sheet = within(screen.UNSAFE_getByType(Modal));
     const field = sheet.getByLabelText(ar.filters.search);
     fireEvent.changeText(field, '  مدير مبيعات  ');
     // Applied as typed, even with the keyboard still up.
-    fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
+    fireEvent.press(sheet.getByRole('button', { name: /عرض النتائج/ }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'مدير مبيعات', track: 'primary' }));
-    // A chip like any filter's, which takes the words off again.
-    fireEvent.press(await screen.findByLabelText(ar.jobs.removeFilter.replace('{name}', '«مدير مبيعات»')));
-    await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
   it('offers the one filter to drop when nothing matches', async () => {
     server.on('/api/mobile/v1/jobs', board([], { relaxations: [{ key: 'district-new-cairo', count: 4 }] }));
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?district=new-cairo&track=primary' });
-    expect(await screen.findByText('مفيش وظائف مطابقة لبحثك.')).toBeTruthy();
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?district=new-cairo&track=primary' });
+    expect(await screen.findByText('لا توجد وظائف مطابقة لبحثك.')).toBeTruthy();
     // Named from the taxonomy, which arrives beside the board.
-    fireEvent.press(await screen.findByText('من غير القاهرة الجديدة · 4 وظائف'));
+    fireEvent.press(await screen.findByText('بدون القاهرة الجديدة · 4 وظائف'));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ track: 'primary' }));
   });
 
   it('offers every filter the website has, counts what they come to, and applies them in one go', async () => {
     // A narrowed board answers with how many it would show.
     server.on('/api/mobile/v1/jobs', (url: URL) => board([listing], { total: url.searchParams.has('track') ? 7 : 1 }));
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA' });
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?q=%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA' });
     await screen.findByText(listing.title_ar);
 
     fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 1' }));
@@ -306,9 +319,9 @@ describe('the board', () => {
     expect(sheet.getByLabelText('راتب أساسي').props.accessibilityRole).toBe('radiogroup');
     fireEvent.press(await sheet.findByRole('button', { name: 'القاهرة الجديدة' }));
     fireEvent.press(sheet.getByRole('radio', { name: 'آخر 7 أيام' }));
-    expect(await sheet.findByRole('button', { name: 'شوف النتائج · ⁦7⁩' })).toBeTruthy();
+    expect(await sheet.findByRole('button', { name: 'عرض النتائج · ⁦7⁩' })).toBeTruthy();
 
-    fireEvent.press(sheet.getByRole('button', { name: 'شوف النتائج · ⁦7⁩' }));
+    fireEvent.press(sheet.getByRole('button', { name: 'عرض النتائج · ⁦7⁩' }));
     // The words the board was searched by are in the sheet's first field, and kept.
     await waitFor(() =>
       expect(result.getSearchParams()).toEqual({
@@ -322,7 +335,7 @@ describe('the board', () => {
   });
 
   it('clears what the sheet chose, the words with it, and nothing else', async () => {
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs?q=x&track=primary&pay=10000&sort=salary' });
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs?q=x&track=primary&pay=10000&sort=salary' });
     await screen.findByText(listing.title_ar);
     fireEvent.press(screen.getByRole('button', { name: 'الفلاتر · 3' }));
     // The sheet's own button, not the board's behind it.
@@ -330,12 +343,12 @@ describe('the board', () => {
     fireEvent.press(sheet.getByRole('button', { name: 'امسح كل الفلاتر' }));
     expect(sheet.getByLabelText(ar.filters.search).props.value).toBe('');
     // Pressable at once, whether or not the count has come back.
-    fireEvent.press(sheet.getByRole('button', { name: /شوف النتائج/ }));
+    fireEvent.press(sheet.getByRole('button', { name: /عرض النتائج/ }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ sort: 'salary' }));
   });
 
   it('narrows by the filters people reach for most, one tap each, and lets go of them the same way', async () => {
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     await screen.findByText(listing.title_ar);
     fireEvent.press(screen.getByRole('button', { name: 'براتب أساسي' }));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ salary: 'yes' }));
@@ -346,28 +359,28 @@ describe('the board', () => {
   });
 
   it('re-sorts', async () => {
-    const result = renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    const result = await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     await screen.findByText(listing.title_ar);
     // A small button naming the order; the three in a card it opens, radio
     // buttons in a group named for what they set.
     fireEvent.press(screen.getByRole('button', { name: 'رتّب حسب: الأحدث' }));
     expect(screen.getByLabelText('رتّب حسب').props.accessibilityRole).toBe('radiogroup');
     expect(screen.getByRole('radio', { name: 'الأحدث' }).props.accessibilityState).toMatchObject({ checked: true });
-    expect(screen.getByRole('radio', { name: 'الأعلى راتباً' }).props.accessibilityState).toMatchObject({ checked: false });
-    fireEvent.press(screen.getByText('الأعلى راتباً'));
+    expect(screen.getByRole('radio', { name: 'الأعلى راتبًا' }).props.accessibilityState).toMatchObject({ checked: false });
+    fireEvent.press(screen.getByText('الأعلى راتبًا'));
     await waitFor(() => expect(result.getSearchParams()).toEqual({ sort: 'salary' }));
   });
 });
 
 describe('a listing', () => {
   it('reads like the website page and counts the view once', async () => {
-    renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
+    await renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('بيع وحدات سكنية في مشروعات القاهرة الجديدة.')).toBeTruthy();
     expect(screen.getByText('بالم هيلز')).toBeTruthy();
     expect(screen.getByText('نسبة ⁦1.5⁩٪')).toBeTruthy();
     // What listings like it pay, with the sample size.
-    expect(screen.getByText(/حسب 6 إعلانات شغّالة/)).toBeTruthy();
+    expect(screen.getByText(/حسب 6 إعلانات منشورة/)).toBeTruthy();
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordJobView')).toHaveLength(1));
     expect(server.asked('/api/mobile/v1/actions/recordJobView')[0].body).toEqual({ input: { slug: listing.slug } });
   });
@@ -378,7 +391,7 @@ describe('a listing', () => {
       district: newCairo,
       facts: { listings: 1, companies: 1, withBasicSalary: 1, salaryFloor: 10000, salaryCeiling: 15000 },
     });
-    renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
     expect(await screen.findByText(landingTitle)).toBeTruthy();
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
   });
@@ -400,7 +413,7 @@ describe('a listing', () => {
     server.on('/api/mobile/v1/jobs', board([listing, other]));
     act(() => hideCompany(company.id));
     try {
-      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
       expect(await screen.findByText(landingTitle)).toBeTruthy();
       expect(await screen.findByText(other.title_ar)).toBeTruthy();
       expect(screen.queryByText(listing.title_ar)).toBeNull();
@@ -418,12 +431,12 @@ describe('a listing', () => {
     server.on('/api/mobile/v1/jobs', board([listing]));
     act(() => hideJob(listing.id, { name: listing.title_ar, slug: listing.slug }));
     try {
-      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
       expect(await screen.findByText(landingTitle)).toBeTruthy();
       expect(await screen.findByText(ar.jobs.empty)).toBeTruthy();
       expect(screen.queryByText(listing.title_ar)).toBeNull();
       // Counted as drawn — none — and no facts about listings it does not show.
-      expect(screen.getByText('مفيش نتائج')).toBeTruthy();
+      expect(screen.getByText('لا توجد نتائج')).toBeTruthy();
       expect(screen.queryByText('نتيجة واحدة')).toBeNull();
       expect(screen.queryByLabelText(ar.landing.factsLabel)).toBeNull();
     } finally {
@@ -449,10 +462,10 @@ describe('a listing', () => {
     server.on('/api/mobile/v1/jobs', board(firstPage, { total: 21, pageCount: 2 }));
     act(() => hideJob(firstPage[0].id, { name: firstPage[0].title_ar, slug: firstPage[0].slug }));
     try {
-      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
       expect(await screen.findByText(firstPage[1].title_ar)).toBeTruthy();
       // Twenty in all, nineteen drawn: the twenty-first is on the board.
-      expect(screen.getByText(ar.jobs.title)).toBeTruthy();
+      expect(screen.getByText(ar.nav.browseJobs)).toBeTruthy();
     } finally {
       act(() => unhideJob(firstPage[0].id));
     }
@@ -463,8 +476,8 @@ describe('a listing', () => {
     server.on('/api/mobile/v1/jobs', board(firstPage, { total: 30, pageCount: 2 }));
     act(() => firstPage.forEach((job) => hideJob(job.id, { name: job.title_ar, slug: job.slug })));
     try {
-      renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
-      expect(await screen.findByText(ar.jobs.title)).toBeTruthy();
+      await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+      expect(await screen.findByText(ar.nav.browseJobs)).toBeTruthy();
       expect(screen.queryByText(ar.jobs.empty)).toBeNull();
       expect(screen.queryByText(firstPage[0].title_ar)).toBeNull();
     } finally {
@@ -479,13 +492,13 @@ describe('a listing', () => {
       facts: { listings: 3, companies: 3, withBasicSalary: 0, salaryFloor: null, salaryCeiling: null },
     });
     server.on('/api/mobile/v1/jobs', { status: 503, body: { error: 'unavailable' } });
-    renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs/primary-sales-new-cairo' });
     expect(await screen.findByText(landingTitle)).toBeTruthy();
 
     expect(await screen.findByRole('button', { name: ar.common.retry })).toBeTruthy();
     expect(screen.queryByText(ar.jobs.empty)).toBeNull();
     // Nor a count of none at the top (resultsCount at zero).
-    expect(screen.queryByText('مفيش نتائج')).toBeNull();
+    expect(screen.queryByText('لا توجد نتائج')).toBeNull();
 
     // Read again on the retry.
     server.on('/api/mobile/v1/jobs', board());
@@ -494,20 +507,20 @@ describe('a listing', () => {
   });
 
   it('says so when the listing is gone', async () => {
-    renderRouter(app, { initialUrl: '/(jobs)/jobs/gone-z9' });
-    expect(await screen.findByText('الصفحة مش موجودة')).toBeTruthy();
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs/gone-z9' });
+    expect(await screen.findByText('الصفحة غير موجودة')).toBeTruthy();
   });
 });
 
 describe('companies', () => {
   it('lists them with their open roles', async () => {
-    renderRouter(app, { initialUrl: '/(companies)/companies' });
+    await renderRouter(app, { initialUrl: '/(companies)/companies' });
     expect(await screen.findByText('نايل بروكرز')).toBeTruthy();
     expect(screen.getByLabelText(/وظيفة مفتوحة واحدة/)).toBeTruthy();
   });
 
   it('searches them by name, and shows the words a link carries', async () => {
-    const result = renderRouter(app, { initialUrl: '/(companies)/companies?verified=1' });
+    const result = await renderRouter(app, { initialUrl: '/(companies)/companies?verified=1' });
     await screen.findByText('نايل بروكرز');
     const field = screen.getByLabelText(ar.filters.search);
     expect(field.props.placeholder).toBe(ar.app.companies.searchPlaceholder);
@@ -519,13 +532,13 @@ describe('companies', () => {
     await waitFor(() => expect(result.getSearchParams()).toEqual({ verified: '1' }));
     result.unmount();
 
-    renderRouter(app, { initialUrl: '/(companies)/companies?q=%D9%86%D8%A7%D9%8A%D9%84' });
+    await renderRouter(app, { initialUrl: '/(companies)/companies?q=%D9%86%D8%A7%D9%8A%D9%84' });
     await screen.findByText('نايل بروكرز');
     expect(screen.getByLabelText(ar.filters.search).props.value).toBe('نايل');
   });
 
   it("keeps a touch on the verified sheet in the sheet: the board's card it was opened from is not opened", async () => {
-    const result = renderRouter(app, { initialUrl: '/jobs' });
+    const result = await renderRouter(app, { initialUrl: '/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     fireEvent.press(screen.getAllByRole('button', { name: ar.companies.verified })[0]);
     expect(await screen.findByText(ar.app.verified.title)).toBeTruthy();
@@ -537,7 +550,7 @@ describe('companies', () => {
   });
 
   it('says what verified means when its mark is tapped', async () => {
-    renderRouter(app, { initialUrl: '/(companies)/companies' });
+    await renderRouter(app, { initialUrl: '/(companies)/companies' });
     await screen.findByText('نايل بروكرز');
     fireEvent.press(screen.getAllByRole('button', { name: ar.companies.verified })[0]);
     expect(await screen.findByText(ar.app.verified.title)).toBeTruthy();
@@ -547,7 +560,7 @@ describe('companies', () => {
   });
 
   it("shows a company's page", async () => {
-    renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
+    await renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
     // The name heads the page, and each of its listings names it again.
     expect(await screen.findByRole('header', { name: 'نايل بروكرز' })).toBeTruthy();
     expect(screen.getByText('وساطة عقارية في شرق القاهرة.')).toBeTruthy();
@@ -561,7 +574,7 @@ describe('reporting and hiding', () => {
   });
 
   it('asks a signed-out reader to sign in first, and to come back to the listing', async () => {
-    const result = renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
+    const result = await renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
     fireEvent.press(await screen.findByRole('button', { name: 'بلّغ عن الإعلان' }));
     await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
     expect(result.getSearchParams().next).toBe(`/jobs/${listing.slug}`);
@@ -572,30 +585,30 @@ describe('reporting and hiding', () => {
     jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons?: AlertButton[]) => {
       buttons?.find((button) => button.style === 'destructive')?.onPress?.();
     });
-    renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
-    fireEvent.press(await screen.findByRole('button', { name: 'اخفي الشركة دي' }));
-    expect(await screen.findByText('انت مخبّي الشركة دي، فإعلاناتها مش بتظهرلك في التطبيق.')).toBeTruthy();
+    await renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
+    fireEvent.press(await screen.findByRole('button', { name: 'أخفِ هذه الشركة' }));
+    expect(await screen.findByText('أنت تخفي هذه الشركة، فإعلاناتها لا تظهر لك في التطبيق.')).toBeTruthy();
     screen.unmount();
 
-    renderRouter(app, { initialUrl: '/(jobs)/jobs' });
-    expect(await screen.findByText('مفيش وظائف مطابقة لبحثك.')).toBeTruthy();
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText('لا توجد وظائف مطابقة لبحثك.')).toBeTruthy();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
     screen.unmount();
 
-    renderRouter(app, { initialUrl: '/(companies)/companies' });
+    await renderRouter(app, { initialUrl: '/(companies)/companies' });
     await screen.findAllByText(/شركات العقارات|الشركات/);
     await waitFor(() => expect(screen.queryByText('نايل بروكرز') === null).toBe(true));
     screen.unmount();
 
     // Listed by name under Account, out of every list as it is.
-    renderRouter(app, { initialUrl: '/account/hidden' });
+    await renderRouter(app, { initialUrl: '/account/hidden' });
     expect(await screen.findByText('نايل بروكرز')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'رجّع نايل بروكرز' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'أظهِر نايل بروكرز' })).toBeTruthy();
     screen.unmount();
 
-    renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
-    fireEvent.press(await screen.findByRole('button', { name: 'رجّع الشركة' }));
-    expect(await screen.findByRole('button', { name: 'اخفي الشركة دي' })).toBeTruthy();
+    await renderRouter(app, { initialUrl: '/(companies)/companies/nile-brokers' });
+    fireEvent.press(await screen.findByRole('button', { name: 'أظهِر الشركة' }));
+    expect(await screen.findByRole('button', { name: 'أخفِ هذه الشركة' })).toBeTruthy();
   });
 });
 

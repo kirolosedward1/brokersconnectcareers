@@ -279,13 +279,14 @@ section('the sign-in screen offers only what works');
       that only runs where it cannot fail is not a test. `pnpm smoke` loads
       .env.local now, and the label comes from the same file the page renders.
     */
-    const { continueWithGoogle } = JSON.parse(
+    const { signInWithGoogle, signUpWithGoogle } = JSON.parse(
       read(new URL('../messages/ar.json', import.meta.url), 'utf8'),
     ).auth;
 
     for (const path of ['/sign-in', '/sign-up', '/sign-in/candidate', '/sign-up/employer']) {
       const { body } = await get(path);
-      const offered = body.includes(continueWithGoogle);
+      const label = path.includes('/sign-up') ? signUpWithGoogle : signInWithGoogle;
+      const offered = body.includes(label);
       check(
         `${path} offers Google only when it is enabled`,
         offered === googleEnabled,

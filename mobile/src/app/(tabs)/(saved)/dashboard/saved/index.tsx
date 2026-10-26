@@ -10,7 +10,7 @@ import { SavedJobItem } from '~/components/saved/saved-job-item';
 import { SavedSearchList } from '~/components/saved/saved-search-list';
 import { Button } from '~/components/ui/button';
 import { Illustration } from '~/components/ui/illustration';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAppliedLast } from '~/features/jobs/marks';
 import { useListMotion } from '~/components/motion/list-motion';
@@ -25,6 +25,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { Scale, UserRound } from '~/components/ui/lucide';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * What the candidate kept — the website's /dashboard/saved: the bookmarked
@@ -67,6 +68,8 @@ export default function SavedScreen() {
   const [picked, setPicked] = useState<string[]>([]);
   const canCompare = open.length >= COMPARE_MIN;
   const choosing = comparing && canCompare;
+  // Said as choosing starts: a live region is Android's alone.
+  useAnnounce(t.markup('app.saved.compare.choose', { max: COMPARE_MAX, ...markupTags }), choosing);
   // A choice taken off the list since (unsaved, hidden, closed) is no longer one.
   const chosen = picked.filter((id) => open.some((job) => job.id === id));
   const stopComparing = () => {
@@ -76,7 +79,8 @@ export default function SavedScreen() {
   const toggle = (id: string) => {
     const next = togglePick(chosen, id);
     if (next.refused) {
-      haptic.tap();
+      // Refused, not done: the warning tap, as iOS gives for a limit reached.
+      haptic.warning();
       toast.show({ message: t.markup('app.saved.compare.limit', { max: COMPARE_MAX, ...markupTags }), icon: Scale });
       return;
     }
@@ -94,7 +98,7 @@ export default function SavedScreen() {
       />
     );
   } else if (jobs.isPending || searches.isPending) {
-    body = <LoadingState />;
+    body = <SkeletonScreen />;
   } else if ((jobs.isError && !jobs.data) || (searches.isError && !searches.data)) {
     body = (
       <ErrorState
@@ -135,7 +139,7 @@ export default function SavedScreen() {
               <Text weight="medium" style={{ textAlign: 'center' }}>
                 {t('dashboard.emptySaved')}
               </Text>
-              <Button label={t('jobs.title')} onPress={() => router.navigate('/jobs')} />
+              <Button label={t('nav.browseJobs')} onPress={() => router.navigate('/jobs')} />
             </View>
           ) : (
             <View style={{ gap: space[6] }}>

@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { CommonActions } from 'expo-router/react-navigation';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { useLocale } from 'use-intl';
@@ -109,7 +108,7 @@ type Frame = { x: number; width: number };
  * for the count when it gives them (`tabBarAccessibilityLabel`), the name and
  * the number otherwise.
  */
-export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
+export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: BottomTabBarProps) {
   const { colors, scheme, shadow } = useTheme();
   const locale = useLocale();
   const small = useTabBarSmall();
@@ -137,36 +136,37 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
   }, [inView]);
 
   // Where the bar and each of its tabs are, as laid out: where the pill goes.
+  // The tabs are known by their names, not their routes' keys: a tab not yet
+  // opened is a stand-in route whose key is its name, and opening it gives it
+  // a key of its own, which would make its button a new one, unmeasured.
   const [bar, setBar] = useState<Frame | null>(null);
   const [slots, setSlots] = useState<Record<string, Slot>>({});
-  const placeTab = (key: string, { nativeEvent: { layout } }: LayoutChangeEvent) => {
+  const placeTab = (name: string, { nativeEvent: { layout } }: LayoutChangeEvent) => {
     setSlots((known) => {
-      const was = known[key];
+      const was = known[name];
       if (was && was.x === layout.x && was.width === layout.width) return known;
-      return { ...known, [key]: { x: layout.x, width: layout.width } };
+      return { ...known, [name]: { x: layout.x, width: layout.width } };
     });
   };
 
-  const openKey = state.routes[state.index]?.key;
-  const open = openKey ? slots[openKey] : undefined;
+  const openName = state.routes[state.index]?.name;
+  const open = openName ? slots[openName] : undefined;
   const pill = usePill(open, reduceMotion);
 
   // The tab under a finger drawing the lens along the bar, while it does.
   const [lensed, setLensed] = useState<string | null>(null);
 
-  const openTab = (key: string) => {
-    const route = state.routes.find((candidate) => candidate.key === key);
+  const openTab = (name: string) => {
+    const route = state.routes.find((candidate) => candidate.name === name);
     if (!route) return;
-    const focused = key === openKey;
-    const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-    if (!focused && !event.defaultPrevented) {
-      navigation.dispatch({ ...CommonActions.navigate(route), target: state.key });
-    }
+    const focused = name === openName;
+    const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+    if (!focused && !event.defaultPrevented) navigateToTab(route.key);
   };
 
   const scrub = useScrub({
     routes: state.routes,
-    openKey,
+    openName,
     slots,
     bar,
     scale: small && !reduceMotion ? SMALL : 1,
@@ -242,26 +242,28 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
         ) : null}
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
+          // A tab whose screens stay but whose button does not (Home, for an admin: (tabs)/_layout.tsx).
+          if (StyleSheet.flatten(options.tabBarItemStyle)?.display === 'none') return null;
           const focused = index === state.index;
           const name = options.title ?? route.name;
           // A count says there is something to see over there: not on the tab already open.
           const badge = focused ? null : badgeText(options.tabBarBadge, locale);
           return (
             <TabButton
-              key={route.key}
+              key={route.name}
               name={name}
               label={badge ? (options.tabBarAccessibilityLabel ?? formatList([name, badge], locale)) : name}
               badge={badge}
               testID={`tab-${route.name}`}
               focused={focused}
-              lensed={lensed === route.key}
-              tint={focused || lensed === route.key ? colors.primary : colors.mutedForeground}
+              lensed={lensed === route.name}
+              tint={focused || lensed === route.name ? colors.primary : colors.mutedForeground}
               icon={options.tabBarIcon}
               iconMoves={iconMoves}
               nameShows={nameShows}
-              onLayout={(event) => placeTab(route.key, event)}
-              onPress={() => openTab(route.key)}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+              onLayout={(event) => placeTab(route.name, event)}
+              onPress={() => openTab(route.name)}
+              onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
             />
           );
         })}
@@ -272,8 +274,8 @@ export function TabBar({ state, descriptors, navigation, insets }: BottomTabBarP
 
 type PillMotion = {
   x: Animated.Value;
-  scaleX: Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition<number>;
-  scaleY: Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition<number>;
+  scaleX: Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition;
+  scaleY: Animated.AnimatedInterpolation<number> | Animated.AnimatedAddition;
   /** Swells it into the lens a finger draws along the bar, and back: at once with Reduce Motion on. */
   lens: (on: boolean, instant: boolean) => void;
   /** Back over the open tab, after a finger let go of it elsewhere or was taken off the bar: at once with Reduce Motion on. */
@@ -352,15 +354,15 @@ function usePill(open: Slot | undefined, reduceMotion: boolean): PillMotion {
 
 type ScrubOptions = {
   routes: BottomTabBarProps['state']['routes'];
-  openKey: string | undefined;
+  openName: string | undefined;
   slots: Record<string, Slot>;
   bar: Frame | null;
   /** The bar's size as drawn, against its own (smaller while a list scrolls down). */
   scale: number;
   pill: PillMotion;
   reduceMotion: boolean;
-  onLens: (key: string | null) => void;
-  onChoose: (key: string) => void;
+  onLens: (name: string | null) => void;
+  onChoose: (name: string) => void;
 };
 
 /**
@@ -398,14 +400,14 @@ function useScrub(options: ScrubOptions) {
     };
 
     /** The tab at a point along the bar, or the nearest at either end. */
-    const tabAt = (x: number): { key: string; slot: Slot } | null => {
+    const tabAt = (x: number): { name: string; slot: Slot } | null => {
       const { routes, slots } = latest.current;
-      let nearest: { key: string; slot: Slot; distance: number } | null = null;
+      let nearest: { name: string; slot: Slot; distance: number } | null = null;
       for (const route of routes) {
-        const slot = slots[route.key];
+        const slot = slots[route.name];
         if (!slot) continue;
         const distance = x < slot.x ? slot.x - x : x > slot.x + slot.width ? x - slot.x - slot.width : 0;
-        if (!nearest || distance < nearest.distance) nearest = { key: route.key, slot, distance };
+        if (!nearest || distance < nearest.distance) nearest = { name: route.name, slot, distance };
       }
       return nearest;
     };
@@ -415,20 +417,20 @@ function useScrub(options: ScrubOptions) {
       if (x === null) return;
       const found = tabAt(x);
       if (!found) return;
-      if (start !== null && found.key !== start) strayed = true;
+      if (start !== null && found.name !== start) strayed = true;
       const { bar } = latest.current;
       const half = found.slot.width / 2;
       const max = (bar?.width ?? found.slot.x + found.slot.width + INSET) - INSET - found.slot.width;
       latest.current.pill.x.setValue(Math.min(Math.max(x - half, INSET), Math.max(max, INSET)));
-      if (found.key !== under) {
+      if (found.name !== under) {
         if (under !== null) haptic.selection();
-        under = found.key;
-        latest.current.onLens(found.key);
+        under = found.name;
+        latest.current.onLens(found.name);
       }
     };
 
     const end = (choose: boolean) => {
-      const { pill, openKey, onLens, onChoose, reduceMotion } = latest.current;
+      const { pill, openName, onLens, onChoose, reduceMotion } = latest.current;
       const chosen = choose ? under : null;
       const pressed = chosen !== null && chosen === start && !strayed;
       under = null;
@@ -436,8 +438,8 @@ function useScrub(options: ScrubOptions) {
       strayed = false;
       onLens(null);
       pill.lens(false, reduceMotion);
-      if (chosen && (chosen !== openKey || pressed)) onChoose(chosen);
-      if (!chosen || chosen === openKey) pill.settle(reduceMotion);
+      if (chosen && (chosen !== openName || pressed)) onChoose(chosen);
+      if (!chosen || chosen === openName) pill.settle(reduceMotion);
     };
 
     return PanResponder.create({
@@ -446,7 +448,7 @@ function useScrub(options: ScrubOptions) {
         under = null;
         strayed = false;
         const down = along(startOf(event) ?? gesture.x0);
-        start = down === null ? null : (tabAt(down)?.key ?? null);
+        start = down === null ? null : (tabAt(down)?.name ?? null);
         // With Reduce Motion on the pill follows the finger as it is, without swelling.
         if (!latest.current.reduceMotion) latest.current.pill.lens(true, false);
         follow(gesture.moveX || gesture.x0);
@@ -552,8 +554,6 @@ function TabButton({ name, label, badge, testID, focused, lensed, tint, icon, ic
           variant="label"
           weight={focused ? 'semibold' : 'medium'}
           numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}
           allowFontScaling={false}
           style={{ color: tint, fontSize: 11, lineHeight: NAME, textAlign: 'center' }}
         >

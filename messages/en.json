@@ -22,7 +22,9 @@
     "collapseMenu": "Collapse the menu",
     "expandMenu": "Expand the menu",
     "closeMenu": "Close the menu",
-    "browseJobs": "Browse jobs"
+    "browseJobs": "Browse jobs",
+    "searchJobs": "Search open jobs",
+    "app": "Get the mobile app"
   },
   "home": {
     "searchPlaceholder": "Search a role, company or district",
@@ -140,12 +142,12 @@
     "postedWithin": "{days, plural, =1 {Last 24 hours} other {Last # days}}"
   },
   "track": {
-    "primary": "Primary sales",
+    "primary": "Off-plan",
     "resale": "Resale",
     "rental": "Rentals",
-    "commercial": "Commercial",
+    "commercial": "Commercial & administrative",
     "property_management": "Property management",
-    "back_office": "Back office"
+    "back_office": "Admin roles"
   },
   "employmentType": {
     "full_time": "Full time",
@@ -173,10 +175,10 @@
     "none": "No commission"
   },
   "companyType": {
-    "brokerage": "Brokerage",
-    "developer": "Developer",
-    "brokerage_jobs": "Jobs at brokerages",
-    "developer_jobs": "Jobs at developers"
+    "brokerage": "Brokerage firms",
+    "developer": "Real estate developers",
+    "brokerage_jobs": "Jobs at brokerage firms",
+    "developer_jobs": "Jobs at real estate developers"
   },
   "benefits": {
     "social_insurance": "Social insurance",
@@ -282,8 +284,11 @@
     "signUp": "Sign up",
     "email": "Email",
     "password": "Password",
-    "continueWithGoogle": "Continue with Google",
-    "continueWithApple": "Continue with Apple",
+    "signInWithGoogle": "Sign in with Google",
+    "signInWithApple": "Sign in with Apple",
+    "signUpWithGoogle": "Sign up with Google",
+    "signUpWithApple": "Sign up with Apple",
+    "appleSameEmail": "Already have an account? Sign in with the same email first.",
     "or": "or",
     "noAccount": "No account yet?",
     "hasAccount": "Already have an account?",
@@ -321,6 +326,7 @@
     "errTooMany": "Too many attempts in a short time. Wait a moment and try again.",
     "errSamePassword": "Your new password must be different from the old one.",
     "errCaptcha": "The security check did not go through. Wait a moment and try again.",
+    "appleUnavailable": "Sign in with Apple is not available yet. Use your email and password, or try again later.",
     "forgotTitle": "Forgot your password?",
     "forgotBody": "Enter your email and we will send you a link to set a new one.",
     "resetSent": "If that email is registered, a link is on its way. Check your spam folder too.",
@@ -329,6 +335,7 @@
     "passwordUpdated": "Your password has been changed.",
     "backToSignIn": "Back to sign in",
     "linkExpired": "That link has expired or has already been used. Ask for a new one.",
+    "emailConfirmed": "Your email is confirmed. Sign in to continue.",
     "sessionExpired": "Your session ended. Sign in again and we will take you back to the same page.",
     "checkEmailTitle": "We sent you a confirmation email",
     "checkEmailSpam": "If it has not arrived within a minute, check your spam folder.",
@@ -349,7 +356,12 @@
       "body": "Press Continue to pick up where you left off.",
       "continue": "Continue",
       "why": "This step keeps the link safe from email scanners that open it before you do."
-    }
+    },
+    "gateSave": "Sign in to save this job",
+    "gateFollow": "Sign in to follow this company",
+    "gateApply": "Sign in to apply",
+    "gateLead": "Sign in and you will be back here, with nothing lost.",
+    "gateReport": "Sign in to report this"
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -364,6 +376,7 @@
     "whatsappPlaceholder": "+201001234567",
     "locale": "Interface language",
     "submit": "Get started",
+    "appleRelayHint": "Apple hid your real email. Messages from the platform go to that private address. If the name field is empty, enter the name you want shown.",
     "roleLocked": "Account type cannot be changed once set.",
     "companySection": "Company details",
     "companyName": "Company name",
@@ -489,7 +502,8 @@
     "shortlisted": "Shortlisted",
     "interview": "Interview",
     "hired": "Hired",
-    "rejected": "Not a fit"
+    "rejected": "Not a fit",
+    "withdrawn": "Withdrawn"
   },
   "apply": {
     "title": "Apply for {job}",
@@ -508,9 +522,6 @@
     "viewApplications": "Track your applications",
     "employerCannotApply": "You're signed in as a company. Applying is for consultants only.",
     "rateLimit": "You have applied to a lot of jobs in a short time. Wait a little and try again — or tomorrow, if you have reached today's limit.",
-    "labelJob": "Role",
-    "labelCompany": "Company",
-    "labelDate": "Applied on",
     "nextRoles": "Other open roles",
     "nextRolesMatched": "Other roles that fit you",
     "privacyTitle": "Who sees your details?",
@@ -573,7 +584,7 @@
     "applicantsSuspendedBody": "The applications you received are kept, and the applicants’ names, numbers and CVs come back when the suspension is lifted. The notice on your dashboard says why and how to ask for a review.",
     "allListings": "All listings",
     "logo": "Company logo",
-    "logoHint": "PNG, JPG or WebP, up to 2 MB. Shown beside your company name everywhere.",
+    "logoHint": "PNG, JPEG, WebP, or a HEIC photo. Images over 2 MB are reduced. Shown beside your company name everywhere.",
     "logoUpload": "Upload logo",
     "logoReplace": "Replace logo",
     "jobsLede": "All your listings and where each one stands.",
@@ -1043,6 +1054,7 @@
       "invalid_governorate": "Choose an existing governorate.",
       "slug_taken": "That slug is already taken.",
       "unavailable": "The file is not available right now.",
+      "not_retryable": "This email cannot be rebuilt from its record, so a retry would only fail again.",
       "not_migrated": "The database needs migrations 316–319, 325–328, 346 and 355 before this action works.",
       "unknown": "Something unexpected went wrong. Nothing was changed.",
       "network": "The connection dropped before we could confirm. The page has been refreshed — check the state before retrying."
@@ -1266,7 +1278,7 @@
       "record": "Record and notes"
     },
     "makeAdmin": "Make an admin",
-    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. The website asks them to set up two-step sign-in before it opens. Nobody is emailed — tell them yourself.",
+    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. Two-step sign-in is optional unless the platform requires it. Nobody is emailed — tell them yourself.",
     "removeAdmin": "Remove admin access",
     "removeAdminBody": "They become a {role} again. Everything else about the account stays as it is. You cannot remove your own access.",
     "blockSignIn": "Block sign-in",
@@ -1325,6 +1337,7 @@
   },
   "common": {
     "loading": "Loading…",
+    "preparingImage": "Preparing the image…",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -1336,7 +1349,7 @@
     "notFoundBody": "That link is wrong, or the content is no longer available.",
     "goHome": "Back to home",
     "error": "Something went wrong",
-    "errorBody": "We could not complete that. Please try again.",
+    "errorBody": "That didn't go through. Try again.",
     "errorReference": "Error reference",
     "retry": "Try again",
     "saveSuccess": "Saved",
@@ -1372,8 +1385,7 @@
     "doorEmployerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
     "byTrack": "By specialisation",
     "byArea": "By area",
-    "contact": "Contact us",
-    "getApp": "Get the app"
+    "contact": "Contact us"
   },
   "validation": {
     "required": "This field is required",
@@ -1384,6 +1396,10 @@
     "commissionRequired": "Enter the commission percentage",
     "fileTooLarge": "That file is too large",
     "fileType": "That file type is not supported",
+    "imageTooLarge": "That image is still larger than 2 MB after it was reduced. Choose a smaller one.",
+    "imageType": "That file type is not supported. Use a PNG, JPEG, or WebP image, or a HEIC photo from an iPhone.",
+    "imageUnreadable": "The image could not be read. Try a JPG or PNG image.",
+    "storageError": "The image could not be uploaded. Storage said:",
     "passwordMismatch": "The two passwords do not match.",
     "tooManyLinks": "Too many links in this text. Keep only the ones that matter.",
     "invalidUrl": "Enter a link starting with http:// or https://",
@@ -1408,7 +1424,9 @@
       "searchPlaceholder": "Property consultant, New Cairo…",
       "cta": "Browse jobs",
       "ctaEmployer": "I'm hiring",
-      "trustNoSpam": "No fees for candidates"
+      "trustNoSpam": "No fees for candidates",
+      "trustPay": "Salary and commission in figures, on every listing",
+      "trustLeads": "Every listing says who supplies the leads"
     },
     "features": {
       "title": "Why this board",
@@ -1511,13 +1529,13 @@
   "appPage": {
     "meta": {
       "title": "Get the Brokers Connect app",
-      "description": "Real estate sales jobs across Egypt, on your phone: the salary and commission in figures on every listing, who supplies the leads, and one-tap applications.",
+      "description": "Real estate sales jobs across Egypt, on your phone. Every listing names who supplies the leads, with the salary and commission in figures whenever the company publishes them.",
       "ogAlt": "The Brokers Connect app on an iPhone"
     },
     "hero": {
       "pill": "The Brokers Connect app · iPhone · in Arabic",
       "title": "Brokers Connect, now in your pocket",
-      "subtitle": "Real estate sales and marketing jobs across Egypt. The basic salary, the commission and the lead source in figures on every listing, and one-tap applications.",
+      "subtitle": "Real estate sales and marketing jobs across Egypt, on your phone. Know who supplies the leads before you apply, and apply with your saved details.",
       "trust": "No fees for candidates"
     },
     "store": {
@@ -1526,39 +1544,40 @@
       "googlePlayTop": "GET IT ON",
       "googlePlayLabel": "Get it on Google Play",
       "comingSoon": "Coming soon",
-      "get": "Get"
+      "get": "Get the app",
+      "getLabel": "Get the app on the App Store"
     },
     "highlights": {
+      "leadsTitle": "Who supplies the leads",
+      "leadsBody": "On every listing, before you apply.",
       "payTitle": "Pay in figures",
-      "payBody": "On every listing, before you apply.",
-      "applyTitle": "One-tap apply",
-      "applyBody": "Your CV is saved.",
-      "alertsTitle": "Instant notifications",
-      "alertsBody": "Know the moment your application moves.",
-      "verifiedTitle": "Verified companies",
-      "verifiedBody": "A badge on approved companies."
+      "payBody": "At the top of the listing, whenever the company publishes it.",
+      "applyTitle": "Apply in one tap",
+      "applyBody": "After the first time, your details are saved.",
+      "alertsTitle": "Updates on your applications",
+      "alertsBody": "When a company moves you to the shortlist or an interview."
     },
     "transparency": {
-      "eyebrow": "Transparency",
-      "title": "The figures before you apply",
-      "body": "Every listing shows the basic salary, the commission and who supplies the leads. No “attractive package”, no “we’ll talk in the interview”.",
+      "eyebrow": "Before you apply",
+      "title": "Know the terms before you apply",
+      "body": "We ask every company for the basic salary and the commission in figures, and who supplies the leads. They sit in one card at the top of the listing, not buried in the description.",
       "calloutSalary": "Basic salary",
       "calloutCommission": "Commission",
       "calloutLeads": "Lead source",
-      "compareBadTitle": "A typical listing",
-      "compareBadBody": "Attractive package, generous commission",
+      "compareBadTitle": "Many listings",
+      "compareBadBody": "“Attractive package” and “generous commission”",
       "compareGoodTitle": "On Brokers Connect",
-      "compareGoodBody": "Basic salary + commission + lead source, in figures"
+      "compareGoodBody": "The salary and commission in figures, and who supplies the leads"
     },
     "search": {
-      "eyebrow": "Search",
-      "title": "The right job, without the runaround",
-      "body": "Search from the first screen, or browse by district with the number of open roles in each. Sort by newest or highest salary, and filter by track, district and lead source.",
+      "eyebrow": "Jobs",
+      "title": "Filter on what matters",
+      "body": "Search by job title or area, sort by newest or highest salary, and filter by track, area and lead source.",
       "trackLabel": "Track",
       "areaLabel": "Area",
       "leadsLabel": "Lead source",
       "sortLabel": "Sort",
-      "demoLabel": "The filters, to try",
+      "demoLabel": "Try the filters",
       "area": {
         "tagamoa": "New Cairo",
         "zayed": "Sheikh Zayed",
@@ -1572,87 +1591,70 @@
     },
     "apply": {
       "eyebrow": "Applying",
-      "title": "Apply in a minute, then with one tap",
-      "body": "Your details and your CV are saved, so every application after the first is one tap.",
+      "title": "Your first application in a minute, the next in one tap",
+      "body": "Your name, your WhatsApp number and your years of experience, and a CV if you like. They are saved, so every application after that is one tap.",
       "step1": "Open the listing",
-      "step2": "Tap apply",
-      "step3": "Sent"
+      "step2": "Tap “Apply now”",
+      "step3": "Application sent"
     },
     "notifications": {
-      "eyebrow": "Notifications",
-      "title": "Know the moment it moves",
-      "body": "A notification when a company opens your application, shortlists you or asks for an interview, and when a new role matches a saved search.",
+      "eyebrow": "Updates",
+      "title": "Hear about every change to your application",
+      "body": "You are told when your application arrives, and when a company moves you to the shortlist or an interview. Once a day, you hear about new jobs in a saved search or from a company you follow.",
       "now": "now",
-      "n1": "The company opened your application.",
-      "n2": "You were moved to the shortlist.",
-      "n3": "The company is asking for an interview.",
-      "n4": "A new job matches your saved search."
+      "sampleJob": "Sales consultant",
+      "sampleSearch": "Primary sales, New Cairo",
+      "listLabel": "Examples of the app’s notifications"
     },
     "companies": {
       "eyebrow": "Companies",
       "title": "Know the company before you apply",
-      "body": "Where it is, how big it is, its open roles, and a badge on the verified ones.",
-      "point1": "Who is hiring now",
-      "point2": "A verified badge on approved companies",
-      "point3": "Follow the company, and its next role reaches you",
-      "follow": "Follow the company",
-      "following": "Following"
+      "body": "Where it is, how many people work there and its open roles. A company that uploads its commercial register and tax card, and that we have reviewed, carries a verified badge.",
+      "point1": "The companies hiring now",
+      "point2": "A verified badge after the papers are reviewed",
+      "point3": "Follow a company and its new roles reach you"
     },
     "profile": {
-      "eyebrow": "Profile",
-      "title": "Your profile, your call",
-      "body": "Your areas, your sales record and your CV in the consultant directory, for approved companies to find. You decide whether it is shown.",
-      "name": "Your name here",
+      "eyebrow": "Your profile",
+      "title": "You choose who sees your profile",
+      "body": "Your areas, the developers you have sold for, your sales record and your CV, in the consultant directory so companies can reach you. You decide who sees it.",
+      "name": "Your name",
       "areas": "Areas",
       "sales": "Sales record",
       "cv": "CV",
-      "visible": "Shown in the consultant directory",
-      "hidden": "Hidden from companies"
+      "legend": "Who sees your profile"
     },
     "tour": {
       "eyebrow": "Tour",
-      "title": "Five screens, as a consultant uses them",
+      "title": "A tour of the app",
       "list": "The app’s screens",
       "prev": "Previous screen",
       "next": "Next screen",
       "alt": "The {screen} screen of the Brokers Connect app",
       "home": "Home",
-      "homeBody": "Search from the first screen, or browse by district with the number of open roles in each.",
+      "homeBody": "Search from the first screen, or pick an area and see how many jobs it has.",
       "jobs": "Jobs",
-      "jobsBody": "Sort by newest or by pay, and filter by track, district and lead source.",
+      "jobsBody": "Sort by newest or highest salary, and filter by track, area and lead source.",
       "listing": "The listing",
-      "listingBody": "The basic salary, the commission and who supplies the leads, then one tap to apply.",
+      "listingBody": "The salary, the commission and the lead source at the top, with the “Apply now” button under them.",
       "companies": "Companies",
-      "companiesBody": "Who is hiring right now, with the verified companies marked.",
+      "companiesBody": "The companies hiring now, with the verified ones marked.",
       "company": "The company",
-      "companyBody": "Where it is, how big it is, its roles, and the “follow the company” button."
-    },
-    "appearance": {
-      "eyebrow": "Appearance",
-      "title": "On your phone, your way",
-      "body": "Light or dark, and your own text size. The app follows the phone’s settings.",
-      "legend": "Appearance",
-      "light": "Light",
-      "dark": "Dark",
-      "large": "Large text",
-      "alt": "The Brokers Connect app’s home screen, {appearance}",
-      "altLight": "in the light appearance",
-      "altDark": "in the dark appearance",
-      "altLarge": "at the largest text size"
+      "companyBody": "Where it is, how many people work there, its open roles, and the “Follow the company” button."
     },
     "how": {
       "eyebrow": "Getting started",
       "title": "How to start",
       "step1Title": "Get the app",
       "step1Body": "From the App Store, on iPhone.",
-      "step2Title": "Complete your profile",
-      "step2Body": "Your areas and your CV, once.",
+      "step2Title": "Create your account",
+      "step2Body": "And fill in your details once.",
       "step3Title": "Apply and follow",
-      "step3Body": "One-tap applications, and the notifications reach you as they move."
+      "step3Body": "Apply in one tap, and the notifications tell you what changes."
     },
     "audiences": {
       "seekerTitle": "Looking for a job",
-      "seekerBody": "The lead source is named on every listing, with the salary and commission in figures whenever the company publishes them.",
+      "seekerBody": "Every listing names who supplies the leads, with the salary and commission in figures whenever the company publishes them.",
       "seekerCta": "Browse jobs",
       "employerTitle": "Hiring",
       "employerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
@@ -1662,18 +1664,18 @@
       "eyebrow": "Questions",
       "title": "Common questions",
       "q1": "Is the app free?",
-      "a1": "Yes. No fees for candidates.",
+      "a1": "Yes. There are no fees for candidates.",
       "q2": "Is there an Android version?",
-      "a2": "The app is on iPhone now, and Android comes next. Until then the website works from any phone.",
+      "a2": "Not yet. The app is on iPhone now, and Android comes next. Until then the website works from any phone.",
       "q3": "Who can see my profile?",
-      "a3": "Approved companies only, and only if you chose to be shown in the consultant directory. You can hide it at any time.",
+      "a3": "You choose: every approved company on the platform, verified companies only, or nobody. Any company you apply to receives your application.",
       "q4": "What does “lead source” mean?",
-      "a4": "Who supplies the clients: the company, or you. It is written on every listing so you know before you apply.",
-      "q5": "How do I know a company is verified?",
-      "a5": "Verified companies carry a badge on the companies screen and on the company’s page.",
+      "a4": "Who brings in the clients: the company, you, or both. It is on every listing so you know before you apply.",
+      "q5": "What is a verified company?",
+      "a5": "A company that uploaded its commercial register and tax card, which the Brokers Connect team reviewed before it got the badge. Verification confirms the company is real, not that every detail of a listing is guaranteed.",
       "q6": "How do I delete my account?",
-      "a6": "From the account deletion page.",
-      "a6Rich": "From <link>the account deletion page</link>."
+      "a6": "From Account in the app, or from the account deletion page on the website.",
+      "a6Rich": "From Account in the app, or from <link>the account deletion page</link> on the website."
     },
     "final": {
       "title": "Get Brokers Connect",
@@ -1722,7 +1724,7 @@
   },
   "account": {
     "title": "Account settings",
-    "subtitle": "What we email you, a copy of your data, and deleting your account.",
+    "subtitle": "Your profile, how you sign in, what reaches you, and the rest of your account.",
     "emailsTitle": "Emails we send you",
     "emailsBody": "Turn any of these off, and back on whenever you like.",
     "notifyApplications": "New applicant on one of your roles",
@@ -1759,13 +1761,13 @@
     "notifyApplicantDigest": "One email a day instead of one per applicant",
     "notifyApplicantDigestHint": "For listings that attract a lot of people. The summary arrives in the morning and replaces the individual notice.",
     "photo": "Your photo",
-    "photoHint": "Shown to employers with your application and on your directory profile. PNG, JPG or WebP, up to 2 MB.",
+    "photoHint": "Shown to employers with your application and on your directory profile. PNG, JPEG, WebP, or a HEIC photo from an iPhone. Images over 2 MB are reduced.",
     "photoUpload": "Upload a photo",
     "photoReplace": "Replace photo",
     "suspendedTitle": "Your account is suspended",
     "suspendedBody": "An administrator has suspended this account. You will not be able to use the platform until it is reviewed. If you think this is a mistake, get in touch.",
     "mfaTitle": "Two-step verification",
-    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for any account, required for admin accounts.",
+    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for all accounts. An admin who has set it up is always asked for the code, and the platform may require it for other admins.",
     "mfaSetup": "Set up two-step verification",
     "mfaScan": "Scan this code with your authenticator app, then enter the number it shows.",
     "mfaQrAlt": "QR code for your authenticator app",
@@ -1782,7 +1784,48 @@
     "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done.",
     "deleteRequestCta": "Ask us to delete it",
     "deleteRequested": "We have your request (reference {reference}). We will write to you within 7 days to agree what happens to the company, and your account is deleted within 30 days.",
-    "deleteRequestLimited": "You have sent several requests today, and we have them. There is no need to send another."
+    "deleteRequestLimited": "You have sent several requests today, and we have them. There is no need to send another.",
+    "securityTitle": "Sign-in and security",
+    "notificationsTitle": "Notifications",
+    "messagesTitle": "Messages",
+    "previewProfile": "Preview your profile",
+    "hiddenTitle": "Hidden on this phone",
+    "hiddenBody": "Listings, companies and consultants you hide are kept on the phone, in the app. This site cannot show or change that list.",
+    "appLockNote": "Locking the app with Face ID or a passcode is kept on the phone. It is not a setting on the website.",
+    "pushUnavailable": "Notification switches for your phones are not available on this account yet. New activity still shows in the bell, and by email when that is on.",
+    "pushKindsTitle": "What to hear about",
+    "pushKindsBody": "These apply on every phone you are signed in on. Anything turned off here still shows in the bell.",
+    "pushJobAlerts": "New jobs",
+    "pushJobAlertsHint": "Once a day, when jobs appear that match a saved search or a company you follow.",
+    "pushApplications": "Your applications",
+    "pushApplicationsHint": "When your application arrives, and when the company moves it to a new stage.",
+    "pushApplicationsEmployer": "Applicants",
+    "pushApplicationsEmployerHint": "When someone applies to one of your listings, or withdraws.",
+    "pushAccount": "Your account",
+    "pushAccountHint": "Decisions about your account or profile, support replies, a password changed.",
+    "pushAccountEmployer": "Your account and listings",
+    "pushAccountEmployerHint": "A listing published, rejected or ending, your company’s verification, decisions about your account, support replies.",
+    "pushQuiet": "Quiet at night",
+    "pushQuietHint": "Anything after 11 pm waits until 8 am, Cairo time."
+  },
+  "compare": {
+    "start": "Compare",
+    "startHint": "Choose two or {max} open jobs and see them side by side",
+    "choose": "Choose two or {max} jobs to compare",
+    "pickHint": "Chooses it to compare",
+    "limit": "You can compare up to {max} jobs",
+    "picked": "{count, plural, =0 {No jobs chosen yet} one {1 job chosen} other {# jobs chosen}}",
+    "go": "Compare ({count})",
+    "title": "Compare jobs",
+    "lede": "Side by side, with the best in each row marked.",
+    "scrollHint": "Swipe sideways to see the rest",
+    "best": "Best",
+    "salary": "Basic salary a month",
+    "tooFew": "Comparing needs at least two jobs",
+    "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
+    "back": "Back to Saved",
+    "pick": "Choose {title}",
+    "openJob": "Open the listing"
   },
   "savedSearch": {
     "cta": "Alert me",
@@ -2001,10 +2044,33 @@
     "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
   },
   "drafts": {
-    "restored": "We kept what you typed here on <time>{when}</time> and put it back.",
-    "offered": "You have unsaved changes from <time>{when}</time>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
+    "restored": "We kept what you typed here on <v>{when}</v> and put it back.",
+    "offered": "You have unsaved changes from <v>{when}</v>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
     "restore": "Restore my changes",
     "discard": "Discard them",
     "startOver": "Start over"
+  },
+  "savedNotes": {
+    "title": "Your note",
+    "prefix": "Your note:",
+    "add": "Add a note",
+    "edit": "Edits the note",
+    "forListing": "Add a note to yourself about this listing",
+    "private": "Only you see it, here and in the app.",
+    "placeholder": "e.g. Spoke to them; interview on Sunday morning",
+    "count": "{count}/{max}",
+    "countSpoken": "{count} of {max} characters",
+    "saved": "Note saved",
+    "deleted": "Note deleted",
+    "delete": "Delete"
+  },
+  "myApplications": {
+    "timeline": "Where it stands",
+    "stepSent": "Sent",
+    "stepSeen": "Seen",
+    "stepDecision": "Decision",
+    "withdrawTitle": "Withdraw your application to “{title}”?",
+    "withdrawBody": "The company will see that you withdrew. You can apply again while the listing is open.",
+    "withdrawUnavailable": "Withdrawal is not available right now, so your application was left as it is."
   }
 }

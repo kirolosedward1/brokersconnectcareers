@@ -8,6 +8,7 @@ import { Link } from '@/i18n/navigation';
 import { localeHref, type Locale } from '@/i18n/routing';
 import { createClient } from '@/lib/supabase/client';
 import { resendConfirmation } from '@/lib/actions/auth-email';
+import { AppleSignInButton } from '@/components/auth/apple-sign-in-button';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { Field, Input } from '@/components/ui/field';
@@ -15,7 +16,7 @@ import { safeNext } from '@/lib/safe-next';
 import { Turnstile, turnstileEnabled } from '@/components/security/turnstile';
 import { reportAuthOutcome, type AuthFriction } from '@/lib/actions/security';
 import { reach } from '@/lib/reach';
-import { knownAuthError } from '@/lib/auth/errors';
+import { appleProviderDisabled, knownAuthError } from '@/lib/auth/errors';
 
 /**
  * Google's mark, inline.
@@ -36,25 +37,14 @@ function GoogleMark() {
   );
 }
 
-/**
- * Apple's mark, inline for the same reason as Google's, in the text colour —
- * Apple's guidelines allow the mark black on white (the outline button) and
- * white on black, which is what the text colour already is in each theme.
- */
-function AppleMark() {
-  return (
-    <svg viewBox="0 0 384 512" className="size-4 shrink-0" aria-hidden focusable="false" fill="currentColor">
-      <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-    </svg>
-  );
-}
-
 export function AuthForm({
   mode,
   locale,
   audience,
   googleEnabled = false,
   appleEnabled = false,
+  nextPath,
+  onSignedIn,
 }: {
   mode: 'sign-in' | 'sign-up';
   locale: Locale;
@@ -71,10 +61,25 @@ export function AuthForm({
    */
   googleEnabled?: boolean;
   /**
-   * The same question for Sign in with Apple — which an account made in the
-   * iOS app may be all it has, so the website has to offer it too.
+   * Whether GoTrue will accept Sign in with Apple. The same flag
+   * `/api/mobile/v1/config` publishes (`enabledProviders`). The button and the
+   * linking note are drawn only while it is on. A click that still comes back
+   * "provider is not enabled" says so in Arabic instead of GoTrue's English.
    */
   appleEnabled?: boolean;
+  /**
+   * Where the person was going, when the form is drawn somewhere other than
+   * the sign-in page — the sign-in dialog over a listing (sign-in-gate.tsx).
+   * The page's own `?next=` otherwise.
+   */
+  nextPath?: string;
+  /**
+   * Called instead of leaving the page once a password sign-in has gone
+   * through: the dialog closes and the action that asked for it carries on.
+   * Sign-up and the one-tap providers still navigate — a new account has to
+   * pass through onboarding, and OAuth leaves the page by its nature.
+   */
+  onSignedIn?: () => void;
 }) {
   const t = useTranslations('auth');
   const tValidation = useTranslations('validation');
@@ -104,7 +109,7 @@ export function AuthForm({
   // Validated, not taken on trust: this decides a navigation and arrives in a
   // query string anybody can craft. An unusable value falls back to onboarding
   // rather than being handed to the router to turn into a 404.
-  const next = safeNext(searchParams.get('next')) ?? undefined;
+  const next = safeNext(nextPath ?? searchParams.get('next')) ?? undefined;
 
   // Onboarding is where a new account chooses its role; if the door already
   // implied one, hand it over. An existing account skips onboarding entirely,
@@ -141,7 +146,10 @@ export function AuthForm({
   const carryingNext = (href: string) =>
     next ? `${href}${href.includes('?') ? '&' : '?'}next=${encodeURIComponent(next)}` : href;
   const confirmedHref = carryingNext(`${onboardingHref}${audience ? '&' : '?'}confirmed=1`);
-  const confirmationPath = () => `/auth/callback?next=${encodeURIComponent(confirmedHref)}`;
+  // `flow=signup` stays in front of `next`. The callback reads `next` as the
+  // rest of the query, and this marker is how a missing verifier is told apart
+  // from a Google or Apple return that named no page.
+  const confirmationPath = () => `/auth/callback?flow=signup&next=${encodeURIComponent(confirmedHref)}`;
   const confirmationRedirect = () => `${window.location.origin}${confirmationPath()}`;
 
   const [error, setError] = useState<string | null>(null);
@@ -281,6 +289,14 @@ export function AuthForm({
    * The same mistake was fixed in the apply form for the same reason.
    */
   function landAfterSignIn() {
+    // Drawn in a dialog over the page the person was on: they stay on it,
+    // signed in, and whatever they pressed carries on (sign-in-gate.tsx).
+    // The session cookie is already set by the browser client, so the next
+    // server action and the page's refresh both see them signed in.
+    if (mode === 'sign-in' && onSignedIn) {
+      onSignedIn();
+      return;
+    }
     // Onboarding decides for itself whether there is anything left to ask.
     // A brand-new account always has something left, so a sign-up that got a
     // session straight away goes there first, with the destination in tow —
@@ -333,8 +349,15 @@ export function AuthForm({
   }
 
   function signInWith(provider: 'google' | 'apple') {
+    setUnconfirmed(false);
+    if (provider === 'apple' && !appleEnabled) {
+      setError(t('appleUnavailable'));
+      return;
+    }
+    setError(null);
     startTransition(async () => {
       const callback = new URL('/auth/callback', window.location.origin);
+      callback.searchParams.set('flow', 'oauth');
       if (next) callback.searchParams.set('next', next);
       else if (audience) callback.searchParams.set('next', onboardingHref);
 
@@ -342,7 +365,9 @@ export function AuthForm({
         provider,
         options: { redirectTo: callback.toString() },
       });
-      if (oauthError) setError(oauthError.message);
+      if (oauthError) {
+        setError(provider === 'apple' && appleProviderDisabled(oauthError) ? t('appleUnavailable') : readable(oauthError));
+      }
     });
   }
 
@@ -408,39 +433,44 @@ export function AuthForm({
 
   return (
     <div className="space-y-5">
-      {googleEnabled || appleEnabled ? (
+      {appleEnabled || googleEnabled ? (
         <>
           <div className="space-y-2">
             {appleEnabled ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                size="lg"
-                onClick={() => signInWith('apple')}
+              <AppleSignInButton
+                label={mode === 'sign-up' ? t('signUpWithApple') : t('signInWithApple')}
                 disabled={pending}
-              >
-                <AppleMark />
-                {t('continueWithApple')}
-              </Button>
+                onClick={() => signInWith('apple')}
+              />
             ) : null}
             {googleEnabled ? (
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full max-w-full min-w-0 whitespace-nowrap px-3 min-[360px]:px-6"
                 size="lg"
                 onClick={() => signInWith('google')}
                 disabled={pending}
               >
                 <GoogleMark />
-                {t('continueWithGoogle')}
+                <span className="min-w-0 whitespace-nowrap">
+                  {mode === 'sign-up' ? t('signUpWithGoogle') : t('signInWithGoogle')}
+                </span>
               </Button>
+            ) : null}
+            {/*
+              Under both provider buttons, above «أو». The sentence is wider
+              than the column at 320, so it wraps to two balanced lines and
+              stays the width of the buttons.
+            */}
+            {appleEnabled ? (
+              <p className="w-full max-w-full min-w-0 text-balance text-center text-[13px] leading-[18px] text-muted-foreground">
+                {t('appleSameEmail')}
+              </p>
             ) : null}
           </div>
 
-          {/* The separator belongs to the buttons. Without one there is nothing
-              above the form for "or" to separate it from. */}
+          {/* The separator stays for whichever provider is on, including Google alone. */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
             {t('or')}

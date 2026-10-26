@@ -52,9 +52,9 @@ export function FilterDemo({
     >
       <div className="space-y-5">
         {groups.map((group) => (
-          <div key={group.key} role="group" aria-label={group.label}>
+          <div key={group.key} role="group" aria-label={group.label} className="text-center lg:text-start">
             <p className="text-sm font-semibold">{group.label}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap justify-center gap-2 lg:justify-start">
               {group.options.map((option) => {
                 const pressed = (chosen[group.key] ?? []).includes(option.key);
                 return (

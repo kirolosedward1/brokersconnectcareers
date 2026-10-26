@@ -15,6 +15,7 @@ import { useStoredFields } from '~/lib/use-stored-fields';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
 import { wholeNumber } from './fields';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * The objective and the sales record — the website's ProfileRecordForm: the
@@ -38,6 +39,8 @@ export function RecordForm({ agent, completeness }: { agent: AgentProfileRow; co
   });
   const { summary, units, volume } = form.fields;
   const [invalid, setInvalid] = useState(false);
+  // Said to VoiceOver too: a live region is Android's alone.
+  useAnnounce(t('common.saveSuccess'), save.isSuccess && !invalid);
 
   // Leaving with the record changed and not saved asks first.
   useLeaveGuard(form.dirty, save.isPending);

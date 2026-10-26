@@ -107,10 +107,16 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
 
     // Recorded now so a callback that arrives before the buyer returns can
     // still be matched, and so an abandoned checkout is traceable.
-    await admin
+    // Not handed out unrecorded: without the Paymob order id settle_order()
+    // cannot check that a callback is about this order (migration 312).
+    const { error: bindError } = await admin
       .from('orders')
       .update({ paymob_order_id: checkout.paymobOrderId })
       .eq('id', order.id);
+    if (bindError) {
+      console.warn('[billing] checkout not recorded:', bindError.code ?? bindError.message);
+      return { ok: false, error: 'checkout_failed' };
+    }
 
     return { ok: true, data: { url: checkout.iframeUrl } };
   } catch (cause) {

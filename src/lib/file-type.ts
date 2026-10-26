@@ -28,6 +28,10 @@ const BY_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   webp: 'image/webp',
+  // Named so a HEIC can be converted before upload. Not stored: the buckets
+  // take PNG, JPEG and WebP, and fileExtension has no entry for these.
+  heic: 'image/heic',
+  heif: 'image/heif',
 };
 
 /** Spellings older browsers still send for types the buckets know by another name. */
@@ -35,6 +39,8 @@ const ALIASES: Record<string, string> = {
   'image/jpg': 'image/jpeg',
   'image/pjpeg': 'image/jpeg',
   'image/x-png': 'image/png',
+  'image/heic-sequence': 'image/heic',
+  'image/heif-sequence': 'image/heif',
 };
 
 const EXTENSION_BY_TYPE: Record<string, string> = {

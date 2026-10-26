@@ -333,7 +333,18 @@ open_app jobs
 see 3-jobs 'الفلاتر'
 in_header 3-jobs 'الوظائف'
 tour 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone' "$flows/expo-go-scroll-down.yaml"
+# The margin swipe starts 3% in, inside the screen-edge gesture. When iOS
+# takes it, Maestro still reports the swipe done and the list has not moved.
 if [ "$(same_screen 3-jobs 3b-jobs-scrolled-down)" = yes ]; then
+  tour 3b-jobs-scrolled-down 'scrolled down through the list' "$flows/expo-go-scroll-down-mid.yaml"
+fi
+# A resting finger on that second swipe opens the card's menu. Close it and
+# count the scroll as missed: the later steps would otherwise read the menu.
+if grep -q 'افتح الإعلان' "$out/3b-jobs-scrolled-down.boxes"; then
+  tour 3b-menu-closed 'closed the menu a resting finger opened' -e 'POINT=50%,12%' "$flows/expo-go-tap.yaml"
+  failed+=("3b-jobs-scrolled-down: the swipe opened a card's menu")
+  echo "::error title=Expo Go: 3b-jobs-scrolled-down::the swipe opened a card's menu instead of moving the list"
+elif [ "$(same_screen 3-jobs 3b-jobs-scrolled-down)" = yes ]; then
   failed+=("3b-jobs-scrolled-down: the swipe did not move the list")
   echo "::error title=Expo Go: 3b-jobs-scrolled-down::the board reads the same before and after the swipe: the list did not move, so the bar had nothing to shrink for"
 elif [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
@@ -342,6 +353,13 @@ elif [ "$(bar_names 3b-jobs-scrolled-down)" != 0 ]; then
 fi
 tour 3c-jobs-scrolled-up 'scrolled back up: the bar whole again, names and all' "$flows/expo-go-scroll-up.yaml"
 if [ "$(same_screen 3b-jobs-scrolled-down 3c-jobs-scrolled-up)" = yes ]; then
+  tour 3c-jobs-scrolled-up 'scrolled back up through the list' "$flows/expo-go-scroll-up-mid.yaml"
+fi
+if grep -q 'افتح الإعلان' "$out/3c-jobs-scrolled-up.boxes"; then
+  tour 3c-menu-closed 'closed the menu a resting finger opened' -e 'POINT=50%,12%' "$flows/expo-go-tap.yaml"
+  failed+=("3c-jobs-scrolled-up: the swipe opened a card's menu")
+  echo "::error title=Expo Go: 3c-jobs-scrolled-up::the swipe opened a card's menu instead of moving the list"
+elif [ "$(same_screen 3b-jobs-scrolled-down 3c-jobs-scrolled-up)" = yes ]; then
   failed+=("3c-jobs-scrolled-up: the swipe did not move the list")
   echo "::error title=Expo Go: 3c-jobs-scrolled-up::the board reads the same before and after the swipe back up: the list did not move"
 elif [ "$(bar_names 3c-jobs-scrolled-up)" != 4 ]; then
@@ -382,23 +400,23 @@ open_app jobs
 see 3f-jobs-after-tour 'الفلاتر'
 
 open_app companies
-see 3d-companies 'الموثّقة بس'
+see 3d-companies 'الموثّقة فقط'
 in_header 3d-companies 'شركات العقارات'
 open_app account
-see 4-account 'ادخل على حسابك'
+see 4-account 'سجّل الدخول إلى حسابك'
 in_header 4-account 'حسابي'
 open_app sign-in
-see 5-sign-in 'أهلاً بيك تاني'
+see 5-sign-in 'مرحبًا بعودتك'
 
 # Back to Expo Go's own home, and the app opened again from there: the other case.
 xcrun simctl terminate "$udid" host.exp.Exponent > /dev/null 2>&1 || true
 xcrun simctl launch "$udid" host.exp.Exponent > /dev/null
 sleep 8
 xcrun simctl io "$udid" screenshot "$out/6-expo-go-home.png" > /dev/null 2>&1 || true
+# The welcome was skipped at the first open, and a skip is kept on the phone
+# (src/features/welcome.ts): opened again, the app goes straight to Home.
 open_app
-see 7-welcome-again 'إنشاء حساب'
-skip
-see 8-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
+see 7-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 
 for verdict in "$out"/*.verdict; do
   if grep -q 'LEFT TO RIGHT' "$verdict"; then

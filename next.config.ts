@@ -87,6 +87,13 @@ const nextConfig: NextConfig = {
    * The hosts are derived rather than typed out, so a different Supabase
    * project or analytics provider does not silently get blocked.
    */
+  async redirects() {
+    return [
+      { source: '/contact', destination: '/support', permanent: true },
+      { source: '/en/contact', destination: '/en/support', permanent: true },
+    ];
+  },
+
   async headers() {
     const supabase = (() => {
       try {
@@ -137,7 +144,21 @@ const nextConfig: NextConfig = {
     const csp = [
       `default-src 'self'`,
       // Next inlines its bootstrap; see the note above about nonces.
-      `script-src 'self' 'unsafe-inline' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile}`.replace(/\s+/g, ' ').trim(),
+      /*
+        'wasm-unsafe-eval' lets libheif compile its WebAssembly module.
+        It does not allow eval() or new Function(), which production must
+        keep refusing: the dev bundler is the only thing that needs those,
+        and only while NODE_ENV is development.
+      */
+      `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ${dev ? `'unsafe-eval'` : ''} ${analytics} ${turnstile}`.replace(/\s+/g, ' ').trim(),
+      /*
+        The HEIC decoder runs in a worker served from this origin. worker-src
+        also allows blob, because with no worker-src Chromium falls back to
+        script-src and WebKit reports worker-src, and both used to refuse the
+        conversion. script-src stays without blob: a blob may be a worker,
+        not a script on the page.
+      */
+      `worker-src 'self' blob:`,
       // Tailwind ships as a stylesheet, but Next also inlines critical CSS.
       `style-src 'self' 'unsafe-inline'`,
       // Company logos come from Supabase storage; avatars come from whichever

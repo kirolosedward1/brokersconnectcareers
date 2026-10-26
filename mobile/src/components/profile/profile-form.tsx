@@ -1,5 +1,5 @@
 import { useRef, useState, type RefObject } from 'react';
-import { Pressable, View, type ScrollView, type TextInput } from 'react-native';
+import { Pressable, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { CheckCircle2, Eye, EyeOff, FileText, Paperclip, ShieldCheck, Trash2, X } from '~/components/ui/lucide';
 import { localized } from '@/lib/locale';
@@ -25,6 +25,7 @@ import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
 import { useStoredFields } from '~/lib/use-stored-fields';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
@@ -55,11 +56,12 @@ export function ProfileForm({
   agent: AgentProfileRow | null;
   developerIds: number[];
   /** The page's scroll view: Save is far below the fields, and an error is brought into view. */
-  scroll: RefObject<ScrollView | null>;
+  scroll: RefObject<ScrollViewInstance | null>;
 }) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const save = useSaveAgentProfile();
   const districts = useDistricts().data ?? [];
   const developers = useDevelopers().data ?? [];
@@ -83,7 +85,7 @@ export function ProfileForm({
   const [errors, setErrors] = useState<Errors>({});
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'yearsExperience', 'cv']);
   // The return key moves on from the name to the number.
-  const whatsappField = useRef<TextInput>(null);
+  const whatsappField = useRef<TextInputInstance>(null);
   const refuse = (next: Errors) => {
     setErrors(next);
     inView.show(next);
@@ -251,11 +253,11 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field ref={inView.place('yearsExperience')} label={t('filters.experienceBand')} error={errors.yearsExperience}>
+      <Field ref={inView.place('yearsExperience')} label={t('app.profile.yearsLabel')} error={errors.yearsExperience}>
         <TextField
           value={years}
           onChangeText={(value) => form.set({ years: value })}
-          accessibilityLabel={t('filters.experienceBand')}
+          accessibilityLabel={t('app.profile.yearsLabel')}
           ltr
           keyboardType="number-pad"
           maxLength={2}
@@ -339,7 +341,7 @@ export function ProfileForm({
             }}
           >
             <Paperclip size={16} color={colors.mutedForeground} />
-            <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
+            <Text variant="small" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
               {cv.file.name}
             </Text>
             <Pressable
@@ -387,7 +389,7 @@ export function ProfileForm({
         </View>
       </Field>
 
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+      {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
         <Button label={t('common.save')} size="lg" loading={save.isPending} onPress={submit} />

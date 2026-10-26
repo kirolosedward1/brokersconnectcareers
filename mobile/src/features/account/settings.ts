@@ -34,12 +34,22 @@ const PHOTO_EDGE = 1024;
 /** A picture ready to send: a JPEG (a photo) or a PNG (a logo) in the app's cache. */
 export type PickedPhoto = { uri: string };
 
-/** Why a photo was not taken, in the website's words for each. */
+/** Why a photo was not taken, in the website's words for each. `detail` is the storage client's own sentence. */
 export class PhotoRefused extends Error {
-  constructor(readonly reason: 'file_type' | 'too_large' | 'failed') {
+  constructor(
+    readonly reason: 'file_type' | 'too_large' | 'failed' | 'storage',
+    readonly detail?: string,
+  ) {
     super(reason);
     this.name = 'PhotoRefused';
   }
+}
+
+/** The upload action's refusal, as the photo screens already explain it. */
+export function photoRefusal(result: { error: string; detail?: string }): PhotoRefused {
+  if (result.error === 'storage' && result.detail) return new PhotoRefused('storage', result.detail);
+  if (result.error === 'file_type' || result.error === 'too_large') return new PhotoRefused(result.error);
+  return new PhotoRefused('failed');
 }
 
 /**
@@ -48,7 +58,8 @@ export class PhotoRefused extends Error {
  * server decodes it once more and keeps only the pixels, as a WebP. A photo
  * is cropped square in the system's own editor and sent as a JPEG; a logo is
  * left as drawn and sent as a PNG, so a transparent ground stays transparent.
- * Null when cancelled.
+ * When that file is empty or still over 2 MB, it is drawn again, smaller, as
+ * a JPEG, until it fits. Null when cancelled.
  */
 export async function pickImage(kind: 'photo' | 'logo'): Promise<PickedPhoto | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -67,8 +78,25 @@ export async function pickImage(kind: 'photo' | 'logo'): Promise<PickedPhoto | n
       ? await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 })
       : await image.saveAsync({ format: SaveFormat.PNG });
 
-  if (new File(saved.uri).size > MAX_PHOTO_BYTES) throw new PhotoRefused('too_large');
-  return { uri: saved.uri };
+  if (fits(saved.uri)) return { uri: saved.uri };
+
+  // A fresh context each time: the first one has already been rendered.
+  const edges = [1024, 768, 512, 384];
+  const qualities = [0.85, 0.7, 0.55, 0.4];
+  for (const edge of edges) {
+    for (const quality of qualities) {
+      const again = ImageManipulator.manipulate(asset.uri);
+      const rendered = await again.resize({ width: edge }).renderAsync();
+      const next = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: quality });
+      if (fits(next.uri)) return { uri: next.uri };
+    }
+  }
+  throw new PhotoRefused('too_large');
+}
+
+function fits(uri: string): boolean {
+  const size = new File(uri).size;
+  return size > 0 && size <= MAX_PHOTO_BYTES;
 }
 
 /** The account's photo: square, as a JPEG. */
@@ -98,9 +126,7 @@ export function useUploadPhoto() {
       form.append('kind', 'avatar');
       form.append('file', formFile(photo));
       const result = await callAction('uploadImage', form);
-      if (!result.ok) {
-        throw new PhotoRefused(result.error === 'file_type' || result.error === 'too_large' ? result.error : 'failed');
-      }
+      if (!result.ok) throw photoRefusal(result);
     },
     // The account, and the directory card it is drawn on (the profile's
     // preview). Returned, so the button is busy until the new photo shows.
@@ -170,7 +196,8 @@ export async function shareMyData(userId: string, dialogTitle: string): Promise<
   const file = new File(Paths.cache, `brokers-connect-data-${userId.slice(0, 8)}.json`);
   if (file.exists) file.delete();
   file.create();
-  file.write(JSON.stringify(data, null, 2));
+  // Written before the share sheet opens on it: since SDK 58 the write is asynchronous.
+  await file.write(JSON.stringify(data, null, 2));
   await Sharing.shareAsync(file.uri, { mimeType: 'application/json', UTI: 'public.json', dialogTitle }).finally(() => {
     try {
       file.delete();

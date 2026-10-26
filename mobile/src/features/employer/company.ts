@@ -9,7 +9,7 @@ import type { CompanyInput } from '@/lib/mobile-api/contract';
 import { canAccessEmployerArea } from '@/lib/permissions';
 import type { CompanyDocumentRow, CompanyMemberRole, OrderRow } from '@/lib/supabase/database.types';
 import { uuid } from '@/lib/uuid';
-import { formFile, PhotoRefused, type PickedPhoto } from '~/features/account/settings';
+import { formFile, photoRefusal, PhotoRefused, type PickedPhoto } from '~/features/account/settings';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -125,9 +125,7 @@ export function useUploadLogo(companyId: string) {
       form.append('companyId', companyId);
       form.append('file', formFile(logo));
       const result = await callAction('uploadImage', form);
-      if (!result.ok) {
-        throw new PhotoRefused(result.error === 'file_type' || result.error === 'too_large' ? result.error : 'failed');
-      }
+      if (!result.ok) throw photoRefusal(result);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
   });

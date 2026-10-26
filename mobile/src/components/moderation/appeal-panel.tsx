@@ -13,6 +13,7 @@ import { AppealRefused, useAppealState, useSubmitAppeal } from '~/features/moder
 import { ApiError } from '~/lib/api';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 const REFUSAL_COPY = {
   message_required: 'messageRequired',
@@ -43,6 +44,8 @@ export function AppealPanel({ subjectType, subjectId }: { subjectType: AppealSub
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Said to VoiceOver too: a live region is Android's alone.
+  useAnnounce(t('sent'), submit.isSuccess);
 
   if (!state) return null;
 

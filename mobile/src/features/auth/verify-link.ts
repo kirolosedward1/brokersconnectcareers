@@ -17,9 +17,30 @@ import { env } from '~/lib/env';
  */
 let checker: ReturnType<typeof createClient> | null = null;
 
+/**
+ * The link's check has the same limit as every auth request in the app's own
+ * client (lib/supabase.ts): this client does not go through that fetch, and
+ * auth-js sets no limit of its own, so a stalled connection left the confirm
+ * screen on "verifying" for good. Aborted, auth-js answers with a retryable
+ * fetch error and the screen offers to try again.
+ */
+const LINK_CHECK_TIMEOUT_MS = 20_000;
+
+async function boundedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  if (init?.signal) return fetch(input, init);
+  const controller = new AbortController();
+  const late = setTimeout(() => controller.abort(), LINK_CHECK_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(late);
+  }
+}
+
 function client() {
   checker ??= createClient(env.supabaseUrl, env.supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'bc-link-check' },
+    global: { fetch: boundedFetch },
   });
   return checker;
 }

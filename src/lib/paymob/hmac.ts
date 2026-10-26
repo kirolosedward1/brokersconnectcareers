@@ -29,6 +29,7 @@ const SIGNED_FIELDS = [
   'is_voided',
   'order.id',
   'owner',
+  'pending',
   'source_data.pan',
   'source_data.sub_type',
   'source_data.type',

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { View, type TextInput } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { passwordRefusal } from '@/lib/auth/errors';
 import { westernDigits } from '@/lib/search/arabic';
@@ -19,6 +19,8 @@ import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
+import { livePasswordChecks, PASSWORD_MIN, PASSWORD_RULES } from '~/lib/password-checks';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * Change the email address — the website's CredentialsSettings, through
@@ -105,9 +107,10 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
   const [error, setError] = useState<string | null>(null);
   useErrorFeedback(error);
   const [done, setDone] = useState(false);
+  useAnnounce(t('account.passwordSaved'), done);
   const [pending, setPending] = useState(false);
   // The return key moves on to the second password, and from there saves.
-  const confirmField = useRef<TextInput>(null);
+  const confirmField = useRef<TextInputInstance>(null);
   /*
     Secure password change: on a session more than a day old GoTrue wants a
     code it emails, sent back with the new password — the website's form
@@ -131,10 +134,13 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
     setCodeSent(true);
   };
 
+  // Said under the fields while typing; checked again when saved.
+  const live = livePasswordChecks(password, confirm);
+
   const save = async () => {
     setDone(false);
     setError(null);
-    if (password.length < 8) {
+    if (password.length < PASSWORD_MIN) {
       setError(t('validation.passwordShort'));
       return;
     }
@@ -186,19 +192,20 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
 
       {hasPassword ? (
         <>
-          <Field label={t('account.newPassword')}>
+          <Field label={t('account.newPassword')} error={live.short ? t('validation.passwordShort') : undefined}>
             <PasswordField
               value={password}
               onChangeText={setPassword}
               accessibilityLabel={t('account.newPassword')}
               textContentType="newPassword"
               autoComplete="new-password"
+              passwordRules={PASSWORD_RULES}
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => confirmField.current?.focus()}
             />
           </Field>
-          <Field label={t('auth.passwordConfirm')} error={error}>
+          <Field label={t('auth.passwordConfirm')} error={live.mismatch ? t('validation.passwordMismatch') : live.short && error === t('validation.passwordShort') ? null : error}>
             <PasswordField
               ref={confirmField}
               value={confirm}
@@ -206,6 +213,7 @@ export function PasswordSettings({ provider }: { provider: 'email' | 'google' | 
               accessibilityLabel={t('auth.passwordConfirm')}
               textContentType="newPassword"
               autoComplete="new-password"
+              passwordRules={PASSWORD_RULES}
               returnKeyType="go"
               onSubmitEditing={() => {
                 if (!pending) void save();

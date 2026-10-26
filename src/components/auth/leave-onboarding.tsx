@@ -63,6 +63,8 @@ export function LeaveOnboarding({ locale, signOutLabel }: { locale: Locale; sign
         setError(t('leaveFailed'));
         return;
       }
+      // The account went with what it had half typed (lib/form-draft.ts).
+      forgetDrafts();
       window.location.assign(localeHref(locale, '/'));
     });
   }

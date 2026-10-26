@@ -133,7 +133,7 @@ function lastMove() {
 }
 
 async function launch() {
-  renderRouter(app, { initialUrl: '/' });
+  await renderRouter(app, { initialUrl: '/' });
   expect(await screen.findByText('home')).toBeTruthy();
 }
 

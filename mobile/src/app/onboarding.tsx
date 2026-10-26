@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type ScrollView, type TextInput } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Session } from '@supabase/supabase-js';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -40,11 +40,12 @@ import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useHoldBack } from '~/lib/use-hold-back';
-import { webAddress } from '~/lib/web-address';
+import { webAddress } from '@/lib/web-address';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * The step that makes an account a profile — the website's onboarding
@@ -138,7 +139,8 @@ export default function OnboardingScreen() {
               return refusal;
             }
             close();
-            dialog.alert(t('app.account.deleted'));
+            // Said in passing, not in an alert to dismiss: the welcome is opening as it is said (HIG, Alerts).
+            toast.show({ message: t('app.account.deleted'), tone: 'success' });
             return null;
           }}
         />
@@ -239,7 +241,7 @@ function OnboardingForm({
 
   // The button is at the bottom of each step, below its questions: an error
   // above them is brought into view and said.
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, FIELD_ORDER);
   const refuse = (next: Record<string, string>) => {
     setErrors(next);
@@ -247,8 +249,8 @@ function OnboardingForm({
   };
   // The return key moves from the name to the number (the phone pad has none
   // of its own), and from a company's name to its website.
-  const whatsappField = useRef<TextInput>(null);
-  const websiteField = useRef<TextInput>(null);
+  const whatsappField = useRef<TextInputInstance>(null);
+  const websiteField = useRef<TextInputInstance>(null);
 
   function goTo(next: number) {
     Keyboard.dismiss();
@@ -270,6 +272,22 @@ function OnboardingForm({
     if (role === 'candidate' && !visibility) missing.visibility = t('onboarding.visibilityRequired');
     if (!agreed) missing.terms = t('onboarding.consentRequired');
     return missing;
+  }
+
+  /**
+   * A number or an address checked as the reader leaves its field, once
+   * something is typed in it: said under it then, not only after Continue.
+   * Put right, the error goes.
+   */
+  function checkOnLeave(field: 'whatsapp' | 'companyWebsite', typed: string) {
+    const problem = typed.trim() ? problems()[field] : undefined;
+    setErrors((current) => {
+      if ((current[field] ?? undefined) === problem) return current;
+      const next = { ...current };
+      if (problem) next[field] = problem;
+      else delete next[field];
+      return next;
+    });
   }
 
   /** The refusals given, shown on the first step that asks one of them. */
@@ -393,10 +411,10 @@ function OnboardingForm({
             ) : null}
           </View>
           <View style={{ flex: 1, alignItems: 'center', gap: 2 }}>
-            <Text variant="small" weight="semibold" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="small" weight="semibold" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {t('onboarding.title')}
             </Text>
-            <Text variant="caption" tone="mutedForeground" numberOfLines={1} style={{ textAlign: 'center' }}>
+            <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1} style={{ textAlign: 'center' }}>
               {stepLabel}
             </Text>
           </View>
@@ -496,6 +514,7 @@ function OnboardingForm({
                     autoComplete="tel"
                     textContentType="telephoneNumber"
                     placeholder={t('onboarding.whatsappPlaceholder')}
+                    onBlur={() => checkOnLeave('whatsapp', whatsapp)}
                   />
                 </Field>
 
@@ -545,6 +564,7 @@ function OnboardingForm({
                         textContentType="URL"
                         placeholder="https://"
                         maxLength={200}
+                        onBlur={() => checkOnLeave('companyWebsite', companyWebsite)}
                       />
                     </Field>
                     <Field label={t('onboarding.companyDistrict')}>
@@ -695,7 +715,7 @@ function OnboardingForm({
             </>
           ) : null}
 
-          {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+          {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
           <Button
             label={last ? t('onboarding.submit') : t('jobForm.next')}
@@ -727,7 +747,7 @@ function OnboardingForm({
 function StepHeading({ title, body }: { title: string; body?: string | null }) {
   return (
     <View style={{ gap: space[2] }}>
-      <Text variant="title" weight="bold" accessibilityRole="header">
+      <Text variant="title" weight="semibold" accessibilityRole="header">
         {title}
       </Text>
       {body ? <Text tone="mutedForeground">{body}</Text> : null}

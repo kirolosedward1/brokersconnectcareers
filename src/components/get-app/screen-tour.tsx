@@ -165,14 +165,18 @@ export function ScreenTour({
                 onClick={() => choose(index, true)}
                 onKeyDown={(event) => onKey(event, index)}
                 className={cn(
-                  'flex w-full gap-5 rounded-2xl border-s-2 px-5 py-4 text-start transition-[background-color,border-color,opacity] duration-300 motion-reduce:transition-none',
-                  selected
-                    ? 'border-primary bg-muted/60 opacity-100'
-                    : 'border-transparent opacity-70 hover:bg-muted/40 hover:opacity-100',
+                  'group flex w-full gap-5 rounded-2xl border-s-2 px-5 py-4 text-start transition-[background-color,border-color] duration-300 motion-reduce:transition-none',
+                  selected ? 'border-primary bg-muted/60' : 'border-transparent hover:bg-muted/40',
                 )}
               >
+                {/* Never dimmed: small primary type at 70% falls below 4.5:1. */}
                 <span className="numeral mt-1 text-xs font-bold text-primary">{String(index + 1).padStart(2, '0')}</span>
-                <span className="min-w-0">
+                <span
+                  className={cn(
+                    'min-w-0 transition-opacity duration-300 motion-reduce:transition-none',
+                    !selected && 'opacity-70 group-hover:opacity-100',
+                  )}
+                >
                   <span className="block text-lg font-semibold leading-snug">{screen.title}</span>
                   <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{screen.body}</span>
                 </span>
@@ -187,7 +191,10 @@ export function ScreenTour({
         <ul
           ref={scroller}
           aria-label={labels.list}
-          className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6"
+          // Scrolls sideways, so it takes focus: the arrow keys scroll it for somebody without a pointer.
+          // It runs edge to edge, so its ring is drawn inside it, where the screen does not cut it off.
+          tabIndex={0}
+          className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] focus-visible:-outline-offset-2 [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6"
         >
           {screens.map((screen, index) => (
             <li
@@ -199,8 +206,8 @@ export function ScreenTour({
               className="w-[66vw] max-w-[15rem] shrink-0 snap-center sm:w-60"
             >
               <PhoneFrame src={screen.src} alt={screen.alt} sizes="15rem" />
-              <p className="mt-4 font-semibold leading-snug">{screen.title}</p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{screen.body}</p>
+              <p className="mt-4 text-center font-semibold leading-snug">{screen.title}</p>
+              <p className="mt-1 text-center text-sm leading-relaxed text-muted-foreground">{screen.body}</p>
             </li>
           ))}
         </ul>

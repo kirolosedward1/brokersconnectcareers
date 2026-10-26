@@ -7,8 +7,8 @@ import {
   type PressableProps,
   type PressableStateCallbackType,
   type StyleProp,
-  type View,
   type ViewStyle,
+  type ViewInstance,
 } from 'react-native';
 import { useReduceMotion } from '~/theme/reduce-motion';
 import { motion } from '~/theme/tokens';
@@ -30,7 +30,7 @@ type Props = Omit<PressableProps, 'style' | 'children'> & {
  *
  * `style` and `children` take the pressed state as Pressable's do.
  */
-export const PressableScale = forwardRef<View, Props>(function PressableScale(
+export const PressableScale = forwardRef<ViewInstance, Props>(function PressableScale(
   { style, children, scaleTo = motion.pressScale, onPressIn, onPressOut, ...props },
   ref,
 ) {

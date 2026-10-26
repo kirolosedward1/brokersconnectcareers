@@ -18,9 +18,23 @@
 #                   real PostgREST (scripts/contract/replay.mjs): a column, an
 #                   embed, an RPC's arguments or a grant the fixtures answer
 #                   but the real schema refuses fails here
+#   website         the website's own checks that read the app's files
+#                   (scripts/messages.mjs, legal.test.mjs, app-links.test.mjs,
+#                   route-parity.test.mjs): the Web workflow skips a change
+#                   made only under mobile/, so they run here too, or a
+#                   mobile-only merge turned main's web check red for the next
+#                   person to push
 #
 # The native iOS build (prebuild + xcodebuild on macOS) is slower and runs on
 # main and by hand, not on every pull request.
+#
+# The paths below are everything the app is made of, on both sides of the
+# repository: its own code; the website's shared modules and catalogues; the
+# migrations its direct reads run against; the API routes it calls
+# (src/app/api/mobile, and the CV, agent-CV and export routes it opens); the
+# website's pages, whose set the route-parity check holds the app's screens
+# to; the brand files tests/brand.test.ts holds byte for byte; and the
+# website scripts the checks here run.
 #
 # The EXPO_PUBLIC_* values are the public, client-side ones in eas.json. No
 # secrets are used; the repository is public.
@@ -31,22 +45,44 @@ on:
     paths:
       - 'mobile/**'
       - 'src/lib/**'
+      - 'src/app/api/**'
+      - 'src/app/.well-known/**'
+      - 'src/app/[locale]/**/page.tsx'
       - 'messages/**'
+      - 'public/brand/**'
+      - 'public/illustrations/**'
+      - 'public/media/hero-poster.jpg'
       - 'supabase/migrations/**'
       - 'supabase/seed*.sql'
       - 'supabase/tests/setup.mjs'
       - 'scripts/contract/**'
+      - 'scripts/messages.mjs'
+      - 'scripts/legal.test.mjs'
+      - 'scripts/app-links.test.mjs'
+      - 'scripts/route-parity.test.mjs'
+      - 'scripts/licenses.mjs'
       - '.github/workflows/mobile.yml'
   push:
     branches: [main]
     paths:
       - 'mobile/**'
       - 'src/lib/**'
+      - 'src/app/api/**'
+      - 'src/app/.well-known/**'
+      - 'src/app/[locale]/**/page.tsx'
       - 'messages/**'
+      - 'public/brand/**'
+      - 'public/illustrations/**'
+      - 'public/media/hero-poster.jpg'
       - 'supabase/migrations/**'
       - 'supabase/seed*.sql'
       - 'supabase/tests/setup.mjs'
       - 'scripts/contract/**'
+      - 'scripts/messages.mjs'
+      - 'scripts/legal.test.mjs'
+      - 'scripts/app-links.test.mjs'
+      - 'scripts/route-parity.test.mjs'
+      - 'scripts/licenses.mjs'
       - '.github/workflows/mobile.yml'
   workflow_dispatch:
 
@@ -105,6 +141,45 @@ jobs:
         env:
           EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: '1'
 
+  website:
+    # The website's checks that read the app. Four of `pnpm check`'s scripts
+    # open files under mobile/: the catalogue scan counts a key the app alone
+    # asks for as used (scripts/messages.mjs), the legal test holds the
+    # Account tab and onboarding to the documents (scripts/legal.test.mjs),
+    # the app-links test holds app.config.ts's Android paths to the iOS file
+    # (scripts/app-links.test.mjs), and the route-parity test holds the app's
+    # screens to the website's pages (scripts/route-parity.test.mjs). The Web
+    # workflow does not run for a change made only under mobile/, so without
+    # this a key the app stopped using, or a screen it dropped, went red on
+    # main at the next unrelated push to the website.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: The catalogue, as the app reads it
+        run: pnpm test:messages
+
+      - name: The legal documents, as the app links them
+        run: pnpm test:legal
+
+      - name: The links that open the app
+        run: pnpm test:app-links
+
+      - name: Every website page has its place in the app
+        run: pnpm test:route-parity
+
   contract:
     # The app's tests answer Supabase from fixtures; here every distinct
     # request they made goes to the real thing. The runner's own Postgres 16
@@ -150,7 +225,7 @@ jobs:
     # and Objective-C all compile. Not on pull requests (it takes a while and
     # needs a macOS runner); on main, and on demand.
     #
-    # Xcode 26, as EAS builds SDK 57 with. On macos-15 (Xcode 16.4, Swift 6.1)
+    # Xcode 26, as EAS builds SDK 58 with. On macos-15 (Xcode 16.4, Swift 6.1)
     # the build failed in ExpoModulesJSI's "Build xcframework" phase: its Swift
     # package says swift-tools-version 6.2, which only Xcode 26 reads. @expo/ui,
     # which expo-router depends on, also calls iOS 26 SwiftUI API
@@ -182,7 +257,7 @@ jobs:
         run: |
           xcodebuild -version
           if ! xcodebuild -version | grep -qE '^Xcode (2[6-9]|[3-9][0-9])\.'; then
-            echo "::error::Expo SDK 57 needs Xcode 26 or later"
+            echo "::error::Expo SDK 58 needs Xcode 26 or later"
             exit 1
           fi
 

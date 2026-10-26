@@ -233,7 +233,7 @@ report.section('307 — a row says what the server said');
 
   const traversal = await as(candidate, `
     insert into applications (job_id, candidate_id, cv_path) values ('${liveJob}', '${candidate}', '${candidate}/../${publicAgent}/cv.pdf')
-    on conflict (job_id, candidate_id) do update set cv_path = excluded.cv_path returning id`);
+    on conflict (job_id, candidate_id) where status <> 'withdrawn' do update set cv_path = excluded.cv_path returning id`);
   report.check('a CV path with a dot segment is refused by the table', !traversal.ok && /cv_is_the_applicants|check constraint/.test(traversal.error ?? ''), traversal.error);
 
   const js = await as(employerVerified, `update companies set website = 'javascript:alert(1)' where id = '${verifiedCompany}' returning id`);

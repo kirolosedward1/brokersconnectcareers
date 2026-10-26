@@ -8,9 +8,11 @@ import { Reveal } from '@/components/get-app/reveal';
  *
  * From `sm` the chips float beside the phone, each with a thin line to the
  * row it names, arriving one after another; the positions are a share of
- * the phone's height, measured off the capture. Below `sm` there is no room
- * beside a phone, so the same three sit in a row under it. One set is laid
- * out at a time, so a screen reader meets the three once.
+ * the phone's height, measured off the capture, and the sides are the
+ * capture's own (the salary and commission on its right, the lead source on
+ * its left), so they are physical rather than logical. Below `sm` there is
+ * no room beside a phone, so the same three sit in a row under it. One set
+ * is laid out at a time, so a screen reader meets the three once.
  */
 export function Callouts({
   src,
@@ -29,23 +31,20 @@ export function Callouts({
   const chip =
     'inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-sm font-medium text-white backdrop-blur';
   const dot = 'size-1.5 shrink-0 rounded-full bg-brand-cyan';
-  /** A chip beside the phone: absolute, with its line toward the screen (physical sides: the capture's own). */
   const floating = 'absolute hidden whitespace-nowrap sm:block';
   const lineRight = 'before:absolute before:top-1/2 before:right-full before:h-px before:w-6 before:bg-white/40';
   const lineLeft = 'before:absolute before:top-1/2 before:left-full before:h-px before:w-6 before:bg-white/40';
 
   return (
-    <div className={cn('mx-auto w-fit', className)}>
-      <div className="relative">
+    <div className={cn('w-full', className)}>
+      {/* The phone's own box, so the chips are placed against it. */}
+      <div className="relative mx-auto w-60 sm:w-[17rem]">
         <div
           aria-hidden
           className="absolute -inset-x-16 -inset-y-8 -z-10 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--brand-blue)_45%,transparent),transparent)]"
         />
-        <PhoneFrame src={src} alt={alt} sizes="(min-width: 640px) 17rem, 15rem" className="w-60 sm:w-[17rem]" />
+        <PhoneFrame src={src} alt={alt} sizes="(min-width: 640px) 17rem, 15rem" />
 
-        {/* The salary is the first row of the pay card; the commission sits
-            on the right half of the second row and the lead source on its
-            left half, which is why those two share a height. */}
         <Reveal className={cn(floating, 'left-full top-[44%] ml-6', lineRight)}>
           <span className={chip}>
             <span className={dot} aria-hidden />

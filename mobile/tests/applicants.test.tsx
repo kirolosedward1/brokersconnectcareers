@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react';
-import { Linking, Modal, RefreshControl, Text } from 'react-native';
-import { router, Stack, Tabs } from 'expo-router';
+import { Linking, Modal, RefreshControl, StyleSheet, Text } from 'react-native';
+import { router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createTranslator } from 'use-intl';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
+import { shownToast } from '~/components/feedback/toast';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
+import { LRI, PDI } from '~/i18n/rich';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
@@ -15,6 +18,7 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as InboxScreen from '../src/app/(tabs)/(applicants)/employer/applicants/index';
 import * as PipelineScreen from '../src/app/(tabs)/(listings,applicants)/employer/jobs/[id]/applicants';
+import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
 import { fakeServer } from './server';
@@ -45,6 +49,7 @@ jest.mock('~/lib/session-storage', () => {
 jest.mock('expo-web-browser', () => ({ openBrowserAsync: jest.fn(async () => ({ type: 'opened' })) }));
 
 const ar = catalogues.ar;
+const tAr = createTranslator({ locale: 'ar', messages: catalogues.ar });
 const server = fakeServer();
 const PASSWORD = 'correct-horse';
 const user = authUser();
@@ -136,6 +141,10 @@ beforeEach(async () => {
     if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
     return { body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } };
   });
+  server.on('HEAD /rest/v1/applications', (url: URL) => {
+    const standing = url.searchParams.get('status') === 'neq.withdrawn' ? rows.filter((row) => row.status !== 'withdrawn') : rows;
+    return { body: null, headers: { 'content-range': `*/${standing.length}` } };
+  });
   server.on('GET /rest/v1/application_notes', notes);
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
   server.on('POST /api/mobile/v1/actions/markApplicantsSeen', { ok: true });
@@ -182,7 +191,7 @@ function ConsultantStandIn() {
 
 const app = {
   _layout: Root,
-  '(tabs)/_layout': () => <Tabs screenOptions={{ headerShown: false }} />,
+  '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(listings,applicants)/employer/jobs/[id]/applicants': PipelineScreen,
   '(tabs)/(applicants)/employer/applicants/index': InboxScreen,
   '(tabs)/(listings,applicants)/agents/[slug]': ConsultantStandIn,
@@ -207,7 +216,7 @@ const input = (path: string, index = 0) => (server.asked(path)[index]?.body as {
 
 describe("a listing's applicants", () => {
   it('shows them by stage, with who they are — or that their profile is private — and stamps them seen', async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
 
     expect(await screen.findByRole('header', { name: 'سارة عادل' })).toBeTruthy();
     expect(screen.getByRole('header', { name: ar.applicationStatus.new })).toBeTruthy();
@@ -227,7 +236,7 @@ describe("a listing's applicants", () => {
   });
 
   it("moves an applicant with the stage the card showed, and a reason only when one was typed for the move — and says so when a colleague got there first", async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
 
     // His reason is the shortlist's, written for that stage: it does not ride
     // along to the next one, where the candidate would read it again.
@@ -252,7 +261,7 @@ describe("a listing's applicants", () => {
   });
 
   it('sends a reason typed for a move along with it', async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'اتفقنا على مقابلة الأحد.');
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.shortlisted}` }));
     fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.interview }));
@@ -267,7 +276,7 @@ describe("a listing's applicants", () => {
   });
 
   it('saves the reason written to the candidate on its own, at the same stage', async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'مقابلة يوم الأحد الساعة ١١.');
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.decisionNote}: ${ar.common.save}` }));
     await waitFor(() =>
@@ -284,7 +293,7 @@ describe("a listing's applicants", () => {
     server.on('POST /api/mobile/v1/actions/setApplicationStatus', () => {
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'مقابلة يوم الأحد الساعة ١١.');
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.decisionNote}: ${ar.common.save}` }));
 
@@ -311,7 +320,7 @@ describe("a listing's applicants", () => {
       calls += 1;
       return calls === 1 ? first.handler() : { ok: true };
     });
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
     fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.shortlisted }));
     fireEvent.changeText((await screen.findAllByLabelText(ar.employer.decisionNote))[0], 'ملف ممتاز، هنكلمك الأحد.');
@@ -335,7 +344,7 @@ describe("a listing's applicants", () => {
   });
 
   it("keeps what is typed on a card when a colleague's move, read again, puts it under another stage", async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.changeText(await screen.findByDisplayValue('مقابلة يوم الخميس.'), 'مقابلة يوم الأحد.');
 
     // A colleague moves him to interview; the page reads its applicants again (a pull, a push).
@@ -363,7 +372,7 @@ describe("a listing's applicants", () => {
       if (url.searchParams.get('select')?.startsWith('status,')) return rows.map((row) => ({ status: row.status }));
       return { body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } };
     });
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.shortlisted}` }));
     fireEvent.press(screen.getByRole('radio', { name: ar.applicationStatus.interview }));
@@ -394,7 +403,7 @@ describe("a listing's applicants", () => {
     });
     // The card is on screen before the connection goes.
     offline = false;
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     const button = await screen.findByRole('button', { name: `${ar.employer.moveTo} (عمر حسن): ${ar.applicationStatus.shortlisted}` });
     offline = true;
 
@@ -412,13 +421,17 @@ describe("a listing's applicants", () => {
   });
 
   it('adds a private note, and lets its author take their own back', async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText('كلّمتها، هترد الخميس.')).toBeTruthy();
 
     fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'اتفقنا على مقابلة.');
     fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
     await waitFor(() =>
-      expect(input('/api/mobile/v1/actions/addApplicationNote')).toEqual({ applicationId: sara.id, body: 'اتفقنا على مقابلة.' }),
+      expect(input('/api/mobile/v1/actions/addApplicationNote')).toEqual({
+        applicationId: sara.id,
+        body: 'اتفقنا على مقابلة.',
+        idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      }),
     );
 
     // Only the viewer's own note offers a delete.
@@ -435,7 +448,7 @@ describe("a listing's applicants", () => {
       written = [{ id: 3, application_id: sara.id, author_id: USER_ID, body: 'اتفقنا على مقابلة.', created_at: '2026-09-29T10:00:00Z' }];
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText('كلّمتها، هترد الخميس.')).toBeTruthy();
 
     fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'اتفقنا على مقابلة.');
@@ -454,6 +467,16 @@ describe("a listing's applicants", () => {
     fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
     expect(await screen.findByText(ar.app.offline.body)).toBeTruthy();
     expect(screen.getAllByLabelText(ar.employer.notesTitle)[0].props.value).toBe('نكلمها تاني الأسبوع الجاي.');
+
+    // Pressed again, it is the same note: the same key, so the website finds
+    // the first attempt's note if it did go in. The note before it had its own.
+    fireEvent.press(screen.getAllByRole('button', { name: ar.employer.notesAdd })[0]);
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/addApplicationNote')).toHaveLength(3));
+    const keys = server
+      .asked('/api/mobile/v1/actions/addApplicationNote')
+      .map((request) => (request.body as { input: { idempotencyKey?: string } }).input.idempotencyKey);
+    expect(keys[2]).toBe(keys[1]);
+    expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('does not take an older note in the same words for the new one while the notes are unread', async () => {
@@ -467,7 +490,7 @@ describe("a listing's applicants", () => {
     server.on('POST /api/mobile/v1/actions/addApplicationNote', () => {
       throw new TypeError('Network request failed');
     });
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText('سارة عادل')).toBeTruthy();
     fireEvent.press(screen.getAllByRole('button', { name: new RegExp(ar.employer.notesTitle) })[0]);
 
@@ -479,8 +502,8 @@ describe("a listing's applicants", () => {
   });
 
   it('opens the CV through the website, and WhatsApp with the opener written', async () => {
-    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
 
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.downloadCv}: سارة عادل` }));
     await waitFor(() =>
@@ -498,13 +521,13 @@ describe("a listing's applicants", () => {
 
   it('says when the hour’s CVs are used up', async () => {
     server.on(`GET /api/cv/${sara.id}`, { status: 429, body: { error: 'rate_limited', retryAfterSeconds: 600 } });
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.downloadCv}: سارة عادل` }));
     expect(await screen.findByText(ar.app.applicants.cvLimit)).toBeTruthy();
   });
 
   it("opens an applicant's full profile from their card, for a company that may read the directory", async () => {
-    const result = renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const result = await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.press(await screen.findByHintText(ar.agents.viewProfile));
     await waitFor(() => expect(result.getPathname()).toBe('/agents/sara-a1b2'));
   });
@@ -512,13 +535,13 @@ describe("a listing's applicants", () => {
   it('offers no way into the directory to an employer still waiting for approval', async () => {
     server.on('/rest/v1/profiles', [{ ...employer, approval_status: 'pending' }]);
     await rememberActor({ userId: USER_ID, profile: { role: 'employer', approval_status: 'pending' }, company: null });
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText('مستشارة مبيعات أولية')).toBeTruthy();
     expect(screen.queryByHintText(ar.agents.viewProfile)).toBeNull();
   });
 
   it('takes in a new applicant with a pull, and stops spinning once it is in', async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText('سارة عادل')).toBeTruthy();
     expect(screen.UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
 
@@ -530,24 +553,98 @@ describe("a listing's applicants", () => {
 
   it('takes in the first applicant with a pull on the empty listing', async () => {
     rows = [];
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
-    expect(await screen.findByText(ar.employer.noApplicants)).toBeTruthy();
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText(ar.app.applicants.empty)).toBeTruthy();
 
     rows = [layla];
     await pull();
     expect(await screen.findByText('ليلى محمود')).toBeTruthy();
   });
 
+  it('asks for a standing count, so a withdrawal is not an applicant', async () => {
+    rows = [
+      ...rows,
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        created_at: '2026-09-30T10:00:00Z',
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByText('سارة عادل')).toBeTruthy();
+    const head = server.asked('/rest/v1/applications').find((request) => request.method === 'HEAD');
+    expect(head?.url.searchParams.get('status')).toBe('neq.withdrawn');
+    expect(head?.url.searchParams.get('job_id')).toBe(`eq.${JOB_ID}`);
+    // Two standing applications. The withdrawal is on the page and not in the count.
+    expect(screen.getByText(`${LRI}2${PDI} متقدمين`)).toBeTruthy();
+  });
+
+  it('draws no action row on a withdrawn card, even when a CV is still on it', async () => {
+    rows = [
+      {
+        ...omar,
+        id: 'a0000000-0000-4000-8000-000000000009',
+        status: 'withdrawn',
+        note: null,
+        decision_note: null,
+        cv_path: `${USER_ID}/withdrawn.pdf`,
+        candidate: {
+          full_name: 'نورا سليم',
+          whatsapp_phone: '+201112223334',
+          avatar_url: null,
+          agent_profiles: {
+            slug: 'nora-a1b2',
+            headline_ar: 'مستشارة',
+            headline_en: null,
+            years_experience: 4,
+            tracks: ['primary'],
+            district_ids: [newCairo.id],
+            units_closed: null,
+            volume_egp: null,
+          },
+        },
+      },
+    ];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const header = await screen.findByRole('header', { name: 'نورا سليم' });
+    expect(screen.getAllByText(ar.applicationStatus.withdrawn).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: `${ar.employer.whatsappCandidate}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.app.replies.open}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: `${ar.employer.downloadCv}: نورا سليم` })).toBeNull();
+    expect(screen.queryByText(ar.employer.noCv)).toBeNull();
+    expect(screen.queryByRole('button', { name: new RegExp(ar.employer.moveTo) })).toBeNull();
+    expect(screen.getByHintText(ar.agents.viewProfile)).toBeTruthy();
+
+    // The card's own padding is 16. The action row is the one that wraps.
+    // Drawing it empty would still take the card's gap under the last line.
+    let node: ReturnType<typeof screen.getByRole> | null = header;
+    let card: ReturnType<typeof screen.getByRole> | null = null;
+    while (node) {
+      if (StyleSheet.flatten(node.props.style)?.padding === 16) {
+        card = node;
+        break;
+      }
+      node = node.parent;
+    }
+    expect(card).not.toBeNull();
+    expect(StyleSheet.flatten(card?.props.style)?.padding).toBe(16);
+    const actionRow = (card?.children ?? []).filter(
+      (child) => typeof child !== 'string' && StyleSheet.flatten(child.props.style)?.flexWrap === 'wrap',
+    );
+    expect(actionRow).toHaveLength(0);
+  });
+
   it("is not found when the listing is not the company's", async () => {
     server.on('GET /rest/v1/jobs', []);
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText(ar.common.notFound)).toBeTruthy();
   });
 });
 
 describe('the inbox', () => {
   it('reads its filters from the address and counts every stage under them', async () => {
-    renderRouter(app, { initialUrl: '/employer/applicants?stage=new&track=primary&band=bogus' });
+    await renderRouter(app, { initialUrl: '/employer/applicants?stage=new&track=primary&band=bogus' });
 
     expect(await screen.findByRole('header', { name: 'سارة عادل' })).toBeTruthy();
     const [main, counts] = [0, 1].map((index) => server.asked('/rest/v1/applications')[index]?.url.searchParams);
@@ -569,8 +666,14 @@ describe('the inbox', () => {
       rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
       return { ok: true };
     });
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` })).toBeTruthy();
+    const main = server.asked('/rest/v1/applications').find(
+      (request) => request.method === 'GET' && !request.url.searchParams.get('select')?.startsWith('status,'),
+    );
+    // Withdrawn last in the query, before the cap — not sorted into place afterwards.
+    expect(main?.url.searchParams.get('order')).toBe('withdrawn_at.asc.nullsfirst,created_at.desc');
+    expect(main?.url.searchParams.get('limit')).toBe('200');
 
     // Moved elsewhere — on the listing's pipeline, or by a colleague — and read again here.
     rows = rows.map((row) => (row.id === sara.id ? { ...row, status: 'shortlisted' } : row));
@@ -594,7 +697,7 @@ describe('the inbox', () => {
       rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
       return { ok: true };
     });
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
 
     expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
@@ -606,6 +709,33 @@ describe('the inbox', () => {
     expect((await screen.findAllByText(rows[1].candidate?.full_name ?? '')).length).toBeGreaterThan(1);
     fireEvent.press(screen.getAllByRole('button', { name: ar.app.review.done }).pop()!);
     await waitFor(() => expect(screen.queryByRole('header', { name: ar.app.review.title })).toBeNull(), { timeout: 2000 });
+  });
+
+  it('says whose decision did not go through, and sends the same one again from the toast', async () => {
+    const moves: { applicationId: string; status: string; from: string }[] = [];
+    let refuse = true;
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', (_url: URL, init: RequestInit | undefined) => {
+      const move = (JSON.parse(String(init?.body)) as { input: { applicationId: string; status: Applicant['status']; from: string } }).input;
+      moves.push(move);
+      if (refuse) return { ok: false, error: 'failed' };
+      rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
+      return { ok: true };
+    });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
+    expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
+    const first = rows[0];
+    fireEvent.press(screen.getByRole('button', { name: ar.app.review.shortlist }));
+
+    const name = first.candidate?.full_name ?? '';
+    await waitFor(() => expect(shownToast()?.message).toBe(tAr('app.review.failed', { name })));
+    expect(shownToast()).toMatchObject({ tone: 'destructive', action: { label: ar.common.retry } });
+
+    refuse = false;
+    act(() => shownToast()?.action?.onPress());
+    await waitFor(() => expect(moves).toHaveLength(2));
+    expect(moves[1]).toMatchObject({ applicationId: first.id, status: 'shortlisted', from: 'new' });
+    await waitFor(() => expect(shownToast()?.message).toBe(tAr('app.review.shortlisted', { name })));
   });
 
   it('shows one shortlisted in a review of the new as shortlisted when stepped back to, though the list no longer holds them', async () => {
@@ -624,7 +754,7 @@ describe('the inbox', () => {
       rows = rows.map((row) => (row.id === move.applicationId ? { ...row, status: move.status } : row));
       return { ok: true };
     });
-    renderRouter(app, { initialUrl: '/employer/applicants?stage=new' });
+    await renderRouter(app, { initialUrl: '/employer/applicants?stage=new' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
     expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
 
@@ -641,7 +771,7 @@ describe('the inbox', () => {
   });
 
   it("opens an applicant's profile from the review once the review has gone, not under it", async () => {
-    const result = renderRouter(app, { initialUrl: '/employer/applicants' });
+    const result = await renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
     expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
     const review = () => screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.presentationStyle === 'pageSheet');
@@ -657,7 +787,7 @@ describe('the inbox', () => {
   });
 
   it("keeps a touch in the replies or the stage picker from the applicant's row they are drawn in, which swipes", async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));
     await screen.findByLabelText(ar.app.replies.new);
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.moveTo} (سارة عادل): ${ar.applicationStatus.new}` }));
@@ -675,7 +805,7 @@ describe('the inbox', () => {
   });
 
   it("keeps the saved replies' new box above the keyboard", async () => {
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));
     let node = (await screen.findByLabelText(ar.app.replies.new)).parent;
     while (node && node.props.keyboardShouldPersistTaps === undefined) node = node.parent;
@@ -684,7 +814,7 @@ describe('the inbox', () => {
   });
 
   it('shows in the search box the words a link narrows the inbox by', async () => {
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect((await screen.findByLabelText(ar.employer.searchApplicants)).props.value).toBe('');
     // Sent here again, narrowed, with the tab still open.
     act(() => router.setParams({ q: 'سارة' }));
@@ -692,7 +822,7 @@ describe('the inbox', () => {
   });
 
   it('begins a review started again at its first applicant, even as the last one is still closing', async () => {
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.press(await screen.findByRole('button', { name: ar.app.review.start }));
     expect(await screen.findByRole('header', { name: ar.app.review.title })).toBeTruthy();
     const review = () => screen.UNSAFE_getAllByType(Modal).find((modal) => modal.props.presentationStyle === 'pageSheet');
@@ -709,7 +839,7 @@ describe('the inbox', () => {
   });
 
   it('takes in a new applicant with a pull', async () => {
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText('سارة عادل')).toBeTruthy();
 
     rows = [layla, ...rows];
@@ -719,7 +849,7 @@ describe('the inbox', () => {
   });
 
   it('keeps a note being written open while a new applicant is read in', async () => {
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText('كلّمتها، هترد الخميس.')).toBeTruthy();
     fireEvent.changeText(screen.getAllByLabelText(ar.employer.notesTitle)[0], 'نكلمها بكرة.');
 
@@ -738,7 +868,7 @@ describe('the inbox', () => {
   });
 
   it('turns the spinner for a pull, and not for a read started by a move', async () => {
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText('سارة عادل')).toBeTruthy();
 
     const reading = held(() => ({ body: rows, headers: { 'content-range': `0-${rows.length - 1}/${rows.length}` } }));
@@ -763,7 +893,7 @@ describe('the inbox', () => {
   });
 
   it('finds a name however Arabic spells its alef and its last letter', async () => {
-    const result = renderRouter(app, { initialUrl: '/employer/applicants' });
+    const result = await renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.changeText(await screen.findByLabelText(ar.employer.searchApplicants), 'احمد مصطفي');
     fireEvent(screen.getByLabelText(ar.employer.searchApplicants), 'submitEditing');
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'احمد مصطفي' }));
@@ -772,13 +902,13 @@ describe('the inbox', () => {
     );
   });
 
-  it('searches by name, with LIKE’s own characters taken as typed', async () => {
-    const result = renderRouter(app, { initialUrl: '/employer/applicants' });
+  it('searches by name as the website reads one: LIKE’s own characters taken out, a final ة left open', async () => {
+    const result = await renderRouter(app, { initialUrl: '/employer/applicants' });
     fireEvent.changeText(await screen.findByLabelText(ar.employer.searchApplicants), 'سارة_1%');
     fireEvent(screen.getByLabelText(ar.employer.searchApplicants), 'submitEditing');
     await waitFor(() => expect(result.getSearchParams()).toEqual({ q: 'سارة_1%' }));
     await waitFor(() =>
-      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%س_رة\\_1\\%%')).toBe(
+      expect(server.asked('/rest/v1/applications').some((request) => request.url.searchParams.get('candidate.full_name') === 'ilike.%س_ر_ 1%')).toBe(
         true,
       ),
     );
@@ -786,7 +916,7 @@ describe('the inbox', () => {
 
   it('says a search found nobody, rather than that there are no applicants', async () => {
     rows = [];
-    renderRouter(app, { initialUrl: '/employer/applicants?q=%D8%B2%D9%8A%D8%A7%D8%AF' });
+    await renderRouter(app, { initialUrl: '/employer/applicants?q=%D8%B2%D9%8A%D8%A7%D8%AF' });
     expect(await screen.findByText(ar.employer.searchEmpty)).toBeTruthy();
   });
 
@@ -802,7 +932,7 @@ describe('the inbox', () => {
     );
     // Narrowed to one listing, with nobody new on it.
     rows = [];
-    const result = renderRouter(app, { initialUrl: `/employer/applicants?job=${JOB_ID}&stage=new` });
+    const result = await renderRouter(app, { initialUrl: `/employer/applicants?job=${JOB_ID}&stage=new` });
 
     // The picker names the listing, and offers the company's other one too.
     fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.allListings}: مستشار مبيعات` }));
@@ -835,13 +965,13 @@ describe('a suspended company', () => {
     // The database answers none of them while the company is suspended (349).
     server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
 
-    const inbox = renderRouter(app, { initialUrl: '/employer/applicants' });
+    const inbox = await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
     expect(screen.getByText(ar.employer.applicantsSuspendedBody)).toBeTruthy();
     expect(screen.queryByText(ar.employer.noApplicants)).toBeNull();
     inbox.unmount();
 
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
   });
 
@@ -860,14 +990,14 @@ describe('a suspended company', () => {
 
   it('does not stamp them seen in the inbox, even where the database still answers them', async () => {
     server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
-    renderRouter(app, { initialUrl: '/employer/applicants' });
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
     await notStamped();
   });
 
   it("nor on a listing's applicants", async () => {
     server.on('GET /rest/v1/companies', [{ ...ownedCompany, suspended_at: '2026-10-01T10:00:00Z' }]);
-    renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
     await notStamped();
   });

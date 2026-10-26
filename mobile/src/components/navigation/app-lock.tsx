@@ -34,7 +34,7 @@ export function AppLock() {
   const userId = session?.user.id ?? null;
   const on = useAppLockOn(userId);
   const provenFor = useProvenFor();
-  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState as AppStateStatus);
   const [checking, setChecking] = useState(false);
   const [failed, setFailed] = useState(false);
   const leftAt = useRef<number | null>(null);
@@ -109,7 +109,7 @@ export function AppLock() {
       {showLock ? (
         <>
           <View style={{ gap: space[2], alignItems: 'center' }}>
-            <Text variant="title" weight="bold" style={{ textAlign: 'center' }} accessibilityRole="header">
+            <Text variant="title" weight="semibold" style={{ textAlign: 'center' }} accessibilityRole="header">
               {t('title')}
             </Text>
             <Text tone="mutedForeground" style={{ textAlign: 'center' }}>

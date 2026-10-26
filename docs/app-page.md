@@ -17,7 +17,10 @@ The page has to be true. Every claim on it is one the store listing makes
 source on every listing, one-tap applications, a notification when an
 application moves, the verified badge, the follow button, the directory
 profile the consultant controls, light and dark and the phone's text size.
-Nothing counts users, downloads, jobs or companies; nothing is rated,
+The pay claim is worded as the site words it everywhere else: the lead
+source is on every listing; the salary and commission are asked of every
+company and shown in figures when the company publishes them. Nothing
+counts users, downloads, jobs or companies; nothing is rated,
 quoted or endorsed, because nothing measures those yet. A fact the page
 wants and does not have is a `TODO` in the code, never a guess.
 
@@ -62,7 +65,15 @@ for (const [pass, dir] of Object.entries(passes)) for (const [from, to] of Objec
 What the captures do not show is drawn in HTML and says so by looking like
 a sketch: the notifications (the run is signed out and sees none), the
 filters as chips, the follow button, and a profile with a blank avatar,
-"your name here" and empty fields.
+"your name" and empty fields.
+
+Wherever the app already has words for something, the page uses them
+rather than paraphrasing: the notification cards are built from the same
+catalogue keys the bell and the push use (`notifications.*`, with a sample
+job title and saved search), the follow button and the line under it are
+the company page's (`companies.follow*`), the three visibility choices and
+their explanations are the onboarding form's (`visibility.*`), and the
+filters are the board's own tracks, lead sources and sort orders.
 
 ## The page, top to bottom
 
@@ -70,34 +81,44 @@ filters as chips, the follow button, and a profile with a blank avatar,
    sentence, the two store buttons, the line that it costs a candidate
    nothing. Three phones fanned: Home in front, floating, the board and a
    listing behind it. A soft dot grid and a glow, nothing busier.
-2. **Four highlights**, one row: pay in figures, one-tap apply, instant
-   notifications, verified companies.
-3. **Transparency** (dark). The listing's capture with three chips pointing
-   at the three facts on it, and two small cards: a typical listing's
-   words, struck through, beside this board's.
+2. **Four highlights**, one row: who supplies the leads, pay in figures
+   (when the company publishes it), applying in one tap, updates on an
+   application.
+3. **The terms before applying** (dark). The listing's capture with three
+   chips pointing at the three facts on it, and two small cards: the
+   phrases many listings use, struck through, beside this board's.
 4. **Finding the right job.** The board's capture beside the filters as
    chips to try: the six tracks, eight areas, the three lead sources, the
    two sort orders — the board's own words.
 5. **Applying** (tinted). Three steps that light up one after another,
    ending on "sent".
-6. **Notifications** (dark). Four cards sliding in over a dimmed Home.
+6. **Notifications** (dark). Four cards sliding in over a blurred Home:
+   the application arrived, moved to the shortlist, moved to an interview,
+   a new job in a saved search — the real templates.
 7. **Companies.** The companies and a company's page side by side, three
-   points, and the follow button to press.
-8. **The profile** (tinted). A profile with nothing real on it and the one
-   switch that matters.
+   points, and the follow button to press, with the line the app shows
+   under it.
+8. **The profile** (tinted). A profile with nothing real on it under the
+   three choices the product offers: every approved company, verified
+   companies only (the name blurs, as an unverified company sees it), or
+   hidden.
 9. **The tour.** From `lg`, one phone and five tabs; the screen follows the
    tab, and the tour advances on its own until touched. Below `lg`, a
    row that snaps, dots and arrows.
-10. **Appearance.** Light, dark, large text, with real captures; the ground
-    darkens with the dark one.
-11. **Three steps to start.**
-12. **The two doors**: looking for work, hiring.
-13. **Questions**, one open at a time, with `FAQPage` data for search.
-14. **The ask, again** (dark), with a phone leaning in from the edge.
+10. **Three steps to start.**
+11. **The two doors**: looking for work, hiring.
+12. **Questions**, one open at a time, with `FAQPage` data for search.
+13. **The ask, again** (dark), with a phone leaning in from the edge.
 
-On a phone, once the hero has scrolled away, a slim bar along the bottom
-carries the mark, the name and a short button to the App Store; it leaves
-while the closing band is on screen.
+On a phone, once the hero has scrolled away, a small floating bar near the
+foot of the screen carries the mark, the name and a "get the app" button to
+the App Store; it leaves while the closing band is on screen. The site header
+scrolls away on this page instead of sticking, so the two never share the
+screen.
+
+(An appearance section — light, dark, large text — was here and was taken
+out on the owner's request; the dark and large-text captures stay in
+`public/app-screenshots/` for the store and for later.)
 
 ## How it moves
 
@@ -109,7 +130,7 @@ utility; the observers that time sequences skip straight to the end).
   first paint and hides nothing without JavaScript). Rows arrive 80ms
   apart.
 - **Things that change while you watch.** The tour's cross-fade (300ms),
-  the appearance switch, the carousel moving on an arrow, chips and the
+  the visibility choice, the carousel moving on an arrow, chips and the
   follow button on press, the store buttons on hover and press, the FAQ
   opening by growing its grid row.
 - **Sequences.** The callout chips, the three apply steps and the four
@@ -122,11 +143,13 @@ No scroll-linked parallax, no counters, no typewriters, no particles.
 ## Shape, by width
 
 Logical properties throughout, so Arabic mirrors the layout; the drawn
-phone's buttons stay on their physical sides. Phones (to `sm`): one column,
-words before pictures, the highlights two by two, the tour as the carousel.
-Tablets: the same with wider phones. Desktop (`lg` up): two columns, the
-phone changing sides from one feature to the next, the highlights four
-across, the tour as tabs beside a phone. No horizontal scroll at 360px.
+phone's buttons stay on their physical sides. Below `lg` the page is one
+column and its text is centred — headings, paragraphs, buttons, the
+highlight cards, the filter chips, the steps — with the words before the
+pictures. Desktop (`lg` up): two columns, text at the start of its column,
+the phone changing sides from one feature to the next, the highlights four
+across, the tour as tabs beside a phone. No horizontal scroll at 360px, and
+no phone in the hero is cut by the edge of the screen.
 
 ## Words
 
@@ -139,7 +162,7 @@ own screen names, so a reader who installs it meets the same words.
 One `h1`, headings in order. Every capture that carries meaning has an alt
 naming the screen; a capture repeating one described nearby is decorative.
 The tour is the tabs pattern; the chips, dots and the follow button say
-their state with `aria-pressed`; the profile switch is a switch; the FAQ's
+their state with `aria-pressed`; the visibility choice is a radio group; the FAQ's
 closed answers are `inert`. The Google Play badge is `aria-disabled`, out
 of the tab order, and says "coming soon" in its name. Focus rings are the
 brand blue, white on the dark sections.
@@ -153,9 +176,9 @@ lazy.
 
 ## Analytics
 
-Four events (`src/lib/analytics.ts`), no-ops until a provider is set:
+Three events (`src/lib/analytics.ts`), no-ops until a provider is set:
 `app_store_click` with `location` (hero, sticky, final), `app_tour_tab`,
-`app_appearance_toggle`, `app_faq_open`.
+`app_faq_open`.
 
 ## Still to do, outside this page
 

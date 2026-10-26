@@ -1,0 +1,9 @@
+# The reverse of expo-go-scroll-down-mid.yaml, used when the edge swipe back
+# up left the list where it was (scripts/expo-go-look.sh).
+appId: host.exp.Exponent
+---
+- swipe:
+    start: 50%, 30%
+    end: 50%, 75%
+    duration: 250
+- waitForAnimationToEnd

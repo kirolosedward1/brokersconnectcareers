@@ -23,7 +23,7 @@ import { motion } from '~/theme/tokens';
   them (Animated.timing's settings) and what is drawn before the first frame.
 */
 
-jest.mock('~/lib/direction', () => ({ appDirection: 'rtl' }));
+jest.mock('~/lib/direction', () => ({ appDirection: 'rtl', drawnDirection: () => 'rtl' as const, setDrawnLocale: () => {} }));
 jest.mock('~/theme/reduce-motion', () => ({ useReduceMotion: jest.fn(() => false) }));
 
 function Providers({ children }: { children: ReactNode }) {
@@ -165,7 +165,7 @@ describe('a mark that answers a tap', () => {
         <Text>★</Text>
       </Pop>,
     );
-    expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1.28, useNativeDriver: true }));
+    expect(timing).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ toValue: 1.15, useNativeDriver: true }));
   });
 
   it('is never left swollen: stopped part-way, it is put back at its own size', () => {

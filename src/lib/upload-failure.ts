@@ -63,3 +63,21 @@ export function uploadFailure(error: unknown): UploadFailure {
   }
   return 'failed';
 }
+
+/**
+ * After a refusal by policy, what the session's own answer says it was:
+ *
+ *   denied      somebody is signed in — this account may not upload here
+ *   network     no answer, or one that could not be had — offline is not
+ *               signed out, and sending somebody to sign in for it is wrong
+ *   signed_out  the auth server says there is no session — sign in again
+ *
+ * `answer` is auth.getUser()'s result, or null when the call itself threw.
+ */
+export function afterDenied(
+  answer: { data: { user: unknown }; error?: { name?: string } | null } | null,
+): 'denied' | 'network' | 'signed_out' {
+  if (answer?.data.user) return 'denied';
+  if (!answer || answer.error?.name === 'AuthRetryableFetchError') return 'network';
+  return 'signed_out';
+}

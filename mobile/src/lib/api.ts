@@ -172,18 +172,23 @@ async function failure(response: Response): Promise<ApiError> {
 }
 
 /**
- * The body of a 200, as the website's JSON. A body that is not — a Wi-Fi's
- * sign-in page answering for every address until somebody accepts its terms,
- * or one cut off on the way — is not the website's answer, and threw the
- * parser's SyntaxError: "something went wrong" where it was no connection,
- * and a write's caller could not tell that its action might have run. Said
- * as no answer, as offline is.
+ * A 200's body, or no answer when it is not the website's JSON.
+ *
+ * Hotel and café Wi-Fi answer every request with their own sign-in page,
+ * status 200, until the person accepts the terms; a connection that drops
+ * mid-body leaves half an answer. Either reached JSON.parse as a SyntaxError,
+ * which the screens said as "something went wrong" — not as the connection
+ * it was — and which `noAnswer` did not count. As status 0 it reads as
+ * offline, and, like any call with no answer, not as refused at the door:
+ * the action may have run, so what it wrote is looked for before it is sent
+ * again (job-form.ts, profile/queries.ts).
  */
 async function answer<T>(response: Response): Promise<T> {
+  if (!(response.headers.get('content-type') ?? '').includes('json')) throw new ApiError(0, 'not_json');
   try {
     return (await response.json()) as T;
   } catch {
-    throw new ApiError(0, 'offline');
+    throw new ApiError(0, 'not_json');
   }
 }
 
