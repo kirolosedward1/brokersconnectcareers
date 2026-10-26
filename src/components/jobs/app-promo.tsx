@@ -53,7 +53,11 @@ export async function AppPromo({ variant }: { variant: 'rail' | 'inline' }) {
           ) : null}
         </div>
       ) : (
-        <p className="mt-4 text-sm font-medium">{t('comingSoon')}</p>
+        <p className="mt-4 text-sm font-medium">
+          {t.rich('comingSoon', {
+            bdi: (chunks) => <bdi>{chunks}</bdi>,
+          })}
+        </p>
       )}
     </div>
   );

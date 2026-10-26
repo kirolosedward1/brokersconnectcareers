@@ -110,7 +110,7 @@
     "appPromo": {
       "title": "إشعارات فورية بالوظائف الجديدة",
       "body": "تابع طلباتك ورسائل الشركات من تطبيق بروكرز كونكت.",
-      "comingSoon": "التطبيق قريبًا على iOS وAndroid"
+      "comingSoon": "التطبيق قريبًا على <bdi>iOS</bdi> و<bdi>Android</bdi>"
     }
   },
   "compensation": {

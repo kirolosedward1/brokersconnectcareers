@@ -110,7 +110,7 @@
     "appPromo": {
       "title": "Instant alerts for new jobs",
       "body": "Follow your applications and company messages in the Brokers Connect app.",
-      "comingSoon": "The app is coming soon on iOS and Android."
+      "comingSoon": "The app is coming soon on <bdi>iOS</bdi> and <bdi>Android</bdi>."
     }
   },
   "compensation": {

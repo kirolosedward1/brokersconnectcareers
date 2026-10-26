@@ -476,11 +476,12 @@
     background-image: linear-gradient(135deg, var(--brand-blue), oklch(0.62 0.19 232));
   }
 
-  /* A flat tint of the brand blue for the results-page app card.
-     Mixed with white, not the page, so dark mode keeps the card light
-     and the type on it keeps its contrast. Not a gradient. */
+  /* The results-page app card. The brand blue at 7% on white — light
+     enough to sit beside the listings. Mixed with white, not the page,
+     and from --brand-blue-ink, which is that blue and is not redefined
+     in dark mode, so the card stays this colour there too. Not a gradient. */
   .bg-brand-tint {
-    background-color: color-mix(in oklch, var(--brand-blue-ink) 16%, white);
+    background-color: color-mix(in oklch, var(--brand-blue-ink) 7%, white);
     color: oklch(0.28 0.05 266);
   }
 
