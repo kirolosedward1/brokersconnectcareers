@@ -106,7 +106,12 @@
     "relaxHeading": "There are listings if you drop one filter:",
     "withoutFilter": "Without {name} · {count, plural, one {# job} other {# jobs}}",
     "emptySaveHint": "Save this search and we will tell you about new matching listings — in your notifications once a day, and in the weekly email.",
-    "safetyNote": "Brokers Connect never asks you to pay to apply. If a listing asks you for money, or for your ID or bank details, report it."
+    "safetyNote": "Brokers Connect never asks you to pay to apply. If a listing asks you for money, or for your ID or bank details, report it.",
+    "appPromo": {
+      "title": "Instant alerts for new jobs",
+      "body": "Follow your applications and company messages in the Brokers Connect app.",
+      "comingSoon": "The app is coming soon on <bdi>iOS</bdi> and <bdi>Android</bdi>."
+    }
   },
   "compensation": {
     "title": "Pay and commission",

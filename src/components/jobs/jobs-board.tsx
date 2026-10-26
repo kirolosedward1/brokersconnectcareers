@@ -3,12 +3,15 @@ import { X } from 'lucide-react';
 import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
 import { localized, type Locale } from '@/i18n/routing';
+import { AppPromo } from '@/components/jobs/app-promo';
 import { JobCard } from '@/components/jobs/job-card';
+import { AppPromoGate, ResultsColumn } from '@/components/jobs/results-column';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { JobFilters } from '@/components/jobs/job-filters';
 import { MobileFilters } from '@/components/mobile-filters';
 import { SaveSearchGate } from '@/components/jobs/save-search-gate';
 import { JobMarks } from '@/components/jobs/job-marks';
+import { APP_PROMO_INLINE_AFTER } from '@/lib/app-links';
 import { toCanonicalQuery } from '@/lib/saved-search';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
@@ -234,7 +237,7 @@ export async function JobsBoard({
           </div>
         </aside>
 
-        <div className="min-w-0">
+        <ResultsColumn promo={<AppPromo variant="rail" />}>
           {activeFilters.length ? (
             <ul
               aria-label={t('filters')}
@@ -327,11 +330,22 @@ export async function JobsBoard({
 
               <JobMarks ids={jobs.map((job) => job.id)}>
                 <ul className="space-y-2">
-                  {jobs.map((job) => (
-                    <li key={job.id}>
-                      <JobCard job={job} locale={locale} />
-                    </li>
-                  ))}
+                  {jobs.flatMap((job, index) => {
+                    const card = (
+                      <li key={job.id}>
+                        <JobCard job={job} locale={locale} />
+                      </li>
+                    );
+                    if (index !== APP_PROMO_INLINE_AFTER - 1) return [card];
+                    return [
+                      card,
+                      <AppPromoGate key="app-promo">
+                        <li className="lg:hidden">
+                          <AppPromo variant="inline" />
+                        </li>
+                      </AppPromoGate>,
+                    ];
+                  })}
                 </ul>
               </JobMarks>
 
@@ -350,7 +364,7 @@ export async function JobsBoard({
           {/* On the unfiltered board only: the one indexable version of this
               page is where the links into the landing pages belong. */}
           {activeCount === 0 && page === 1 ? <PopularLandings locale={locale} id="board-landings" /> : null}
-        </div>
+        </ResultsColumn>
       </div>
     </div>
   );
