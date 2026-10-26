@@ -12,6 +12,7 @@ register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 const {
   ONE_TAP_CLOSED_KEY,
   createNonce,
+  clientIdForOneTap,
   googleInitializeOptions,
   googleOneTapNonce,
   gsiScriptSrc,
@@ -96,6 +97,26 @@ is('Google disabled at GoTrue', shouldShowGoogleOneTap({ ...open, googleEnabled:
 is('no client id', shouldShowGoogleOneTap({ ...open, clientId: undefined }), false);
 is('the e2e stand-in is not a web client id', shouldShowGoogleOneTap({ ...open, clientId: 'e2e' }), false);
 is('a placeholder is not a web client id', isGoogleWebClientId('REPLACE_ME_google'), false);
+
+console.log('— the client id reaches the browser as a prop');
+is('a web client id is the prop', clientIdForOneTap(CLIENT), CLIENT);
+is('unset is not passed', clientIdForOneTap(undefined), undefined);
+is('empty is not passed', clientIdForOneTap(''), undefined);
+is('a placeholder is not passed', clientIdForOneTap('REPLACE_ME_google'), undefined);
+is('the e2e stand-in is not passed', clientIdForOneTap('e2e'), undefined);
+const layout = readFileSync(new URL('../src/app/[locale]/(site)/layout.tsx', import.meta.url), 'utf8');
+const prompt = readFileSync(new URL('../src/components/auth/google-one-tap.tsx', import.meta.url), 'utf8');
+is('the site layout is a server component', layout.includes("'use client'") || layout.includes('"use client"'), false);
+is(
+  'the server reads SUPABASE_AUTH_GOOGLE_CLIENT_ID',
+  layout.includes('clientIdForOneTap(process.env.SUPABASE_AUTH_GOOGLE_CLIENT_ID)'),
+  true,
+);
+is('that read is not a NEXT_PUBLIC_ variable', layout.includes('NEXT_PUBLIC_SUPABASE_AUTH_GOOGLE_CLIENT_ID'), false);
+is('the server passes it as the clientId prop', layout.includes('<GoogleOneTap clientId={googleClientId}'), true);
+is('One Tap is a client component', prompt.startsWith("'use client'"), true);
+is('the prompt takes clientId and does not read the env', prompt.includes('{ clientId, locale }') && !prompt.includes('process.env') && !prompt.includes('SUPABASE_AUTH_GOOGLE_CLIENT_ID'), true);
+is('GIS is initialized with that prop', prompt.includes('googleInitializeOptions({\n              clientId,'), true);
 is('the sign-in page', shouldShowGoogleOneTap({ ...open, pathname: '/sign-in' }), false);
 is('sign-up', shouldShowGoogleOneTap({ ...open, pathname: '/sign-up/candidate' }), false);
 is('the apply form', shouldShowGoogleOneTap({ ...open, pathname: '/jobs/senior-broker/apply' }), false);

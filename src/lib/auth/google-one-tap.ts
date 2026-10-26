@@ -4,11 +4,15 @@ import { stripLocalePrefix } from '@/lib/safe-next';
 /**
  * Google One Tap on the public site.
  *
- * The client id is the one Supabase's Google provider already uses
- * (`SUPABASE_AUTH_GOOGLE_CLIENT_ID` in supabase/config.toml). GIS has to be
- * given that same id or GoTrue rejects the ID token: the token's `aud` is
- * checked against the provider's client id, and this config lists no
- * additional client ids. The secret never comes here.
+ * The client id is `SUPABASE_AUTH_GOOGLE_CLIENT_ID`, the same web client the
+ * Google provider uses. That variable is server-only: it has no `NEXT_PUBLIC_`
+ * prefix, so the browser bundle does not contain it. The site layout reads it
+ * and passes {@link clientIdForOneTap} down as the `clientId` prop. GIS has to
+ * be given that same id or GoTrue rejects the ID token (`aud`). The secret
+ * never comes here.
+ *
+ * `supabase/config.toml` sets the id for the local CLI only. The hosted
+ * project's Google provider is a separate setting and is not changed here.
  *
  * The nonce is the split Supabase documents for `signInWithIdToken`. Google
  * copies the nonce it is given into the ID token unchanged. GoTrue hashes the
@@ -41,6 +45,19 @@ export function gsiScriptSrc(locale: string): string {
  */
 export function isGoogleWebClientId(value: string | null | undefined): value is string {
   return typeof value === 'string' && /^[0-9]{6,}-[0-9A-Za-z_-]{6,}\.apps\.googleusercontent\.com$/.test(value);
+}
+
+/**
+ * The `clientId` prop the server passes to `<GoogleOneTap>`.
+ *
+ * Call with `process.env.SUPABASE_AUTH_GOOGLE_CLIENT_ID` from a Server
+ * Component. A placeholder (`REPLACE_ME…`, as `.env.vercel.local` ships it),
+ * the e2e stand-in, or anything else that is not a web client id returns
+ * `undefined`, and the layout does not mount One Tap.
+ */
+export function clientIdForOneTap(raw: string | null | undefined): string | undefined {
+  if (!raw || raw.startsWith('REPLACE_ME')) return undefined;
+  return isGoogleWebClientId(raw) ? raw : undefined;
 }
 
 const JOB_DETAIL = /^\/jobs\/[^/]+$/;
