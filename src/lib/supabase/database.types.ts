@@ -156,7 +156,7 @@ export type CompanyRow = Timestamped & {
 };
 
 /**
- * my_company_private() (migration 366): the columns of the caller's company
+ * my_company_private() (migration 367): the columns of the caller's company
  * that are not for a public read. Null when the caller is not a member.
  * Same shape as GET /api/mobile/v1/company.
  */
@@ -1535,10 +1535,10 @@ export type Database = {
       my_company_id: { Args: Empty; Returns: string | null };
       /**
        * That company's owner, credit balance, and suspension — a member's to
-       * read (migration 366), and nobody else's. Null when my_company_id() is.
+       * read (migration 367), and nobody else's. Null when my_company_id() is.
        */
       my_company_private: { Args: Empty; Returns: CompanyPrivate | null };
-      /** Whether that company is suspended. A boolean the public page may ask (migration 366). */
+      /** Whether that company is suspended. A boolean the public page may ask (migration 367). */
       company_suspended: { Args: { p_id: string }; Returns: boolean };
       /**
        * Service-role only, and called with the admin client: the answer is
