@@ -13,7 +13,8 @@
 # from the network and when it comes back from its own home screen, and lays
 # its bars out in its own language — English here, as on an iPhone set to
 # English. So it opens the update — the welcome in the light appearance and
-# again in the dark, then Home — and three screens
+# again in the dark, then Home — the Jobs tab in the light and in the dark,
+# and three screens
 # by link, then goes back to Expo Go's home and opens the app again from there:
 # the welcome once more, as every launch with nobody signed in opens on it,
 # then Home. Each screen
@@ -379,6 +380,14 @@ see 2-home 'منصة متخصصة لوظائف العقارات في مصر' 'ا
 open_app jobs
 see 3-jobs 'الفلاتر'
 in_header 3-jobs 'الوظائف'
+# The same Jobs tab in the dark appearance. Back to light before the scroll,
+# so the checks below still read the light list: the names must be gone after
+# the scroll down, and all four must be back after the scroll up.
+appearance dark
+see 3-jobs-dark 'الفلاتر'
+in_header 3-jobs-dark 'الوظائف'
+appearance light
+# 3b-jobs-scrolled-down is the list scrolled down, the tab bar's names gone.
 tour 3b-jobs-scrolled-down 'scrolled down: the bar smaller, its names gone' "$flows/expo-go-scroll-down.yaml"
 settle_scroll 3b-jobs-scrolled-down 0 "$flows/expo-go-scroll-down-mid.yaml" 'scrolled down through the list'
 # A resting finger on that second swipe opens the card's menu. Close it and

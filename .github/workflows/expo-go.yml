@@ -261,7 +261,12 @@ jobs:
     # owner's phone opens it — from Expo's servers, in English, then again from
     # Expo Go's own home — and read back: the run's annotations say where every
     # line sat on each screen, and a tab bar laid out left to right fails it
-    # (mobile/scripts/expo-go-look.sh).
+    # (mobile/scripts/expo-go-look.sh). On a pull request it then commits every
+    # shot to the orphan branch look-shots and comments on the pull request
+    # with public raw.githubusercontent.com links (scripts/post-look-shots.sh).
+    permissions:
+      contents: write
+      pull-requests: write
     needs: publish
     if: needs.publish.outputs.published == 'yes'
     # Xcode 26, as for the native build in mobile.yml. A slow simulator is
@@ -306,8 +311,17 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          # The whole reading, including 1-welcome-light.png and 1-welcome-dark.png.
+          # The whole reading: both welcomes, Jobs in the light and the dark, and
+          # the list scrolled down with the tab bar's names gone.
           name: expo-go-screens
           path: ${{ runner.temp }}/expo-go
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Post the shots on the pull request
+        if: always() && github.event_name == 'pull_request'
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: mobile/scripts/post-look-shots.sh "$RUNNER_TEMP/expo-go"
