@@ -20,6 +20,7 @@ import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { detail, newCairo } from './fixtures';
 import { placeViewsAt } from './measure';
+import { draftKey } from '~/lib/kept-draft';
 import { fakeServer } from './server';
 
 /*
@@ -168,6 +169,30 @@ describe('a new listing', () => {
     expect(server.asked('/api/mobile/v1/actions/saveJob')).toHaveLength(0);
   });
 
+  it('keeps what was typed when the app is ended, and opens again where it was, until the employer starts over', async () => {
+    const kept = draftKey('job', USER_ID, null);
+    const first = await renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    next();
+    expect(await screen.findByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.step).toBe(1));
+
+    // iOS ends the app in the background: no Back, no question asked.
+    first.unmount();
+
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    expect(await screen.findByText(/^احتفظنا بما كتبته هنا/)).toBeTruthy();
+    // On the step it was left on, with what was typed.
+    expect(screen.getByLabelText(ar.jobForm.basicSalaryMin)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.jobForm.basics }));
+    expect(await screen.findByDisplayValue('مستشار مبيعات')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.drafts.startOver }));
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
+    expect(screen.queryByDisplayValue('مستشار مبيعات')).toBeNull();
+    expect(screen.queryByText(/^احتفظنا بما كتبته هنا/)).toBeNull();
+  });
+
   it('walks the four steps, asks its two questions on the way, and submits what was filled in', async () => {
     const result = await renderRouter(app, { initialUrl: '/employer/jobs/new' });
 
@@ -178,7 +203,7 @@ describe('a new listing', () => {
 
     // Asked on leaving the first step, answered on the second.
     expect(await screen.findByText(ar.employer.duplicateTitle)).toBeTruthy();
-    expect(await screen.findByText(/^الأساسي في الإعلانات الشبيهة بين/)).toBeTruthy();
+    expect(await screen.findByText(/^الأساسي في الإعلانات المشابهة بين/)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/findSimilarListing')[0]?.body).toEqual({
       input: { titleAr: 'مستشار مبيعات', districtId: newCairo.id, excludeId: null },
     });
@@ -366,6 +391,8 @@ describe('leaving the wizard', () => {
     const result = await renderRouter(app, { initialUrl: '/employer/jobs' });
     act(() => router.push('/employer/jobs/new'));
     fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    const kept = draftKey('job', USER_ID, null);
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).not.toBeNull());
 
     act(() => router.back());
     expect(alert).toHaveBeenCalledWith(ar.app.leave.title, ar.app.leave.body, expect.any(Array));
@@ -374,6 +401,8 @@ describe('leaving the wizard', () => {
     const leave = (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive');
     act(() => leave?.onPress?.());
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
+    // Thrown away on purpose: the copy kept on the phone goes too.
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
     alert.mockRestore();
   });
 });

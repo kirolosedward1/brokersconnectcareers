@@ -23,6 +23,7 @@ import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,
 import * as ApplyScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]/apply';
 import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, mobileConfig, profile, USER_ID } from './auth-fixtures';
+import { draftKey } from '~/lib/kept-draft';
 import { board, cairo, jobPage, listing, newCairo } from './fixtures';
 import { watchFocus } from './focus';
 import { placeViewsAt } from './measure';
@@ -184,9 +185,6 @@ describe('the form', () => {
     expect(uploads()).toHaveLength(0);
     expect(await screen.findByText(ar.apply.success)).toBeTruthy();
     // No summary card of job, company and date under the confirmation.
-    expect(screen.queryByText(ar.apply.labelJob)).toBeNull();
-    expect(screen.queryByText(ar.apply.labelCompany)).toBeNull();
-    expect(screen.queryByText(ar.apply.labelDate)).toBeNull();
     expect(screen.queryByText(listing.title_ar)).toBeNull();
     // Two more roles while the candidate is here, ranked against their profile.
     expect(await screen.findByText(ar.apply.nextRolesMatched)).toBeTruthy();
@@ -374,6 +372,29 @@ describe('the form', () => {
     await waitFor(() => expect(bodyOf('/storage/v1/object/cvs')).toEqual({ prefixes: [path] }));
   });
 
+  it('keeps a note typed when the app is ended, and opens with it shown, until it is sent', async () => {
+    const kept = draftKey('apply', USER_ID, listing.id);
+    await signedIn();
+    const first = await renderRouter(app, { initialUrl: APPLY });
+    await openForm();
+    fireEvent.changeText(screen.getByLabelText(ar.apply.note), 'متاحة من أول الشهر.');
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(kept)) ?? 'null')?.values.note).toBe('متاحة من أول الشهر.'));
+
+    // iOS ends the app in the background: no Back, no question asked.
+    first.unmount();
+
+    await renderRouter(app, { initialUrl: APPLY });
+    expect(await screen.findByText(/^احتفظنا بما كتبته هنا/)).toBeTruthy();
+    // Shown, not folded behind the one-tap summary.
+    expect(await screen.findByDisplayValue('متاحة من أول الشهر.')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/applyToJob')).toHaveLength(1));
+    expect(bodyOf('/api/mobile/v1/actions/applyToJob')).toMatchObject({ input: { note: 'متاحة من أول الشهر.' } });
+    // Sent: nothing more is kept of it.
+    await waitFor(async () => expect(await AsyncStorage.getItem(kept)).toBeNull());
+  });
+
   it('holds the form while the application is on its way, and says so rather than "not saved"', async () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/applyToJob', () => new Promise((resolve) => (answer = resolve)));
@@ -535,7 +556,7 @@ describe('who gets the form', () => {
     fireEvent.press(screen.getByRole('button', { name: ar.app.apply.quickSend }));
     expect(await screen.findByText(ar.apply.success)).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: ar.jobs.title }));
+    fireEvent.press(screen.getByRole('button', { name: ar.nav.browseJobs }));
     await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
     // The same board, the listing and the confirmation gone from above it: nothing to go Back to.
     expect(router.canGoBack()).toBe(false);
@@ -568,6 +589,39 @@ describe('who gets the form', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.nav.signIn }));
     await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
     expect(result.getSearchParams()).toEqual({ next: APPLY });
+  });
+
+  it('pins Apply at the foot of the screen once the button has scrolled out of sight, and takes it away coming back', async () => {
+    await signedIn();
+    const result = await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    await screen.findByRole('button', { name: ar.jobs.apply });
+    expect(screen.queryByTestId('pinned-step')).toBeNull();
+    fireEvent(screen.getByTestId('next-step'), 'layout', { nativeEvent: { layout: { x: 0, y: 600, width: 360, height: 56 } } });
+    const scrollTo = (y: number) =>
+      fireEvent.scroll(screen.getByTestId('job-detail'), {
+        nativeEvent: { contentOffset: { x: 0, y }, contentSize: { width: 390, height: 3000 }, layoutMeasurement: { width: 390, height: 700 } },
+      });
+    scrollTo(300);
+    expect(screen.queryByTestId('pinned-step')).toBeNull();
+    scrollTo(900);
+    const pinned = await screen.findByTestId('pinned-step');
+    fireEvent.press(within(pinned).getByRole('button', { name: ar.jobs.apply }));
+    await waitFor(() => expect(result.getPathname()).toBe(APPLY));
+  });
+
+  it('pins the way to the application instead once it has been sent', async () => {
+    // As the candidate's own list of applications reads it (features/jobs/marks.ts).
+    server.on('GET /rest/v1/applications', [{ id: 'a-1', job_id: listing.id, status: 'submitted', created_at: '2026-09-20T10:00:00Z' }]);
+    await signedIn();
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    expect(await screen.findByText(ar.apply.alreadyApplied)).toBeTruthy();
+    fireEvent(screen.getByTestId('next-step'), 'layout', { nativeEvent: { layout: { x: 0, y: 600, width: 360, height: 120 } } });
+    fireEvent.scroll(screen.getByTestId('job-detail'), {
+      nativeEvent: { contentOffset: { x: 0, y: 1000 }, contentSize: { width: 390, height: 3000 }, layoutMeasurement: { width: 390, height: 700 } },
+    });
+    const pinned = await screen.findByTestId('pinned-step');
+    expect(within(pinned).getByRole('button', { name: ar.apply.viewApplications })).toBeTruthy();
+    expect(within(pinned).queryByRole('button', { name: ar.jobs.apply })).toBeNull();
   });
 
   it("opens from the listing's Apply button", async () => {
@@ -603,10 +657,10 @@ describe('sharing a listing', () => {
     expect(captureRef).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ width: 1080, height: 1920 }));
   });
 
-  it("keeps its word in the bar to the bar's size at the largest text sizes, as the bell does", async () => {
+  it("is the system's share symbol in the bar, its word VoiceOver's, not a word in a box", async () => {
     await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     const button = await screen.findByRole('button', { name: ar.jobs.share });
-    expect(within(button).getByText(ar.jobs.share).props.maxFontSizeMultiplier).toBe(1.4);
+    expect(within(button).queryByText(ar.jobs.share)).toBeNull();
   });
 
   it('puts the link inside the message on Android, which shares the message alone', async () => {

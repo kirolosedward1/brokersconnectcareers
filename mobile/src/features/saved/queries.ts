@@ -1,12 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LIST_SELECT, type JobListItem } from '@/lib/job-list';
-import { canSaveJobs } from '@/lib/permissions';
 import { followQuery } from '@/lib/saved-search';
 import type { SavedSearchRow } from '@/lib/supabase/database.types';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
-import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
+import { useCandidateId } from './candidate';
 import { holdNote, restoreNote } from './notes';
 import { cancelReminder, restoreReminder } from './reminders';
 
@@ -21,20 +20,14 @@ import { cancelReminder, restoreReminder } from './reminders';
  * that waits on a round trip reads as broken, and undoing one costs a tap.
  */
 
-/** A candidate's id when this person keeps bookmarks at all (canSaveJobs), else null. */
-function useCandidateId(): string | null {
-  const { session, actor } = useSession();
-  return canSaveJobs(actor) ? (session?.user.id ?? null) : null;
-}
-
 const marksKey = (candidateId: string | null) => ['saved', 'marks', candidateId] as const;
 const searchesKey = (candidateId: string | null) => ['saved', 'searches', candidateId] as const;
 
 /**
  * A bookmark as the app holds it everywhere: which listing, the candidate's
- * note on it and when to remind them before it closes (saved_jobs.note and
- * remind_at, migration 356) — the same row the website's saved page reads, so
- * both show the same note and a new phone finds it there.
+ * note on it (saved_jobs.note, migration 356) and when to remind them before
+ * it closes (saved_jobs.remind_at, migration 365) — the same row the website's
+ * saved page reads, so both show the same note and a new phone finds it there.
  */
 export type SavedMark = { job_id: string; note: string | null; remind_at: string | null };
 const MARKS_SELECT = 'job_id, note, remind_at';

@@ -65,11 +65,54 @@ database text reaches the browser from this action any more.
   against a harness; the offer was found being deleted by the replay and fixed
   before this landed.
 
+## The app
+
+The app asked before Back threw typed work away (`use-leave-guard.ts`), but
+iOS ending it in the background asked nobody. `mobile/src/lib/kept-draft.ts`
+and `use-kept-draft.ts` are the website's drafts on AsyncStorage — the same
+key shape, the same week, the same rules — written as typing settles and at
+once when the app leaves the foreground. Used by the job wizard (fields and
+step) and the apply screen (name, number, band, note; never the CV). A draft
+typed over an older version of a listing, or found after typing had begun, is
+offered rather than poured in. It goes on sending, on "start over", on
+discarding at the leave guard, and on any sign-out (`push-bridge.tsx`).
+`mobile/tests/kept-draft.test.tsx`, the wizard's and the apply screen's own
+tests cover it.
+
+A stale save in the app keeps the original "this listing changed, reload"
+wording rather than the website's "your changes are kept": on the phone the
+way to the new version is leaving the wizard, and leaving asks to discard.
+
+## Review, 2026-10-22
+
+A second pass, with an independent reviewer and a browser walkthrough of the
+production build against a local Supabase stack, found and fixed:
+
+- An offered draft was thrown away by moving to another wizard step to look
+  at the current version first. Both hooks take a `typed` projection now, and
+  only a change to what was typed answers an offer.
+- Deleting the account on the website (settings, or leaving onboarding) left
+  the account's drafts in the browser. Both clear them;
+  `scripts/form-draft.test.mjs` holds every client sign-out and deletion path
+  to calling `forgetDrafts()`.
+- The app dropped a draft the moment it put it back and wrote it again 400 ms
+  later, so merely opening a form restarted its week.
+- The app's apply screen restored a note behind the folded one-tap summary,
+  under a notice saying it had been put back.
+
+Open, for a decision: the app clears drafts whenever a session ends,
+including one revoked elsewhere, where the website keeps them through a lapsed
+session so the person can sign in and carry on. The company and consultant
+profile forms (web and app) keep no draft; they are single-page edits of a
+saved record, and the same hooks would serve them.
+
 ## Left as it is, on purpose
 
-- The mobile app already asks before discarding typed work (`use-leave-guard.ts`)
-  but does not keep it across the app being killed. Doing so is the same idea
-  over AsyncStorage, and a change of its own.
-- Other actions still return `error.message` in a few places (`account.ts`,
-  `agent-profile.ts`, `admin.ts`); their callers show a generic message, so
-  nothing leaks to the screen, but the raw text does reach the browser.
+- Nineteen action branches (`account.ts`, `agent-profile.ts`, `admin.ts`,
+  `saved-searches.ts`, `talent-pool.ts`, `company.ts`, `notifications.ts`,
+  the rest of `applications.ts`) still answer an unexpected database error
+  with its message. Every expected one is already a code; this is the
+  leftover. The app prints the reason in brackets under "we couldn't complete
+  that" on purpose (since 2026-10-19), to say what actually failed, so
+  turning these into a bare `failed` trades that for tidiness. If it is
+  wanted, log the message server-side (`logFailure`) and answer a code.

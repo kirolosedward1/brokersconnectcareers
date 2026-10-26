@@ -18,7 +18,7 @@ import { ApiError } from '~/lib/api';
 import { useSession, type Viewer } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
-import { webAddress } from '~/lib/web-address';
+import { webAddress } from '@/lib/web-address';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 import { toast } from '~/components/feedback/toast';
@@ -196,6 +196,8 @@ export function CompanyForm({
           value={nameAr}
           onChangeText={setNameAr}
           accessibilityLabel={t('companies.nameAr')}
+          autoComplete="organization"
+          textContentType="organizationName"
           maxLength={160}
           returnKeyType="next"
           submitBehavior="submit"
@@ -208,6 +210,9 @@ export function CompanyForm({
           value={nameEn}
           onChangeText={setNameEn}
           accessibilityLabel={t('companies.nameEn')}
+          autoComplete="organization"
+          textContentType="organizationName"
+          autoCorrect={false}
           maxLength={160}
           ltr
           returnKeyType="next"

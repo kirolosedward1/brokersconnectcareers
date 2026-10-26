@@ -1,4 +1,4 @@
-import { cleanSavedNote, SAVED_NOTE_MAX } from '@/lib/saved-note';
+import { cleanNote, NOTE_MAX } from '@/lib/saved-note';
 import { callAction } from '~/lib/api';
 import { createLocalList } from '~/lib/local-list';
 
@@ -12,14 +12,13 @@ import { createLocalList } from '~/lib/local-list';
  *
  * Taking the bookmark off deletes the row and the note in it. The note is held
  * while the app runs, so Undo, or saving it again soon after, puts it back.
+ *
+ * Notes kept on the phone before this (bc.saved-notes.v1) are posted once by
+ * moveToAccount, then the phone's copy is let go.
  */
-export type JobNote = { id: string; text: string };
+export type JobNote = { id: string; text: string; updatedAt?: number };
 
-/** What fits in a glance under a card; the database holds it to the same. */
-export const NOTE_MAX = SAVED_NOTE_MAX;
-
-/** A note as it is kept: trimmed, and no longer than the limit. */
-export const cleanNote = cleanSavedNote;
+export { cleanNote, NOTE_MAX };
 
 /** Keeps the note on a saved listing, or — written empty — takes it away; the note as kept. */
 export async function postNote(jobId: string, text: string): Promise<string | null> {

@@ -33,6 +33,12 @@ import {
 const website: Notices = webNotices;
 const app: Notices = appNotices;
 
+/**
+ * Grey licence copy. #5B6475 is the lightest it may be (the theme's muted
+ * grey is lighter). Dark mode keeps the theme's light ink.
+ */
+const ink = 'text-[#5B6475] dark:text-muted-foreground';
+
 export async function generateMetadata({
   params,
 }: {
@@ -58,13 +64,13 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
     <div className="mx-auto max-w-3xl px-4 py-14">
       <header className="mb-10 border-b border-border pb-6">
         <h1 className="text-3xl font-bold text-balance sm:text-4xl">{t('title')}</h1>
-        <p className="mt-3 leading-relaxed text-muted-foreground">{t('intro')}</p>
+        <p className={`mt-3 leading-relaxed ${ink}`}>{t('intro')}</p>
       </header>
 
       <section aria-labelledby="website" className="space-y-8">
         <h2 id="website" className="text-2xl font-bold">
           {t('website')}{' '}
-          <span className="text-base font-normal text-muted-foreground">
+          <span className={`text-base font-normal ${ink}`}>
             {t('packages', { count: website.packages.length })}
           </span>
         </h2>
@@ -72,7 +78,7 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
           <div key={group.license} className="space-y-3">
             <h3 className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-lg font-semibold">
               <Expression expression={group.license} anchored={anchored} />
-              <span className="text-sm font-normal text-muted-foreground">
+              <span className={`text-sm font-normal ${ink}`}>
                 {t('packages', { count: group.packages.length })}
               </span>
             </h3>
@@ -81,10 +87,10 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
                 <li key={`${notice.name}@${notice.version}`} className="px-4 py-3">
                   <p className="text-sm">
                     <span className="font-medium">{notice.name}</span>{' '}
-                    <span className="text-muted-foreground">{notice.version}</span>
+                    <span className={ink}>{notice.version}</span>
                   </p>
                   {notice.copyright ? (
-                    <p className="mt-1 whitespace-pre-line break-words text-xs leading-relaxed text-muted-foreground">
+                    <p className={`mt-1 whitespace-pre-line break-words text-xs leading-relaxed ${ink}`}>
                       {notice.copyright}
                     </p>
                   ) : null}
@@ -99,19 +105,19 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
         <h2 id="assets" className="text-2xl font-bold">
           {t('assets')}
         </h2>
-        <p className="leading-relaxed text-muted-foreground">{t('assetsBody')}</p>
+        <p className={`leading-relaxed ${ink}`}>{t('assetsBody')}</p>
         <ul dir="ltr" className="divide-y divide-border rounded-xl border border-border">
           {[...website.assets, ...app.assets].map((asset) => (
             <li key={`${asset.name} ${asset.source}`} className="px-4 py-3">
               <p className="text-sm">
                 <span className="font-medium">{asset.name}</span>{' '}
-                <span className="text-muted-foreground">{asset.source}</span>
+                <span className={ink}>{asset.source}</span>
               </p>
               <p className="mt-1 text-xs">
                 <Expression expression={asset.license} anchored={anchored} />
               </p>
               {asset.copyright ? (
-                <p className="mt-1 whitespace-pre-line break-words text-xs leading-relaxed text-muted-foreground">
+                <p className={`mt-1 whitespace-pre-line break-words text-xs leading-relaxed ${ink}`}>
                   {asset.copyright}
                 </p>
               ) : null}
@@ -123,11 +129,11 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
       <section aria-labelledby="app" className="mt-14 space-y-4">
         <h2 id="app" className="text-2xl font-bold">
           {t('app')}{' '}
-          <span className="text-base font-normal text-muted-foreground">
+          <span className={`text-base font-normal ${ink}`}>
             {t('packages', { count: app.packages.length })}
           </span>
         </h2>
-        <p className="leading-relaxed text-muted-foreground">{t('appBody')}</p>
+        <p className={`leading-relaxed ${ink}`}>{t('appBody')}</p>
         <details>
           <summary className="cursor-pointer font-medium text-primary">{t('showApp')}</summary>
           <div className="mt-6 space-y-6">
@@ -135,11 +141,11 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
               <div key={group.license} className="space-y-2">
                 <h3 className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-semibold">
                   <Expression expression={group.license} anchored={anchored} />
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className={`text-sm font-normal ${ink}`}>
                     {t('packages', { count: group.packages.length })}
                   </span>
                 </h3>
-                <p dir="ltr" className="break-words text-sm leading-relaxed text-muted-foreground">
+                <p dir="ltr" className={`break-words text-sm leading-relaxed ${ink}`}>
                   {group.packages.map((notice) => `${notice.name} ${notice.version}`).join(', ')}
                 </p>
               </div>
@@ -153,7 +159,7 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
           <h2 id="texts" className="text-2xl font-bold">
             {t('texts')}
           </h2>
-          <p className="leading-relaxed text-muted-foreground">{t('textsBody')}</p>
+          <p className={`leading-relaxed ${ink}`}>{t('textsBody')}</p>
         </div>
         {texts.map((entry) => (
           <div key={entry.id} id={licenseAnchor(entry.id)} className="scroll-mt-20 space-y-2">
@@ -162,7 +168,7 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
             </h3>
             {entry.text ? (
               <>
-                <p className="text-sm text-muted-foreground">
+                <p className={`text-sm ${ink}`}>
                   {t.rich('textFrom', {
                     source: entry.source,
                     v: (chunks) => <bdi dir="ltr">{chunks}</bdi>,

@@ -10,6 +10,12 @@ appId: net.brokersconnect.app
     visible: "تخطي"
     timeout: 90000
 - waitForAnimationToEnd
+# Every way on is on the screen, whatever the phone and its text size: on an
+# iPhone SE at the largest accessibility size the company's way in was once
+# drawn below the bottom edge of a welcome that does not scroll (WAYS_GROW in
+# src/app/welcome.tsx; the small pass in scripts/store-screens.sh).
+- assertVisible: "إنشاء حساب"
+- assertVisible: ".*سجّل شركتك"
 - takeScreenshot: 0-welcome
 # Tapped again if the welcome is still up: on a simulator just booted, the
 # first tap of a pass was once lost (the same tap closed it in every other pass).

@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { RefreshControl, Text } from 'react-native';
+import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { formatList } from '@/lib/format';
 import type { JobListItem } from '@/lib/job-list';
 import type { AgentProfileRow, CandidateSummary, ProfileRow } from '@/lib/supabase/database.types';
@@ -26,6 +26,13 @@ import { fakeServer } from './server';
   why, and where the account stands when it is not in good standing. What is
   checked is what is said, what is left out, and where each tap goes.
 */
+
+// The phone's text size, which one test sets to the largest accessibility size.
+const mockWindow = { fontScale: 1 };
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => {
+  const { Dimensions } = jest.requireActual('react-native');
+  return { __esModule: true, default: () => ({ ...Dimensions.get('window'), fontScale: mockWindow.fontScale }) };
+});
 
 jest.mock('~/lib/session-storage', () => {
   const store = new Map<string, string>();
@@ -130,6 +137,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  mockWindow.fontScale = 1;
   // No message may fail to format: the provider reports each one here.
   expect(warnings.filter((warning) => warning.includes('[i18n]'))).toEqual([]);
   warnings.length = 0;
@@ -212,8 +220,8 @@ describe("a candidate's home", () => {
     await signIn();
     await open();
 
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
-    expect(await screen.findByText('فيه رد على طلب')).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText('رد على طلب')).toBeTruthy();
     // Each figure says what it is, to VoiceOver as well.
     expect(screen.getByLabelText(`${ar.dashboard.statApplications}: 1`)).toBeTruthy();
     expect(screen.getByLabelText(`${ar.dashboard.statCompleteness}: 80%`)).toBeTruthy();
@@ -223,6 +231,27 @@ describe("a candidate's home", () => {
     // Nothing to say about the account while it is in good standing.
     expect(screen.queryByText(ar.standing.heldTitle) === null).toBe(true);
     expect(server.asked('/rest/v1/rpc/my_account_note')).toHaveLength(0);
+  });
+
+  it("puts the latest application's status under its title at the largest text size, and cuts neither short", async () => {
+    const label = formatList([applied.title_ar, 'النيل للوساطة', ar.applicationStatus.shortlisted], 'ar');
+    const row = () => screen.getByLabelText(label);
+
+    // As most people set the phone: one row, the title on one line.
+    await signIn();
+    open();
+    await screen.findByLabelText(label);
+    expect(StyleSheet.flatten(row().props.style).flexDirection).toBe('row');
+    expect(within(row()).getByText(applied.title_ar).props.numberOfLines).toBe(1);
+    screen.unmount();
+
+    // The largest accessibility size: stacked, and the title in full.
+    mockWindow.fontScale = 3.571;
+    open();
+    await screen.findByLabelText(label);
+    expect(StyleSheet.flatten(row().props.style).flexDirection).toBe('column');
+    expect(within(row()).getByText(applied.title_ar).props.numberOfLines).toBeUndefined();
+    expect(within(row()).getByText(ar.applicationStatus.shortlisted)).toBeTruthy();
   });
 
   it("suggests roles on the candidate's own track and district first, says why, and leaves out one applied to", async () => {
@@ -244,7 +273,7 @@ describe("a candidate's home", () => {
     [`${ar.dashboard.statCompleteness}: 80%`, '/account/profile'],
     [`${ar.dashboard.statSaved}: 3`, '/dashboard/saved'],
     [`${ar.dashboard.statReplies}: 1`, '/dashboard/applications'],
-    [`فيه رد على طلب. ${ar.dashboard.nextRepliesBody}`, '/dashboard/applications'],
+    [`رد على طلب. ${ar.dashboard.nextRepliesBody}`, '/dashboard/applications'],
   ])('sends "%s" to where it can be acted on', async (name, path) => {
     await signIn();
     const result = await open();
@@ -315,7 +344,7 @@ describe("a candidate's home", () => {
     const result = await open();
 
     expect(await screen.findByText(ar.dashboard.emptyCandidateTitle)).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: ar.jobs.title }));
+    fireEvent.press(screen.getByRole('button', { name: ar.nav.browseJobs }));
     await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
   });
 
@@ -448,7 +477,7 @@ describe('the Terms and the Privacy policy', () => {
     server.on('GET /rest/v1/policy_acceptances', acceptances(() => [{ terms_version: versions.terms, privacy_version: versions.privacy }]));
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
@@ -465,7 +494,7 @@ describe('the Terms and the Privacy policy', () => {
     );
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
@@ -473,7 +502,7 @@ describe('the Terms and the Privacy policy', () => {
   it('asks nothing when the website does not say what is current, and does not look', async () => {
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
     expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(0);
   });
@@ -495,7 +524,7 @@ describe('a directory card nobody asked about', () => {
     server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: '2026-10-01T10:00:00Z' }]);
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلاً ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
     await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').length).toBeGreaterThan(0));
     expect(screen.queryByText(ar.dashboard.visibilityAskTitle)).toBeNull();
   });

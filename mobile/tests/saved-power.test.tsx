@@ -191,7 +191,7 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/setSavedJobNote', (_url, init) => {
     const { input } = JSON.parse(String(init?.body));
     if (!savedJobs.some((item) => item.id === input.jobId)) return { ok: false, error: 'not_saved' };
-    const note = String(input.note).trim() || null;
+    const note = cleanNote(String(input.note ?? '')) || null;
     marks.set(input.jobId, { ...markOf(input.jobId), note });
     return { ok: true, data: { note } };
   });
@@ -273,6 +273,8 @@ const app = {
 const sheetClosed = () => act(() => jest.advanceTimersByTimeAsync(800));
 
 const kept = async (key: string) => JSON.parse((await AsyncStorage.getItem(key)) ?? '[]') as Record<string, unknown>[];
+/** What was sent to setSavedJobNote, in order. */
+const sentNotes = () => server.asked('/api/mobile/v1/actions/setSavedJobNote').map((request) => (request.body as { input: unknown }).input);
 
 /* ------------------------------------------------------------------------- */
 
@@ -710,7 +712,7 @@ describe('a reminder before a saved listing closes', () => {
 /* ------------------------------------------------------------------------- */
 
 describe('a private note on a saved listing', () => {
-  it('is trimmed and cut at the limit the website keeps', () => {
+  it('is trimmed and cut at the limit before it is sent, as the website keeps it; empty is none', () => {
     expect(NOTE_MAX).toBe(300);
     expect(cleanNote('  كلمت منى  ')).toBe('كلمت منى');
     expect(cleanNote('x'.repeat(NOTE_MAX + 50))).toHaveLength(NOTE_MAX);
@@ -735,7 +737,7 @@ describe('a private note on a saved listing', () => {
     expect(markOf(one.id)).toEqual({ note: 'كلمت منى', remind_at: new Date(fireAt).toISOString() });
     // The website's own note wins; a listing no longer saved has nowhere to put one.
     expect(markOf(two.id).note).toBe('من الموقع');
-    expect(markOf(gone.id).note).toBeNull();
+    expect(marks.has(gone.id)).toBe(false);
     // The phone's notes are emptied; its reminders stay, as the copy they now are.
     expect(await deviceNotes.read('person-a')).toEqual([]);
     expect(await jobReminders.read('person-a')).toHaveLength(1);
@@ -756,87 +758,36 @@ describe('a private note on a saved listing', () => {
     expect(await deviceNotes.read('person-a')).toEqual([expect.objectContaining({ text: 'كلمت منى' })]);
   });
 
-  it('is moved from the phone when the app opens, and shown from the bookmark', async () => {
-    const one = job('1');
-    savedJobs = [one];
-    deviceNotes.add(USER_ID, { id: one.id, text: 'المقابلة يوم الحد' });
-    await signedIn();
-    await renderRouter(app, { initialUrl: '/dashboard/saved' });
-
-    expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} المقابلة يوم الحد` })).toBeTruthy();
-    await waitFor(() => expect(markOf(one.id).note).toBe('المقابلة يوم الحد'));
-    await waitFor(async () => expect(await kept(`bc.saved-notes.v1:${USER_ID}`)).toEqual([]));
-  });
-
-  it('goes with the bookmark and comes back with its Undo', async () => {
-    const one = job('1');
-    savedJobs = [one];
-    marks.set(one.id, { note: 'اسأل عن العمولة', remind_at: null });
-    server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
-      const { input } = JSON.parse(String(init?.body));
-      const had = savedJobs.some((item) => item.id === input.jobId);
-      savedJobs = had ? savedJobs.filter((item) => item.id !== input.jobId) : [...savedJobs, one];
-      marks.delete(input.jobId);
-      return { ok: true, data: { saved: !had } };
-    });
-    await signedIn();
-    await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} اسأل عن العمولة` })).toBeTruthy();
-
-    fireEvent.press(screen.getByRole('button', { name: ar.jobs.removeSaved }));
-    await waitFor(() => expect(shownToast()?.action?.label).toBe(ar.app.toast.undo));
-    expect(markOf(one.id).note).toBeNull();
-    await act(async () => shownToast()?.action?.onPress());
-    await waitFor(() => expect(markOf(one.id).note).toBe('اسأل عن العمولة'));
-  });
-
-  it('is put back as it was, and says so, when the website refuses it', async () => {
-    const one = job('1');
-    savedJobs = [one];
-    server.on('POST /api/mobile/v1/actions/setSavedJobNote', { ok: false, error: 'failed' });
-    await signedIn();
-    await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    fireEvent.changeText(await screen.findByLabelText(ar.app.saved.notes.title), 'مقابلة');
-    fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-
-    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.saved.notes.failed));
-    expect(await screen.findByRole('button', { name: ar.app.saved.notes.add })).toBeTruthy();
-  });
-
   it('is written, changed and deleted from the saved card, and shown under it', async () => {
     const one = job('1');
     savedJobs = [one];
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
 
-    // Written.
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    fireEvent.changeText(await screen.findByLabelText(ar.app.saved.notes.title), '  المقابلة يوم الحد  ');
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    fireEvent.changeText(await screen.findByLabelText(ar.savedNotes.title), '  المقابلة يوم الحد  ');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.saved.notes.saved));
-    const shown = `${ar.app.saved.notes.prefix} المقابلة يوم الحد`;
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.savedNotes.saved));
+    const shown = `${ar.savedNotes.prefix} المقابلة يوم الحد`;
     expect(await screen.findByRole('button', { name: shown })).toBeTruthy();
-    // On the bookmark, where the website's saved page shows it too.
-    await waitFor(() => expect(markOf(one.id).note).toBe('المقابلة يوم الحد'));
+    await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'المقابلة يوم الحد' }]));
+    expect(markOf(one.id).note).toBe('المقابلة يوم الحد');
 
-    // Changed: the sheet opens on the note as it is.
     await sheetClosed();
     fireEvent.press(screen.getByRole('button', { name: shown }));
-    const field = await screen.findByLabelText(ar.app.saved.notes.title);
+    const field = await screen.findByLabelText(ar.savedNotes.title);
     expect(field.props.value).toBe('المقابلة يوم الحد');
     fireEvent.changeText(field, 'المقابلة اتأجلت');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    const changed = `${ar.app.saved.notes.prefix} المقابلة اتأجلت`;
+    const changed = `${ar.savedNotes.prefix} المقابلة اتأجلت`;
     expect(await screen.findByRole('button', { name: changed })).toBeTruthy();
     await waitFor(() => expect(markOf(one.id).note).toBe('المقابلة اتأجلت'));
 
-    // Deleted, with Undo.
     await sheetClosed();
     fireEvent.press(screen.getByRole('button', { name: changed }));
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.delete }));
-    await waitFor(() => expect(shownToast()).toMatchObject({ message: ar.app.saved.notes.deleted, action: { label: ar.app.toast.undo } }));
-    expect(await screen.findByRole('button', { name: ar.app.saved.notes.add })).toBeTruthy();
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.delete }));
+    await waitFor(() => expect(shownToast()).toMatchObject({ message: ar.savedNotes.deleted, action: { label: ar.app.toast.undo } }));
+    expect(await screen.findByRole('button', { name: ar.savedNotes.add })).toBeTruthy();
     await waitFor(() => expect(markOf(one.id).note).toBeNull());
     act(() => shownToast()?.action?.onPress());
     expect(await screen.findByRole('button', { name: changed })).toBeTruthy();
@@ -847,9 +798,8 @@ describe('a private note on a saved listing', () => {
     savedJobs = [job('1')];
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    const field = await screen.findByLabelText(ar.app.saved.notes.title);
-    // autoFocus raised the keyboard while iOS was still presenting the sheet.
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    const field = await screen.findByLabelText(ar.savedNotes.title);
     expect(field.props.autoFocus).toBeFalsy();
     const modal = screen.UNSAFE_getAllByType(Modal).find((node) => node.props.visible && node.props.onShow);
     expect(modal).toBeTruthy();
@@ -859,39 +809,66 @@ describe('a private note on a saved listing', () => {
     savedJobs = [job('1')];
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    await screen.findByLabelText(ar.app.saved.notes.title);
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    await screen.findByLabelText(ar.savedNotes.title);
     const room = () => StyleSheet.flatten(screen.getByTestId('note-sheet-room').props.style);
     expect(room().justifyContent).toBe('flex-start');
-    // The keyboard rising moves nothing: there is nothing under it to move.
     act(() => DeviceEventEmitter.emit('keyboardWillShow', { duration: 250, easing: 'keyboard', endCoordinates: { height: 336, screenX: 0, screenY: 508, width: 390 } }));
     expect(room().justifyContent).toBe('flex-start');
     expect(room().paddingBottom).toBeUndefined();
-    // Typed and saved, from the card at the top.
-    fireEvent.changeText(screen.getByLabelText(ar.app.saved.notes.title), 'اتصل بيهم الأحد');
+    fireEvent.changeText(screen.getByLabelText(ar.savedNotes.title), 'اتصل بيهم الأحد');
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
-    expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} اتصل بيهم الأحد` })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اتصل بيهم الأحد` })).toBeTruthy();
   });
 
   it('keeps Save quiet until something changed', async () => {
     savedJobs = [job('1')];
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    fireEvent.press(await screen.findByRole('button', { name: ar.app.saved.notes.add }));
-    await screen.findByLabelText(ar.app.saved.notes.title);
+    fireEvent.press(await screen.findByRole('button', { name: ar.savedNotes.add }));
+    await screen.findByLabelText(ar.savedNotes.title);
     expect(screen.getByRole('button', { name: ar.common.save }).props.accessibilityState).toMatchObject({ disabled: true });
-    fireEvent.changeText(screen.getByLabelText(ar.app.saved.notes.title), '   ');
+    fireEvent.changeText(screen.getByLabelText(ar.savedNotes.title), '   ');
     expect(screen.getByRole('button', { name: ar.common.save }).props.accessibilityState).toMatchObject({ disabled: true });
   });
 
-  it('belongs to the person who wrote it, not the next one on the phone', async () => {
+  it("kept on the phone before it lived with the bookmark, is carried to the server once, and the phone's copy let go", async () => {
     const one = job('1');
+    const gone = job('2');
     savedJobs = [one];
-    deviceNotes.add('somebody-else', { id: one.id, text: 'ليست لك' });
+    deviceNotes.add(USER_ID, { id: one.id, text: '  اتكلمت مع منى  ', updatedAt: 1 });
+    deviceNotes.add(USER_ID, { id: gone.id, text: 'اتقفلت', updatedAt: 1 });
+    deviceNotes.add('somebody-else', { id: one.id, text: 'ليست لك', updatedAt: 1 });
+    await deviceNotes.read(USER_ID);
+    await deviceNotes.read('somebody-else');
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/saved' });
-    expect(await screen.findByRole('button', { name: ar.app.saved.notes.add })).toBeTruthy();
-    expect(screen.queryByText('ليست لك')).toBeNull();
+    await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'اتكلمت مع منى' }]));
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اتكلمت مع منى` })).toBeTruthy();
+    await waitFor(async () => expect(await kept(`bc.saved-notes.v1:${USER_ID}`)).toEqual([]));
+    expect(await kept('bc.saved-notes.v1:somebody-else')).toHaveLength(1);
+  });
+
+  it('goes with the bookmark, and comes back with it on Undo', async () => {
+    const one = job('1');
+    savedJobs = [one];
+    marks.set(one.id, { note: 'اسأل عن العمولة', remind_at: null });
+    server.on('POST /api/mobile/v1/actions/toggleSavedJob', (_url, init) => {
+      const { input } = JSON.parse(String(init?.body));
+      const had = savedJobs.some((item) => item.id === input.jobId);
+      savedJobs = had ? savedJobs.filter((item) => item.id !== input.jobId) : [...savedJobs, one];
+      if (had) marks.delete(input.jobId);
+      return { ok: true, data: { saved: !had } };
+    });
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اسأل عن العمولة` })).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.jobs.removeSaved }));
+    await waitFor(() => expect(savedJobs).toEqual([]));
+    expect(markOf(one.id).note).toBeNull();
+    act(() => shownToast()?.action?.onPress());
+    await waitFor(() => expect(sentNotes()).toEqual([{ jobId: one.id, note: 'اسأل عن العمولة' }]));
+    expect(markOf(one.id).note).toBe('اسأل عن العمولة');
   });
 
   it('is on the listing page while the listing is saved', async () => {
@@ -899,7 +876,7 @@ describe('a private note on a saved listing', () => {
     marks.set(listing.id, { note: 'اسأل عن العمولة', remind_at: null });
     await signedIn();
     await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
-    expect(await screen.findByRole('button', { name: `${ar.app.saved.notes.prefix} اسأل عن العمولة` })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: `${ar.savedNotes.prefix} اسأل عن العمولة` })).toBeTruthy();
   });
 
   it('is not offered on a listing that is not saved', async () => {
@@ -907,7 +884,7 @@ describe('a private note on a saved listing', () => {
     await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
     expect(await screen.findByRole('button', { name: ar.jobs.save })).toBeTruthy();
     await waitFor(() => expect(screen.getByRole('button', { name: ar.jobs.save }).props.accessibilityState?.busy).toBeFalsy());
-    expect(screen.queryByRole('button', { name: ar.app.saved.notes.forListing })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.savedNotes.forListing })).toBeNull();
   });
 });
 

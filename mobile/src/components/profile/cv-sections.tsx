@@ -25,7 +25,8 @@ export function CvSections({ agentId, sections }: { agentId: string; sections: S
   const remove = useDeleteCvEntry(agentId);
 
   const confirmDelete = (section: CvSection, id: string, label: string) =>
-    dialog.alert(label, undefined, [
+    // The question first; which entry, under it.
+    dialog.alert(t('app.cv.deleteEntryTitle'), label, [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: () => remove.mutate({ section, id }) },
     ]);

@@ -17,6 +17,7 @@ import { appDirection } from '~/lib/direction';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useSheet } from '~/lib/use-sheet';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useSheetFence } from '~/components/ui/sheet-fence';
@@ -43,7 +44,8 @@ export function NoteSheet({
   jobId: string;
   jobTitle: string;
 }) {
-  const t = useTranslations('app.saved.notes');
+  const large = useLargeText();
+  const t = useTranslations('savedNotes');
   // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
   const fence = useSheetFence();
   const tCommon = useTranslations('common');
@@ -115,7 +117,7 @@ export function NoteSheet({
           direction: appDirection,
           justifyContent: 'flex-start',
           paddingTop: insets.top + space[2],
-          backgroundColor: 'rgba(5, 10, 25, 0.5)',
+          backgroundColor: colors.scrim,
         }}
         testID="note-sheet-room"
         {...fence}
@@ -146,7 +148,7 @@ export function NoteSheet({
                 <Text weight="semibold" accessibilityRole="header">
                   {t('title')}
                 </Text>
-                <Text variant="small" tone="mutedForeground" numberOfLines={2}>
+                <Text variant="small" tone="mutedForeground" numberOfLines={large ? undefined : 2}>
                   {jobTitle}
                 </Text>
               </View>
@@ -268,7 +270,8 @@ export function NoteSheetHost() {
  * page); unframed it sits in the saved card's tray.
  */
 export function NoteLine({ note, onPress, framed = false, label }: { note: JobNote | null; onPress: () => void; framed?: boolean; label?: string }) {
-  const t = useTranslations('app.saved.notes');
+  const large = useLargeText();
+  const t = useTranslations('savedNotes');
   const { colors } = useTheme();
   const offer = label ?? t('add');
   return (
@@ -299,7 +302,7 @@ export function NoteLine({ note, onPress, framed = false, label }: { note: JobNo
     >
       <NotebookPen size={16} color={note ? colors.primary : colors.mutedForeground} />
       {note ? (
-        <Text variant="small" numberOfLines={framed ? 4 : 2} style={{ flex: 1 }}>
+        <Text variant="small" numberOfLines={large ? undefined : framed ? 4 : 2} style={{ flex: 1 }}>
           <Text variant="small" weight="semibold">{`${t('prefix')} `}</Text>
           {note.text}
         </Text>
@@ -318,7 +321,7 @@ export function NoteLine({ note, onPress, framed = false, label }: { note: JobNo
  * note, or the offer to write one, opening the same sheet as the saved card.
  */
 export function SavedJobNote({ jobId, title }: { jobId: string; title: string }) {
-  const t = useTranslations('app.saved.notes');
+  const t = useTranslations('savedNotes');
   const { actor } = useSession();
   const { ids } = useSavedJobIds();
   const note = useJobNote(jobId);

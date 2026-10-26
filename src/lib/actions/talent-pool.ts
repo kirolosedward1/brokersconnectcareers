@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import type { ActionResult } from '@/lib/actions/jobs';
+import { refused } from '@/lib/observe';
 
 /**
  * The company's shortlist, which is not the same thing as a listing's.
@@ -63,7 +64,7 @@ export async function toggleSavedAgent(
       .eq('agent_id', parsed.data)
       .select('agent_id');
 
-    if (error) return { ok: false, error: error.message };
+    if (error) return refused('talent', error);
     if (!removed?.length) return { ok: false, error: 'forbidden' };
 
     revalidatePath('/employer/talent');
@@ -82,7 +83,7 @@ export async function toggleSavedAgent(
     if (error.message.includes('saved_agent_cap')) return { ok: false, error: 'cap' };
     // Two colleagues pressing at once. The list is the outcome either way.
     if (error.code === '23505') return { ok: true, data: { saved: true } };
-    return { ok: false, error: error.message };
+    return refused('talent', error);
   }
 
   revalidatePath('/employer/talent');

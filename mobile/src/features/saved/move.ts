@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { cleanNote } from '@/lib/saved-note';
 import { callAction } from '~/lib/api';
 import { deviceNotes } from './notes';
 import type { SavedMark } from './queries';
@@ -6,7 +7,7 @@ import { isPending, jobReminders } from './reminders';
 
 /**
  * Notes and reminders were the phone's alone until they moved to the bookmark
- * (migration 356). The first time a person's saved list is read after that,
+ * (the note in migration 356, the reminder in migration 365). The first time a person's saved list is read after that,
  * what this phone kept for them is posted once: each note to a bookmark that
  * has none, each reminder still to go off to a bookmark that has none. One the
  * account already holds wins — it was written since, on the website or
@@ -48,8 +49,10 @@ export async function moveToAccount(
   for (const note of await deviceNotes.read(owner)) {
     const mark = marks.find((item) => item.job_id === note.id);
     if (!mark || mark.note) continue;
+    const text = cleanNote(note.text);
+    if (!text) continue;
     posted = true;
-    if ((await post(() => callAction('setSavedJobNote', { jobId: note.id, note: note.text }))) === 'unanswered') answered = false;
+    if ((await post(() => callAction('setSavedJobNote', { jobId: note.id, note: text }))) === 'unanswered') answered = false;
   }
   for (const reminder of await jobReminders.read(owner)) {
     const mark = marks.find((item) => item.job_id === reminder.id);

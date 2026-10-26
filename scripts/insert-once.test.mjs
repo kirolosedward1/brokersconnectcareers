@@ -4,7 +4,7 @@
  *   node --experimental-strip-types scripts/insert-once.test.mjs
  *
  * The CV's three sections and the applicant notes send a key the form made
- * once (src/lib/actions/idempotency.ts, migration 350). These are the rules
+ * once (src/lib/actions/idempotency.ts, migration 357). These are the rules
  * that turn the database's refusal of a second insert into the row the first
  * one made — and that keep the code working before 350 is applied.
  */
@@ -85,7 +85,7 @@ console.log('\n— a refusal that is not a retry');
   is('a forged owner stays refused', (await insertOnce(KEY, t.insert, t.already)).error?.code, '42501');
 }
 
-console.log('\n— before migration 350 is applied');
+console.log('\n— before migration 357 is applied');
 for (const code of ['PGRST204', '42703']) {
   const t = table({ inserts: [() => refused(code, "Could not find the 'idempotency_key' column"), () => ok({ id: 'new' })] });
   is(`${code}: written without the key`, await insertOnce(KEY, t.insert, t.already), { data: { id: 'new' }, error: null });

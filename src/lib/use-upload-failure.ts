@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { useSessionRecovery } from '@/lib/session-expired';
-import { uploadFailure } from '@/lib/upload-failure';
+import { afterDenied, uploadFailure } from '@/lib/upload-failure';
 
 /**
  * The words for a Storage upload that failed (lib/upload-failure.ts), or null
@@ -28,11 +28,9 @@ export function useUploadFailure() {
         const answer = await createClient()
           .auth.getUser()
           .catch(() => null);
-        if (answer?.data.user) return tValidation('uploadDenied');
-        // No answer about the session is not an answer that it ended: offline
-        // is not signed out, and sending somebody to sign in for it is wrong.
-        if (!answer || answer.error?.name === 'AuthRetryableFetchError') return tValidation('uploadNetwork');
-        if (recoverSession({ ok: false, error: 'unauthenticated' })) return null;
+        const verdict = afterDenied(answer);
+        if (verdict === 'network') return tValidation('uploadNetwork');
+        if (verdict === 'signed_out' && recoverSession({ ok: false, error: 'unauthenticated' })) return null;
         return tValidation('uploadDenied');
       }
       if (failure === 'too_large') return tValidation('fileTooLarge');

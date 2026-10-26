@@ -33,6 +33,7 @@
     "deleted": "Your account has been deleted.",
     "version": "Version {version}",
     "published": "Updated {date}",
+    "websiteAt": "website {commit}",
     "security": "Sign-in and security",
     "oauthOnlyApple": "This account signs in with Apple, so there is no password to change.",
     "mfaOpenApp": "Open in your authenticator app",
@@ -41,7 +42,8 @@
     "mfaDisableBody": "Signing in will ask for your password only.",
     "exportLimit": "You have downloaded a copy of your data several times today. Try again tomorrow.",
     "notifications": "Notifications",
-    "messages": "Messages"
+    "messages": "Messages",
+    "photoDeleteTitle": "Delete your photo?"
   },
   "jobs": {
     "loadMore": "Load more",
@@ -61,7 +63,9 @@
     "suggestKindTrack": "Track",
     "suggestKindTitle": "Job",
     "suggestKindCompany": "Company",
-    "seenDivider": "Posted before you last looked"
+    "seenDivider": "Posted before you last looked",
+    "amountEgp": "EGP <v>{amount}</v>",
+    "searchLabel": "Search jobs"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -76,11 +80,14 @@
     "switchCancel": "Stay in my account",
     "mfaSignOut": "I do not have the code — sign out",
     "mfaLost": "Lost the phone with your authenticator app? Write to us and we will help you back into your account.",
+    "mfaEnrolLede": "Add Brokers Connect to the authenticator app on this phone (Google Authenticator, or the iPhone's own Passwords), then type the six-digit number it shows.",
+    "mfaEnrolOpenApp": "Add it to the authenticator app",
+    "mfaEnrolNoApp": "No authenticator app opened. Install one, or type the key below into it by hand.",
     "linkUsedTitle": "That link no longer works",
     "linkUsedBody": "It has been used already or has expired. You are signed in as {email}, so there is nothing more to do.",
     "resetLinkFailed": "That link has expired or has already been used. You are signed in as {email}, so you can set a new password for it in Sign-in and security.",
     "emailChangeLinkFailed": "That link has expired or has already been used, and the change has not gone through: your account’s address is still {email}. You can ask for the change again in Sign-in and security.",
-    "configFailed": "We could not get signing in ready. Check your connection and try again.",
+    "configFailed": "Signing in didn't get ready. Check your connection and try again.",
     "configRetry": "Try again",
     "appleRevokedTitle": "You have been signed out",
     "appleRevokedBody": "Sign in with Apple is no longer on for this app, so we signed you out on this phone. You can sign in again at any time.",
@@ -101,17 +108,11 @@
   },
   "moderation": {
     "hide": "Hide this company",
-    "hideTitle": "Hide {company}?",
-    "hideBody": "You will not see its listings in the app on this phone again. You can bring it back at any time from “Hidden on this phone” in Account.",
-    "hideConfirm": "Hide it",
     "hidden": "You have hidden this company, so its listings do not appear for you in the app.",
     "unhide": "Show this company again",
     "hideAgent": "Hide this consultant",
-    "hideAgentTitle": "Hide {name}?",
-    "hideAgentBody": "You will not see them in the consultant directory or your shortlist on this phone again. You can bring them back at any time from “Hidden on this phone” in Account.",
     "hiddenAgent": "You have hidden this consultant, so they do not appear for you in the directory or your shortlist.",
     "unhideAgent": "Show this consultant again",
-    "hideAgentConfirm": "Hide them",
     "hiddenList": "Hidden on this phone",
     "hiddenListLede": "The listings, companies and consultants you hid stay out of the app on this phone. Bring any of them back whenever you like.",
     "hiddenCompanies": "Companies",
@@ -128,14 +129,9 @@
     "fewerNote": "They come last among the roles suggested to you on Home, and still show on the board."
   },
   "applications": {
-    "withdrawTitle": "Withdraw your application to “{title}”?",
-    "withdrawBody": "The company will no longer see it. This cannot be undone.",
-    "timeline": "Where it stands",
-    "stepSent": "Sent",
-    "stepSeen": "Seen",
-    "stepDecision": "Decision",
     "activeHeading": "Still in progress",
-    "decidedHeading": "Decided"
+    "decidedHeading": "Decided",
+    "timelineNow": "Now: {step}"
   },
   "apply": {
     "pickCv": "Choose a file",
@@ -146,7 +142,8 @@
     "quickTitle": "Ready to apply with these details",
     "quickSend": "Apply with your saved details",
     "quickEdit": "Edit the details or add a note",
-    "quickNoCv": "Without a CV"
+    "quickNoCv": "Without a CV",
+    "cvUploadFailed": "The file didn't upload. Check your connection and try again, or apply without a CV."
   },
   "profile": {
     "edit": "Edit",
@@ -165,11 +162,13 @@
     "chooseUpTo": "Choose up to <v>{count}</v>.",
     "ringLabel": "Your profile is <v>{percent}%</v> complete",
     "ringHint": "Opens your profile at what is missing",
-    "notFuture": "That date has not come yet. Pick a month up to today."
+    "notFuture": "That date has not come yet. Pick a month up to today.",
+    "yearsLabel": "Years of experience"
   },
   "applicants": {
     "cvLimit": "You have opened a lot of CVs this hour. Try again shortly.",
-    "rejectConfirm": "Turn this applicant down?"
+    "rejectConfirm": "Turn this applicant down?",
+    "empty": "No applicants yet"
   },
   "push": {
     "title": "Notifications on this phone",
@@ -178,8 +177,7 @@
     "hintEmployer": "When someone applies to one of your listings — everything the bell tells you, as it happens.",
     "denied": "Notifications for Brokers Connect are turned off in your phone’s settings.",
     "openSettings": "Open Settings",
-    "failed": "We could not turn notifications on. Try again.",
-    "promptTitle": "Hear about it the moment it happens",
+    "failed": "Notifications didn't turn on. Try again.",
     "promptCandidate": "Turn on notifications and we will tell you as soon as a company answers your application.",
     "promptEmployer": "Turn on notifications and we will tell you as soon as someone applies to your listings.",
     "turnOn": "Turn on notifications",
@@ -198,7 +196,9 @@
     "accountEmployer": "Your account and listings",
     "accountEmployerHint": "A listing published, rejected or ending, your company’s verification, decisions about your account, support replies.",
     "quiet": "Quiet at night",
-    "quietHint": "Anything after 11 pm waits until 8 am, Cairo time."
+    "quietHint": "Anything after 11 pm waits until 8 am, Cairo time.",
+    "promptTitleCandidate": "Know When a Company Replies",
+    "promptTitleEmployer": "Know When Someone Applies"
   },
   "leave": {
     "title": "Leave without saving?",
@@ -213,7 +213,8 @@
     "docCamera": "Take a photo of it",
     "docPhotos": "A photo from your library",
     "docFile": "A file (PDF or image)",
-    "cameraDenied": "Allow the camera for this app in Settings to photograph the paper."
+    "cameraDenied": "Allow the camera for this app in Settings to photograph the paper.",
+    "logoDeleteTitle": "Delete the logo?"
   },
   "licenses": {
     "intro": "This app is built on open-source software, written by many people and published for anyone to use. Here is every package in it, with its version, its licence and its copyright holders, and at the end the text of each licence."
@@ -246,7 +247,9 @@
   "directory": {
     "verifyTitle": "Verify your company to see the consultants",
     "verifyBody": "You can't view the consultant directory until your company is verified with its official papers.",
-    "reviewing": "The directory opens for you as soon as we finish reviewing your account."
+    "reviewing": "The directory opens for you as soon as we finish reviewing your account.",
+    "whatsapp": "WhatsApp",
+    "call": "Call"
   },
   "home": {
     "recentlyViewed": "Recently viewed",
@@ -294,13 +297,14 @@
     "notifyTitle": "{count, plural, one {A new consultant matches your search} other {# new consultants match your search}}"
   },
   "cv": {
-    "current": "Current"
+    "current": "Current",
+    "deleteEntryTitle": "Delete this entry?"
   },
   "crash": {
     "title": "The app closed unexpectedly last time",
     "body": "Something closed the app. Send us the details so we can fix it.",
     "send": "Send the details",
-    "dismiss": "OK"
+    "dismiss": "Not now"
   },
   "toast": {
     "saved": "Saved",
@@ -316,7 +320,8 @@
     "unfollowed": "You stopped following {company}",
     "entrySaved": "Saved to your CV",
     "fewer": "We'll show fewer jobs like this",
-    "fewerOff": "Jobs like this will show as usual again"
+    "fewerOff": "Jobs like this will show as usual again",
+    "agentHidden": "You won't see {name} again"
   },
   "jobMenu": {
     "open": "Open listing",
@@ -349,7 +354,8 @@
     "done": "All reviewed",
     "shortlisted": "{name} shortlisted",
     "rejected": "{name} turned down",
-    "moved": "A colleague moved them first"
+    "moved": "A colleague moved them first",
+    "failed": "Couldn't save the decision for {name}."
   },
   "week": {
     "title": "Your week",
@@ -378,21 +384,6 @@
       "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
       "back": "Back to Saved"
     },
-    "notes": {
-      "title": "Your note",
-      "prefix": "Your note:",
-      "add": "Add a note",
-      "edit": "Edits the note",
-      "forListing": "Add a note to yourself about this listing",
-      "private": "Kept with your account: only you see it, here and on the website.",
-      "placeholder": "e.g. Spoke to them; interview on Sunday morning",
-      "count": "{count}/{max}",
-      "countSpoken": "{count} of {max} characters",
-      "saved": "Note saved",
-      "deleted": "Note deleted",
-      "failed": "Couldn't save the note. Try again.",
-      "delete": "Delete"
-    },
     "remind": {
       "set": "Remind me",
       "setSpoken": "Remind me the day before it closes",
@@ -402,8 +393,8 @@
       "cancelled": "Reminder cancelled",
       "denied": "Notifications are off for the app, so we can't remind you. Turn them on in Settings.",
       "tooLate": "This listing closes within the hour: too late for a reminder",
-      "failed": "We couldn't set the reminder. Try again.",
-      "cancelFailed": "We couldn't cancel the reminder. Try again.",
+      "failed": "The reminder wasn't set. Try again.",
+      "cancelFailed": "The reminder wasn't cancelled. Try again.",
       "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
       "notifyBody": "{job} at {company}. Apply before it closes."
     }
@@ -416,13 +407,13 @@
     "clearAllBody": "Every notification shown here will be deleted, and can't be brought back.",
     "clearAllConfirm": "Clear all",
     "cancel": "Cancel",
-    "deleteFailed": "We couldn't delete it. Try again."
+    "deleteFailed": "The notification wasn't deleted. Try again.",
+    "empty": "Nothing yet"
   },
   "admin": {
     "door": {
       "enrolTitle": "Set up two-step sign-in first",
-      "enrolBody": "The admin console asks for a code from an authenticator app each time a session starts. Set one up on the website — Account, then Sign-in and security — then come back here.",
-      "enrolOpen": "Set it up on the website",
+      "enrolBody": "The admin console asks for a code from an authenticator app each time a session starts. Set one up here — it takes a minute — and the console opens.",
       "enrolDone": "I've set it up",
       "challengeTitle": "Enter your code first",
       "challengeBody": "This account has an authenticator app. Enter its code to open the console.",
@@ -431,23 +422,59 @@
       "mfa_challenge": "Enter your authenticator code first, then try again."
     },
     "tabWaiting": "{name}, {count, plural, one {# waiting on a decision} other {# waiting on a decision}}",
-    "showing": "<v>{shown}</v> of <v>{total}</v> here — the rest are on the website.",
-    "fullConsole": "The full console on the website",
-    "fullConsoleHint": "Search, the audit log, applications, taxonomy and each account's file.",
     "adminConsole": "Admin console",
-    "papers": "Papers sent",
-    "onWebsite": "Open on the website",
-    "deletedTarget": "Removed since it was reported. Close these reports from the full console on the website.",
-    "companyRecord": "The company's record — rejections, duplicates, shared phones — is on its page in the full console.",
-    "reportedBy": "Reported by {name}",
     "reportCount": "{count, plural, one {<v>#</v> report} other {<v>#</v> reports}}",
     "openWhatsApp": "Open WhatsApp",
     "call": "Call",
     "addNote": "Add a note",
     "noteLabel": "Note (admins only)",
-    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever."
+    "accountsLede": "Find any account; its file has the facts, what it has done, and every lever.",
+    "reports": {
+      "dayPlaceholder": "YYYY-MM-DD",
+      "dayInvalid": "Write the day as YYYY-MM-DD, a day that exists.",
+      "caseTotal": "{count, plural, one {<v>#</v> case} other {<v>#</v> cases}}"
+    },
+    "appeals": {
+      "filedOn": "Sent on {date}"
+    },
+    "audit": {
+      "filteredActor": "Only one admin's decisions are shown.",
+      "filteredTarget": "Only the decisions about one thing are shown.",
+      "actorHint": "Shows only this admin's decisions",
+      "targetHint": "Opens what the decision was about"
+    },
+    "taxonomy": {
+      "newEntry": "New entry",
+      "addTitle": "Add “{name}”",
+      "addBody": "“{name}” joins the lists the filters, the forms and the pages are built from, and shows on the site at once. The slug cannot change afterwards.",
+      "renameTitle": "Rename “{name}”",
+      "renameBody": "The new names show on the site at once; the slug stays as it is.",
+      "edit": "Rename",
+      "empty": "Nothing in this list yet."
+    },
+    "search": {
+      "resultHint": "Opens it in the console"
+    },
+    "overview": {
+      "closeDeletionBody": "Only the request is closed, and nobody is told. Nothing is deleted: agree what happens to the company and the account first, from their files.",
+      "sections": "Everything in the console"
+    },
+    "ops": {
+      "mailUnknown": "We couldn't check whether email sending is on.",
+      "retryBody": "The message goes back in the queue for one more attempt on the next sweep, within a few minutes. Nothing is sent right now."
+    },
+    "listings": {
+      "oneCompany": "One company's listings"
+    },
+    "companies": {
+      "takenDown": "{count, plural, =0 {No listing was taken down.} one {<v>#</v> listing taken down.} other {<v>#</v> listings taken down.}}"
+    }
   },
   "keyboard": {
     "done": "Done"
+  },
+  "dashboard": {
+    "trendDown": "Down {value}",
+    "trendUp": "Up {value}"
   }
 }

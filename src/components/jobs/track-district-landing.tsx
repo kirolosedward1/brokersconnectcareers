@@ -17,7 +17,7 @@ import type { DistrictRow, JobTrack } from '@/lib/supabase/database.types';
 /**
  * Programmatic landing page for one point of the track x district cross
  * product. These are the organic traffic engine: someone searching
- * "وظائف بيع أول التجمع الخامس" lands here rather than on a filtered board URL
+ * "وظائف بيع أوف بلان التجمع الخامس" lands here rather than on a filtered board URL
  * that search engines treat as a duplicate.
  */
 export async function TrackDistrictLanding({

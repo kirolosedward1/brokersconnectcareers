@@ -441,8 +441,11 @@ report.section('8. the apply limit counts what was sent, not what is left');
     ...jobs.map(apply),
     {
       as: candidate,
-      sql: `delete from applications where candidate_id = '${candidate}' and status = 'new'
-               and job_id in (${jobs.map((id) => `'${id}'`).join(', ')}) returning id`,
+      sql: `select w.application_id
+              from applications a
+              cross join lateral public.withdraw_application(a.id) w
+             where a.candidate_id = '${candidate}' and a.status = 'new'
+               and a.job_id in (${jobs.map((id) => `'${id}'`).join(', ')})`,
     },
     apply(jobs[0]),
   ]);

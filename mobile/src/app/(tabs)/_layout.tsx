@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useTranslations } from 'use-intl';
 import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar';
 import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, ShieldCheck, Users } from '~/components/ui/lucide';
-import { useAdminOverview, waitingCount } from '~/features/admin/queries';
+import { summaryWaiting, useAdminSummary } from '~/features/admin/queries';
 import { useConsultantAlerts } from '~/features/directory/alerts';
 import { useNewJobsBadge } from '~/features/jobs/new-since';
 import { markupTags } from '~/i18n/rich';
@@ -48,14 +48,24 @@ export default function TabsLayout() {
   const has = (tab: TabName) => tabs.includes(tab);
   // Listings published since the board was last looked at (features/jobs/new-since.ts).
   const newJobs = useNewJobsBadge();
-  // What waits on a moderator: read only for an admin the console opens for (features/admin/queries.ts).
-  const waiting = waitingCount(useAdminOverview().data);
+  // What waits on a moderator, in the website rail's own sense (admin_summary:
+  // the queue, companies pending, reported targets, open appeals, accounts
+  // awaiting approval — summaryWaiting in features/admin/queries.ts says why
+  // that and not the overview's row). Read only for an admin the console opens for.
+  const waiting = summaryWaiting(useAdminSummary().data);
 
   return (
     <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
+      {/* Always in the app, as `/` and every "back home" lead here; for an
+          admin, whose bar is the console alone, its button is hidden and the
+          screen opens the console instead ((home)/index.tsx). */}
       <Tabs.Screen
         name="(home)"
-        options={{ title: t('app.tabs.home'), tabBarIcon: tabIcon({ default: 'house', selected: 'house.fill' }, House) }}
+        options={{
+          title: t('app.tabs.home'),
+          tabBarIcon: tabIcon({ default: 'house', selected: 'house.fill' }, House),
+          tabBarItemStyle: has('home') ? undefined : { display: 'none' },
+        }}
       />
 
       <Tabs.Protected guard={has('jobs')}>

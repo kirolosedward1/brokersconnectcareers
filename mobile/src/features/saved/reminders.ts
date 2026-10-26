@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { readDate } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { useListOwner } from '~/features/jobs/recent';
@@ -12,7 +13,7 @@ import { createLocalList } from '~/lib/local-list';
  * Cairo — early enough in the day to apply, late enough not to wake anybody.
  *
  * When it goes off is kept on the bookmark (saved_jobs.remind_at, migration
- * 356), written through the website's setSavedJobReminder: the website's saved
+ * 365), written through the website's setSavedJobReminder: the website's saved
  * page says it and can take it back, a new phone finds it, and a bookmark
  * taken off anywhere takes it with it. The notification scheduled on this
  * phone is a copy of that, made to match each time the saved list is read
@@ -120,11 +121,6 @@ function cairoDayNumber(date: Date): number {
   return Date.UTC(wall.year, wall.month - 1, wall.day) / DAY_MS;
 }
 
-function readDate(value: string | Date | null | undefined): Date | null {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
 
 /**
  * When to remind somebody of a listing closing at `expiresAt`: ten in the

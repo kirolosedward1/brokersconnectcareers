@@ -24,7 +24,21 @@ export type Lever =
   /** The reason is why the details are being looked at; the answer carries them. */
   | ({ do: 'reveal' } & Omit<MobileActionInput<'revealContact'>, 'reason'>)
   /** The "reason" is the note itself. */
-  | ({ do: 'note' } & Omit<MobileActionInput<'addModerationNote'>, 'body'>);
+  | ({ do: 'note' } & Omit<MobileActionInput<'addModerationNote'>, 'body'>)
+  // The rest of the website's console (docs/prompts/mobile-admin-parity.md).
+  /** No reason: recorded, nobody is told. */
+  | ({ do: 'featured' } & MobileActionInput<'setJobFeatured'>)
+  | ({ do: 'suspension' } & Omit<MobileActionInput<'setCompanySuspension'>, 'reason'>)
+  | ({ do: 'restriction' } & Omit<MobileActionInput<'setAgentRestriction'>, 'reason'>)
+  /** The "reason" is the note; `abusive` marks a dismissal as bad faith (the note is then required). */
+  | ({ do: 'closeReports' } & Omit<MobileActionInput<'closeReports'>, 'note'>)
+  /** The "reason" is the note to the appellant: optional on a reversal, required on upholding. */
+  | ({ do: 'appeal' } & Omit<MobileActionInput<'decideAppeal'>, 'note'>)
+  /** The whole form travels in the lever: the sheet confirms, it does not ask for a reason. */
+  | ({ do: 'taxonomy' } & MobileActionInput<'saveTaxonomy'>)
+  | ({ do: 'deleteTaxonomy' } & MobileActionInput<'deleteTaxonomy'>)
+  | ({ do: 'requeue' } & MobileActionInput<'requeueEmail'>)
+  | ({ do: 'closeDeletion' } & MobileActionInput<'closeDeletionRequest'>);
 
 /** A reason given only when it says something: an empty box is no reason. */
 function given(reason: string): string | undefined {
@@ -65,6 +79,31 @@ export function pullLever(lever: Lever, reason: string): Promise<ActionResult<un
       return callAction('revealContact', { userId: lever.userId, reason: reason.trim() });
     case 'note':
       return callAction('addModerationNote', { targetType: lever.targetType, targetId: lever.targetId, body: reason.trim() });
+    case 'featured':
+      return callAction('setJobFeatured', { jobId: lever.jobId, featured: lever.featured });
+    case 'suspension':
+      return callAction('setCompanySuspension', { companyId: lever.companyId, suspend: lever.suspend, reason: reason.trim() });
+    case 'restriction':
+      return callAction('setAgentRestriction', { agentId: lever.agentId, restrict: lever.restrict, reason: reason.trim() });
+    case 'closeReports':
+      return callAction('closeReports', { ids: lever.ids, status: lever.status, abusive: lever.abusive ?? false, note: given(reason) });
+    case 'appeal':
+      return callAction('decideAppeal', { appealId: lever.appealId, overturn: lever.overturn, note: given(reason) });
+    case 'taxonomy':
+      return callAction('saveTaxonomy', {
+        kind: lever.kind,
+        id: lever.id,
+        nameAr: lever.nameAr,
+        nameEn: lever.nameEn,
+        slug: lever.slug,
+        governorateId: lever.governorateId,
+      });
+    case 'deleteTaxonomy':
+      return callAction('deleteTaxonomy', { kind: lever.kind, id: lever.id });
+    case 'requeue':
+      return callAction('requeueEmail', { emailId: lever.emailId });
+    case 'closeDeletion':
+      return callAction('closeDeletionRequest', { requestId: lever.requestId });
   }
 }
 
@@ -81,5 +120,9 @@ export function useAfterLever() {
       queryClient.invalidateQueries({ queryKey: ['admin'] }),
       queryClient.invalidateQueries({ queryKey: ['jobs'] }),
       queryClient.invalidateQueries({ queryKey: ['companies'] }),
+      // A restriction changes the directory; a taxonomy change, every filter
+      // (the app keeps taxonomies across launches).
+      queryClient.invalidateQueries({ queryKey: ['agents'] }),
+      queryClient.invalidateQueries({ queryKey: ['taxonomy'] }),
     ]).then(() => undefined);
 }

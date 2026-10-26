@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
+import { CompareChooser } from '@/components/dashboard/compare-chooser';
 import { JobCard } from '@/components/jobs/job-card';
 import { SavedJobNote } from '@/components/dashboard/saved-job-note';
 import { SavedSearchList } from '@/components/dashboard/saved-search-list';
@@ -67,7 +68,7 @@ export default async function SavedJobsPage({
     (row) => Boolean(row.job),
   );
   const jobs = rows.map((row) => row.job);
-  // The note and the reminder on each bookmark — the app's too (migration 356).
+  // The note (migration 356) and the reminder (migration 365) on each bookmark — the app's too.
   const extras = new Map(rows.map((row) => [row.job.id, { note: row.note, remindAt: row.remind_at }]));
 
   /**
@@ -107,9 +108,9 @@ export default async function SavedJobsPage({
   // when they open it.
   const { data: mine } = await supabase
     .from('applications')
-    .select('job_id')
+    .select('job_id, status')
     .eq('candidate_id', viewer.userId);
-  const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+  const appliedTo = new Set((mine ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id));
 
   const t = await getTranslations('dashboard');
   const tJobs = await getTranslations('jobs');
@@ -141,66 +142,68 @@ export default async function SavedJobsPage({
           </div>
         ) : (
           <div className="space-y-6">
-            {open.length > 0 ? (
-              <div>
-                {/* The heading only earns its place once there is a second
-                    group to tell this one apart from. */}
-                {closed.length > 0 ? (
+            <CompareChooser
+              locale={locale}
+              openHeading={
+                closed.length > 0 ? (
                   <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
                     {t('savedOpenHeading')}
                   </h3>
-                ) : null}
-                <ul className="space-y-3">
-                  {open.map((job) => (
-                    <li key={job.id}>
-                      <JobCard
-                        job={job}
-                        locale={locale}
-                        applied={appliedTo.has(job.id)}
-                        saved
-                        savable
-                      />
-                      <SavedJobNote
-                        jobId={job.id}
-                        note={extras.get(job.id)?.note ?? null}
-                        remindAt={extras.get(job.id)?.remindAt ?? null}
-                        locale={locale}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {closed.length > 0 ? (
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground">
-                  {t('savedClosedHeading')}
-                </h3>
-                <p className="mb-3 mt-0.5 text-sm text-muted-foreground">
-                  {t('savedClosedLede')}
-                </p>
-                <ul className="space-y-3">
-                  {closed.map((job) => (
-                    <li key={job.id}>
-                      <JobCard
-                        job={job}
-                        locale={locale}
-                        applied={appliedTo.has(job.id)}
-                        saved
-                        savable
-                      />
-                      <SavedJobNote
-                        jobId={job.id}
-                        note={extras.get(job.id)?.note ?? null}
-                        remindAt={extras.get(job.id)?.remindAt ?? null}
-                        locale={locale}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+                ) : null
+              }
+              open={open.map((job) => ({
+                id: job.id,
+                title: localized(locale, job.title_ar, job.title_en),
+                card: (
+                  <>
+                    <JobCard
+                      job={job}
+                      locale={locale}
+                      applied={appliedTo.has(job.id)}
+                      saved
+                      savable
+                    />
+                    <SavedJobNote
+                      jobId={job.id}
+                      initialNote={extras.get(job.id)?.note ?? null}
+                      remindAt={extras.get(job.id)?.remindAt ?? null}
+                      locale={locale}
+                    />
+                  </>
+                ),
+              }))}
+              closed={
+                closed.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      {t('savedClosedHeading')}
+                    </h3>
+                    <p className="mb-3 mt-0.5 text-sm text-muted-foreground">
+                      {t('savedClosedLede')}
+                    </p>
+                    <ul className="space-y-3">
+                      {closed.map((job) => (
+                        <li key={job.id}>
+                          <JobCard
+                            job={job}
+                            locale={locale}
+                            applied={appliedTo.has(job.id)}
+                            saved
+                            savable
+                          />
+                          <SavedJobNote
+                            jobId={job.id}
+                            initialNote={extras.get(job.id)?.note ?? null}
+                            remindAt={extras.get(job.id)?.remindAt ?? null}
+                            locale={locale}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null
+              }
+            />
           </div>
         )}
       </section>

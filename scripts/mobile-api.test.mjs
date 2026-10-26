@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 const { readBearer, challenge, tokenRefused } = await import('../src/lib/mobile-api/bearer.ts');
 const { secondFactorDue, tokenAssurance } = await import('../src/lib/auth/second-factor.ts');
 const { adminDoor, assuranceOf } = await import('../src/lib/mobile-api/admin-door.ts');
+const { adminMfaRequired } = await import('../src/lib/admin-mfa.ts');
 const { AuthApiError, AuthRetryableFetchError, AuthSessionMissingError, AuthUnknownError } = await import('@supabase/supabase-js');
 
 let pass = 0;
@@ -94,10 +95,21 @@ console.log('\n— an admin lever opens only for a session the website\'s consol
     'mfa_required',
   );
   is(
-    'no authenticator where none is required (the escape hatch): open',
+    'no authenticator where none is required: open',
     adminDoor({ jwt: token({ aal: 'aal1' }), user: {} }, false),
     'open',
   );
+}
+
+console.log('\n— ADMIN_MFA_REQUIRED is off unless it is exactly true');
+{
+  const flag = (value) => adminMfaRequired({ ADMIN_MFA_REQUIRED: value, NODE_ENV: 'production' });
+  is('unset is off, including in production', adminMfaRequired({ NODE_ENV: 'production' }), false);
+  is('unset is off in development', adminMfaRequired({ NODE_ENV: 'development' }), false);
+  is('true turns it on', flag('true'), true);
+  is('false leaves it off', flag('false'), false);
+  is('any other value leaves it off', flag('1'), false);
+  is('empty leaves it off', flag(''), false);
 }
 
 console.log('\n— the app can reach only what the registry lists');
@@ -120,13 +132,22 @@ console.log('\n— the app can reach only what the registry lists');
     .sort();
   is('the admin levers the app has are exactly the console levers its screens offer', adminNames, [
     'addModerationNote',
+    'closeDeletionRequest',
+    'closeReports',
+    'decideAppeal',
+    'deleteTaxonomy',
     'endSessions',
     'getDocumentUrl',
     'moderateJob',
     'moderateReports',
+    'requeueEmail',
     'revealContact',
     'reviewCompany',
+    'saveTaxonomy',
     'setAccountApproval',
+    'setAgentRestriction',
+    'setCompanySuspension',
+    'setJobFeatured',
     'setReportingRestriction',
     'setSignInBlock',
     'setUserRole',

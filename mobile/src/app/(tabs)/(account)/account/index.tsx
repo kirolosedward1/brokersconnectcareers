@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDateTime } from '@/lib/format';
+import { localized } from '@/lib/locale';
 import {
   BellRing,
   Building2,
@@ -50,6 +51,7 @@ import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { toast } from '~/components/feedback/toast';
 
 /**
  * The Account tab. Signed out, it is the door: sign in, create an account, or
@@ -83,12 +85,20 @@ export default function AccountScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const version = shownVersion() ?? '';
   const published = publishedAt();
-  const marker = buildMarker();
+  // Which code this phone runs, and which the website does: the two are
+  // published from the same push, so the commits match once both have taken
+  // it, and "is the fix on my phone, and is it on the site?" is read, not guessed.
+  const marker = [
+    buildMarker(),
+    config.data?.commit ? t('app.account.websiteAt', { commit: config.data.commit.slice(0, 7) }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const themes: { value: ThemePreference; label: string }[] = [
+    { value: 'system', label: t('theme.system') },
     { value: 'light', label: t('theme.light') },
     { value: 'dark', label: t('theme.dark') },
-    { value: 'system', label: t('theme.system') },
   ];
 
   if (!ready) return <LoadingState />;
@@ -103,10 +113,11 @@ export default function AccountScreen() {
     shareMyData(session.user.id, t('account.exportTitle'))
       .catch((failure: unknown) => {
         const status = failure instanceof ApiError ? failure.status : -1;
-        dialog.alert(
-          t('account.exportTitle'),
-          status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
-        );
+        // Said in passing (a toast), not an alert with one button to dismiss it.
+        toast.show({
+          message: status === 429 ? t('app.account.exportLimit') : status === 0 ? t('app.offline.body') : t('common.errorBody'),
+          tone: 'destructive',
+        });
       })
       .then(() => setExporting(false));
   };
@@ -136,7 +147,7 @@ export default function AccountScreen() {
               ) : null}
               <View style={{ flex: 1, gap: space[1] }}>
                 {viewer?.profile?.full_name ? (
-                  <Text variant="title" weight="bold">
+                  <Text variant="title" weight="semibold">
                     {viewer.profile.full_name}
                   </Text>
                 ) : null}
@@ -152,7 +163,7 @@ export default function AccountScreen() {
             ) : null}
             {viewer?.company ? (
               <Text variant="small" weight="medium">
-                {viewer.company.name_ar}
+                {localized(locale, viewer.company.name_ar, viewer.company.name_en)}
               </Text>
             ) : null}
             {/* The one thing here other people see. */}
@@ -165,7 +176,7 @@ export default function AccountScreen() {
         ) : (
           <View style={{ gap: space[3] }}>
             <View style={{ gap: space[1] }}>
-              <Text variant="title" weight="bold" accessibilityRole="header">
+              <Text variant="title" weight="semibold" accessibilityRole="header">
                 {t('app.account.signedOutTitle')}
               </Text>
               <Text tone="mutedForeground">{t('app.account.signedOutBody')}</Text>

@@ -36,10 +36,20 @@
  * {{ .ConfirmationURL }}. That URL ends in the code flow, which only works in
  * the browser that asked for the email; a token hash verifies wherever the
  * link is opened — on the phone after signing up on a laptop, or in the iOS
- * app, which opens /auth/confirm as a universal link. `redirect_to` comes last
- * because it is a whole URL of its own (src/lib/auth/confirm-link.ts reads it
- * as the rest of the string). Deploy /auth/confirm before pasting these, and
+ * app, which opens /auth/confirm as a universal link.
+ *
+ *   {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=<type>&next=<path>&redirect_to={{ .RedirectTo }}
+ *
+ * `next` is a path on this site, used when the form asked for nothing more
+ * specific. `redirect_to` comes last because it is a whole URL of its own
+ * (src/lib/auth/confirm-link.ts reads it as the rest of the string) and, when
+ * it names a path, it wins over `next` — it carries the door's role and the
+ * page the person was opening. Deploy /auth/confirm before pasting these, and
  * send one test email to see the link arrive whole.
+ *
+ * The Arabic is Modern Standard Arabic, the same wording the other emails
+ * use. An English copy sits under it. Every link and the reauthentication
+ * code say one hour, matching Email OTP expiration (3600 seconds).
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -76,18 +86,26 @@ const c = emailCopy.ar;
  * placeholder that somehow escaped substitution would fail loudly rather than
  * reaching somebody's DNS.
  */
-/** A link to /auth/confirm for one type of email, with GoTrue's variables in it. */
-const confirmLink = (type) =>
-  `${SITE}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=${type}&amp;redirect_to={{ .RedirectTo }}`;
+/**
+ * A link to /auth/confirm for one type of email, with GoTrue's variables in it.
+ *
+ * `next` is a path. It is not encoded: these paths have no `&` of their own,
+ * and encoding the slashes would make the line pasted into the dashboard
+ * harder to read. `redirect_to` stays last.
+ */
+const confirmLink = (type, next) =>
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=${type}&amp;next=${next}&amp;redirect_to={{ .RedirectTo }}`;
 
 const URL_VARIABLES = {
   // `email` covers both a sign-up confirmation and a magic link, as verifyOtp
   // names them; the older `signup` and `magiclink` still verify too. No
   // placeholder may begin with another, or the shorter replaces inside the
   // longer — /confirm/email once did, inside /confirm/email_change.
-  'https://gotrue.invalid/confirm/address': confirmLink('email'),
-  'https://gotrue.invalid/confirm/recovery': confirmLink('recovery'),
-  'https://gotrue.invalid/confirm/new-address': confirmLink('email_change'),
+  // The two `email` links differ by `next`, so they cannot share a placeholder.
+  'https://gotrue.invalid/confirm/signup': confirmLink('email', '/onboarding'),
+  'https://gotrue.invalid/confirm/magic': confirmLink('email', '/'),
+  'https://gotrue.invalid/confirm/recovery': confirmLink('recovery', '/sign-in/new-password'),
+  'https://gotrue.invalid/confirm/new-address': confirmLink('email_change', '/dashboard/account'),
 };
 
 function substitute(html) {
@@ -98,16 +116,26 @@ function substitute(html) {
   return out;
 }
 
-const CONFIRM_EMAIL = 'https://gotrue.invalid/confirm/address';
+const CONFIRM_SIGNUP = 'https://gotrue.invalid/confirm/signup';
+const CONFIRM_MAGIC = 'https://gotrue.invalid/confirm/magic';
 const CONFIRM_RECOVERY = 'https://gotrue.invalid/confirm/recovery';
 const CONFIRM_EMAIL_CHANGE = 'https://gotrue.invalid/confirm/new-address';
 
-/** Arabic only. Supabase stores one template per email type, not one per language. */
+/** Under the button, for a client that does not draw it. */
+const PLAIN_AR = 'إذا لم يظهر الزر، فافتح هذا الرابط في المتصفح:';
+const PLAIN_EN = 'If the button does not appear, open this link in your browser:';
+
+/** The document is Arabic and right to left. English is a second section, not a second file. */
 const LOCALE = 'ar';
 const DIR = 'rtl';
 
+// Auth mail has no Reply-To, so the footer only offers the address. It is
+// hardcoded because these files are pasted into the dashboard as they are.
+const AUTH_SUPPORT = 'info@topsuite.net';
+
 const footer = {
-  automated: c.footer.automated,
+  contact: { lead: 'هل تحتاج إلى مساعدة؟ راسلنا على', email: AUTH_SUPPORT },
+  contactEn: { lead: 'Need help? Write to', email: AUTH_SUPPORT },
   reason: c.footer.reasonAccount,
   legal: [
     { label: c.footer.privacy, href: `${SITE}/privacy` },
@@ -126,45 +154,77 @@ const TEMPLATES = {
   confirmation: {
     file: 'confirmation.html',
     subject: 'أكّد بريدك الإلكتروني في بروكرز كونكت',
-    preheader: 'خطوة واحدة وحسابك يشتغل.',
+    preheader: 'خطوة واحدة ويُفعَّل حسابك.',
     heading: 'أكّد بريدك الإلكتروني',
     blocks: [
       {
         kind: 'text',
         value:
-          'أهلاً بيك في بروكرز كونكت. اضغط الزرار عشان نتأكد إن البريد ده بتاعك ونفعّل الحساب.',
+          'أهلًا بك في بروكرز كونكت. اضغط الزر لنتأكد أن هذا البريد لك ونُفعّل الحساب.',
       },
-      { kind: 'button', label: 'تأكيد البريد الإلكتروني', href: CONFIRM_EMAIL },
+      { kind: 'button', label: 'تأكيد البريد الإلكتروني', href: CONFIRM_SIGNUP, plain: PLAIN_AR },
       {
         kind: 'text',
-        value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.',
+        value: 'هذا الرابط صالح لمدة ساعة واحدة، ويعمل مرة واحدة فقط.',
       },
       {
         kind: 'security',
         value:
-          'لو مش إنت اللي عملت الحساب، ما تعملش حاجة — الحساب مش هيتفعّل من غير التأكيد ده.',
+          'إذا لم تكن أنت من أنشأ الحساب، فلا تفعل شيئًا — لن يُفعَّل الحساب من دون هذا التأكيد.',
       },
     ],
+    english: {
+      heading: 'Confirm your email',
+      blocks: [
+        {
+          kind: 'text',
+          value:
+            'Welcome to Brokers Connect. Press the button so we can make sure this email is yours and activate the account.',
+        },
+        { kind: 'button', label: 'Confirm your email', href: CONFIRM_SIGNUP, plain: PLAIN_EN },
+        { kind: 'text', value: 'This link is valid for one hour, and it works only once.' },
+        {
+          kind: 'security',
+          value:
+            'If you did not create the account, do nothing — it will not be activated without this confirmation.',
+        },
+      ],
+    },
   },
 
   recovery: {
     file: 'recovery.html',
     subject: 'إعادة تعيين كلمة المرور',
-    preheader: 'لينك لإعادة تعيين كلمة المرور.',
+    preheader: 'رابط لإعادة تعيين كلمة المرور.',
     heading: 'إعادة تعيين كلمة المرور',
     blocks: [
       {
         kind: 'text',
-        value: 'وصلنا طلب لإعادة تعيين كلمة المرور بتاعت حسابك. اضغط الزرار عشان تحطّ واحدة جديدة.',
+        value: 'وصلنا طلبًا لإعادة تعيين كلمة المرور الخاصة بحسابك. اضغط الزر لتعيين كلمة جديدة.',
       },
-      { kind: 'button', label: 'إعادة تعيين كلمة المرور', href: CONFIRM_RECOVERY },
-      { kind: 'text', value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.' },
+      { kind: 'button', label: 'إعادة تعيين كلمة المرور', href: CONFIRM_RECOVERY, plain: PLAIN_AR },
+      { kind: 'text', value: 'هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.' },
       {
         kind: 'security',
         value:
-          'لو مش إنت اللي طلبت ده، تجاهل الرسالة. كلمة المرور بتاعتك ما اتغيرتش، والحساب زي ما هو.',
+          'إذا لم تكن أنت من طلب ذلك، فتجاهل هذه الرسالة. لم تتغيّر كلمة المرور، والحساب على حاله.',
       },
     ],
+    english: {
+      heading: 'Reset your password',
+      blocks: [
+        {
+          kind: 'text',
+          value: 'We received a request to reset the password on your account. Press the button to set a new one.',
+        },
+        { kind: 'button', label: 'Reset your password', href: CONFIRM_RECOVERY, plain: PLAIN_EN },
+        { kind: 'text', value: 'This link is valid for one hour, and it works only once.' },
+        {
+          kind: 'security',
+          value: 'If you did not ask for this, ignore the message. Your password has not changed.',
+        },
+      ],
+    },
   },
 
   email_change: {
@@ -175,48 +235,88 @@ const TEMPLATES = {
     blocks: [
       {
         kind: 'text',
-        value: 'طلبت تغيير البريد الإلكتروني بتاع حسابك. اضغط الزرار عشان نأكّد العنوان الجديد.',
+        value: 'طلبت تغيير البريد الإلكتروني الخاص بحسابك. اضغط الزر لتأكيد العنوان الجديد.',
       },
       { kind: 'facts', rows: [['البريد الجديد', '{{ .NewEmail }}']] },
-      { kind: 'button', label: 'تأكيد البريد الجديد', href: CONFIRM_EMAIL_CHANGE },
+      { kind: 'button', label: 'تأكيد البريد الجديد', href: CONFIRM_EMAIL_CHANGE, plain: PLAIN_AR },
       {
         kind: 'security',
         value:
-          'لو مش إنت اللي طلبت ده، غيّر كلمة المرور بتاعتك فوراً — حد تاني يمكن يكون داخل على حسابك.',
+          'إذا لم تكن أنت من طلب ذلك، فغيّر كلمة المرور فورًا — قد يكون شخص آخر داخل حسابك.',
       },
     ],
+    english: {
+      heading: 'Confirm the new email',
+      blocks: [
+        {
+          kind: 'text',
+          value: 'You asked to change the email on your account. Press the button to confirm the new address.',
+        },
+        { kind: 'facts', rows: [['New email', '{{ .NewEmail }}']] },
+        { kind: 'button', label: 'Confirm the new email', href: CONFIRM_EMAIL_CHANGE, plain: PLAIN_EN },
+        {
+          kind: 'security',
+          value:
+            'If you did not ask for this, change your password immediately — someone else may be in your account.',
+        },
+      ],
+    },
   },
 
   reauthentication: {
     file: 'reauthentication.html',
-    subject: 'كود تأكيد الهوية',
-    preheader: 'كود لتأكيد إنك إنت.',
-    heading: 'كود التأكيد',
+    subject: 'رمز تأكيد الهوية',
+    preheader: 'رمز للتأكد من هويتك.',
+    heading: 'رمز التأكيد',
     blocks: [
-      { kind: 'text', value: 'استخدم الكود ده عشان تكمّل العملية اللي بدأتها على حسابك.' },
-      { kind: 'facts', rows: [['الكود', '{{ .Token }}']] },
-      { kind: 'text', value: 'الكود صالح لمدة ساعة.' },
+      { kind: 'text', value: 'استخدم هذا الرمز لإكمال العملية التي بدأتها في حسابك.' },
+      { kind: 'facts', rows: [['الرمز', '{{ .Token }}']] },
+      { kind: 'text', value: 'الرمز صالح لمدة ساعة.' },
       {
         kind: 'security',
-        value: 'لو مش إنت اللي طلبت الكود ده، غيّر كلمة المرور بتاعتك فوراً.',
+        value: 'إذا لم تكن أنت من طلب هذا الرمز، فغيّر كلمة المرور فورًا.',
       },
     ],
+    english: {
+      heading: 'Confirmation code',
+      blocks: [
+        { kind: 'text', value: 'Use this code to finish what you started on your account.' },
+        { kind: 'facts', rows: [['Code', '{{ .Token }}']] },
+        { kind: 'text', value: 'The code is valid for one hour.' },
+        {
+          kind: 'security',
+          value: 'If you did not ask for this code, change your password immediately.',
+        },
+      ],
+    },
   },
 
   magic_link: {
     file: 'magic-link.html',
-    subject: 'لينك الدخول لحسابك',
-    preheader: 'لينك دخول لمرة واحدة.',
-    heading: 'ادخل على حسابك',
+    subject: 'رابط الدخول إلى حسابك',
+    preheader: 'رابط دخول لمرة واحدة.',
+    heading: 'ادخل إلى حسابك',
     blocks: [
-      { kind: 'text', value: 'اضغط الزرار عشان تدخل على حسابك من غير كلمة مرور.' },
-      { kind: 'button', label: 'ادخل على حسابك', href: CONFIRM_EMAIL },
-      { kind: 'text', value: 'اللينك ده صالح لمدة ساعة، وبيشتغل مرة واحدة بس.' },
+      { kind: 'text', value: 'اضغط الزر للدخول إلى حسابك من دون كلمة مرور.' },
+      { kind: 'button', label: 'ادخل إلى حسابك', href: CONFIRM_MAGIC, plain: PLAIN_AR },
+      { kind: 'text', value: 'هذا الرابط صالح لمدة ساعة، ويعمل مرة واحدة فقط.' },
       {
         kind: 'security',
-        value: 'لو مش إنت اللي طلبت اللينك ده، تجاهل الرسالة ومحدش هيقدر يدخل.',
+        value: 'إذا لم تكن أنت من طلب هذا الرابط، فتجاهل هذه الرسالة. لن يتمكّن أحد من الدخول.',
       },
     ],
+    english: {
+      heading: 'Sign in to your account',
+      blocks: [
+        { kind: 'text', value: 'Press the button to sign in to your account without a password.' },
+        { kind: 'button', label: 'Sign in', href: CONFIRM_MAGIC, plain: PLAIN_EN },
+        { kind: 'text', value: 'This link is valid for one hour, and it works only once.' },
+        {
+          kind: 'security',
+          value: 'If you did not ask for this link, ignore the message and nobody can sign in.',
+        },
+      ],
+    },
   },
 };
 
@@ -233,6 +333,8 @@ for (const [name, template] of Object.entries(TEMPLATES)) {
     heading: template.heading,
     blocks: template.blocks,
     footer,
+    appearance: 'auth',
+    alternate: template.english,
   });
 
   const final = substitute(html);
@@ -245,7 +347,7 @@ for (const [name, template] of Object.entries(TEMPLATES)) {
 // complete, discovered by users rather than by this line.
 let broken = 0;
 for (const item of written) {
-  const source = JSON.stringify(TEMPLATES[item.name].blocks);
+  const source = JSON.stringify({ blocks: TEMPLATES[item.name].blocks, english: TEMPLATES[item.name].english });
   const expected = [
     ...[...source.matchAll(/{{ \.\w+ }}/g)].map((match) => match[0]),
     // The URL placeholders must have become variables, and none may remain.
@@ -269,21 +371,57 @@ for (const item of written) {
 }
 
 // Every link-carrying template sends people to /auth/confirm, with the token
-// hash, and with redirect_to as the last parameter — the route reads it as the
-// rest of the string, so anything after it would be read as part of it.
+// hash, a same-origin next, and redirect_to as the last parameter — the route
+// reads redirect_to as the rest of the string, so anything after it would be
+// read as part of it.
+const DESIGN = [
+  'color-scheme: light dark',
+  'prefers-color-scheme: dark',
+  '#111827',
+  '#E5E7EB',
+  '#5B6475',
+  '#E3E7EF',
+  'bc-logo',
+  'font-size:13px;text-decoration:underline',
+];
 for (const item of written) {
+  for (const needle of DESIGN) {
+    if (!item.html.includes(needle)) {
+      console.error(`  BROKEN  ${item.file}: missing ${needle}`);
+      broken += 1;
+    }
+  }
+  if (!item.html.includes('lang="en"')) {
+    console.error(`  BROKEN  ${item.file}: no English section`);
+    broken += 1;
+  }
+
   const hrefs = [...item.html.matchAll(/href="([^"]*auth\/confirm[^"]*)"/g)].map((match) => match[1]);
   if (item.name === 'reauthentication') continue; // a code, not a link
   if (!hrefs.length) {
     console.error(`  BROKEN  ${item.file}: no /auth/confirm link`);
     broken += 1;
   }
+  if (!item.html.includes(PLAIN_AR) || !item.html.includes(PLAIN_EN)) {
+    console.error(`  BROKEN  ${item.file}: no plain-text fallback link`);
+    broken += 1;
+  }
   for (const href of hrefs) {
-    if (!href.includes('token_hash={{ .TokenHash }}') || !href.endsWith('redirect_to={{ .RedirectTo }}')) {
-      console.error(`  BROKEN  ${item.file}: ${href} is not token_hash … redirect_to last`);
+    if (
+      !href.startsWith('{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}') ||
+      !href.includes('&amp;type=') ||
+      !href.includes('&amp;next=') ||
+      !href.endsWith('redirect_to={{ .RedirectTo }}')
+    ) {
+      console.error(`  BROKEN  ${item.file}: ${href} is not SiteURL / token_hash / type / next / redirect_to last`);
       broken += 1;
     }
   }
+}
+
+if (!written.find((item) => item.name === 'confirmation')?.html.includes('هذا الرابط صالح لمدة ساعة واحدة، ويعمل مرة واحدة فقط.')) {
+  console.error('  BROKEN  confirmation.html: the expiry does not say one hour');
+  broken += 1;
 }
 
 console.log(`\nWrote ${written.length} Supabase Auth templates to supabase/templates/\n`);

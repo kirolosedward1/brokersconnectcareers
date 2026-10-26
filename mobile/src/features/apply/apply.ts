@@ -55,17 +55,25 @@ export function useApplyContext(jobId: string | null) {
     enabled: Boolean(jobId && candidateId),
     queryFn: async () => {
       const [existing, agent] = await Promise.all([
+        // Not maybeSingle: withdrawing keeps the row, and applying again adds
+        // another. A withdrawn row is not an application in progress. Status
+        // is filtered here so the label is not sent before the database has it.
         supabase
           .from('applications')
-          .select('id, created_at')
+          .select('id, status, created_at')
           .eq('job_id', jobId as string)
-          .eq('candidate_id', candidateId as string)
-          .maybeSingle(),
+          .eq('candidate_id', candidateId as string),
         supabase.from('agent_profiles').select('cv_path').eq('user_id', candidateId as string).maybeSingle(),
       ]);
       if (existing.error) throw existing.error;
+      const rows = (Array.isArray(existing.data) ? existing.data : existing.data ? [existing.data] : []) as {
+        id: string;
+        status: string;
+        created_at: string;
+      }[];
+      const standing = rows.find((row) => row.status !== 'withdrawn') ?? null;
       return {
-        existing: existing.data as { id: string; created_at: string } | null,
+        existing: standing ? { id: standing.id, created_at: standing.created_at } : null,
         // Optional: without it the form simply offers a file.
         profileCv: (agent.error ? null : agent.data?.cv_path) ?? null,
       };
@@ -77,12 +85,13 @@ export function useApplyContext(jobId: string | null) {
 async function applied(jobId: string, candidateId: string): Promise<boolean> {
   const answer = await withTimeout(
     Promise.resolve(
-      supabase.from('applications').select('id').eq('job_id', jobId).eq('candidate_id', candidateId).maybeSingle(),
+      supabase.from('applications').select('id, status').eq('job_id', jobId).eq('candidate_id', candidateId),
     ),
     15_000,
     'checking the application',
   ).catch(() => null);
-  return Boolean(answer && !answer.error && answer.data);
+  const rows = answer && !answer.error ? (Array.isArray(answer.data) ? answer.data : answer.data ? [answer.data] : []) : [];
+  return rows.some((row) => (row as { status?: string }).status !== 'withdrawn');
 }
 
 export function useApplyToJob() {
@@ -153,9 +162,11 @@ export function useNextRoles(jobId: string, enabled: boolean) {
           .select('tracks, district_ids, years_experience')
           .eq('user_id', candidateId as string)
           .maybeSingle(),
-        supabase.from('applications').select('job_id').eq('candidate_id', candidateId as string),
+        supabase.from('applications').select('job_id, status').eq('candidate_id', candidateId as string),
       ]);
-      const appliedTo = new Set((mine.data ?? []).map((row) => row.job_id as string));
+      const appliedTo = new Set(
+        (mine.data ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id as string),
+      );
       return rankJobs(
         board.jobs.filter((role) => role.id !== jobId && !appliedTo.has(role.id)),
         {

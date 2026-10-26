@@ -94,8 +94,8 @@ export function EmptyIllustration({ name }: { name: IllustrationName }) {
   return (
     <Illustration
       name={name}
-      sizes="9rem"
-      className="mx-auto mb-3 w-36 [@media(max-height:34rem)]:hidden"
+      sizes="11rem"
+      className="mx-auto mb-3 w-44 [@media(max-height:34rem)]:hidden"
     />
   );
 }

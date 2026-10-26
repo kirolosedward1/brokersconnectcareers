@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentType } from 'react';
+import { useCallback, useMemo, useRef, useState, type ComponentType } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -29,7 +29,8 @@ import { EXPERIENCE_BANDS } from '@/lib/taxonomy';
 import { JobCard } from '~/components/jobs/job-card';
 import { Button } from '~/components/ui/button';
 import { Appear } from '~/components/motion/appear';
-import { Confetti, DrawnCheck } from '~/components/motion/celebration';
+import { DrawnCheck } from '~/components/motion/celebration';
+import { PushPrompt } from '~/components/push/push-prompt';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
@@ -49,14 +50,20 @@ import { pickCv, type PickedCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { useAgentProfile } from '~/features/profile/queries';
 import { ApiError } from '~/lib/api';
+import { noteFailure } from '~/lib/crash-log';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useErrorsInView } from '~/lib/use-errors-in-view';
 import { useLeaveGuard } from '~/lib/use-leave-guard';
+import { draftKey } from '~/lib/kept-draft';
+import { useKeptDraft } from '~/lib/use-kept-draft';
+import { DraftNotice } from '~/components/ui/draft-notice';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * Applying to a listing — the website's /jobs/<slug>/apply, at the same path
@@ -140,7 +147,7 @@ function Apply({ job }: { job: JobDetail }) {
         icon={CalendarX2}
         title={t('jobs.expired')}
         body={t('jobs.expiredBody')}
-        action={hasBoard ? <Button label={t('jobs.title')} onPress={toBoard} /> : null}
+        action={hasBoard ? <Button label={t('nav.browseJobs')} onPress={toBoard} /> : null}
       />
     );
   }
@@ -206,6 +213,7 @@ function Apply({ job }: { job: JobDetail }) {
   return (
     <ApplyForm
       job={job}
+      userId={viewer.userId}
       defaultName={viewer.profile.full_name}
       defaultPhone={viewer.profile.whatsapp_phone}
       profileCv={context.data.profileCv}
@@ -221,12 +229,15 @@ type Errors = Partial<Record<'fullName' | 'whatsapp' | 'experienceBand' | 'cv' |
 
 function ApplyForm({
   job,
+  userId,
   defaultName,
   defaultPhone,
   profileCv,
   onSent,
 }: {
   job: JobDetail;
+  /** Whose draft this form keeps (kept-draft.ts). */
+  userId: string;
   defaultName: string;
   defaultPhone: string;
   profileCv: string | null;
@@ -235,6 +246,7 @@ function ApplyForm({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const apply = useApplyToJob();
   const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'experienceBand', 'cv']);
@@ -264,7 +276,28 @@ function ApplyForm({
   const [editing, setEditing] = useState(() => !defaultName.trim() || !isValidPhone(normalisePhone(defaultPhone)));
   // Leaving with a note written or a file picked asks first (the form goes once
   // it is sent); while it is being sent, the screen waits for the answer.
-  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending);
+  /*
+    What was typed, kept on the phone until it is sent (kept-draft.ts) — the
+    note, the band, a corrected name or number. Never the CV: a picked file is
+    the picker's, and the cache it sits in is emptied on signing out.
+  */
+  const kept = useKeptDraft({
+    key: draftKey('apply', userId, job.id),
+    values: useMemo(() => ({ fullName, whatsapp, picked, note }), [fullName, whatsapp, picked, note]),
+    restore: useCallback(
+      (held: { fullName: string; whatsapp: string; picked: ExperienceBand | null; note: string }) => {
+        setFullName(held.fullName);
+        setWhatsapp(held.whatsapp);
+        setBand(held.picked);
+        setNote(held.note);
+        // What was kept is shown, not folded away under the one-tap summary:
+        // the notice says it was put back, and a note behind a tap reads as lost.
+        setEditing(true);
+      },
+      [],
+    ),
+  });
+  useLeaveGuard(Boolean(note.trim()) || attachment?.kind === 'file', apply.isPending, kept.drop);
 
   const title = localized(locale, job.title_ar, job.title_en);
   const company = localized(locale, job.company.name_ar, job.company.name_en);
@@ -290,7 +323,7 @@ function ApplyForm({
 
   const submit = () => {
     const local: Errors = {};
-    if (!fullName.trim()) local.fullName = t('validation.required');
+    if (fullName.trim().length < 2) local.fullName = t('validation.required');
     if (!isValidPhone(normalisePhone(whatsapp))) local.whatsapp = t('validation.invalidPhone');
     if (!band) local.experienceBand = t('validation.required');
     if (Object.keys(local).length) {
@@ -305,16 +338,22 @@ function ApplyForm({
         attachment,
       },
       {
-        onSuccess: onSent,
+        onSuccess: () => {
+          kept.clear();
+          onSent();
+        },
         onError: (failure) => {
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
+          // Nothing this form holds can be sent to this listing now, so nothing is kept of it.
+          if (reason === 'already_applied' || reason === 'not_open') kept.clear();
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
           if (reason === 'not_open') return showErrors({ form: t('apply.notOpen') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
           if (reason === 'upload' || reason === 'invalid_cv_path') {
-            const detail = failure instanceof ApplyRefused ? failure.detail : undefined;
-            return showErrors({ cv: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+            // What went wrong underneath is for the crash report; the reader is told what to do.
+            noteFailure('apply.cv', failure);
+            return showErrors({ cv: t('app.apply.cvUploadFailed') });
           }
           const fields = failure instanceof ApplyRefused ? failure.fieldErrors : undefined;
           if (reason === 'invalid' && fields && Object.keys(fields).length) {
@@ -326,10 +365,9 @@ function ApplyForm({
               ...(fields.note || fields.jobId ? { form: t('common.errorBody') } : {}),
             });
           }
-          // What went wrong underneath, in brackets: "something went wrong" alone told nobody anything.
-          // The website's own answers (offline, unavailable) are said as they always were.
-          const detail = failure instanceof Error && !(failure instanceof ApiError) && failure.message ? failure.message : '';
-          showErrors({ form: detail ? `${t('common.errorBody')}\n(${detail})` : t('common.errorBody') });
+          // What went wrong underneath goes to the crash report, not on the screen.
+          if (!(failure instanceof ApiError)) noteFailure('apply', failure);
+          showErrors({ form: t('common.errorBody') });
         },
       },
     );
@@ -344,8 +382,9 @@ function ApplyForm({
       keyboardDismissMode="interactive"
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
     >
+      <DraftNotice draft={kept} />
       <View style={{ gap: space[1] }}>
-        <Text variant="title" weight="bold" accessibilityRole="header">
+        <Text variant="title" weight="semibold" accessibilityRole="header">
           {t('apply.title', { job: title })}
         </Text>
         <Text variant="small" tone="mutedForeground">
@@ -426,7 +465,7 @@ function ApplyForm({
                 ) : (
                   <Paperclip size={16} color={colors.mutedForeground} />
                 )}
-                <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
+                <Text variant="small" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
                   {attachment.kind === 'profile' ? t('app.apply.profileCv') : attachment.file.name}
                 </Text>
                 <Pressable
@@ -473,7 +512,7 @@ function ApplyForm({
 
       <WhoSees />
 
-      {errors.form ? <Notice tone="destructive">{errors.form}</Notice> : null}
+      {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
 
       {editing ? <Button label={t('apply.submit')} size="lg" loading={apply.isPending} onPress={submit} /> : null}
     </ScrollView>
@@ -498,6 +537,7 @@ function QuickApply({
 }) {
   const t = useTranslations();
   const { colors } = useTheme();
+  const large = useLargeText();
   return (
     <Card style={{ gap: space[4] }}>
       <Text weight="semibold" accessibilityRole="header">
@@ -509,7 +549,7 @@ function QuickApply({
             <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', ...corner('full'), backgroundColor: colors.secondary }}>
               <Icon size={16} color={colors.primary} />
             </View>
-            <Text weight="medium" numberOfLines={1} style={{ flex: 1, ...(ltr ? { writingDirection: 'ltr' as const } : null) }}>
+            <Text weight="medium" numberOfLines={large ? undefined : 1} style={{ flex: 1, ...(ltr ? { writingDirection: 'ltr' as const } : null) }}>
               {ltr ? `\u2066${value}\u2069` : value}
             </Text>
           </View>
@@ -579,7 +619,8 @@ function Sent({ job }: { job: JobDetail; at?: Date }) {
   const t = useTranslations();
   const { colors } = useTheme();
   const next = useNextRoles(job.id, true);
-
+  // Said to VoiceOver as it comes up: a live region is Android's alone.
+  useAnnounce(`${t('apply.success')}. ${t('apply.successBody')}`);
 
   return (
     <ScrollView
@@ -600,8 +641,7 @@ function Sent({ job }: { job: JobDetail; at?: Date }) {
         <Appear from="none" scale={0.6} delay={motion.stagger}>
           <DrawnCheck size={72} />
         </Appear>
-        <Confetti />
-        <Text variant="title" weight="bold" accessibilityRole="header" style={{ textAlign: 'center' }}>
+        <Text variant="title" weight="semibold" accessibilityRole="header" style={{ textAlign: 'center' }}>
           {t('apply.success')}
         </Text>
         <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
@@ -611,8 +651,11 @@ function Sent({ job }: { job: JobDetail; at?: Date }) {
 
       <View style={{ gap: space[2] }}>
         <Button label={t('apply.viewApplications')} onPress={() => router.navigate('/dashboard/applications')} />
-        <Button label={t('jobs.title')} variant="outline" onPress={toBoard} />
+        <Button label={t('nav.browseJobs')} variant="outline" onPress={toBoard} />
       </View>
+
+      {/* The moment the reason to hear back is plain: the phone's question, until answered. */}
+      <PushPrompt audience="candidate" />
 
       {next.roles.length ? (
         <View style={{ gap: space[3] }}>

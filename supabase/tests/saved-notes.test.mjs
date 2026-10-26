@@ -1,7 +1,7 @@
 /**
- * A note and a reminder on a bookmark (migration 356): the columns' shape, and
- * that only the candidate whose bookmark it is reads or changes them — and
- * only them. Run with: pnpm test:db
+ * A note (migration 356) and a reminder (migration 365) on a bookmark: the
+ * columns' shape, and that only the candidate whose bookmark it is reads or
+ * changes them — and only them. Run with: pnpm test:db
  */
 import { createTestDb, runner, reporter, FIXTURES } from './setup.mjs';
 
@@ -47,11 +47,11 @@ report.section('a note is a line, not a document');
 
   const long = await as(candidate, `
     update saved_jobs set note = '${'م'.repeat(301)}' where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
-  report.check('301 do not', !long.ok && /saved_jobs_note_shape/.test(long.error ?? ''), long.ok ? 'update was allowed' : long.error);
+  report.check('301 do not', !long.ok && /saved_jobs_note_length/.test(long.error ?? ''), long.ok ? 'update was allowed' : long.error);
 
   const blank = await as(candidate, `
-    update saved_jobs set note = '   ' where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
-  report.check('nor only blanks: no note is null', !blank.ok && /saved_jobs_note_shape/.test(blank.error ?? ''), blank.ok ? 'update was allowed' : blank.error);
+    update saved_jobs set note = '' where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('an empty string is not a note', !blank.ok && /saved_jobs_note_length/.test(blank.error ?? ''), blank.ok ? 'update was allowed' : blank.error);
 }
 
 report.section('the bookmark\'s owner writes them');
@@ -110,7 +110,7 @@ report.section('taking the bookmark off takes them with it');
   const insertedWith = await as(candidate, `
     insert into saved_jobs (candidate_id, job_id, note) values ('${candidate}', '${otherJob}', '${'م'.repeat(301)}') returning job_id`);
   report.check('and a bookmark saved with a note meets the same limit',
-    !insertedWith.ok && /saved_jobs_note_shape/.test(insertedWith.error ?? ''), insertedWith.ok ? 'insert was allowed' : insertedWith.error);
+    !insertedWith.ok && /saved_jobs_note_length/.test(insertedWith.error ?? ''), insertedWith.ok ? 'insert was allowed' : insertedWith.error);
 }
 
 process.exit(report.finish() ? 0 : 1);

@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { logFailure } from '@/lib/observe';
 
 import type { ActionResult } from '@/lib/action-result';
+import { cleanNote } from '@/lib/saved-note';
 
 export type { ActionResult };
 
@@ -58,6 +59,45 @@ export async function toggleSavedJob(input: string): Promise<ActionResult<{ save
 
   revalidatePath('/dashboard/saved');
   return { ok: true, data: { saved: true } };
+}
+
+const noteSchema = z.object({
+  jobId: jobIdSchema,
+  // Longer than the limit is cut, not refused: the editors count as the
+  // reader types, and a paste past the end should keep what fits.
+  note: z.string().max(4000).nullable().optional(),
+});
+
+/**
+ * The candidate's own line about a saved listing (migration 356): kept with
+ * the bookmark, shown on the website's saved page and in the app alike, and
+ * gone with the bookmark. Empty or null takes it away. The listing has to be
+ * saved — the note is the bookmark's — so an unsaved one answers `not_saved`
+ * rather than quietly writing nothing.
+ */
+export async function setSavedJobNote(input: unknown): Promise<ActionResult<{ note: string | null }>> {
+  const parsed = noteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const { jobId } = parsed.data;
+  const note = cleanNote(parsed.data.note ?? '') || null;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data, error } = await supabase
+    .from('saved_jobs')
+    .update({ note })
+    .eq('candidate_id', user.id)
+    .eq('job_id', jobId)
+    .select('job_id');
+  if (error) return failed('save', 'could not keep a note on a listing', error, { job: jobId });
+  if (!data?.length) return { ok: false, error: 'not_saved' };
+
+  revalidatePath('/dashboard/saved');
+  return { ok: true, data: { note } };
 }
 
 /**

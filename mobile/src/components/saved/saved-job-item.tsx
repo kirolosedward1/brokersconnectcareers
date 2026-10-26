@@ -30,7 +30,7 @@ import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
-import { corner, hitTarget, radius, space } from '~/theme/tokens';
+import { corner, hitTarget, iconSize, radius, space } from '~/theme/tokens';
 import { NoteLine, openNoteSheet } from './note-sheet';
 
 /** While choosing listings to compare: where this one stands. */
@@ -166,7 +166,7 @@ function Tray({ job, applied, waiting }: { job: JobListItem; applied: boolean; w
           <Badge
             variant="warning"
             label={t.markup('closing', { days: soon, ...markupTags })}
-            icon={<Hourglass size={11} color={colors.warning} />}
+            icon={<Hourglass size={iconSize.label} color={colors.warning} />}
           />
         </View>
       ) : null}
@@ -273,7 +273,7 @@ function RemindButton({ job, reminder, locale }: { job: JobListItem; reminder: J
         minHeight: hitTarget - 8,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: space[1] + 2,
+        gap: space[1.5],
         paddingHorizontal: space[3],
         borderRadius: 18,
         borderCurve: 'continuous',
@@ -283,7 +283,7 @@ function RemindButton({ job, reminder, locale }: { job: JobListItem; reminder: J
         opacity: busy ? 0.6 : 1,
       })}
     >
-      <Pop key={job.id} trigger={sets} burst={colors.gold}>
+      <Pop key={job.id} trigger={sets}>
         {on ? <BellCheck size={16} color={colors.primary} /> : <BellPlus size={16} color={colors.foreground} />}
       </Pop>
       <Text variant="small" weight="semibold" style={{ color: on ? colors.primary : colors.foreground }}>

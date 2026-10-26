@@ -1,39 +1,62 @@
-import { useEffect } from 'react';
-import { Share } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Share, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { crashReport, forgetLastCrash, readLastCrash } from '~/lib/crash-log';
-import { dialog } from '~/lib/dialog';
+import { Button } from '~/components/ui/button';
+import { Notice } from '~/components/ui/notice';
+import { Text } from '~/components/ui/text';
+import { crashReport, forgetLastCrash, readLastCrash, type Crash } from '~/lib/crash-log';
+import { gutter, space } from '~/theme/tokens';
 
 /**
- * Once, at the launch after the app was closed by an error of its own
- * (src/lib/crash-log.ts): says so, and offers the details to send on —
+ * After the app was closed by an error of its own (src/lib/crash-log.ts): a
+ * notice at the top of Home that says so, and offers the details to send on —
  * WhatsApp, mail, whatever the share sheet has — so the fault can be found.
+ *
+ * In the page rather than an alert over it: Apple asks that an app not greet
+ * people with an alert as it starts (HIG, Alerts), and an alert also had to
+ * wait out the welcome and the launch's other screens to be shown at all.
+ * It stays until it is answered — sent, or put away with "Not now" — so a
+ * launch by a link that never passes Home does not lose it.
  */
-/** Long enough for the welcome, or Home, to be on screen. */
-const NOTICE_AFTER_MS = 2500;
-
 export function CrashNotice() {
   const t = useTranslations('app.crash');
+  const [crash, setCrash] = useState<Crash | null>(null);
+
   useEffect(() => {
     let live = true;
-    // After the launch's own screens have come up (the welcome is presented
-    // as the app opens): iOS shows nothing presented while another is.
-    const timer = setTimeout(() => {
-      readLastCrash().then((crash) => {
-        if (!crash || !live) return;
-        void forgetLastCrash();
-        dialog.alert(t('title'), t('body'), [
-          { text: t('dismiss'), style: 'cancel' },
-          { text: t('send'), onPress: () => void Share.share({ message: crashReport(crash) }).catch(() => {}) },
-        ]);
-      });
-    }, NOTICE_AFTER_MS);
+    readLastCrash().then((last) => {
+      if (live) setCrash(last);
+    });
     return () => {
       live = false;
-      clearTimeout(timer);
     };
-    // Once per launch: the words are the same catalogue's.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return null;
+
+  if (!crash) return null;
+
+  const answered = () => {
+    setCrash(null);
+    void forgetLastCrash();
+  };
+
+  return (
+    <View testID="crash-notice" style={{ paddingHorizontal: gutter, paddingTop: space[2], paddingBottom: space[2] }}>
+      <Notice tone="muted" title={t('title')}>
+        <View style={{ gap: space[3] }}>
+          <Text variant="small">{t('body')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+            <Button
+              label={t('send')}
+              size="sm"
+              onPress={() => {
+                answered();
+                void Share.share({ message: crashReport(crash) }).catch(() => {});
+              }}
+            />
+            <Button label={t('dismiss')} variant="ghost" size="sm" onPress={answered} />
+          </View>
+        </View>
+      </Notice>
+    </View>
+  );
 }

@@ -9,7 +9,8 @@
  * same board. One parser means the app cannot drift from the website on what
  * `?pay=10000` or `?district=a,b` means.
  *
- * Pure: constants and types from the taxonomy, and one slug check.
+ * Pure: constants and types from the taxonomy, one slug check, and the
+ * number and locale formatters the chip labels use.
  */
 
 import {
@@ -31,6 +32,9 @@ import type {
   LeadsSource,
 } from '@/lib/supabase/database.types';
 import { companySlugOrNull } from '@/lib/search/company-slug';
+import { formatNumber } from '@/lib/format';
+import { localized } from '@/lib/locale';
+import type { Translate } from '@/lib/notifications/title';
 
 export const JOBS_PER_PAGE = 20;
 
@@ -133,25 +137,53 @@ export function parseJobFilters(searchParams: SearchParams): JobFilters {
   };
 }
 
+/**
+ * Every query parameter serializeJobFilters may write, which is every one the
+ * board reads. The app clears each of these when a filter changes, so a key
+ * missing here would be dropped there; the serializer can only write a key
+ * from this list, so adding one starts here.
+ */
+export const JOB_FILTER_PARAMS = [
+  'q',
+  'track',
+  'leads',
+  'exp',
+  'type',
+  'district',
+  'gov',
+  'salary',
+  'pay',
+  'comm',
+  'posted',
+  'company',
+  'ctype',
+  'sort',
+  'page',
+] as const;
+
+export type JobFilterParam = (typeof JOB_FILTER_PARAMS)[number];
+
 /** Inverse of parseJobFilters. Omits defaults so URLs stay short. */
 export function serializeJobFilters(filters: JobFilters): URLSearchParams {
   const params = new URLSearchParams();
-  if (filters.q) params.set('q', filters.q);
-  for (const track of filters.tracks) params.append('track', track);
-  for (const leads of filters.leadsSources) params.append('leads', leads);
-  for (const band of filters.experienceBands) params.append('exp', band);
-  for (const type of filters.employmentTypes) params.append('type', type);
-  for (const district of filters.districtSlugs) params.append('district', district);
-  if (filters.governorateSlug) params.set('gov', filters.governorateSlug);
-  if (filters.hasBasicSalary === true) params.set('salary', 'yes');
-  if (filters.hasBasicSalary === false) params.set('salary', 'no');
-  if (filters.minSalary) params.set('pay', String(filters.minSalary));
-  for (const type of filters.commissionTypes) params.append('comm', type);
-  if (filters.postedWithin) params.set('posted', String(filters.postedWithin));
-  if (filters.companySlug) params.set('company', filters.companySlug);
-  for (const type of filters.companyTypes) params.append('ctype', type);
-  if (filters.sort !== 'newest') params.set('sort', filters.sort);
-  if (filters.page > 1) params.set('page', String(filters.page));
+  // Each single-valued key is written at most once, so appending is setting.
+  const put = (key: JobFilterParam, value: string) => params.append(key, value);
+  if (filters.q) put('q', filters.q);
+  for (const track of filters.tracks) put('track', track);
+  for (const leads of filters.leadsSources) put('leads', leads);
+  for (const band of filters.experienceBands) put('exp', band);
+  for (const type of filters.employmentTypes) put('type', type);
+  for (const district of filters.districtSlugs) put('district', district);
+  if (filters.governorateSlug) put('gov', filters.governorateSlug);
+  if (filters.hasBasicSalary === true) put('salary', 'yes');
+  if (filters.hasBasicSalary === false) put('salary', 'no');
+  if (filters.minSalary) put('pay', String(filters.minSalary));
+  for (const type of filters.commissionTypes) put('comm', type);
+  if (filters.postedWithin) put('posted', String(filters.postedWithin));
+  if (filters.companySlug) put('company', filters.companySlug);
+  for (const type of filters.companyTypes) put('ctype', type);
+  if (filters.sort !== 'newest') put('sort', filters.sort);
+  if (filters.page > 1) put('page', String(filters.page));
   return params;
 }
 
@@ -244,4 +276,58 @@ export function activeFilterList(filters: JobFilters): ActiveFilter[] {
     ...each('exp', filters.experienceBands, 'experienceBands'),
     ...each('type', filters.employmentTypes, 'employmentTypes'),
   ];
+}
+
+/** A district or governorate as the label needs it. */
+type Place = { slug: string; name_ar: string; name_en: string | null };
+
+/**
+ * What an active filter's chip says, the same on the board and in the app:
+ * the reader's own search in «quotes», a track, a place, "10,000 EGP or more",
+ * "last 7 days". A place not (yet) in the lists reads as its slug.
+ *
+ * `t` is a translator over the whole message catalogue, as for
+ * notificationTitle, so this file imports neither next-intl nor use-intl.
+ */
+export function activeFilterLabel(
+  filter: ActiveFilter,
+  context: {
+    t: Translate;
+    locale: string;
+    districts: readonly Place[] | undefined;
+    governorates: readonly Place[] | undefined;
+  },
+): string {
+  const { t, locale } = context;
+  const value = String(filter.value);
+  const place = (list: readonly Place[] | undefined) => {
+    const found = list?.find((item) => item.slug === value);
+    return found ? localized(locale, found.name_ar, found.name_en) : value;
+  };
+  switch (filter.kind) {
+    case 'q':
+      return `«${value}»`;
+    case 'track':
+      return t(`track.${value}`);
+    case 'district':
+      return place(context.districts);
+    case 'gov':
+      return place(context.governorates);
+    case 'ctype':
+      return t(`companyType.${value}`);
+    case 'leads':
+      return t(`leadsSource.${value}_short`);
+    case 'salary':
+      return t(filter.value ? 'filters.hasBasicSalaryYes' : 'filters.hasBasicSalaryNo');
+    case 'pay':
+      return t('filters.minSalaryAtLeast', { amount: formatNumber(Number(filter.value), locale) });
+    case 'comm':
+      return t(`commissionType.${value}`);
+    case 'posted':
+      return t('filters.postedWithin', { days: Number(filter.value) });
+    case 'exp':
+      return t(`experienceBand.${value}`);
+    case 'type':
+      return t(`employmentType.${value}`);
+  }
 }

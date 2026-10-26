@@ -58,7 +58,7 @@ export function SortButton<T extends string>({
         minHeight: 40,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: space[1] + 2,
+        gap: space[1.5],
         paddingHorizontal: space[3],
         ...corner('full'),
         borderWidth: StyleSheet.hairlineWidth * 2,
@@ -99,7 +99,7 @@ export function SortSheet<T extends string>({ sheet, label, value, options, onCh
   if (!sheet.mounted) return null;
   return (
     <Modal visible={sheet.open} transparent animationType="fade" onRequestClose={sheet.hide} onDismiss={sheet.onDismiss}>
-      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.45)' }} {...fence}>
+      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: colors.scrim }} {...fence}>
         {/* The shade beside the card, not around it, so VoiceOver reaches the orders in the card. */}
         <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={sheet.hide} style={StyleSheet.absoluteFill} />
         <View

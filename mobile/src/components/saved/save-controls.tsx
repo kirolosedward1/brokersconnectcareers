@@ -21,6 +21,7 @@ import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { hitTarget, space } from '~/theme/tokens';
+import { useAnnounce } from '~/lib/use-announce';
 
 /**
  * The website's bookmarks, follows and "tell me when there's a new one": each
@@ -38,6 +39,7 @@ function signInThenReturn(next: string) {
 export function useSaveJob(jobId: string) {
   const t = useTranslations('jobs');
   const tToast = useTranslations('app.toast');
+  const tCommon = useTranslations('common');
   const { actor } = useSession();
   const { ids, known } = useSavedJobIds();
   const saved = ids.has(jobId);
@@ -57,14 +59,23 @@ export function useSaveJob(jobId: string) {
       haptic.tap();
       if (!saved) setSaves((count) => count + 1);
       // Said at once, as the bookmark changes; a refusal says so after (and the bookmark goes back).
-      const failed = () => toast.show({ message: tToast('saveFailed'), icon: CircleAlert });
-      toggle.mutate({ jobId, saved }, { onError: failed });
+      // Refused: the bookmark goes back, and the same change can be tried again.
+      const failed = (wasSaved: boolean) => () => {
+        haptic.error();
+        toast.show({
+          message: tToast('saveFailed'),
+          icon: CircleAlert,
+          tone: 'destructive',
+          action: { label: tCommon('retry'), onPress: () => toggle.mutate({ jobId, saved: wasSaved }, { onError: failed(wasSaved) }) },
+        });
+      };
+      toggle.mutate({ jobId, saved }, { onError: failed(saved) });
       toast.show(
         saved
           ? {
               message: tToast('unsaved'),
               icon: Bookmark,
-              action: { label: tToast('undo'), onPress: () => toggle.mutate({ jobId, saved: false }, { onError: failed }) },
+              action: { label: tToast('undo'), onPress: () => toggle.mutate({ jobId, saved: false }, { onError: failed(false) }) },
             }
           : {
               message: tToast('saved'),
@@ -97,7 +108,7 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
         justifyContent: 'center',
       }}
     >
-      <Pop key={save.jobId} trigger={save.saves} burst={colors.gold}>
+      <Pop key={save.jobId} trigger={save.saves}>
         {save.saved ? (
           <Bookmark size={20} color={colors.primary} fill={colors.primary} />
         ) : (
@@ -126,7 +137,7 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
       accessibilityState={{ selected: save.saved, busy: save.pending, disabled: save.pending }}
       disabled={save.pending}
       icon={
-        <Pop key={jobId} trigger={save.saves} burst={colors.gold}>
+        <Pop key={jobId} trigger={save.saves}>
           {save.saved ? <Bookmark size={18} color={colors.primary} fill={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
         </Pop>
       }
@@ -149,6 +160,8 @@ export function SaveSearchButton({ query, defaultLabel }: { query: string; defau
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState(defaultLabel);
   const [error, setError] = useState<string | null>(null);
+  // Said to VoiceOver too: a live region is Android's alone.
+  useAnnounce(t('saved'), save.isSuccess);
 
   const signedIn = Boolean(session && viewer?.profile);
   if (signedIn && !canSaveJobs(actor)) return null;

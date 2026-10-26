@@ -22,7 +22,9 @@
     "collapseMenu": "Collapse the menu",
     "expandMenu": "Expand the menu",
     "closeMenu": "Close the menu",
-    "browseJobs": "Browse jobs"
+    "browseJobs": "Browse jobs",
+    "searchJobs": "Search open jobs",
+    "app": "Get the mobile app"
   },
   "home": {
     "searchPlaceholder": "Search a role, company or district",
@@ -140,12 +142,12 @@
     "postedWithin": "{days, plural, =1 {Last 24 hours} other {Last # days}}"
   },
   "track": {
-    "primary": "Primary sales",
+    "primary": "Off-plan",
     "resale": "Resale",
     "rental": "Rentals",
-    "commercial": "Commercial",
+    "commercial": "Commercial & administrative",
     "property_management": "Property management",
-    "back_office": "Back office"
+    "back_office": "Admin roles"
   },
   "employmentType": {
     "full_time": "Full time",
@@ -173,10 +175,10 @@
     "none": "No commission"
   },
   "companyType": {
-    "brokerage": "Brokerage",
-    "developer": "Developer",
-    "brokerage_jobs": "Jobs at brokerages",
-    "developer_jobs": "Jobs at developers"
+    "brokerage": "Brokerage firms",
+    "developer": "Real estate developers",
+    "brokerage_jobs": "Jobs at brokerage firms",
+    "developer_jobs": "Jobs at real estate developers"
   },
   "benefits": {
     "social_insurance": "Social insurance",
@@ -282,8 +284,11 @@
     "signUp": "Sign up",
     "email": "Email",
     "password": "Password",
-    "continueWithGoogle": "Continue with Google",
-    "continueWithApple": "Continue with Apple",
+    "signInWithGoogle": "Sign in with Google",
+    "signInWithApple": "Sign in with Apple",
+    "signUpWithGoogle": "Sign up with Google",
+    "signUpWithApple": "Sign up with Apple",
+    "appleSameEmail": "Already have an account? Sign in with the same email first.",
     "or": "or",
     "noAccount": "No account yet?",
     "hasAccount": "Already have an account?",
@@ -321,6 +326,7 @@
     "errTooMany": "Too many attempts in a short time. Wait a moment and try again.",
     "errSamePassword": "Your new password must be different from the old one.",
     "errCaptcha": "The security check did not go through. Wait a moment and try again.",
+    "appleUnavailable": "Sign in with Apple is not available yet. Use your email and password, or try again later.",
     "forgotTitle": "Forgot your password?",
     "forgotBody": "Enter your email and we will send you a link to set a new one.",
     "resetSent": "If that email is registered, a link is on its way. Check your spam folder too.",
@@ -329,6 +335,7 @@
     "passwordUpdated": "Your password has been changed.",
     "backToSignIn": "Back to sign in",
     "linkExpired": "That link has expired or has already been used. Ask for a new one.",
+    "emailConfirmed": "Your email is confirmed. Sign in to continue.",
     "sessionExpired": "Your session ended. Sign in again and we will take you back to the same page.",
     "checkEmailTitle": "We sent you a confirmation email",
     "checkEmailSpam": "If it has not arrived within a minute, check your spam folder.",
@@ -349,7 +356,12 @@
       "body": "Press Continue to pick up where you left off.",
       "continue": "Continue",
       "why": "This step keeps the link safe from email scanners that open it before you do."
-    }
+    },
+    "gateSave": "Sign in to save this job",
+    "gateFollow": "Sign in to follow this company",
+    "gateApply": "Sign in to apply",
+    "gateLead": "Sign in and you will be back here, with nothing lost.",
+    "gateReport": "Sign in to report this"
   },
   "onboarding": {
     "title": "Finish your profile",
@@ -364,6 +376,7 @@
     "whatsappPlaceholder": "+201001234567",
     "locale": "Interface language",
     "submit": "Get started",
+    "appleRelayHint": "Apple hid your real email. Messages from the platform go to that private address. If the name field is empty, enter the name you want shown.",
     "roleLocked": "Account type cannot be changed once set.",
     "companySection": "Company details",
     "companyName": "Company name",
@@ -489,7 +502,8 @@
     "shortlisted": "Shortlisted",
     "interview": "Interview",
     "hired": "Hired",
-    "rejected": "Not a fit"
+    "rejected": "Not a fit",
+    "withdrawn": "Withdrawn"
   },
   "apply": {
     "title": "Apply for {job}",
@@ -508,9 +522,6 @@
     "viewApplications": "Track your applications",
     "employerCannotApply": "You're signed in as a company. Applying is for consultants only.",
     "rateLimit": "You have applied to a lot of jobs in a short time. Wait a little and try again — or tomorrow, if you have reached today's limit.",
-    "labelJob": "Role",
-    "labelCompany": "Company",
-    "labelDate": "Applied on",
     "nextRoles": "Other open roles",
     "nextRolesMatched": "Other roles that fit you",
     "privacyTitle": "Who sees your details?",
@@ -573,7 +584,7 @@
     "applicantsSuspendedBody": "The applications you received are kept, and the applicants’ names, numbers and CVs come back when the suspension is lifted. The notice on your dashboard says why and how to ask for a review.",
     "allListings": "All listings",
     "logo": "Company logo",
-    "logoHint": "PNG, JPG or WebP, up to 2 MB. Shown beside your company name everywhere.",
+    "logoHint": "PNG, JPEG, WebP, or a HEIC photo. Images over 2 MB are reduced. Shown beside your company name everywhere.",
     "logoUpload": "Upload logo",
     "logoReplace": "Replace logo",
     "jobsLede": "All your listings and where each one stands.",
@@ -1043,6 +1054,7 @@
       "invalid_governorate": "Choose an existing governorate.",
       "slug_taken": "That slug is already taken.",
       "unavailable": "The file is not available right now.",
+      "not_retryable": "This email cannot be rebuilt from its record, so a retry would only fail again.",
       "not_migrated": "The database needs migrations 316–319, 325–328, 346 and 355 before this action works.",
       "unknown": "Something unexpected went wrong. Nothing was changed.",
       "network": "The connection dropped before we could confirm. The page has been refreshed — check the state before retrying."
@@ -1266,7 +1278,7 @@
       "record": "Record and notes"
     },
     "makeAdmin": "Make an admin",
-    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. The website asks them to set up two-step sign-in before it opens. Nobody is emailed — tell them yourself.",
+    "makeAdminBody": "They get the whole console: every lever, and every account’s details on request. Two-step sign-in is optional unless the platform requires it. Nobody is emailed — tell them yourself.",
     "removeAdmin": "Remove admin access",
     "removeAdminBody": "They become a {role} again. Everything else about the account stays as it is. You cannot remove your own access.",
     "blockSignIn": "Block sign-in",
@@ -1325,6 +1337,7 @@
   },
   "common": {
     "loading": "Loading…",
+    "preparingImage": "Preparing the image…",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -1336,7 +1349,7 @@
     "notFoundBody": "That link is wrong, or the content is no longer available.",
     "goHome": "Back to home",
     "error": "Something went wrong",
-    "errorBody": "We could not complete that. Please try again.",
+    "errorBody": "That didn't go through. Try again.",
     "errorReference": "Error reference",
     "retry": "Try again",
     "saveSuccess": "Saved",
@@ -1372,8 +1385,7 @@
     "doorEmployerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
     "byTrack": "By specialisation",
     "byArea": "By area",
-    "contact": "Contact us",
-    "getApp": "Get the app"
+    "contact": "Contact us"
   },
   "validation": {
     "required": "This field is required",
@@ -1384,6 +1396,10 @@
     "commissionRequired": "Enter the commission percentage",
     "fileTooLarge": "That file is too large",
     "fileType": "That file type is not supported",
+    "imageTooLarge": "That image is still larger than 2 MB after it was reduced. Choose a smaller one.",
+    "imageType": "That file type is not supported. Use a PNG, JPEG, or WebP image, or a HEIC photo from an iPhone.",
+    "imageUnreadable": "The image could not be read. Try a JPG or PNG image.",
+    "storageError": "The image could not be uploaded. Storage said:",
     "passwordMismatch": "The two passwords do not match.",
     "tooManyLinks": "Too many links in this text. Keep only the ones that matter.",
     "invalidUrl": "Enter a link starting with http:// or https://",
@@ -1408,7 +1424,9 @@
       "searchPlaceholder": "Property consultant, New Cairo…",
       "cta": "Browse jobs",
       "ctaEmployer": "I'm hiring",
-      "trustNoSpam": "No fees for candidates"
+      "trustNoSpam": "No fees for candidates",
+      "trustPay": "Salary and commission in figures, on every listing",
+      "trustLeads": "Every listing says who supplies the leads"
     },
     "features": {
       "title": "Why this board",
@@ -1706,7 +1724,7 @@
   },
   "account": {
     "title": "Account settings",
-    "subtitle": "What we email you, a copy of your data, and deleting your account.",
+    "subtitle": "Your profile, how you sign in, what reaches you, and the rest of your account.",
     "emailsTitle": "Emails we send you",
     "emailsBody": "Turn any of these off, and back on whenever you like.",
     "notifyApplications": "New applicant on one of your roles",
@@ -1743,13 +1761,13 @@
     "notifyApplicantDigest": "One email a day instead of one per applicant",
     "notifyApplicantDigestHint": "For listings that attract a lot of people. The summary arrives in the morning and replaces the individual notice.",
     "photo": "Your photo",
-    "photoHint": "Shown to employers with your application and on your directory profile. PNG, JPG or WebP, up to 2 MB.",
+    "photoHint": "Shown to employers with your application and on your directory profile. PNG, JPEG, WebP, or a HEIC photo from an iPhone. Images over 2 MB are reduced.",
     "photoUpload": "Upload a photo",
     "photoReplace": "Replace photo",
     "suspendedTitle": "Your account is suspended",
     "suspendedBody": "An administrator has suspended this account. You will not be able to use the platform until it is reviewed. If you think this is a mistake, get in touch.",
     "mfaTitle": "Two-step verification",
-    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for any account, required for admin accounts.",
+    "mfaBody": "A code from an authenticator app (such as Google Authenticator) is asked for alongside your password. Optional for all accounts. An admin who has set it up is always asked for the code, and the platform may require it for other admins.",
     "mfaSetup": "Set up two-step verification",
     "mfaScan": "Scan this code with your authenticator app, then enter the number it shows.",
     "mfaQrAlt": "QR code for your authenticator app",
@@ -1766,24 +1784,48 @@
     "deleteBlockedSuspended": "Your account is suspended, so it can’t be deleted from here while the decision stands. You can ask for the suspension to be reviewed from your dashboard, or contact us and we’ll close the account once the case is done.",
     "deleteRequestCta": "Ask us to delete it",
     "deleteRequested": "We have your request (reference {reference}). We will write to you within 7 days to agree what happens to the company, and your account is deleted within 30 days.",
-    "deleteRequestLimited": "You have sent several requests today, and we have them. There is no need to send another."
+    "deleteRequestLimited": "You have sent several requests today, and we have them. There is no need to send another.",
+    "securityTitle": "Sign-in and security",
+    "notificationsTitle": "Notifications",
+    "messagesTitle": "Messages",
+    "previewProfile": "Preview your profile",
+    "hiddenTitle": "Hidden on this phone",
+    "hiddenBody": "Listings, companies and consultants you hide are kept on the phone, in the app. This site cannot show or change that list.",
+    "appLockNote": "Locking the app with Face ID or a passcode is kept on the phone. It is not a setting on the website.",
+    "pushUnavailable": "Notification switches for your phones are not available on this account yet. New activity still shows in the bell, and by email when that is on.",
+    "pushKindsTitle": "What to hear about",
+    "pushKindsBody": "These apply on every phone you are signed in on. Anything turned off here still shows in the bell.",
+    "pushJobAlerts": "New jobs",
+    "pushJobAlertsHint": "Once a day, when jobs appear that match a saved search or a company you follow.",
+    "pushApplications": "Your applications",
+    "pushApplicationsHint": "When your application arrives, and when the company moves it to a new stage.",
+    "pushApplicationsEmployer": "Applicants",
+    "pushApplicationsEmployerHint": "When someone applies to one of your listings, or withdraws.",
+    "pushAccount": "Your account",
+    "pushAccountHint": "Decisions about your account or profile, support replies, a password changed.",
+    "pushAccountEmployer": "Your account and listings",
+    "pushAccountEmployerHint": "A listing published, rejected or ending, your company’s verification, decisions about your account, support replies.",
+    "pushQuiet": "Quiet at night",
+    "pushQuietHint": "Anything after 11 pm waits until 8 am, Cairo time."
   },
-  "savedNote": {
-    "prefix": "Your note:",
-    "add": "Add a note",
-    "edit": "Edit",
-    "label": "Your note",
-    "placeholder": "e.g. Spoke to them; interview on Sunday morning",
-    "private": "Only you see it — here and in the app.",
-    "count": "<v>{count}/{max}</v>",
-    "save": "Save",
-    "cancel": "Cancel",
-    "delete": "Delete",
-    "failed": "We couldn't save that. Try again.",
-    "notSaved": "This listing is no longer saved, so the note has nowhere to go.",
-    "tooLong": "That note is longer than a note can be. Shorten it a little.",
-    "reminder": "The app reminds you on {when}, before it closes.",
-    "reminderRemove": "Remove reminder"
+  "compare": {
+    "start": "Compare",
+    "startHint": "Choose two or {max} open jobs and see them side by side",
+    "choose": "Choose two or {max} jobs to compare",
+    "pickHint": "Chooses it to compare",
+    "limit": "You can compare up to {max} jobs",
+    "picked": "{count, plural, =0 {No jobs chosen yet} one {1 job chosen} other {# jobs chosen}}",
+    "go": "Compare ({count})",
+    "title": "Compare jobs",
+    "lede": "Side by side, with the best in each row marked.",
+    "scrollHint": "Swipe sideways to see the rest",
+    "best": "Best",
+    "salary": "Basic salary a month",
+    "tooFew": "Comparing needs at least two jobs",
+    "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
+    "back": "Back to Saved",
+    "pick": "Choose {title}",
+    "openJob": "Open the listing"
   },
   "savedSearch": {
     "cta": "Alert me",
@@ -2002,10 +2044,36 @@
     "noText": "None of the packages ships this licence’s text. <link>The official text is on SPDX</link>."
   },
   "drafts": {
-    "restored": "We kept what you typed here on <time>{when}</time> and put it back.",
-    "offered": "You have unsaved changes from <time>{when}</time>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
+    "restored": "We kept what you typed here on <v>{when}</v> and put it back.",
+    "offered": "You have unsaved changes from <v>{when}</v>, typed before this was last saved. Restore them to check them against what is here now, or discard them.",
     "restore": "Restore my changes",
     "discard": "Discard them",
     "startOver": "Start over"
+  },
+  "savedNotes": {
+    "title": "Your note",
+    "prefix": "Your note:",
+    "add": "Add a note",
+    "edit": "Edits the note",
+    "forListing": "Add a note to yourself about this listing",
+    "private": "Only you see it, here and in the app.",
+    "placeholder": "e.g. Spoke to them; interview on Sunday morning",
+    "count": "{count}/{max}",
+    "countSpoken": "{count} of {max} characters",
+    "saved": "Note saved",
+    "deleted": "Note deleted",
+    "delete": "Delete",
+    "failed": "Couldn't save the note. Try again.",
+    "reminder": "The app reminds you on {when}, before it closes.",
+    "reminderRemove": "Remove reminder"
+  },
+  "myApplications": {
+    "timeline": "Where it stands",
+    "stepSent": "Sent",
+    "stepSeen": "Seen",
+    "stepDecision": "Decision",
+    "withdrawTitle": "Withdraw your application to “{title}”?",
+    "withdrawBody": "The company will see that you withdrew. You can apply again while the listing is open.",
+    "withdrawUnavailable": "Withdrawal is not available right now, so your application was left as it is."
   }
 }

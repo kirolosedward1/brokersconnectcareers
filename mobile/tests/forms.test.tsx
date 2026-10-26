@@ -6,7 +6,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Field } from '~/components/ui/field';
 import { PasswordField } from '~/components/ui/password-field';
 import { Select } from '~/components/ui/select';
-import { TextField } from '~/components/ui/text-field';
+import { KeyboardDone, TextField } from '~/components/ui/text-field';
 import { TextLink } from '~/components/ui/text-link';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { useErrorFeedback } from '~/lib/haptics';
@@ -158,7 +158,11 @@ describe('a password', () => {
     expect(password().props.secureTextEntry).toBe(true);
     expect(password().props.autoCapitalize).toBe('none');
     expect(password().props.autoCorrect).toBe(false);
-    expect(StyleSheet.flatten(password().props.style).writingDirection).toBe('ltr');
+    const style = StyleSheet.flatten(password().props.style);
+    expect(style.writingDirection).toBe('ltr');
+    // The web's default min width is the text's own width, which pushed the eye off a 375-point screen.
+    expect(style.flex).toBe(1);
+    expect(style.minWidth).toBe(0);
   });
 
   it('is shown and hidden again with the eye at its end, which says what it will do', () => {
@@ -200,11 +204,16 @@ describe('the keyboard', () => {
     render(
       <>
         <TextField accessibilityLabel="whatsapp" keyboardType="phone-pad" />
+        <TextField accessibilityLabel="salary" keyboardType="number-pad" />
         <TextField accessibilityLabel="email" keyboardType="email-address" />
+        <KeyboardDone />
       </>,
       { wrapper: Providers },
     );
-    expect(screen.getByLabelText('whatsapp').props.inputAccessoryViewID).toEqual(expect.any(String));
+    // One bar, shared by ID: a screen with several pads (the job wizard's salary step) still draws one.
+    const shared = screen.getByLabelText('whatsapp').props.inputAccessoryViewID;
+    expect(shared).toEqual(expect.any(String));
+    expect(screen.getByLabelText('salary').props.inputAccessoryViewID).toBe(shared);
     expect(screen.getByLabelText('email').props.inputAccessoryViewID).toBeUndefined();
 
     const done = screen.getAllByRole('button', { name: ar.app.keyboard.done });
