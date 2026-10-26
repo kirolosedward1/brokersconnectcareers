@@ -71,7 +71,7 @@ export default async function SignUpPage({
           </Link>
         </p>
 
-        <ReturnIntent next={next} locale={locale} mode="sign-up" />
+        <ReturnIntent next={next} locale={locale} />
 
         <div className="mt-8">
           <AudienceSwitch mode="sign-up" next={next} />

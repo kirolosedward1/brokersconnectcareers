@@ -99,7 +99,7 @@ export default async function AudienceSignUpPage({
           </Link>
         </p>
 
-        <ReturnIntent next={next} locale={locale} mode="sign-up" />
+        <ReturnIntent next={next} locale={locale} />
 
         <div className="mt-8">
           <AudienceSwitch mode="sign-up" active={audience} next={next} />

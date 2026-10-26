@@ -381,7 +381,7 @@
       "best": "Best",
       "salary": "Basic salary a month",
       "tooFew": "Comparing needs at least two jobs",
-      "tooFewBody": "A job you chose was taken out of Saved or has closed. Go back and choose again.",
+      "tooFewBody": "A job you chose was taken out of Saved or has closed.",
       "back": "Back to Saved"
     },
     "remind": {

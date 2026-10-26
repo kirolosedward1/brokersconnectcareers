@@ -250,7 +250,6 @@ export default function NotificationsScreen() {
         icon={Bell}
         illustration="updates"
         title={t('app.notificationsFeed.empty')}
-        body={t('notifications.emptyHint')}
         action={
           canAccessCandidateArea(actor) ? (
             <Button label={t('notifications.emptyCtaCandidate')} variant="outline" onPress={() => router.navigate('/jobs')} />
