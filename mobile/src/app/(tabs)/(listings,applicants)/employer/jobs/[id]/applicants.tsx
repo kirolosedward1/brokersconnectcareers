@@ -84,7 +84,6 @@ export default function ListingApplicantsScreen() {
           icon={Inbox}
           illustration="review"
           title={t('app.applicants.empty')}
-          body={t('employer.noApplicantsHint')}
           action={
             <View style={{ gap: space[2], alignSelf: 'stretch' }}>
               <Button

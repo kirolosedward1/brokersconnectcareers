@@ -34,8 +34,11 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
           borderColor: colors.border,
         }}
       >
-        <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
+        <Text weight="medium" style={{ textAlign: 'center' }}>
           {t('empty')}
+        </Text>
+        <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center', marginTop: 4 }}>
+          {t('emptyHint')}
         </Text>
       </View>
     );

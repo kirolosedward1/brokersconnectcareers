@@ -104,17 +104,14 @@ export function SignInGateProvider({
       {ask ? (
         <Dialog open onClose={() => settle(false)} label={titles[ask.reason]} closeLabel={tCommon('close')}>
           <div className="space-y-5">
-            <div className="space-y-1 pe-8">
-              <h2 className="text-lg font-semibold">{titles[ask.reason]}</h2>
-              <p className="text-sm text-muted-foreground">{t('gateLead')}</p>
-            </div>
+            <h2 className="pe-8 text-lg font-semibold">{titles[ask.reason]}</h2>
 
             {/* The listing named, as the sign-in page names it (return-intent.tsx). */}
             {ask.intent ? (
-              <div className="flex gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
+              <div className="flex gap-3 rounded-xl border border-border bg-card p-4">
                 <Briefcase className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">{t('applyingTo', { job: ask.intent.job })}</p>
+                  <p className="text-sm font-bold">{t('applyingTo', { job: ask.intent.job })}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {t('applyingToCompany', { company: ask.intent.company })}
                   </p>

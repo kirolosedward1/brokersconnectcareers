@@ -33,9 +33,10 @@ export function SavedSearchList({ searches }: { searches: SavedSearchRow[] }) {
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-        {t('empty')}
-      </p>
+      <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+        <p className="font-medium">{t('empty')}</p>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{t('emptyHint')}</p>
+      </div>
     );
   }
 
