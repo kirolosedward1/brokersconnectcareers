@@ -24,12 +24,13 @@ import { Dialog } from '@/components/ui/dialog';
  *   const signedIn = await requireSignIn({ reason: 'save', next: '/jobs/abc' });
  *   if (signedIn) save();
  *
- * The promise answers true once a password sign-in has gone through — the
- * dialog has closed and the server has been asked to draw the page again, so
- * what the page knows about the reader (can they save, are they following)
- * catches up while the action already runs with the new session cookie — and
- * false when the dialog is dismissed. Sign-up and the one-tap providers leave
- * the page as they always did, with `next` pointing back here; a new account
+ * The promise answers true once a password sign-in has gone through, and
+ * false when the dialog is dismissed. The dialog has closed and the action
+ * that asked runs with the new session cookie; that action's own render is
+ * what redraws the page. Refreshing first would draw the listing from before
+ * the save, and that draw can arrive afterwards and put the button back.
+ * Sign-up and the one-tap providers leave the page as they always did, with
+ * `next` pointing back here; a new account
  * has onboarding to pass through first, and OAuth returns through the
  * callback.
  *
@@ -74,7 +75,6 @@ export function SignInGateProvider({
 }) {
   const t = useTranslations('auth');
   const tCommon = useTranslations('common');
-  const router = useRouter();
   const [ask, setAsk] = useState<SignInAsk | null>(null);
   const answer = useRef<((signedIn: boolean) => void) | null>(null);
 
@@ -129,9 +129,9 @@ export function SignInGateProvider({
               appleEnabled={appleEnabled}
               nextPath={ask.next}
               onSignedIn={() => {
-                // The page is drawn again for the signed-in reader; the
-                // action that asked runs meanwhile, on the cookie already set.
-                router.refresh();
+                // The action that asked redraws the page once it has run.
+                // A refresh started here would render the listing from
+                // before the save and can land after it, clearing the button.
                 settle(true);
               }}
             />

@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { BookmarkCheck, CheckCheck, CircleSlash, MapPin, Star } from 'lucide-react';
+import { CircleSlash, MapPin, Star } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import { FactLine } from '@/components/ui/fact-line';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { LeadsSourceText, SalaryLine } from '@/components/jobs/compensation';
-import { SaveJobToggle } from '@/components/jobs/save-job-toggle';
+import { JobCardMarkBadge, JobCardSave } from '@/components/jobs/job-card-marks';
 import { cn, formatNumber, formatRelativeDay } from '@/lib/utils';
 import type { JobListItem } from '@/lib/queries/jobs';
 import { jobIsLive } from '@/lib/job-state';
@@ -135,20 +135,13 @@ export function JobCard({
               </Badge>
             ) : null}
 
-            {applied ? (
-              <Badge variant="success">
-                <CheckCheck aria-hidden />
-                {t('applied')}
-              </Badge>
-            ) : saved && !savable ? (
-              /* Only where there is no toggle. When the bookmark is on the
-                 card, it already shows the state, and a badge saying the same
-                 word beside it is the card repeating itself. */
-              <Badge variant="outline">
-                <BookmarkCheck aria-hidden />
-                {t('saved')}
-              </Badge>
-            ) : null}
+            <JobCardMarkBadge
+              jobId={job.id}
+              applied={applied}
+              saved={saved}
+              savable={savable}
+              labels={{ applied: t('applied'), saved: t('saved') }}
+            />
           </div>
         </div>
 
@@ -204,13 +197,12 @@ export function JobCard({
               {formatRelativeDay(job.published_at, locale)}
             </time>
           ) : null}
-          {savable ? (
-            <SaveJobToggle
-              jobId={job.id}
-              initialSaved={saved}
-              labels={{ save: t('save'), remove: t('removeSaved') }}
-            />
-          ) : null}
+          <JobCardSave
+            jobId={job.id}
+            saved={saved}
+            savable={savable}
+            labels={{ save: t('save'), remove: t('removeSaved') }}
+          />
         </div>
       </div>
     </article>

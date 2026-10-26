@@ -125,7 +125,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.0',
   orientation: 'portrait',
   // The website's mark on white, enlarged from the 450-pixel original in
-  // public/brand; to be redrawn from a vector before the App Store.
+  // public/brand: 1024 pixels and opaque, enough to submit; a designer's
+  // vector would let it be drawn crisper (docs/app-store.md).
   icon: './assets/images/icon.png',
   scheme: 'brokersconnect',
   userInterfaceStyle: 'automatic',

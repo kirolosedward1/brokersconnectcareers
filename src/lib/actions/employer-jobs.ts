@@ -223,7 +223,7 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     const district = districts.find((d) => d.id === value.districtId);
 
     const { data, error } = await withUniqueSlug<{ id: string }>(
-      () => buildJobSlug(value.titleEn || value.titleAr, district?.slug ?? 'egypt'),
+      () => buildJobSlug(value.titleEn ?? '', district?.slug ?? 'egypt'),
       (slug) =>
         supabase
           .from('jobs')

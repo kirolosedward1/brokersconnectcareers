@@ -8,6 +8,7 @@ import {
   BookUser,
   Briefcase,
   Building2,
+  CircleHelp,
   Contact,
   CreditCard,
   FileCheck2,
@@ -78,6 +79,7 @@ const ICONS = {
   audit: ScrollText,
   taxonomy: Tags,
   search: Search,
+  help: CircleHelp,
   notifications: Bell,
   settings: Settings,
 } as const;

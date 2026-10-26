@@ -326,8 +326,13 @@ export function AuthForm({
   */
   // The password seed-demo.mjs was given (DEMO_PASSWORD), for a local build
   // only: it is no longer a constant anybody can read in this repository.
+  // Never on Vercel's production deployment, even if the two variables are
+  // set there by mistake: Vercel exposes NEXT_PUBLIC_VERCEL_ENV to the build.
   const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? '';
-  const DEMO_LOGIN = process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true' && DEMO_PASSWORD !== '';
+  const DEMO_LOGIN =
+    process.env.NEXT_PUBLIC_DEMO_LOGIN === 'true' &&
+    DEMO_PASSWORD !== '' &&
+    process.env.NEXT_PUBLIC_VERCEL_ENV !== 'production';
   const DEMO_EMAILS = {
     candidate: 'candidate1@demo.test',
     employer: 'employer1@demo.test',

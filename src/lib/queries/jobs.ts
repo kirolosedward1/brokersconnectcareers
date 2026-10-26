@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { raise } from './error';
 import { getDistricts, getGovernorates, getSearchPhrases } from './taxonomy';
 import type {
@@ -16,6 +17,18 @@ import { logFailure } from '@/lib/observe';
 
 /** Anything shaped like the Supabase client's `.from()` entry point. */
 type SupabaseLikeClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * The anonymous client, for a page that is cached.
+ *
+ * The cookie client opts the render into `no-store`. The board, the landing
+ * pages and the home page are the same for every visitor, so they read
+ * through this one. A cast: the public client is the same query builder
+ * without a session.
+ */
+export function anonymousJobs(): SupabaseLikeClient {
+  return createPublicClient() as unknown as SupabaseLikeClient;
+}
 
 export {
   JOBS_PER_PAGE,
@@ -364,6 +377,23 @@ export async function getJobBySlug(slug: string): Promise<JobDetail | null> {
 
   if (error) raise(error, 'loading a job');
   return (data as unknown as JobDetail) ?? null;
+}
+
+/** Other live listings at the same company, excluding the one on screen. */
+export async function getOtherCompanyJobs(companyId: string, exceptJobId: string, limit = 4): Promise<JobListItem[]> {
+  const supabase = anonymousJobs();
+  const { data, error } = await supabase
+    .from('jobs')
+    .select(LIST_SELECT)
+    .eq('company_id', companyId)
+    .eq('status', 'active')
+    .gt('expires_at', new Date().toISOString())
+    .neq('id', exceptJobId)
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) raise(error, 'loading other jobs at a company');
+  return (data ?? []) as unknown as JobListItem[];
 }
 
 /** Same track or same district, excluding the job being viewed. */

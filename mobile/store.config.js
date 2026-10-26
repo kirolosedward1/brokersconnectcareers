@@ -210,3 +210,5 @@ function storeConfig(env = process.env) {
 
 module.exports = () => storeConfig();
 module.exports.storeConfig = storeConfig;
+/** The same descriptions on Google Play (store/play/listing.js). */
+module.exports.descriptions = { ar: descriptionAr, en: descriptionEn };

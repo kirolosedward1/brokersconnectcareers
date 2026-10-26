@@ -8,8 +8,8 @@
  * search and replayed a week later by a cron job running as nobody. A shape
  * nothing can forge is one less thing to reason about at that distance.
  *
- * Slugs here are ASCII by construction — `slugify` transliterates Arabic and
- * keeps `[a-z0-9-]` — so anything else is somebody experimenting with the
+ * Slugs here are ASCII by construction — English words, or `company-<id>`,
+ * kept to `[a-z0-9-]` — so anything else is somebody experimenting with the
  * address bar, and the honest answer is "no filter", not an error page.
  *
  * Its own file, with no imports, for the same reason as `needle.ts`:
