@@ -451,6 +451,39 @@ describe('a tapped push', () => {
     expect(result.getSearchParams()).toEqual({ link: 'gone' });
   });
 
+  it('opens the last one tapped, when an earlier tap is answered after it', async () => {
+    const result = await renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitleCandidate);
+    const listener = jest.mocked(Notifications.addNotificationResponseReceivedListener).mock.calls.at(-1)?.[0];
+
+    // The first tap's answer is slow (a poor connection); the second's is not.
+    const LATER = 'n0000000-0000-4000-8000-000000000002';
+    let answerFirst!: () => void;
+    const firstAnswered = new Promise<void>((resolve) => {
+      answerFirst = resolve;
+    });
+    server.on('POST /api/mobile/v1/actions/openNotification', async (_url, init) => {
+      const { input } = JSON.parse(String(init?.body)) as { input: { id: string } };
+      if (input.id === NOTIFICATION) {
+        await firstAnswered;
+        return { ok: true, data: { href: '/dashboard/applications' } };
+      }
+      return { ok: true, data: { fallback: '/notifications?link=gone' } };
+    });
+
+    act(() => listener?.(response(NOTIFICATION)));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/openNotification')).toHaveLength(1));
+    act(() => listener?.(response(LATER)));
+    await waitFor(() => expect(result.getPathname()).toBe('/notifications'));
+
+    act(() => answerFirst());
+    // The older tap's answer, arriving last, does not take the reader away from the one they chose.
+    await expect(
+      waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'), { timeout: 1000 }),
+    ).rejects.toThrow();
+    expect(result.getPathname()).toBe('/notifications');
+  });
+
   it('asks somebody signed out to sign in, and comes back to the feed', async () => {
     await supabase.auth.signOut({ scope: 'local' });
     await rememberActor(null);

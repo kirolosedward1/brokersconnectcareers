@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { secondFactorDue } from '@/lib/auth/second-factor';
 import { sessionOwesSecondFactor } from '@/lib/auth/second-factor-server';
 import { challenge, readBearer, tokenRefused } from './bearer';
+import { readWithin } from './body';
 import { mobileScope, runAsMobile, type MobileSession } from './context';
 
 /**
@@ -213,19 +214,29 @@ export async function readActionInput(
     return { refused: mobileJson({ error: 'unsupported_media_type' }, { status: 415 }) };
   }
 
-  const bytes = await readWithin(request, limit);
-  if (!bytes) return { refused: mobileJson({ error: 'too_large' }, { status: 413 }) };
+  let read: Awaited<ReturnType<typeof readWithin>>;
+  try {
+    read = await readWithin(request.body, limit);
+  } catch {
+    // The sender went away part-way.
+    return { refused: mobileJson({ error: 'malformed' }, { status: 400 }) };
+  }
+  if ('tooLarge' in read) return { refused: mobileJson({ error: 'too_large' }, { status: 413 }) };
 
   if (kind === 'multipart') {
     try {
-      // Parsed from the bytes already counted, with the request's own boundary.
-      return { value: await new Response(bytes, { headers: { 'content-type': type } }).formData() };
+      // Parsed from the bytes already counted, with the boundary the request declared.
+      const form = await new Response(read.bytes, {
+        headers: { 'content-type': request.headers.get('content-type') ?? '' },
+      }).formData();
+      return { value: form };
     } catch {
       return { refused: mobileJson({ error: 'malformed' }, { status: 400 }) };
     }
   }
 
-  const text = new TextDecoder().decode(bytes);
+  // Decoded as the platform's own text() decodes, a broken byte read as U+FFFD.
+  const text = new TextDecoder().decode(read.bytes);
   if (text.trim() === '') return { value: undefined };
 
   try {
@@ -234,35 +245,6 @@ export async function readActionInput(
   } catch {
     return { refused: mobileJson({ error: 'malformed' }, { status: 400 }) };
   }
-}
-
-/**
- * The body, or null once it passes `limit` bytes — counted as it arrives and
- * abandoned there, so a body sent without a length (chunked) cannot make the
- * function hold more than the limit in memory before it is refused.
- */
-async function readWithin(request: NextRequest, limit: number): Promise<Uint8Array<ArrayBuffer> | null> {
-  if (!request.body) return new Uint8Array();
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
-      await reader.cancel().catch(() => {});
-      return null;
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
 }
 
 const SHARED = 'public, s-maxage=60, stale-while-revalidate=300';
