@@ -1977,6 +1977,8 @@
     "bellTitle": "Notifications",
     "bellMarkAll": "Mark all as read",
     "bellEmpty": "No notifications yet.",
+    "bellLoadError": "Couldn't load notifications.",
+    "bellRetry": "Try again",
     "newest": "Newest",
     "older": "Older",
     "linkGone": "That item no longer exists — it may have been deleted or taken down.",

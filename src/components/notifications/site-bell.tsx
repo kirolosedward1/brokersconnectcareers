@@ -10,6 +10,7 @@ import { formatBellTime } from '@/lib/notifications/relative';
 import { reach } from '@/lib/reach';
 import { cn } from '@/lib/utils';
 import { notificationIcon, notificationTone } from '@/components/notifications/kinds';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /** How often a signed-in header asks whether anything new arrived. */
 const POLL_MS = 30_000;
@@ -45,8 +46,11 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
   const listId = useId();
   const [unreadCount, setUnreadCount] = useState(initialUnread);
   const [items, setItems] = useState<Item[] | null>(null);
+  const [listError, setListError] = useState(false);
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState(false);
+  const itemsRef = useRef<Item[] | null>(null);
+  const listRequest = useRef(0);
 
   const unread = unreadCount;
   const badge = bellBadge(unread);
@@ -67,18 +71,34 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
   }, []);
 
   const loadList = useCallback(async () => {
+    const request = ++listRequest.current;
+    setListError(false);
     try {
       const response = await fetch(`/api/notifications?locale=${encodeURIComponent(locale)}`, {
         cache: 'no-store',
       });
-      if (!response.ok) return;
+      if (request !== listRequest.current) return;
+      if (!response.ok) {
+        if (!itemsRef.current) setListError(true);
+        return;
+      }
       const data = (await response.json()) as { signedIn?: boolean; unread?: number; items?: Item[] };
-      if (!data.signedIn || !Array.isArray(data.items)) return;
+      if (request !== listRequest.current) return;
+      if (!data.signedIn || !Array.isArray(data.items)) {
+        if (!itemsRef.current) setListError(true);
+        return;
+      }
       const next = data.items.filter((item) => item && typeof item.id === 'string' && typeof item.title === 'string');
       if (typeof data.unread === 'number') setUnreadCount(data.unread);
-      setItems((current) => (current && JSON.stringify(current) === JSON.stringify(next) ? current : next));
+      setItems((current) => {
+        const kept = current && JSON.stringify(current) === JSON.stringify(next) ? current : next;
+        itemsRef.current = kept;
+        return kept;
+      });
     } catch {
-      // The last list stays. A dropped read is not an empty inbox.
+      // A list already on screen stays. The first read, with nothing to keep, asks to retry.
+      if (request !== listRequest.current) return;
+      if (!itemsRef.current) setListError(true);
     }
   }, [locale]);
 
@@ -172,7 +192,11 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
       return;
     }
     setUnreadCount(0);
-    setItems((current) => (current ? current.map((item) => ({ ...item, unread: false })) : current));
+    setItems((current) => {
+      const next = current ? current.map((item) => ({ ...item, unread: false })) : current;
+      itemsRef.current = next;
+      return next;
+    });
     void loadList();
   }
 
@@ -228,21 +252,40 @@ export function SiteBell({ locale, initialUnread = 0 }: { locale: string; initia
             id={listId}
             ref={listRef}
             tabIndex={-1}
+            aria-busy={items === null && !listError}
             className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto outline-none"
           >
-            {items && items.length === 0 ? (
+            {listError && items === null ? (
+              <div className="px-6 py-10 text-center">
+                <p role="alert" className="text-sm text-muted-foreground">
+                  {t('bellLoadError')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    listRef.current?.focus();
+                    void loadList();
+                  }}
+                  className="mt-1 text-sm font-medium text-primary underline underline-offset-4"
+                >
+                  {t('bellRetry')}
+                </button>
+              </div>
+            ) : items && items.length === 0 ? (
               <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
                 <Bell className="size-8 text-muted-foreground" strokeWidth={1.5} aria-hidden />
                 <p className="text-sm text-muted-foreground">{t('bellEmpty')}</p>
               </div>
-            ) : (
+            ) : items ? (
               <ul>
-                {(items ?? []).map((item) => (
+                {items.map((item) => (
                   <li key={item.id}>
                     <Row item={item} locale={locale} unreadLabel={t('unread')} />
                   </li>
                 ))}
               </ul>
+            ) : (
+              <SkeletonRows />
             )}
           </div>
 
@@ -271,6 +314,35 @@ function BellIcon({ badge }: { badge: string | null }) {
         </span>
       ) : null}
     </span>
+  );
+}
+
+/**
+ * Three stand-ins while the first list is still on the way.
+ *
+ * Each one is the row itself: the same padding, the icon's box, and the
+ * title and time line boxes a row always has. The grey marks sit inside
+ * those lines, so the panel keeps its height when the feed arrives.
+ * Nothing here spins.
+ */
+function SkeletonRows() {
+  const titleWidths = ['w-3/5', 'w-2/3', 'w-1/2'];
+  return (
+    <ul aria-hidden>
+      {titleWidths.map((width, index) => (
+        <li key={index} className="flex items-start gap-3 px-3 py-2.5">
+          <Skeleton className="size-9 shrink-0 rounded-lg" />
+          <span className="min-w-0 flex-1">
+            <span className="flex h-5 items-center">
+              <Skeleton className={cn('h-3.5', width)} />
+            </span>
+            <span className="flex h-4 items-center">
+              <Skeleton className="h-3 w-16" />
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

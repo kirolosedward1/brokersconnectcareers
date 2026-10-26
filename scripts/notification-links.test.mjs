@@ -102,6 +102,10 @@ is('the same dedupe key keeps the newer row', dedupeFeed([
   is('the English empty state', tEn('bellEmpty'), 'No notifications yet.');
   is('the Arabic mark-all', tAr('bellMarkAll'), 'تحديد الكل كمقروء');
   is('the English mark-all', tEn('bellMarkAll'), 'Mark all as read');
+  is('the Arabic load error', tAr('bellLoadError'), 'تعذّر تحميل الإشعارات');
+  is('the English load error', tEn('bellLoadError'), "Couldn't load notifications.");
+  is('the Arabic retry', tAr('bellRetry'), 'إعادة المحاولة');
+  is('the English retry', tEn('bellRetry'), 'Try again');
 }
 
 console.log('\n— the cursor');
