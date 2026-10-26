@@ -1,4 +1,4 @@
-import { isInApp } from '@/lib/in-app';
+import { isInApp } from '@/lib/app-view';
 import { locales } from '@/lib/locale';
 import { stripLocalePrefix } from '@/lib/safe-next';
 

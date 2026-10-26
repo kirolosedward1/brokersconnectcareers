@@ -24,7 +24,7 @@ const {
   rememberOneTapClosed,
   shouldShowGoogleOneTap,
 } = await import('../src/lib/auth/google-one-tap.ts');
-const { hidesAppPromo, isAppWebView, isInApp } = await import('../src/lib/in-app.ts');
+const { hidesAppPromo, isAppWebView, isInApp } = await import('../src/lib/app-view.ts');
 
 let pass = 0;
 let fail = 0;

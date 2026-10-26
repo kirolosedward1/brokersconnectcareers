@@ -27,7 +27,8 @@ import { useRefreshSession, useSession } from '@/components/session/session-prov
  *
  * It stays hidden in the app: `?app=1`, the `bc_app` session cookie, the
  * `ReactNativeWebView` flag, and the WebView user-agent tokens. Those are
- * read here and decided in `isInApp`. This component does not write `bc_app`.
+ * read here and decided by `isInApp` in `src/lib/app-view.ts`. This component
+ * does not write `bc_app`.
  *
  * A successful sign-in stays on this URL. The session cookie is written by
  * the browser client; the header reads it back from /api/chrome, and
