@@ -404,6 +404,15 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
     a page (200, noindex, no JobPosting) so it is an update; moved back to a
     draft or into review it disappears from the public site entirely.
   */
+  // Submitting a draft, resubmitting a rejected listing or reopening one is
+  // the same event saveJob publishes: the employer's receipt that it is in the
+  // review queue. Deduplicated on the job id, like saveJob's.
+  if (parsed.data.status === 'pending_review' && before?.status !== 'pending_review') {
+    const submitted = parsed.data.jobId;
+    const submittedBy = user.id;
+    after(() => publish({ type: 'JOB_SUBMITTED', jobId: submitted, submittedBy }));
+  }
+
   if (before && jobIsPublic(before)) {
     const slug = moved[0].slug;
     const type = jobIsPublic(parsed.data) ? 'URL_UPDATED' : 'URL_DELETED';

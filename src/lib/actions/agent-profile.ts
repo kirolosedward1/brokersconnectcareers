@@ -15,6 +15,7 @@ import { cvInUse } from '@/lib/cv-in-use';
 import { recordSecurityEvent } from '@/lib/security/events';
 import { clean } from '@/lib/security/sanitize';
 import { publish } from '@/lib/notifications/events';
+import { refused } from '@/lib/observe';
 
 const schema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -145,7 +146,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
         .eq('id', existing.id)
         .select('id'));
     }
-    if (error) return { ok: false, error: error.message };
+    if (error) return refused('cv', error);
     // An update RLS filters to zero rows carries no error, and this form is
     // the one place a consultant sets their own visibility — reporting a save
     // that did not happen would leave them believing they are hidden.
@@ -202,7 +203,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
         .delete()
         .eq('agent_id', agentId)
         .in('developer_id', removed);
-      if (error) return { ok: false, error: error.message };
+      if (error) return refused('cv', error);
     }
 
     if (added.length) {
@@ -212,7 +213,7 @@ export async function saveAgentProfile(input: unknown): Promise<ActionResult> {
           developer_id: developerId,
         })),
       );
-      if (error) return { ok: false, error: error.message };
+      if (error) return refused('cv', error);
     }
   }
 

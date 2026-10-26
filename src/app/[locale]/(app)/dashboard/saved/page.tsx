@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { EmptyIllustration } from '@/components/illustration';
 import { Link } from '@/i18n/navigation';
-import { asLocale } from '@/i18n/routing';
+import { asLocale, localized } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
+import { CompareChooser } from '@/components/dashboard/compare-chooser';
 import { JobCard } from '@/components/jobs/job-card';
+import { SavedJobNote } from '@/components/dashboard/saved-job-note';
 import { SavedSearchList } from '@/components/dashboard/saved-search-list';
 import { requireCandidate } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -44,6 +46,7 @@ export default async function SavedJobsPage({
     .select(
       `
       created_at,
+      note,
       job:jobs!inner (${LIST_SELECT})
     `,
     )
@@ -60,9 +63,10 @@ export default async function SavedJobsPage({
 
   if (error) raise(error, 'loading your saved jobs');
 
-  const jobs = ((data ?? []) as unknown as { job: JobListItem }[])
-    .map((row) => row.job)
-    .filter(Boolean);
+  const rows = (data ?? []) as unknown as { note: string | null; job: JobListItem }[];
+  const jobs = rows.map((row) => row.job).filter(Boolean);
+  // The reader's own line under each card (migration 356), the app's too.
+  const notes = new Map(rows.filter((row) => row.job).map((row) => [row.job.id, row.note]));
 
   /**
    * A saved role that has ended is not the same object as one still hiring.
@@ -101,9 +105,9 @@ export default async function SavedJobsPage({
   // when they open it.
   const { data: mine } = await supabase
     .from('applications')
-    .select('job_id')
+    .select('job_id, status')
     .eq('candidate_id', viewer.userId);
-  const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+  const appliedTo = new Set((mine ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id));
 
   const t = await getTranslations('dashboard');
   const tJobs = await getTranslations('jobs');
@@ -135,54 +139,58 @@ export default async function SavedJobsPage({
           </div>
         ) : (
           <div className="space-y-6">
-            {open.length > 0 ? (
-              <div>
-                {/* The heading only earns its place once there is a second
-                    group to tell this one apart from. */}
-                {closed.length > 0 ? (
+            <CompareChooser
+              locale={locale}
+              openHeading={
+                closed.length > 0 ? (
                   <h3 className="mb-3 text-sm font-semibold text-muted-foreground">
                     {t('savedOpenHeading')}
                   </h3>
-                ) : null}
-                <ul className="space-y-3">
-                  {open.map((job) => (
-                    <li key={job.id}>
-                      <JobCard
-                        job={job}
-                        locale={locale}
-                        applied={appliedTo.has(job.id)}
-                        saved
-                        savable
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {closed.length > 0 ? (
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground">
-                  {t('savedClosedHeading')}
-                </h3>
-                <p className="mb-3 mt-0.5 text-sm text-muted-foreground">
-                  {t('savedClosedLede')}
-                </p>
-                <ul className="space-y-3">
-                  {closed.map((job) => (
-                    <li key={job.id}>
-                      <JobCard
-                        job={job}
-                        locale={locale}
-                        applied={appliedTo.has(job.id)}
-                        saved
-                        savable
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+                ) : null
+              }
+              open={open.map((job) => ({
+                id: job.id,
+                title: localized(locale, job.title_ar, job.title_en),
+                card: (
+                  <>
+                    <JobCard
+                      job={job}
+                      locale={locale}
+                      applied={appliedTo.has(job.id)}
+                      saved
+                      savable
+                    />
+                    <SavedJobNote jobId={job.id} initialNote={notes.get(job.id) ?? null} />
+                  </>
+                ),
+              }))}
+              closed={
+                closed.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      {t('savedClosedHeading')}
+                    </h3>
+                    <p className="mb-3 mt-0.5 text-sm text-muted-foreground">
+                      {t('savedClosedLede')}
+                    </p>
+                    <ul className="space-y-3">
+                      {closed.map((job) => (
+                        <li key={job.id}>
+                          <JobCard
+                            job={job}
+                            locale={locale}
+                            applied={appliedTo.has(job.id)}
+                            saved
+                            savable
+                          />
+                          <SavedJobNote jobId={job.id} initialNote={notes.get(job.id) ?? null} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null
+              }
+            />
           </div>
         )}
       </section>

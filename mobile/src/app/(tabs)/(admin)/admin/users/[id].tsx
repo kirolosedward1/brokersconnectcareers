@@ -1,14 +1,17 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatDateTime, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
-import type { AdminAuditRow, ApplicationStatus, JobStatus, ModerationNoteRow } from '@/lib/supabase/database.types';
+import { PIPELINE_STAGES } from '@/lib/application-stages';
+import type { JobStatus } from '@/lib/supabase/database.types';
 import { whatsappLink } from '@/lib/whatsapp';
 import { openDecision } from '~/components/admin/decision-sheet';
-import { AdminGate, ApprovalBadge, auditLabel, Fact, openOnWebsite, SectionTitle, useRoleLabel } from '~/components/admin/kit';
+import { AdminGate, ApprovalBadge, Fact, SectionTitle, useRoleLabel } from '~/components/admin/kit';
+import { Record } from '~/components/admin/record';
 import { Avatar } from '~/components/ui/avatar';
+import { ForwardChevron } from '~/components/ui/icons';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
@@ -16,7 +19,6 @@ import {
   Ban,
   Check,
   CirclePause,
-  ExternalLink,
   Eye,
   Flag,
   FlagOff,
@@ -24,7 +26,6 @@ import {
   LockOpen,
   LogOut,
   MessageCircle,
-  NotebookPen,
   Phone,
   RotateCcw,
   ShieldMinus,
@@ -45,8 +46,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Tab = 'overview' | 'activity' | 'security' | 'record';
 const TABS: readonly Tab[] = ['overview', 'activity', 'security', 'record'];
 
-/** The stages and the statuses, in the order the product counts them. */
-const APPLICATION_STAGES: readonly ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
+/** The statuses, in the order the product counts them (the stages are APPLICATION_STAGES). */
 const JOB_STATES: readonly JobStatus[] = ['draft', 'pending_review', 'active', 'expired', 'closed', 'rejected'];
 
 /** What a lever's answer carries when the website reveals a contact. */
@@ -109,7 +109,7 @@ function File({ id }: { id: string | undefined }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
         <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" />
         <View style={{ flex: 1, gap: space[1] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {profile.full_name}
           </Text>
           <Text variant="small" tone="mutedForeground">
@@ -139,12 +139,6 @@ function File({ id }: { id: string | undefined }) {
         <Trail account={account} self={self} />
       )}
 
-      <Button
-        label={t('app.admin.onWebsite')}
-        variant="ghost"
-        icon={<ExternalLink size={18} color={colors.foreground} />}
-        onPress={() => openOnWebsite(`/admin/users/${profile.id}`)}
-      />
     </ScrollView>
   );
 }
@@ -154,8 +148,8 @@ function Facts({ children }: { children: ReactNode }) {
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: space[3], columnGap: space[4] }}>{children}</View>;
 }
 
-/** A row that opens a page of the website's console. */
-function WebsiteRow({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
+/** A row that opens another page of the console. */
+function LinkRow({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -171,7 +165,7 @@ function WebsiteRow({ label, onPress, children }: { label: string; onPress: () =
       })}
     >
       <View style={{ flex: 1, gap: 2 }}>{children}</View>
-      <ExternalLink size={16} color={colors.mutedForeground} />
+      <ForwardChevron size={16} color={colors.mutedForeground} />
     </Pressable>
   );
 }
@@ -221,7 +215,7 @@ function Overview({
           {companies.map((membership) => {
             const name = localized(locale, membership.company.name_ar, membership.company.name_en);
             return (
-              <WebsiteRow key={membership.company.id} label={name} onPress={() => openOnWebsite(`/admin/companies/${membership.company.id}`)}>
+              <LinkRow key={membership.company.id} label={name} onPress={() => router.push({ pathname: '/admin/companies/[id]', params: { id: membership.company.id } })}>
                 <Text weight="medium" tone="primary">
                   {name}
                 </Text>
@@ -235,7 +229,7 @@ function Overview({
                   />
                   {membership.company.suspended_at ? <Badge variant="destructive" label={t('admin.suspended')} /> : null}
                 </View>
-              </WebsiteRow>
+              </LinkRow>
             );
           })}
         </Card>
@@ -244,7 +238,7 @@ function Overview({
       {agent ? (
         <Card style={{ gap: space[2] }}>
           <SectionTitle>{t('admin.agentProfile')}</SectionTitle>
-          <WebsiteRow label={agent.slug} onPress={() => openOnWebsite(`/admin/agents/${agent.id}`)}>
+          <LinkRow label={agent.slug} onPress={() => router.push({ pathname: '/admin/agents/[id]', params: { id: agent.id } })}>
             <Text weight="medium" tone="primary" style={{ writingDirection: 'ltr' }}>
               {agent.slug}
             </Text>
@@ -256,7 +250,7 @@ function Overview({
                 label={t(`visibility.${agent.visibility}`)}
               />
             )}
-          </WebsiteRow>
+          </LinkRow>
         </Card>
       ) : null}
 
@@ -538,7 +532,7 @@ function Activity({ account, self }: { account: AccountFile; self: boolean }) {
           <Card style={{ gap: space[3] }}>
             <SectionTitle>{t('admin.applicationsCount', { count: n(activity.applications.total) })}</SectionTitle>
             <Counts
-              entries={APPLICATION_STAGES.map((status) => ({
+              entries={PIPELINE_STAGES.map((status) => ({
                 label: t(`applicationStatus.${status}`),
                 value: activity.applications.by_status[status] ?? 0,
               }))}
@@ -738,85 +732,8 @@ function Security({ account, self }: { account: AccountFile; self: boolean }) {
 }
 
 /** The decisions and the notes on the account, newest first, as the website's Trail has them; and a note to add. */
-function Trail({ account, self }: { account: AccountFile; self: boolean }) {
-  const t = useTranslations();
-  const { colors } = useTheme();
-  const entries = [
-    ...account.audit.map((row) => ({ kind: 'audit' as const, at: row.created_at, row })),
-    ...account.notes.map((row) => ({ kind: 'note' as const, at: row.created_at, row })),
-  ].sort((a, b) => b.at.localeCompare(a.at));
-
-  return (
-    <Card style={{ gap: space[3] }}>
-      <SectionTitle>{t('admin.record')}</SectionTitle>
-      {/* On every file, one's own included: a note is for other admins, and admin_add_note refuses nobody. */}
-      <View style={{ flexDirection: 'row' }}>
-        <Button
-          label={t('app.admin.addNote')}
-          variant="outline"
-          size="sm"
-          icon={<NotebookPen size={16} color={colors.foreground} />}
-          onPress={() =>
-            openDecision({
-              lever: { do: 'note', targetType: 'user', targetId: account.profile.id },
-              title: t('app.admin.addNote'),
-              reason: 'required',
-              // A note is any words at all, as the website takes it; the three-character floor is for reasons.
-              reasonMin: 1,
-              reasonLabel: t('app.admin.noteLabel'),
-              reasonMax: 2000,
-              confirmLabel: t('app.admin.addNote'),
-            })
-          }
-        />
-      </View>
-      {entries.length === 0 ? (
-        <Text variant="small" tone="mutedForeground">
-          {t('admin.trailEmpty')}
-        </Text>
-      ) : (
-        entries.map((entry) =>
-          entry.kind === 'audit' ? (
-            <AuditEntry key={`a${entry.row.id}`} row={entry.row} />
-          ) : (
-            <NoteEntry key={`n${entry.row.id}`} row={entry.row} />
-          ),
-        )
-      )}
-    </Card>
-  );
-}
-
-/** One decision on the record: what was done, to what, by whom, and the reason when one was given. */
-function AuditEntry({ row }: { row: AdminAuditRow }) {
-  const t = useTranslations();
-  const locale = useLocale();
-  const { colors } = useTheme();
-  return (
-    <View style={{ gap: 2, paddingStart: space[3], borderStartWidth: 2, borderStartColor: colors.primary }}>
-      <Text variant="small" weight="medium">
-        {auditLabel(t, row.action)}
-        {row.target_label ? <Text variant="small" tone="mutedForeground">{` — ${row.target_label}`}</Text> : null}
-      </Text>
-      {row.reason ? <Text variant="small" tone="mutedForeground">{`«${row.reason}»`}</Text> : null}
-      <Text variant="caption" tone="mutedForeground">
-        {`${row.actor_name ?? t('admin.unknownActor')} · ${formatDateTime(row.created_at, locale)}`}
-      </Text>
-    </View>
-  );
-}
-
-/** One note an admin left for the others. */
-function NoteEntry({ row }: { row: ModerationNoteRow }) {
-  const t = useTranslations();
-  const locale = useLocale();
-  const { colors } = useTheme();
-  return (
-    <View style={{ gap: 2, paddingStart: space[3], borderStartWidth: 2, borderStartColor: colors.warning }}>
-      <Text variant="small">{row.body}</Text>
-      <Text variant="caption" tone="mutedForeground">
-        {`${row.author_name ?? t('admin.unknownActor')} · ${formatDateTime(row.created_at, locale)}`}
-      </Text>
-    </View>
-  );
+/** The record, as every file draws it (components/admin/record.tsx), from the rows the file already read. */
+function Trail({ account }: { account: AccountFile; self: boolean }) {
+  // On every file, one's own included: a note is for other admins, and admin_add_note refuses nobody.
+  return <Record targetType="user" targetId={account.profile.id} audit={account.audit} notes={account.notes} />;
 }

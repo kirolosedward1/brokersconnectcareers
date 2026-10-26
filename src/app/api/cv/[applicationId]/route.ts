@@ -67,7 +67,7 @@ async function handle(
   */
   const { data: application, error } = await supabase
     .from('applications')
-    .select('cv_path')
+    .select('cv_path, status')
     .eq('id', applicationId)
     .maybeSingle();
 
@@ -79,7 +79,9 @@ async function handle(
     return NextResponse.json({ error: 'unavailable' }, { status: 503 });
   }
 
-  if (!application?.cv_path) {
+  // Withdrawn applications keep the row and drop the file. The link refuses
+  // them even if a path were still on the row.
+  if (!application?.cv_path || application.status === 'withdrawn') {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 

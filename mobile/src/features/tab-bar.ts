@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore, type RefObject } from 'react';
-import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollViewInstance } from 'react-native';
 import { useNavigation, useScrollToTop } from 'expo-router';
 
 /**
@@ -77,7 +77,7 @@ type Scrollable = Parameters<typeof useScrollToTop>[0] extends RefObject<infer T
  * back to this screen first.) Pressed again with the list already at its
  * top, `onPressAtTop` — the board opens its search.
  */
-export function useTabList<T extends Scrollable = ScrollView>({ onPressAtTop }: { onPressAtTop?: () => void } = {}) {
+export function useTabList<T extends Scrollable = ScrollViewInstance>({ onPressAtTop }: { onPressAtTop?: () => void } = {}) {
   const ref = useRef<T>(null);
   useScrollToTop(ref);
   const shrinking = useShrinkingTabBar();
@@ -96,14 +96,20 @@ export function useTabList<T extends Scrollable = ScrollView>({ onPressAtTop }: 
 
   // Pressed again with the list already at its top (useScrollToTop has nothing left to do): `onPressAtTop`.
   useEffect(() => {
-    let tabs: typeof navigation | undefined = navigation;
-    while (tabs && tabs.getState()?.type !== 'tab') tabs = tabs.getParent();
-    if (!tabs) return;
-    return tabs.addListener('tabPress' as never, () => {
+    const pressed = () => {
       if (!latest.current || !navigation.isFocused() || (y.current ?? 0) > NEAR_TOP) return;
       // After the press has done its own work (the stack and the list are where they go).
       requestAnimationFrame(() => latest.current?.());
-    });
+    };
+    // Heard on every screen up the chain, as useScrollToTop does: only the tab's own
+    // screen is told of a press. The tabs cannot be picked out by their state here,
+    // which says it is the tabs only once they have handled an action — not yet when
+    // the app opens straight onto this list.
+    const stops: (() => void)[] = [];
+    for (let screen: typeof navigation | undefined = navigation; screen; screen = screen.getParent()) {
+      stops.push(screen.addListener('tabPress' as never, pressed));
+    }
+    return () => stops.forEach((stop) => stop());
   }, [navigation]);
 
   const onScroll = useCallback(

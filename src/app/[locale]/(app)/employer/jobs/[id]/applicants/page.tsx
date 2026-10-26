@@ -13,6 +13,7 @@ import { requireEmployer } from '@/lib/auth';
 import { ApplicantsSuspended } from '@/components/employer/applicants-suspended';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
+import { APPLICATION_STAGES, excludeWithdrawn, withdrawnStatusMissing } from '@/lib/application-stages';
 import { UUID_RE } from '@/lib/admin/params';
 import type {
   ApplicationNoteRow,
@@ -37,8 +38,6 @@ type ApplicantRow = {
     agent_profiles: ApplicantProfile | null;
   } | null;
 };
-
-const PIPELINE: ApplicationStatus[] = ['new', 'shortlisted', 'interview', 'hired', 'rejected'];
 
 /** The inbox's cap, for the same reason: past it, the inbox's filters reach the rest. */
 const APPLICANTS_SHOWN = 200;
@@ -146,7 +145,18 @@ export default async function ApplicantsPage({
   if (error) raise(error, 'loading this listing\'s applicants');
 
   const applications = (data ?? []) as unknown as ApplicantRow[];
-  const total = count ?? applications.length;
+  const matched = count ?? applications.length;
+
+  // The header counts applicants. A withdrawal stays on the page, under its
+  // own heading, and is not one of them. Until the status exists, no row can
+  // be withdrawn, so the unfiltered count is the same number.
+  const standing = await excludeWithdrawn(
+    supabase.from('applications').select('id', { count: 'exact', head: true }).eq('job_id', id),
+  );
+  if (standing.error && !withdrawnStatusMissing(standing.error)) {
+    raise(standing.error, 'counting this listing\'s applicants');
+  }
+  const total = standing.error ? matched : (standing.count ?? matched);
 
   /*
     Seen, because they are on the screen.
@@ -267,7 +277,7 @@ export default async function ApplicantsPage({
           written and the reason being typed went with it.
         */
         <div className="space-y-3">
-          {PIPELINE.flatMap((stage) => {
+          {APPLICATION_STAGES.flatMap((stage) => {
             const inStage = applications.filter((application) => application.status === stage);
             if (inStage.length === 0) return [];
 
@@ -298,7 +308,7 @@ export default async function ApplicantsPage({
         </div>
       )}
 
-      {total > applications.length ? (
+      {matched > applications.length ? (
         <div className="mt-6 space-y-3 text-center">
           <p className="text-sm text-warning">
             {t.rich('applicantsCapped', {

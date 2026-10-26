@@ -6,7 +6,7 @@ shares code and a database with the Next.js website one directory up. Read
 
 Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
 
-1. Read the major version of the `expo` package in `package.json` (57).
+1. Read the major version of the `expo` package in `package.json` (58).
 2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
 3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
 
@@ -42,7 +42,7 @@ pnpm export:ios             # bundle for iOS, proves Metro and Hermes accept eve
 - **Words come from the catalogue.** No user-facing string in code: the website's keys, or the app's
   own under `app.*` in `src/i18n/messages/{ar,en}.json` (same keys in both). Numbers inside Arabic
   sentences use `t.markup(…, markupTags)` so they are isolated left to right.
-- **Right to left.** `textAlign: 'left'` is the logical start; use `ForwardChevron` for "onward".
+- **Right to left.** `textAlignStart()` is where a line starts (the right while the app is Arabic, or `left` when the phone will mirror that once); use `ForwardChevron` for "onward".
 - **Routes mirror the website's paths** so links, notification hrefs and pushes name the same screens.
   `+native-intent.tsx` maps incoming URLs (`src/lib/links.ts`); `tests/routing.test.tsx` covers where
   each lands.

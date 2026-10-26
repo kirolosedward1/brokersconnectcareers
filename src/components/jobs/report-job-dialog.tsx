@@ -6,6 +6,7 @@ import { EyeOff, Flag, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field, Textarea } from '@/components/ui/field';
 import { Dialog } from '@/components/ui/dialog';
+import { useSignInGate } from '@/components/auth/sign-in-gate';
 import { SubmitButton } from '@/components/ui/submit-button';
 import { AGENT_REPORT_REASONS, COMPANY_REPORT_REASONS, REPORT_REASONS } from '@/lib/taxonomy';
 import { reportTarget, type ReportRefusal, type ReportTarget } from '@/lib/actions/reports';
@@ -106,6 +107,9 @@ export function ReportDialog({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const recoverSession = useSessionRecovery();
+  const requireSignIn = useSignInGate();
+  // Signed in through the dialog just now, before the page has drawn them so.
+  const [signedInHere, setSignedInHere] = useState(false);
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -151,20 +155,23 @@ export function ReportDialog({
     );
   }
 
-  if (!signedIn) {
-    return (
-      <Button asChild variant="ghost">
-        <a href={`/sign-in?next=${encodeURIComponent(returnPath)}`}>
-          <Flag aria-hidden />
-          {label}
-        </a>
-      </Button>
-    );
-  }
+  // Signed out, the sign-in dialog over the page first (sign-in-gate.tsx),
+  // then this form, with no second press.
+  const openReport = () => {
+    if (signedIn || signedInHere) {
+      setOpen(true);
+      return;
+    }
+    void requireSignIn({ reason: 'report', next: returnPath }).then((ok) => {
+      if (!ok) return;
+      setSignedInHere(true);
+      setOpen(true);
+    });
+  };
 
   return (
     <>
-      <Button variant="ghost" onClick={() => setOpen(true)}>
+      <Button variant="ghost" onClick={openReport}>
         <Flag aria-hidden />
         {label}
       </Button>

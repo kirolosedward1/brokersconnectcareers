@@ -54,7 +54,7 @@ export function ApplySteps({
           <li key={step} className="flex items-center gap-3 sm:flex-1">
             <div
               className={cn(
-                'flex min-h-16 flex-1 items-center gap-3 rounded-2xl border px-3.5 py-3 transition-[border-color,background-color,color] duration-300 motion-reduce:transition-none',
+                'flex min-h-16 flex-1 items-center justify-center gap-3 rounded-2xl border px-3.5 py-3 transition-[border-color,background-color,color] duration-300 motion-reduce:transition-none lg:justify-start',
                 on
                   ? last
                     ? 'border-success bg-success-muted text-foreground'

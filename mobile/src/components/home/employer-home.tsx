@@ -1,4 +1,4 @@
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
@@ -11,6 +11,7 @@ import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
+import { StatRowPlaceholder } from '~/components/dashboard/stat-row';
 import { StatStrip } from '~/components/dashboard/stat-strip';
 import { TrendBars } from '~/components/dashboard/trend-bars';
 import { SetupChecklist } from '~/components/employer/setup-checklist';
@@ -50,6 +51,8 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
 
   const s = summary.data ?? null;
   const n = (value: number) => formatNumber(value, locale);
+  // Posted, in review or since ended: a listing people apply to (a draft is not one yet).
+  const hasListing = Boolean(s?.has_company && s.live_jobs + s.pending_jobs + s.ended_jobs > 0);
   const go = (href: string) => router.navigate(routeInside(href, actor) as never);
 
   // The spinner is the pull's alone: a push about a new applicant reads the
@@ -72,7 +75,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
 
   let body: React.ReactNode;
   if (summary.isPending) {
-    body = <ActivityIndicator color={colors.primary} accessibilityLabel={t('common.loading')} />;
+    body = <StatRowPlaceholder count={3} label={t('common.loading')} />;
   } else if (summary.isError && !summary.data) {
     body = (
       <View style={{ gap: space[3], alignItems: 'flex-start' }}>
@@ -226,7 +229,8 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
       {s?.has_company ? null : standing}
       {/* The Terms and the Privacy policy as they are now, until agreed to. */}
       {profile ? <PolicyNotice /> : null}
-      {profile ? <PushPrompt audience="employer" /> : null}
+      {/* The phone's question, once there is a listing for someone to apply to. */}
+      {profile && hasListing ? <PushPrompt audience="employer" /> : null}
       {body}
     </ScrollView>
   );

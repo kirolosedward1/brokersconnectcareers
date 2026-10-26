@@ -215,6 +215,8 @@ export type MobileActions = {
   saveExperience: {
     input: {
       id?: string;
+      /** A new entry's key, made once per form and sent with every attempt: a retry finds the entry rather than adding it twice. */
+      idempotencyKey?: string;
       agentId: string;
       companyName: string;
       title: string;
@@ -230,6 +232,8 @@ export type MobileActions = {
   saveEducation: {
     input: {
       id?: string;
+      /** A new entry's key, made once per form and sent with every attempt: a retry finds the entry rather than adding it twice. */
+      idempotencyKey?: string;
       agentId: string;
       institution: string;
       degree?: Nullable<string>;
@@ -241,6 +245,8 @@ export type MobileActions = {
   saveCertification: {
     input: {
       id?: string;
+      /** A new entry's key, made once per form and sent with every attempt: a retry finds the entry rather than adding it twice. */
+      idempotencyKey?: string;
       agentId: string;
       name: string;
       issuer?: Nullable<string>;
@@ -260,6 +266,15 @@ export type MobileActions = {
 
   // Jobs, saved jobs, searches and follows
   toggleSavedJob: { input: { jobId: string }; output: ActionResult<{ saved: boolean }> };
+  /**
+   * The candidate's own line about a saved listing (migration 356): trimmed,
+   * at most 300 characters; empty or null takes it away. `not_saved` when the
+   * listing is not bookmarked (the note lives with the bookmark).
+   */
+  setSavedJobNote: {
+    input: { jobId: string; note: string | null };
+    output: ActionResult<{ note: string | null }>;
+  };
   recordJobView: { input: { slug: string }; output: ActionResult };
   reportTarget: { input: ReportInput; output: ActionResult };
   saveSearch: { input: { label: string; query: string }; output: ActionResult<{ id: string }> };
@@ -292,7 +307,8 @@ export type MobileActions = {
     output: ActionResult;
   };
   addApplicationNote: {
-    input: { applicationId: string; body: string };
+    /** idempotencyKey: made once per composer, so a retry finds the note rather than writing it twice. */
+    input: { applicationId: string; body: string; idempotencyKey?: string };
     output: ActionResult<{ note: ApplicationNoteRow }>;
   };
   deleteApplicationNote: { input: { id: number }; output: ActionResult };
@@ -383,6 +399,40 @@ export type MobileActions = {
   setSignInBlock: { input: { userId: string; block: boolean; reason: string }; output: ActionResult<{ sessionsEnded: number }> };
   /** Sign one account out of every device. */
   endSessions: { input: { userId: string; reason: string }; output: ActionResult<{ sessionsEnded: number }> };
+  /** Pin a live listing at the top of the board, or unpin it; recorded, nobody is told. */
+  setJobFeatured: { input: { jobId: string; featured: boolean }; output: ActionResult };
+  /** Suspend a company (its live and pending listings come down; the members are told) or lift the suspension (nothing comes back). */
+  setCompanySuspension: {
+    input: { companyId: string; suspend: boolean; reason: string };
+    output: ActionResult<{ takenDown: number }>;
+  };
+  /** Restrict a consultant's profile (hidden, the consultant told) or lift the restriction (stays hidden). */
+  setAgentRestriction: { input: { agentId: string; restrict: boolean; reason: string }; output: ActionResult };
+  /** Close reports by id: a deleted target's case, or one report dismissed as bad faith. */
+  closeReports: {
+    input: { ids: string[]; status: 'investigating' | 'resolved' | 'dismissed'; note?: string; abusive?: boolean };
+    output: ActionResult<{ moved: number }>;
+  };
+  /** Answer an appeal: reverse the decision (note optional) or let it stand (note required); the person is told. */
+  decideAppeal: { input: { appealId: string; overturn: boolean; note?: string }; output: ActionResult };
+  /** Add or rename a district, governorate or developer; the slug is permanent once set. */
+  saveTaxonomy: {
+    input: {
+      kind: 'district' | 'governorate' | 'developer';
+      id: number | null;
+      nameAr: string;
+      nameEn: string;
+      slug?: string;
+      governorateId?: number | null;
+    };
+    output: ActionResult<{ id: number }>;
+  };
+  /** Delete a taxonomy row nothing uses. */
+  deleteTaxonomy: { input: { kind: 'district' | 'governorate' | 'developer'; id: number }; output: ActionResult };
+  /** Give a dead-lettered email one more try (only a template the sweeper can rebuild). */
+  requeueEmail: { input: { emailId: string }; output: ActionResult };
+  /** Record an owner's deletion request as dealt with; deletes nothing. */
+  closeDeletionRequest: { input: { requestId: string }; output: ActionResult };
 };
 
 export type MobileActionName = keyof MobileActions;
@@ -410,6 +460,15 @@ export const ADMIN_ACTIONS = [
   'setUserRole',
   'setSignInBlock',
   'endSessions',
+  'setJobFeatured',
+  'setCompanySuspension',
+  'setAgentRestriction',
+  'closeReports',
+  'decideAppeal',
+  'saveTaxonomy',
+  'deleteTaxonomy',
+  'requeueEmail',
+  'closeDeletionRequest',
 ] as const satisfies readonly MobileActionName[];
 
 /** Sent as multipart/form-data rather than JSON. */

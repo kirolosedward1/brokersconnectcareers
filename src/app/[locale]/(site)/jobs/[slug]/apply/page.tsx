@@ -15,7 +15,6 @@ import { EMPTY_FILTERS, queryJobs, type JobListItem } from '@/lib/queries/jobs';
 import { optional, raise } from '@/lib/queries/error';
 import { rankJobs } from '@/lib/match';
 
-import { formatDate } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/server';
 
 type Params = { locale: string; slug: string };
@@ -55,6 +54,9 @@ export default async function ApplyPage({
 
   const isOpen = jobIsLive(job);
 
+  // The middleware answers a confirmed expiry with 410 before this renders.
+  // What remains is a listing closed by its owner, or one the lookup could
+  // not classify, and both still explain themselves here.
   if (!isOpen) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
@@ -111,14 +113,17 @@ export default async function ApplyPage({
     covering note, rather than the receipt the reader had already earned. The
     unique index still saves them; this makes the page stop guessing.
   */
-  const { data: existing, error: existingError } = await supabase
+  const { data: prior, error: existingError } = await supabase
     .from('applications')
-    .select('id, created_at')
+    .select('id, status, created_at')
     .eq('job_id', job.id)
-    .eq('candidate_id', viewer!.userId)
-    .maybeSingle();
+    .eq('candidate_id', viewer!.userId);
 
   if (existingError) raise(existingError, 'checking whether you have already applied');
+
+  // A withdrawn application is not "already applied": the person may send
+  // another. More than one row is possible then, so this is not maybeSingle.
+  const existing = (prior ?? []).find((row) => row.status !== 'withdrawn') ?? null;
 
   /*
     What to show after the confirmation, fetched only when there is going to be
@@ -139,10 +144,10 @@ export default async function ApplyPage({
         .maybeSingle(),
       // Scoped explicitly, as the dashboard's copy of this read is: left to the
       // policies it scanned every application on the platform.
-      supabase.from('applications').select('job_id').eq('candidate_id', viewer!.userId),
+      supabase.from('applications').select('job_id, status').eq('candidate_id', viewer!.userId),
     ]);
 
-    const appliedTo = new Set((mine ?? []).map((row) => row.job_id));
+    const appliedTo = new Set((mine ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.job_id));
     const ranked = rankJobs(
       openRoles.jobs.filter((role) => role.id !== job.id && !appliedTo.has(role.id)),
       {
@@ -181,32 +186,12 @@ export default async function ApplyPage({
             <p className="mt-1.5 text-sm text-muted-foreground">{t('successBody')}</p>
           </div>
 
-          <dl className="mt-6 divide-y divide-border rounded-xl border border-border">
-            <div className="flex items-start justify-between gap-4 p-4">
-              <dt className="text-sm text-muted-foreground">{t('labelJob')}</dt>
-              <dd className="text-end text-sm font-medium">{title}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-4 p-4">
-              <dt className="text-sm text-muted-foreground">{t('labelCompany')}</dt>
-              <dd className="text-end text-sm font-medium">{company}</dd>
-            </div>
-            <div className="flex items-start justify-between gap-4 p-4">
-              <dt className="text-sm text-muted-foreground">{t('labelDate')}</dt>
-              {/* No .numeral here. formatDate returns "12 مارس 2026" — Arabic
-                  words next to digits — and forcing that run left-to-right is
-                  the bug the class exists to prevent, not a use of it. The
-                  bidi algorithm already reads it correctly. */}
-              <dd className="text-end text-sm font-medium">
-                {formatDate(existing.created_at, locale)}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Button asChild>
+          {/* Two buttons of one size, side by side: the two ways on are equals. */}
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <Button asChild className="w-full">
               <Link href="/dashboard/applications">{t('viewApplications')}</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="w-full">
               <Link href="/jobs">{tJobs('title')}</Link>
             </Button>
           </div>
@@ -229,7 +214,8 @@ export default async function ApplyPage({
               <h2 id="next-roles" className="text-lg font-semibold">
                 {personalised ? t('nextRolesMatched') : t('nextRoles')}
               </h2>
-              <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+              {/* One under another, full width: two cards side by side broke every line of each. */}
+              <ul className="mt-3 space-y-3">
                 {nextRoles.map(({ job: role }) => (
                   <li key={role.id}>
                     <JobCard job={role} locale={locale} />

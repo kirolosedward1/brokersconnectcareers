@@ -1,9 +1,20 @@
-import { useEffect, useRef } from 'react';
-import { ActionSheetIOS, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActionSheetIOS,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { router, Stack } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
-import { BadgeCheck, Building2, CalendarClock, CalendarX2, Eye, MapPin, Share2, Users } from '~/components/ui/lucide';
+import { BadgeCheck, Building2, CalendarClock, CalendarX2, Eye, MapPin, Share, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
@@ -18,10 +29,11 @@ import { SaveJobButton } from '~/components/saved/save-controls';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
 import { Badge } from '~/components/ui/badge';
+import { Appear } from '~/components/motion/appear';
 import { BarOnly } from '~/components/navigation/page-header';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
-import { ForwardChevron } from '~/components/ui/icons';
+import { ForwardChevron, SendForward } from '~/components/ui/icons';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { recentJobs, useListOwner, viewedFrom } from '~/features/jobs/recent';
@@ -36,7 +48,7 @@ import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
 import { useSheet } from '~/lib/use-sheet';
 
@@ -48,6 +60,13 @@ import { useSheet } from '~/lib/use-sheet';
  *
  * Open means open by the date, not by the label (jobIsLive), and a closed
  * listing stays readable with the next step that still exists: the board.
+ *
+ * The next step stays in reach: once Apply — or, applied already, the way to
+ * the application — has scrolled up out of sight, the same button is pinned
+ * in a bar at the foot of the screen, above the tab bar, until the reader is
+ * back up where it is. The other next steps (closed, an employer's, a
+ * suspended candidate's) are words to read where they are, and are not
+ * pinned.
  */
 export function JobDetail({
   data,
@@ -101,6 +120,23 @@ export function JobDetail({
     callAction('recordJobView', { slug: job.slug }).catch(() => {});
   }, [open, job.slug]);
 
+  const apply = () =>
+    session
+      ? router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } })
+      : router.push({ pathname: '/sign-in', params: { next: `/jobs/${job.slug}/apply` } });
+  const toApplications = () => router.navigate('/dashboard/applications');
+  // What is pinned at the foot once the step has scrolled away: Apply, or the application already sent.
+  const pinnable = open && canApply && (applied || !(isCandidate(actor) && !isApproved(actor)));
+  // Where the step's foot is in the page, and whether the page is scrolled past it.
+  const [stepEnd, setStepEnd] = useState<number | null>(null);
+  const [pastStep, setPastStep] = useState(false);
+  // The tab bar growing smaller as the page goes down, and — with something to pin — the pinned bar.
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    shrink.onScroll(event);
+    // Set only when it changes way: the same answer draws nothing again.
+    if (pinnable) setPastStep(stepEnd !== null && event.nativeEvent.contentOffset.y > stepEnd);
+  };
+
   const shareLink = () => shareJobLink({ slug: job.slug, title });
   // The link, or the listing as a picture for a status or a story (share-card.tsx).
   const card = useSheet();
@@ -130,25 +166,42 @@ export function JobDetail({
           title: '',
           headerRight: () => (
             <BarOnly>
-              <Button
-                label={t('share')}
-                variant="ghost"
-                size="sm"
-                icon={<Share2 size={16} color={colors.foreground} />}
-                // The bar does not grow with the text: capped as the bell's count is.
-                maxFontSizeMultiplier={1.4}
+              {/* The system's share symbol, as iOS's own bars have it: the word is
+                  VoiceOver's, and the bar never has to grow with the text. */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('share')}
                 onPress={share}
-              />
+                hitSlop={4}
+                style={({ pressed }) => ({
+                  width: hitTarget,
+                  height: hitTarget,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.55 : 1,
+                })}
+              >
+                <SymbolView
+                  name="square.and.arrow.up"
+                  size={20}
+                  weight="medium"
+                  tintColor={colors.foreground}
+                  fallback={<Share size={20} color={colors.foreground} />}
+                />
+              </Pressable>
             </BarOnly>
           ),
         }}
       />
       {card.mounted ? <ShareCardSheet job={job} visible={card.open} onClose={card.hide} onDismiss={card.onDismiss} /> : null}
       <ScrollView
-        {...shrink}
+        testID="job-detail"
         contentInsetAdjustmentBehavior="automatic"
+        onScroll={onScroll}
+        scrollEventThrottle={shrink.scrollEventThrottle}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-        contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[6] }}
+        // Room at the foot for the pinned bar, so the page's last lines are not under it.
+        contentContainerStyle={{ padding: gutter, paddingBottom: pinnable ? space[12] + PINNED : space[12], gap: space[6] }}
       >
         <HiddenNotice companyId={job.company.id} />
 
@@ -161,8 +214,8 @@ export function JobDetail({
         <View style={{ gap: space[4] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
             <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[2], rowGap: 2 }}>
+            <View style={{ flex: 1, gap: space[0.5] }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[2], rowGap: space[0.5] }}>
                 <Text
                   variant="small"
                   weight="semibold"
@@ -178,7 +231,7 @@ export function JobDetail({
                   </VerifiedMark>
                 ) : null}
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
                 <MapPin size={13} color={colors.mutedForeground} />
                 <Text variant="small" tone="mutedForeground">
                   {districtName}
@@ -187,7 +240,7 @@ export function JobDetail({
             </View>
           </View>
 
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {title}
           </Text>
 
@@ -204,7 +257,7 @@ export function JobDetail({
               router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
             }
             hitSlop={8}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', opacity: pressed ? 0.6 : 1 })}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[0.5], alignSelf: 'flex-start', minHeight: hitTarget, opacity: pressed ? 0.6 : 1 })}
           >
             <Text variant="small" weight="medium" tone="primary">
               {tLanding('title', { track: tTrack(job.track), district: districtName })}
@@ -217,45 +270,44 @@ export function JobDetail({
 
         {/* The next step. Applying arrives with sign-in; until then, and for
             anyone the button cannot work for, the page says what is true. */}
-        {!open ? (
-          <Card style={{ gap: space[3] }}>
-            <Text variant="small" tone="mutedForeground">
-              {job.expires_at ? t('closedOn', { date: formatDate(job.expires_at, locale) }) : t('closedCtaBody')}
-            </Text>
-            {hasBoard ? <Button label={t('browseOpen')} onPress={toBoard} /> : null}
-          </Card>
-        ) : !canApply ? (
-          <Card>
-            <Text variant="small" tone="mutedForeground">
-              {tApply('employerCannotApply')}
-            </Text>
-          </Card>
-        ) : applied ? (
-          <Card style={{ gap: space[3] }}>
-            <Text variant="small" weight="medium" tone="success">
-              {tApply('alreadyApplied')}
-            </Text>
-            <Button label={tApply('viewApplications')} variant="outline" onPress={() => router.navigate('/dashboard/applications')} />
-          </Card>
-        ) : isCandidate(actor) && !isApproved(actor) ? (
-          // The database would refuse the application; say why before the form.
-          <Card style={{ gap: space[1] }}>
-            <Text weight="semibold">{tApply('suspendedTitle')}</Text>
-            <Text variant="small" tone="mutedForeground">
-              {tApply('suspendedBody')}
-            </Text>
-          </Card>
-        ) : (
-          <Button
-            label={t('apply')}
-            size="lg"
-            onPress={() =>
-              session
-                ? router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } })
-                : router.push({ pathname: '/sign-in', params: { next: `/jobs/${job.slug}/apply` } })
-            }
-          />
-        )}
+        <View testID="next-step" onLayout={({ nativeEvent: { layout } }) => setStepEnd(layout.y + layout.height)}>
+          {!open ? (
+            <Card style={{ gap: space[3] }}>
+              <Text variant="small" tone="mutedForeground">
+                {job.expires_at ? t('closedOn', { date: formatDate(job.expires_at, locale) }) : t('closedCtaBody')}
+              </Text>
+              {hasBoard ? <Button label={t('browseOpen')} onPress={toBoard} /> : null}
+            </Card>
+          ) : !canApply ? (
+            <Card>
+              <Text variant="small" tone="mutedForeground">
+                {tApply('employerCannotApply')}
+              </Text>
+            </Card>
+          ) : applied ? (
+            <Card style={{ gap: space[3] }}>
+              <Text variant="small" weight="medium" tone="success">
+                {tApply('alreadyApplied')}
+              </Text>
+              <Button label={tApply('viewApplications')} variant="outline" onPress={toApplications} />
+            </Card>
+          ) : isCandidate(actor) && !isApproved(actor) ? (
+            // The database would refuse the application; say why before the form.
+            <Card style={{ gap: space[1] }}>
+              <Text weight="semibold">{tApply('suspendedTitle')}</Text>
+              <Text variant="small" tone="mutedForeground">
+                {tApply('suspendedBody')}
+              </Text>
+            </Card>
+          ) : (
+            <Button
+              label={t('apply')}
+              size="lg"
+              icon={<SendForward size={18} color={colors.primaryForeground} />}
+              onPress={apply}
+            />
+          )}
+        </View>
 
         {/* A bookmark is a candidate's; somebody signed out is sent to sign in. */}
         <SaveJobButton jobId={job.id} slug={job.slug} />
@@ -284,7 +336,7 @@ export function JobDetail({
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[4], rowGap: space[1] }}>
           {job.published_at ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <CalendarClock size={13} color={colors.mutedForeground} />
               <Text variant="caption" tone="mutedForeground">
                 {t('postedOn', { date: formatDate(job.published_at, locale) })}
@@ -296,7 +348,7 @@ export function JobDetail({
               {t(open ? 'expiresOn' : 'endedOn', { date: formatDate(job.expires_at, locale) })}
             </Text>
           ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
             <Eye size={13} color={colors.mutedForeground} />
             <Text variant="caption" tone="mutedForeground">
               {t('views', { count: job.view_count })}
@@ -333,6 +385,7 @@ export function JobDetail({
           <Button
             label={t('companyPage')}
             variant="outline"
+            icon={<Building2 size={16} color={colors.foreground} />}
             onPress={() => router.push({ pathname: '/companies/[slug]', params: { slug: job.company.slug } })}
           />
         </Card>
@@ -351,9 +404,27 @@ export function JobDetail({
           <ReportButton target="job" targetId={job.id} returnPath={`/jobs/${job.slug}`} label={t('report')} />
         </View>
       </ScrollView>
+      {pinnable && pastStep ? (
+        <Appear
+          testID="pinned-step"
+          from="below"
+          distance={8}
+          duration={240}
+          style={[styles.pinned, { backgroundColor: colors.background, borderTopColor: colors.border }]}
+        >
+          {applied ? (
+            <Button label={tApply('viewApplications')} variant="outline" onPress={toApplications} />
+          ) : (
+            <Button label={t('apply')} icon={<SendForward size={18} color={colors.primaryForeground} />} onPress={apply} />
+          )}
+        </Appear>
+      ) : null}
     </>
   );
 }
+
+/** The pinned bar's height, about: a button and the room round it. */
+const PINNED = 72;
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const { colors } = useTheme();
@@ -377,7 +448,7 @@ function Fact({ icon, children }: { icon?: React.ReactNode; children: string }) 
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: space[1],
         paddingHorizontal: space[3],
         paddingVertical: space[1],
         ...corner('full'),
@@ -393,3 +464,17 @@ function Fact({ icon, children }: { icon?: React.ReactNode; children: string }) 
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  // At the foot of the screen, which ends above the tab bar's band: a hairline over it, the page's own colour.
+  pinned: {
+    position: 'absolute',
+    start: 0,
+    end: 0,
+    bottom: 0,
+    paddingHorizontal: gutter,
+    paddingTop: space[3],
+    paddingBottom: space[3],
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+});

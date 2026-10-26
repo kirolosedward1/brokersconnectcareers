@@ -7,7 +7,7 @@ import { BadgeCheck, FileCheck, Flag } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useSheet } from '~/lib/use-sheet';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useSheetFence } from '~/components/ui/sheet-fence';
 import { appDirection } from '~/lib/direction';
 
@@ -35,7 +35,8 @@ export function VerifiedMark({ size = 16, children }: { size?: number; children?
       accessibilityRole="button"
       accessibilityLabel={t('companies.verified')}
       accessibilityHint={t('app.verified.hint')}
-      hitSlop={10}
+      // A 44-point target round however small the mark is drawn.
+      hitSlop={Math.max(10, (hitTarget - size) / 2)}
       onPress={() => {
         for (const show of hosts) show();
       }}
@@ -71,7 +72,7 @@ export function VerifiedSheet({ visible, onClose, onDismiss }: { visible: boolea
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onDismiss={onDismiss}>
-      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: 'rgba(5, 10, 25, 0.45)' }} {...fence}>
+      <View style={{ flex: 1, direction: appDirection, justifyContent: 'flex-end', backgroundColor: colors.scrim }} {...fence}>
         {/* The shade beside the card, not around it: wrapped round the card, it was one element to VoiceOver. */}
         <Pressable accessibilityRole="button" accessibilityLabel={t('close')} onPress={onClose} style={StyleSheet.absoluteFill} />
         <View

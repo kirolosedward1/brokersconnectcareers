@@ -178,6 +178,22 @@ check('and the saved list says so', (savedAfter.json ?? []).length > 0 === !wasS
 const toggleBack = await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
 check('and toggles back', ok(toggleBack), describe(toggleBack));
 
+// A note on a saved listing lives with the bookmark (migration 353), on both sides.
+{
+  // Not saved first (the toggles above left it as it was found), then saved, then as it was found.
+  if (wasSaved) await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
+  const unsavedNote = await action(candidate.token, 'setSavedJobNote', { jobId: savable.id, note: 'اسأل عن العمولة' });
+  check('a note on a listing not saved is refused as not_saved', !ok(unsavedNote) && unsavedNote.json?.error === 'not_saved', describe(unsavedNote));
+  await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
+  const noted = await action(candidate.token, 'setSavedJobNote', { jobId: savable.id, note: '  اسأل عن العمولة  ' });
+  check('a note is kept with the bookmark, trimmed', ok(noted) && noted.json?.data?.note === 'اسأل عن العمولة', describe(noted));
+  const read = await rest(candidate.token, `saved_jobs?select=note&job_id=eq.${savable.id}`);
+  check('and read back under the candidate\'s own session', read.json?.[0]?.note === 'اسأل عن العمولة', describe(read));
+  const cleared = await action(candidate.token, 'setSavedJobNote', { jobId: savable.id, note: '   ' });
+  check('an emptied note is no note', ok(cleared) && cleared.json?.data?.note === null, describe(cleared));
+  if (!wasSaved) await action(candidate.token, 'toggleSavedJob', { jobId: savable.id });
+}
+
 const follow = await action(candidate.token, 'followCompany', { slug: firstCompany.slug, label: firstCompany.name_ar });
 check('following a company', ok(follow), describe(follow));
 const unfollow = await action(candidate.token, 'unfollowCompany', { slug: firstCompany.slug });
@@ -310,8 +326,9 @@ if (applicationId && employer) {
 
   const withdraw = await action(candidate.token, 'withdrawApplication', { applicationId });
   check('the candidate withdraws it', ok(withdraw), describe(withdraw));
-  const gone = await rest(candidate.token, `applications?select=id&id=eq.${applicationId}`);
-  check('and it is gone', Array.isArray(gone.json) && gone.json.length === 0, describe(gone));
+  // The row stays. Withdrawing is a status, so the company still has it.
+  const kept = await rest(candidate.token, `applications?select=id,status&id=eq.${applicationId}`);
+  check('and it stays, marked withdrawn', kept.json?.[0]?.id === applicationId && kept.json?.[0]?.status === 'withdrawn', describe(kept));
 }
 
 // ---------------------------------------------------------------------------
@@ -400,19 +417,24 @@ section('doors');
 
 const noToken = await action(null, 'applyToJob', { jobId: crypto.randomUUID() });
 check('a protected action without a token is a 401', noToken.status === 401, describe(noToken));
-const unknown = await action(candidate.token, 'requeueEmail', {});
-check('an admin action the app does not have is not on the mobile API', unknown.status === 404, describe(unknown));
+// Every console lever is on the mobile API now; checkout, which the app never sells, is not.
+const unknown = await action(candidate.token, 'createCheckout', {});
+check('an action the app does not have is not on the mobile API', unknown.status === 404, describe(unknown));
 // The levers the app's console has are behind the admin door (src/lib/mobile-api/admin-door.ts):
 // anybody who is not an admin is turned away before the action runs, and told nothing more.
 const lever = await action(candidate.token, 'moderateJob', { jobId: crypto.randomUUID(), action: 'approve' });
 check('an admin lever refuses a candidate', lever.status === 200 && lever.json?.ok === false && lever.json?.error === 'forbidden', describe(lever));
-// An admin is held at the same door the website's console has: this is a
-// production build with ADMIN_MFA_REQUIRED unset, and the demo admin has no
-// authenticator, so the lever is refused with the word that says so.
+// ADMIN_MFA_REQUIRED is unset, so an admin without an authenticator is let
+// through the door. An enrolled factor is still challenged (admin-door.ts),
+// and the role is still checked (assertAdmin, then the database).
 const adminSession = await signIn('admin@demo.test');
 check('the demo admin signs in', Boolean(adminSession.token), describe(adminSession));
 const held = await action(adminSession.token, 'moderateJob', { jobId: crypto.randomUUID(), action: 'approve' });
-check('an admin without two-step sign-in is held at the door', held.status === 200 && held.json?.ok === false && held.json?.error === 'mfa_required', describe(held));
+check(
+  'an admin without two-step sign-in is not held for it',
+  held.status === 200 && held.json?.error !== 'mfa_required' && held.json?.error !== 'forbidden',
+  describe(held),
+);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

@@ -35,6 +35,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
   const locale = useLocale();
   const t = useTranslations('landing');
   const tJobs = useTranslations('jobs');
+  const tNav = useTranslations('nav');
   const tTrack = useTranslations('track');
   const { colors } = useTheme();
 
@@ -117,7 +118,7 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[5] }}
       >
         <View style={{ gap: space[2] }}>
-          <Text variant="title" weight="bold" accessibilityRole="header">
+          <Text variant="title" weight="semibold" accessibilityRole="header">
             {t('title', { track: trackName, district: districtName })}
           </Text>
           <Text tone="mutedForeground">{t('subtitle', { track: trackName, district: districtName })}</Text>
@@ -159,13 +160,13 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           <EmptyState
             icon={SearchX}
             title={tJobs('empty')}
-            action={hasBoard ? <Button label={tJobs('title')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
+            action={hasBoard ? <Button label={tNav('browseJobs')} variant="outline" onPress={() => router.navigate('/jobs')} /> : null}
           />
         )}
 
         {more && hasBoard ? (
           <Button
-            label={tJobs('title')}
+            label={tNav('browseJobs')}
             variant="outline"
             onPress={() => router.navigate({ pathname: '/jobs', params: filtersToParams(filters) })}
           />

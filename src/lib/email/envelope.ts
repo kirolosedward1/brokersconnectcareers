@@ -1,6 +1,6 @@
 import 'server-only';
 import { dirOf } from '@/i18n/routing';
-import { env } from '@/lib/env';
+import { configuredValue, env } from '@/lib/env';
 import { copyFor } from './copy';
 import { renderEmail, renderText, type Block } from './components';
 import type { Envelope } from './service';
@@ -9,10 +9,10 @@ import type { Envelope } from './service';
  * Subject, HTML and text, built once from the same blocks.
  *
  * Templates call this instead of the renderers directly, so the footer — the
- * automated-message line, the legal links, the unsubscribe or its deliberate
- * absence — is identical everywhere and cannot be forgotten by a template
- * added later. It is also the single place the logo URL is made absolute; a
- * relative path in an email resolves against nothing.
+ * contact line, the legal links, the unsubscribe or its deliberate absence —
+ * is identical everywhere and cannot be forgotten by a template added later.
+ * It is also the single place the logo URL is made absolute; a relative path
+ * in an email resolves against nothing.
  */
 
 export type Audience = {
@@ -42,26 +42,12 @@ export function buildEnvelope({
 }): Envelope {
   const c = copyFor(audience.locale);
 
-  // Appended here rather than in each template: a help line that exists in
-  // nineteen templates out of twenty is a bug in the twentieth.
-  //
-  // Conditional, because this platform has no support page. Without a
-  // configured address the block is omitted entirely rather than pointing at a
-  // route that would 404 — an email that offers help and delivers a missing
-  // page is worse than one that offers none.
-  const withHelp: Block[] = env.supportEmail
-    ? [
-        ...blocks,
-        {
-          kind: 'help',
-          value: c.footer.help,
-          link: { label: env.supportEmail, href: `mailto:${env.supportEmail}` },
-        },
-      ]
-    : blocks;
-
+  // The same line on every template. A configured support address is where a
+  // reply lands (the message also sets Reply-To to it). Without one, the line
+  // stays neutral and does not tell the reader not to reply.
+  const support = configuredValue(env.supportEmail);
   const footer = {
-    automated: c.footer.automated,
+    contact: support ? { lead: c.footer.reply, email: support } : { lead: c.footer.neutral },
     reason: audience.unsubscribe ? c.footer.reasonOptional : c.footer.reasonAccount,
     legal: [
       { label: c.footer.privacy, href: `${env.siteUrl}/privacy` },
@@ -87,10 +73,10 @@ export function buildEnvelope({
           : undefined,
       preheader,
       heading,
-      blocks: withHelp,
+      blocks,
       footer,
     }),
-    text: renderText({ heading, blocks: withHelp, footer, siteName: c.siteName }),
+    text: renderText({ heading, blocks, footer, siteName: c.siteName }),
     unsubscribeUrl: audience.unsubscribe?.oneClick,
   };
 }

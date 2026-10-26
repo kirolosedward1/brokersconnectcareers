@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 
 type Kept<T> = {
   items: readonly T[];
@@ -7,6 +8,17 @@ type Kept<T> = {
   loading: Promise<void> | null;
   listeners: Set<() => void>;
 };
+
+/** Every list made here, to let go of what each holds in memory for a person (forgetPerson). */
+const lists = new Set<{ forget: (owner: string) => void }>();
+/**
+ * The people forgotten while the app has been running. A change already on
+ * its way when the account was deleted — a saved search's alert checked as
+ * the app opened, a note's Undo, a reminder put back — would otherwise write
+ * their list again after it was removed; for them nothing is read or written
+ * any more. An id is never anybody else's, so this costs nobody anything.
+ */
+const forgotten = new Set<string>();
 
 /**
  * A short list kept on this phone, one per person (`owner`: their user id,
@@ -35,8 +47,10 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
 
   const load = (owner: string): Promise<void> => {
     const store = storeFor(owner);
-    store.loading ??= AsyncStorage.getItem(`${prefix}:${owner}`)
+    store.loading ??= (forgotten.has(owner) ? Promise.resolve(null) : AsyncStorage.getItem(`${prefix}:${owner}`))
       .then((stored) => {
+        // Read before the account was deleted, answered after: nothing of it comes back.
+        if (forgotten.has(owner)) return;
         const parsed = stored ? (JSON.parse(stored) as unknown) : [];
         const read = Array.isArray(parsed) ? parsed.filter(valid) : [];
         // Anything kept while the phone was still answering stays, first.
@@ -52,6 +66,7 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
   };
 
   const save = (owner: string, next: readonly T[]) => {
+    if (forgotten.has(owner)) return;
     const store = storeFor(owner);
     store.items = next.slice(0, max);
     emit(store);
@@ -64,6 +79,17 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
     if (store.loaded) save(owner, update(store.items));
     else void load(owner).then(() => save(owner, update(storeFor(owner).items)));
   };
+
+  lists.add({
+    forget(owner) {
+      const store = kept.get(owner);
+      if (!store) return;
+      kept.delete(owner);
+      // Whoever still follows it sees it empty, and reads afresh (an empty phone) next time.
+      store.items = [];
+      emit(store);
+    },
+  });
 
   return {
     /** Put first, replacing one with the same id. */
@@ -102,6 +128,43 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
     },
     resetForTests() {
       kept.clear();
+      // A fresh app, as each test expects: nobody forgotten yet.
+      forgotten.clear();
     },
   };
+}
+
+/** The system's names for notifications a kept list holds (a reminder's `notificationId`). */
+function scheduledIn(stored: string | null): string[] {
+  try {
+    const parsed = stored ? (JSON.parse(stored) as unknown) : null;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => (item as { notificationId?: unknown } | null)?.notificationId)
+      .filter((id): id is string => typeof id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Everything this phone keeps for one person, gone: every key kept under
+ * their id (`…:${userId}` — the lists above, and push's own choices), and
+ * the notifications those lists had scheduled (a saved listing's reminder),
+ * so a deleted account leaves nothing of itself on a shared phone. Never
+ * throws; what cannot be removed now is left as it was.
+ */
+export async function forgetPerson(userId: string): Promise<void> {
+  if (!userId) return;
+  forgotten.add(userId);
+  const suffix = `:${userId}`;
+  const keys = (await AsyncStorage.getAllKeys().catch(() => [] as readonly string[])).filter((key) => key.endsWith(suffix));
+  for (const list of lists) list.forget(userId);
+  const stored = await AsyncStorage.multiGet(keys).catch(() => [] as readonly (readonly [string, string | null])[]);
+  for (const [, value] of stored) {
+    for (const id of scheduledIn(value)) {
+      await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    }
+  }
+  await AsyncStorage.multiRemove(keys).catch(() => {});
 }

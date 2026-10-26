@@ -16,7 +16,11 @@ export type TabName =
 const PUBLIC: readonly TabName[] = ['home', 'jobs', 'companies', 'account'];
 const CANDIDATE: readonly TabName[] = ['home', 'jobs', 'applications', 'saved', 'account'];
 const EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'consultants', 'account'];
-const ADMIN: readonly TabName[] = ['home', 'jobs', 'companies', 'admin', 'account'];
+// The console and the account, nothing of the public site's: an admin's app
+// is the admin console. Home's screens stay in the app (its button is hidden,
+// and `/` opens the console), and a listing, a company or a consultant the
+// console points at opens inside the Admin tab (links.ts).
+const ADMIN: readonly TabName[] = ['admin', 'account'];
 const ADMIN_EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'admin', 'account'];
 
 /**
@@ -28,10 +32,10 @@ const ADMIN_EMPLOYER: readonly TabName[] = ['home', 'listings', 'applicants', 'a
  * An employer's is theirs: the overview at home, their listings, their
  * applicants, the consultant directory, and the account — where the company,
  * its team and its billing are kept. An admin's has the console (the website's
- * /admin queues) beside the public site's tabs — or, for an admin who also
- * runs a company, in the directory's place beside that company's console;
- * the directory and the shortlist then open inside the Admin tab
- * ((consultants,admin) in the routes, links.ts).
+ * /admin console) and the account, and nothing of the public site's — or,
+ * for an admin who also runs a company, the console in the directory's place
+ * beside that company's own; the directory and the shortlist then open inside
+ * the Admin tab ((consultants,admin) in the routes, links.ts).
  *
  * The bar changes with the role, never with the standing. Every tab's screens
  * are drawn again whenever the set of tabs changes, so a Consultants tab that

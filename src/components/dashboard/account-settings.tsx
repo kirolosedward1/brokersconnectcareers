@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
-import { Download, Loader2, Trash2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 
 import { localeHref, type Locale } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { reach } from '@/lib/reach';
 import type { ProfileRow } from '@/lib/supabase/database.types';
 import { useSessionRecovery } from '@/lib/session-expired';
 import { uuid } from '@/lib/uuid';
+import { forgetDrafts } from '@/lib/form-draft';
 
 type Prefs = Pick<
   ProfileRow,
@@ -31,10 +32,13 @@ export function AccountSettings({
   locale,
   isEmployer,
   initial,
+  part = 'all',
 }: {
   locale: Locale;
   isEmployer: boolean;
   initial: Prefs;
+  /** One section, on its own account page. `all` is the three together. */
+  part?: 'all' | 'emails' | 'delete';
 }) {
   const t = useTranslations('account');
   const tCommon = useTranslations('common');
@@ -97,8 +101,10 @@ export function AccountSettings({
       if (result.ok) {
         /*
           The account is gone. Nothing the client router is holding about
-          this person is true any more, so the browser starts again.
+          this person is true any more, so the browser starts again — and
+          nothing of their half-typed forms stays behind (lib/form-draft.ts).
         */
+        forgetDrafts();
         window.location.assign(localeHref(locale, '/'));
         return;
       }
@@ -148,9 +154,8 @@ export function AccountSettings({
       : []),
   ];
 
-  return (
-    <div className="space-y-8">
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+  const emails = (
+    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-semibold">{t('emailsTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t('emailsBody')}</p>
 
@@ -176,20 +181,9 @@ export function AccountSettings({
 
         {saved ? <p className="mt-3 text-sm text-success">{tCommon('saveSuccess')}</p> : null}
       </section>
+  );
 
-      <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="font-semibold">{t('exportTitle')}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t('exportBody')}</p>
-        <Button asChild variant="outline" className="mt-4">
-          {/* A plain link, not fetch(): the browser's own download handling is
-              better than anything reimplemented here. */}
-          <a href="/api/account/export" download>
-            <Download aria-hidden />
-            {t('exportCta')}
-          </a>
-        </Button>
-      </section>
-
+  const deletion = (
       <section className="rounded-xl border border-destructive/30 bg-destructive/[0.03] p-6">
         <h2 className="font-semibold text-destructive">{t('deleteTitle')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -213,7 +207,7 @@ export function AccountSettings({
               {/*
                 `word` is an ICU *argument*, not a tag, so the arrow function
                 that used to be passed for it rendered nothing at all: the
-                label read "اكتب عشان تأكّد" — type to confirm — without ever
+                label read "اكتب للتأكيد" — type to confirm — without ever
                 saying what to type. Which made the button below it
                 permanently disabled, because it compares the input against a
                 word the reader was never shown. Deleting an account was not
@@ -253,6 +247,14 @@ export function AccountSettings({
           </p>
         ) : null}
       </section>
+  );
+
+  if (part === 'emails') return emails;
+  if (part === 'delete') return deletion;
+  return (
+    <div className="space-y-8">
+      {emails}
+      {deletion}
     </div>
   );
 }

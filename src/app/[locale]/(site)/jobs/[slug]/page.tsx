@@ -135,7 +135,8 @@ export async function generateMetadata({
       description,
       alternates: alternatesFor(`/jobs/${slug}`, locale),
       openGraph: { title: `${title} — ${company}`, description, type: 'article' },
-      // An expired listing must not be indexed as if it were open.
+      // Closed, or an expiry the middleware could not confirm: not indexed.
+      // A confirmed expiry is a 410 from the middleware and never reaches here.
       //
       // isOpen() rather than a status check on its own: the nightly cron is
       // what flips 'active' to 'expired', so for up to a day after expires_at
@@ -164,15 +165,11 @@ export async function generateMetadata({
   // takes one path instead of rendering a page with no title and then failing
   // in the body.
   //
-  // It does NOT make the status a 404, and I tried: this route streams, so the
-  // headers are gone before either check runs and Next can only serve the
-  // not-found UI under a 200. Metadata streams with it, so moving the check
-  // earlier changes nothing. The only way to a real 404 here is to delete
-  // loading.tsx and give up the skeleton on the three page types that most
-  // need one, which is a worse trade than a soft 404 that carries
-  // `robots: noindex` — Google never indexes these, and what is left is a
-  // Search Console warning rather than a penalty. /blog returns a true 404
-  // only because it has no loading.tsx and therefore does not stream.
+  // This route streams, so this call draws the not-found UI under a 200 when
+  // it is the thing that notices. The real 404 is the middleware rewrite,
+  // which asks before anything is sent — signed out and signed in — and
+  // renders that UI from the catch-all, which does not stream. This call
+  // remains for a lookup that could not answer.
   notFound();
 }
 

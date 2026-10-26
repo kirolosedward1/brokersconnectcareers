@@ -8,6 +8,7 @@ import { homeFor } from '@/lib/permissions';
 import { safeNext } from '@/lib/safe-next';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
+import { isApplePrivateRelay } from '@/lib/auth/suggested-name';
 import { OnboardingForm } from '@/components/auth/onboarding-form';
 import { LeaveOnboarding } from '@/components/auth/leave-onboarding';
 import { AuthShell } from '../auth-shell';
@@ -95,6 +96,7 @@ export default async function OnboardingPage({
             locale={locale}
             ownerId={viewer!.userId}
             defaultName={viewer!.suggestedName}
+            privateRelay={isApplePrivateRelay(viewer!.email)}
             defaultRole={defaultRole}
             districts={districts}
             next={safeNext(next) ?? undefined}

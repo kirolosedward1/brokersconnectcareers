@@ -1,4 +1,9 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
+// The curtain and the native splash share this width. The module is JS
+// because Expo evaluates this file without compiling a TypeScript import.
+// A static import, not `require`: scripts/publish-update.test.mjs loads this
+// file as ESM, where `require` is not defined.
+import { LAUNCH_MARK_WIDTH } from './src/components/brand/launch-size.js';
 
 /** The commit this bundle is published from, shown on Account so a phone can be matched to it. */
 function commitSha(): string | undefined {
@@ -73,7 +78,7 @@ const easProjectId = process.env.EAS_PROJECT_ID || EAS_PROJECT_ID;
  * writes the same Info.plist key, so it is handed the same words: whichever
  * plugin runs last, the prompt says this.
  */
-const FACE_ID_PURPOSE = 'بنستخدم Face ID عشان تقفل التطبيق وتفتحه، لو انت شغّلت القفل بنفسك.';
+const FACE_ID_PURPOSE = 'نستخدم Face ID لقفل التطبيق وفتحه، إذا فعّلت القفل بنفسك.';
 
 /**
  * Over-the-air updates (EAS Update): JavaScript and images published after a
@@ -93,7 +98,7 @@ const FACE_ID_PURPOSE = 'بنستخدم Face ID عشان تقفل التطبيق
 /**
  * An update for Expo Go (`pnpm run ota expo-go`, scripts/publish-update.mjs)
  * runs on Expo Go's native code, not this app's: its runtime version is Expo
- * Go's SDK ("exposdk:57.0.0"), which no fingerprint of this app matches.
+ * Go's SDK ("exposdk:58.0.0"), which no fingerprint of this app matches.
  */
 const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
 
@@ -128,6 +133,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // it from the next launch on (`updates`, above).
   runtimeVersion: forExpoGo ? { policy: 'sdkVersion' } : { policy: 'fingerprint' },
   updates,
+  // Expo Go's own loading page shows a project's icon and name, large, unless
+  // the manifest names a splash; it ignores the expo-splash-screen plugin
+  // below, which is for the phone's launch screen in a store build. So the
+  // Expo Go publish alone carries a whole page in the launch screen's colour
+  // with the mark drawn when that mark was 76 points. The phone's own launch
+  // screen, below, uses LAUNCH_MARK_WIDTH. Drawn edge to edge (`cover`), the
+  // plain background cropping harmlessly on another screen shape.
+  ...(forExpoGo ? { splash: { image: './assets/images/splash-expo-go.png', resizeMode: 'cover' as const, backgroundColor: '#F6F4F0' } } : {}),
   ios: {
     // Permanent once the app is on the App Store: confirm before the first build.
     bundleIdentifier: 'net.brokersconnect.app',
@@ -225,7 +238,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         // launch screen on a dark phone flashed into the light app.
         backgroundColor: '#F6F4F0',
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        // The curtain draws this same width (src/components/brand/launch-size.js).
+        imageWidth: LAUNCH_MARK_WIDTH,
       },
     ],
     // The session key sits in the keychain without a biometric gate. The Face
@@ -236,6 +250,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ['expo-localization', { supportsRTL: true, forcesRTL: true }],
     'expo-web-browser',
     'expo-font',
+    // SDK 58 gives these three config plugins of their own, which `expo install --fix` asks for.
+    'expo-image',
+    'expo-sharing',
+    'expo-status-bar',
     'expo-apple-authentication',
     // The shortcuts held from the app's icon (src/components/navigation/home-shortcuts.tsx).
     'expo-quick-actions',
@@ -255,8 +273,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         // The base language's strings; the English ones are in assets/locales.
         photosPermission:
-          'بنستخدم صورك عشان تختار صورتك الشخصية أو لوجو شركتك أو مستنداتها، ومفيش حاجة بتترفع غير اللي انت تختاره.',
-        cameraPermission: 'بنستخدم الكاميرا عشان تصوّر مستندات شركتك لتوثيقها.',
+          'نستخدم صورك لاختيار صورتك الشخصية أو شعار شركتك أو مستنداتها، ولا يُرفع شيء إلا ما تختاره.',
+        cameraPermission: 'نستخدم الكاميرا لتصوير مستندات شركتك لتوثيقها.',
         microphonePermission: false,
       },
     ],

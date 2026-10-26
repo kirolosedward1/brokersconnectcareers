@@ -440,7 +440,7 @@ report.section('applications are private to the two parties');
   // have claimed this pair.
   await db.exec(`insert into applications (job_id, candidate_id, experience_band)
                  values ('${liveJob}', '${candidate}', 'mid_3_5')
-                 on conflict (job_id, candidate_id) do nothing`);
+                 on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing`);
 
   const own = await as(candidate, 'select id, candidate_id from applications');
   report.check('the candidate sees their own and only their own',
@@ -513,7 +513,7 @@ report.section('notifications are written by the platform, not by their reader')
 
   await db.exec(`insert into applications (job_id, candidate_id, experience_band)
                  values ('${live.id}', '${OUTSIDER}', 'mid_3_5')
-                 on conflict (job_id, candidate_id) do nothing`);
+                 on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing`);
 
   const after = (
     await db.query(`select count(*)::int n from notifications where user_id='${owner}'`)
@@ -714,7 +714,7 @@ report.section('only candidates apply');
   const r4 = await as(candidate,
     `insert into applications (job_id, candidate_id, experience_band)
      values ('${liveOther}', '${candidate}', 'mid_3_5')
-     on conflict (job_id, candidate_id) do nothing returning id`);
+     on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing returning id`);
   report.check('a candidate still can', r4.ok, r4.error);
 }
 
@@ -792,7 +792,7 @@ report.section('applying is consent, and the applicant inbox may read it');
   await db.exec(`
     insert into applications (job_id, candidate_id, experience_band)
       values ('${live}', '${publicOwner}', 'mid_3_5')
-      on conflict (job_id, candidate_id) do nothing;
+      on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing;
   `);
 
   const embed = (owner) => `
@@ -908,7 +908,8 @@ report.section('applying is consent, and the applicant inbox may read it');
   // Consent is the application, so it lasts exactly as long as one does.
   await db.exec(`
     update agent_profiles set visibility = 'verified_employers_only' where user_id = '${SHY}';
-    delete from applications where candidate_id = '${SHY}';
+    update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+      where candidate_id = '${SHY}' and status <> 'withdrawn';
   `);
   const afterWithdrawal = await as(employerUnverified, `select slug from agent_profiles where user_id = '${SHY}'`);
   report.check('and withdrawing closes it again',
@@ -1238,6 +1239,34 @@ report.section('a bookmark is a candidate\'s');
   report.check('and only for themselves', !forSomebodyElse.ok);
 }
 
+report.section('a note on a saved listing is the candidate\'s own (356)');
+{
+  // The bookmark first, as the service (RLS aside); the checks below run as people.
+  await db.exec(`insert into saved_jobs (candidate_id, job_id) values ('${candidate}', '${liveJob}') on conflict do nothing`);
+
+  const own = await as(candidate, `
+    update saved_jobs set note = 'اتكلمت مع منى، المقابلة الحد'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('a candidate writes a note on their own bookmark', own.ok && own.rows.length === 1, own.error);
+
+  const theirs = await as(OUTSIDER, `
+    update saved_jobs set note = 'ليست لك'
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('and nobody else reaches it (zero rows, not an error)', theirs.ok && theirs.rows.length === 0, theirs.error);
+
+  const tooLong = await as(candidate, `
+    update saved_jobs set note = repeat('x', 301)
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('301 characters are refused by the table itself', !tooLong.ok && /saved_jobs_note_length/.test(tooLong.error ?? ''), tooLong.error);
+
+  const empty = await as(candidate, `
+    update saved_jobs set note = ''
+     where candidate_id = '${candidate}' and job_id = '${liveJob}' returning note`);
+  report.check('and so is an empty one: no note is null', !empty.ok && /saved_jobs_note_length/.test(empty.error ?? ''), empty.error);
+
+  await db.exec(`delete from saved_jobs where candidate_id = '${candidate}' and job_id = '${liveJob}'`);
+}
+
 report.section('a photo is the account\'s own photo');
 {
   const own = await as(candidate, `
@@ -1248,7 +1277,7 @@ report.section('a photo is the account\'s own photo');
   const google = await as(candidate, `
     update profiles set avatar_url = 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c'
      where id = '${candidate}' returning id`);
-  report.check('and so is the picture Google handed over', google.ok && google.rows.length === 1, google.error);
+  report.check('a Google picture is not: sign-up no longer copies one (migration 364)', !google.ok);
 
   const elsewhere = await as(candidate, `
     update profiles set avatar_url = 'https://xyz.supabase.co/storage/v1/object/public/avatars/${publicAgent}/a1b2c3.webp'
@@ -1476,7 +1505,7 @@ report.section('the row itself refuses shapes no form would send');
   const ownCv = await as(candidate, `
     insert into applications (job_id, candidate_id, cv_path, experience_band)
     values ('${liveJob}', '${candidate}', '${candidate}/mine.pdf', 'mid_3_5')
-    on conflict (job_id, candidate_id) do nothing`);
+    on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing`);
   report.check('and its own is fine', ownCv.ok, ownCv.error);
 
   const foreignAgentCv = await as(publicAgent,
@@ -1760,6 +1789,25 @@ report.section('a retried payment webhook cannot sell the same pack twice');
   const afterFailed = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
   report.check('a declined payment settles as failed', failed === 'failed', `got ${failed}`);
   report.check('and grants no credits', afterFailed === afterSecond, `${afterSecond} -> ${afterFailed}`);
+
+  // A second declined attempt changes nothing.
+  const failedAgain = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', false) as r`)).rows[0].r;
+  report.check('a second decline is a no-op', failedAgain === 'already_failed', `got ${failedAgain}`);
+
+  // A success for another Paymob order cannot settle the failed one.
+  const wrongRetry = (await db.query(`select public.settle_order('${failedId}', 'pm_test_other', true) as r`)).rows[0].r;
+  report.check('a success for another payment cannot settle a failed order', wrongRetry === 'already_failed', `got ${wrongRetry}`);
+
+  // The buyer retries on the same payment key and the card goes through: the
+  // same signed Paymob order now succeeds, and the pack is theirs.
+  const retried = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', true, 100000, 'EGP') as r`)).rows[0].r;
+  const afterRetry = (await db.query(`select post_credits from companies where id='${unverifiedCo}'`)).rows[0].post_credits;
+  report.check('a declined card then a paid one settles as paid', retried === 'paid', `got ${retried}`);
+  report.check('and grants the credits once', afterRetry === afterFailed + 1, `${afterFailed} -> ${afterRetry}`);
+  const retriedAgain = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', true) as r`)).rows[0].r;
+  report.check('and a resend of that success grants nothing', retriedAgain === 'already_paid', `got ${retriedAgain}`);
+  const lateDecline = (await db.query(`select public.settle_order('${failedId}', 'pm_test_2', false) as r`)).rows[0].r;
+  report.check('nor does a late decline undo it', lateDecline === 'already_paid', `got ${lateDecline}`);
 
   // And no signed-in user can reach it.
   const byUser = await as(employerUnverified, `select public.settle_order('${failedId}', 'pm_x', true)`);
@@ -2127,7 +2175,7 @@ report.section('the bell rings for everyone who does the work');
   await db.exec(`
     insert into applications (job_id, candidate_id, status)
       values ('${job}', '${OUTSIDER}', 'new')
-      on conflict (job_id, candidate_id) do nothing;
+      on conflict (job_id, candidate_id) where status <> 'withdrawn' do nothing;
   `);
 
   report.check('the recruiter hears about the applicant too',
@@ -2135,21 +2183,24 @@ report.section('the bell rings for everyone who does the work');
   report.check('and the owner still does',
     (await count(employerVerified, 'application_received')) === ownerBefore + 1);
 
-  // Shortlisted, then withdrawn: the one event the company was never told
-  // about, because the row simply stopped existing.
+  // Shortlisted, then withdrawn: the row stays, and the company is told
+  // because somebody they had already chosen left.
   const withdrawnBefore = await count(MATE, 'application_withdrawn');
 
   await db.exec(`update applications set status = 'shortlisted' where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
-  await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}'`);
+  await db.exec(`update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+                  where job_id = '${job}' and candidate_id = '${OUTSIDER}' and status = 'shortlisted'`);
 
   report.check('and hears when a shortlisted one withdraws',
     (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
 
   // A withdrawal from `new` is somebody changing their mind before anybody
-  // looked at them, which is not an event worth a notification.
+  // looked at them, which is not an event worth a notification. The withdrawn
+  // row stays, so this is a second application, then a withdrawal of that one.
   await db.exec(`
     insert into applications (job_id, candidate_id, status) values ('${job}', '${OUTSIDER}', 'new');
-    delete from applications where job_id = '${job}' and candidate_id = '${OUTSIDER}';
+    update applications set status = 'withdrawn', withdrawn_at = now(), cv_path = null
+      where job_id = '${job}' and candidate_id = '${OUTSIDER}' and status = 'new';
   `);
   report.check('but not when an untouched one does',
     (await count(MATE, 'application_withdrawn')) === withdrawnBefore + 1);
@@ -2510,32 +2561,31 @@ report.section('withdrawing has a precondition the database keeps');
 {
   /*
     The dashboard offers withdrawal only while an application is new or
-    shortlisted. Until now the policy permitted a delete at any status, so a
-    hired candidate could remove the employer's only record of the hire with a
-    request the interface never makes.
+    shortlisted. The candidate has no update policy; withdraw_application is
+    the only door, and it returns nothing once the outcome is no longer open.
+    A hired candidate cannot remove the employer's record of the hire.
 
     Setup runs through db.exec — no JWT, so acting_as_admin() is true and the
-    column guard stands aside. Only the delete itself goes through as(), which
-    is the statement under test, and as() rolls back so the row survives into
-    the next case.
+    column guard stands aside. Only the function call goes through as(), which
+    rolls back, so the row survives into the next case.
   */
   const mine = (await db.query(
-    `select id from applications where candidate_id = '${candidate}' limit 1`,
+    `select id from applications where candidate_id = '${candidate}' and status <> 'withdrawn' limit 1`,
   )).rows[0].id;
 
-  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
-  const open = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+  await db.exec(`update applications set status = 'new', withdrawn_at = null where id = '${mine}'`);
+  const open = await as(candidate, `select * from public.withdraw_application('${mine}')`);
   report.check('a candidate may withdraw while the outcome is open',
     open.ok && open.rows.length === 1, open.error);
 
   for (const status of ['interview', 'hired', 'rejected']) {
-    await db.exec(`update applications set status = '${status}' where id = '${mine}'`);
-    const shut = await as(candidate, `delete from applications where id = '${mine}' returning id`);
+    await db.exec(`update applications set status = '${status}', withdrawn_at = null where id = '${mine}'`);
+    const shut = await as(candidate, `select * from public.withdraw_application('${mine}')`);
     report.check(`and cannot once it is ${status}`,
-      shut.ok && shut.rows.length === 0, shut.error ?? `deleted ${shut.rows.length} row(s)`);
+      shut.ok && shut.rows.length === 0, shut.error ?? `returned ${shut.rows.length} row(s)`);
   }
 
-  await db.exec(`update applications set status = 'new' where id = '${mine}'`);
+  await db.exec(`update applications set status = 'new', withdrawn_at = null where id = '${mine}'`);
 }
 
 report.section('two people moving one applicant');
@@ -3460,6 +3510,79 @@ report.section('a listing that is not live takes no applications');
     !again.ok && /duplicate key|unique/.test(again.error ?? ''), again.ok ? 'insert was allowed' : again.error);
 
   await db.exec(`delete from applications where job_id = '${job}' and candidate_id = '${who}'`);
+}
+
+
+report.section('a CV line or a note pressed twice is written once');
+{
+  /*
+    Migration 350, for the four creates migration 55 left out: a job, school
+    or certificate on a CV, and an applicant note. Each form sends one key
+    for every attempt; the second insert meets the first one's row on the
+    unique index and the server action answers with that row
+    (src/lib/actions/idempotency.ts). Keys are per owner, so one person's key
+    is nothing to another's.
+  */
+  const KEY = 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff';
+  const mine = (await db.query(`select id from agent_profiles where user_id = '${publicAgent}'`)).rows[0].id;
+  const theirs = (await db.query(`select id from agent_profiles where user_id = '${hiddenAgent}'`)).rows[0].id;
+
+  const sections = [
+    ['agent_experience', `(agent_id, company_name, title, started, idempotency_key)`,
+      (agent) => `('${agent}', 'شركة', 'استشاري', '2022-01-01', '${KEY}')`],
+    ['agent_education', `(agent_id, institution, idempotency_key)`,
+      (agent) => `('${agent}', 'جامعة القاهرة', '${KEY}')`],
+    ['agent_certifications', `(agent_id, name, idempotency_key)`,
+      (agent) => `('${agent}', 'شهادة وسيط عقاري', '${KEY}')`],
+  ];
+
+  for (const [table, columns, values] of sections) {
+    // Committed: the runner rolls each call back, and a retry has to meet a
+    // row that is really there.
+    await db.exec(`insert into ${table} ${columns} values ${values(mine)}`);
+
+    const retry = await as(publicAgent, `insert into ${table} ${columns} values ${values(mine)} returning id`);
+    report.check(`${table}: the retry is refused on the key, not written twice`,
+      !retry.ok && new RegExp(`${table}_idempotency_key_idx`).test(retry.error ?? ''),
+      retry.ok ? 'insert was allowed' : retry.error);
+
+    const found = await as(publicAgent, `select id from ${table} where agent_id = '${mine}' and idempotency_key = '${KEY}'`);
+    report.check(`${table}: and its owner finds the first one by it`, found.ok && found.rows.length === 1,
+      found.error ?? JSON.stringify(found.rows));
+
+    const elsewhere = await as(hiddenAgent, `insert into ${table} ${columns} values ${values(theirs)} returning id`);
+    report.check(`${table}: another consultant may use the same key`, elsewhere.ok && elsewhere.rows.length === 1,
+      elsewhere.error);
+
+    const unkeyed = await as(publicAgent, `
+      insert into ${table} ${columns.replace(', idempotency_key', '')}
+      values ${values(mine).replace(`, '${KEY}'`, '')}, ${values(mine).replace(`, '${KEY}'`, '')} returning id`);
+    report.check(`${table}: rows with no key never collide`, unkeyed.ok && unkeyed.rows.length === 2, unkeyed.error);
+
+    await db.exec(`delete from ${table} where idempotency_key = '${KEY}'`);
+  }
+
+  const app = (
+    await db.query(`
+      select a.id from applications a
+        join jobs j on j.id = a.job_id
+        join company_members m on m.company_id = j.company_id
+       where m.user_id = '${employerVerified}' limit 1`)
+  ).rows[0];
+  const note = `insert into application_notes (application_id, author_id, body, idempotency_key)
+                values ('${app.id}', '${employerVerified}', 'كلّمته', '${KEY}') returning id`;
+  await db.exec(note.replace(' returning id', ''));
+
+  const retry = await as(employerVerified, note);
+  report.check('application_notes: the retry is refused on the key',
+    !retry.ok && /application_notes_idempotency_key_idx/.test(retry.error ?? ''),
+    retry.ok ? 'insert was allowed' : retry.error);
+
+  const found = await as(employerVerified, `select id from application_notes where application_id = '${app.id}' and idempotency_key = '${KEY}'`);
+  report.check('application_notes: and its author finds the first one by it', found.ok && found.rows.length === 1,
+    found.error ?? JSON.stringify(found.rows));
+
+  await db.exec(`delete from application_notes where idempotency_key = '${KEY}'`);
 }
 
 process.exit(report.finish() ? 0 : 1);

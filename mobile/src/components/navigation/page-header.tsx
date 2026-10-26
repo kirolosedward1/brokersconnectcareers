@@ -7,7 +7,7 @@ import { BackChevron } from '~/components/ui/icons';
 import { Text } from '~/components/ui/text';
 import { InSheet } from '~/components/ui/states';
 import { useTheme } from '~/theme/provider';
-import { corner, font, gutter, hitTarget, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 
 /** Inside the page's own bar, where a screen's bar items are drawn. */
 const InBar = createContext(false);
@@ -96,10 +96,12 @@ export function PageHeader({ back, options, navigation }: NativeStackHeaderProps
             // Centred on the bar whatever the items' widths, clear of both; read between Back and the items.
             <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: hitTarget * 2 }]}>
               <Text
+                variant="headline"
+                weight="semibold"
                 accessibilityRole="header"
                 numberOfLines={1}
                 maxFontSizeMultiplier={1.4}
-                style={{ fontFamily: font.semibold, fontSize: 17, lineHeight: 24, color: colors.foreground, textAlign: 'center' }}
+                style={{ textAlign: 'center' }}
               >
                 {title}
               </Text>

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { requireAdmin } from '@/lib/auth';
-import { isPlaceholder } from '@/lib/env';
+import { mailStatus } from '@/lib/email/status';
 import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
 import { formatDate, formatNumber } from '@/lib/utils';
@@ -77,16 +77,9 @@ export default async function AdminEmailPage({
     Read here rather than fetched from /api/health: this page already runs on
     the server that holds the variables, and a page that depends on an HTTP
     call to itself has one more way to be wrong than a page that just looks.
+    The same read answers the app's console (lib/email/status.ts).
   */
-  const missing = [
-    ['SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY],
-    ['RESEND_API_KEY', process.env.RESEND_API_KEY],
-    ['RESEND_FROM', process.env.RESEND_FROM],
-  ]
-    // A REPLACE_ME placeholder from the Vercel import file counts as missing:
-    // it is present, so every Boolean check passes, and nothing sends.
-    .filter(([, value]) => isPlaceholder(value))
-    .map(([name]) => name as string);
+  const { missing } = mailStatus();
 
   const supabase = await createClient();
   const [activityRead, summaryRead] = await Promise.all([

@@ -254,6 +254,25 @@ describe("a call to the website while the session cannot be refreshed", () => {
   });
 });
 
+describe('an answer that is not the website’s', () => {
+  // Hotel and café Wi-Fi answer everything with their own sign-in page, 200,
+  // until the terms are accepted; a dropped connection leaves half a body.
+  const portal = () => new Response('<html><body>Accept the terms to continue</body></html>', { status: 200, headers: { 'content-type': 'text/html' } });
+  const truncated = () => new Response('{"ok":tr', { status: 200, headers: { 'content-type': 'application/json' } });
+
+  it.each([
+    ['a Wi-Fi sign-in page', portal],
+    ['half an answer', truncated],
+  ])('is no answer when it is %s, so a write is looked for before it is sent again', async (_, answer) => {
+    const { callAction, ApiError } = fresh();
+    network(answer);
+    const failure = await callAction('requestPasswordReset', { email: 'sara@example.com' }).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(ApiError);
+    // Status 0: `noAnswer` says it as offline, and it was not refused at the door.
+    expect((failure as InstanceType<typeof ApiError>).status).toBe(0);
+  });
+});
+
 describe('a refresh that never answers', () => {
   it('is given up on in seconds and tried again, and the call says no answer within its own time', async () => {
     const { SESSION_KEY, callAction, ApiError } = fresh();

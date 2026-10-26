@@ -1,0 +1,12 @@
+# The same scroll as expo-go-scroll-down.yaml, through the list rather than
+# down the screen edge. The edge swipe sits inside iOS's edge gesture, and on
+# some runs that gesture takes it: Maestro reports the swipe done and the
+# list has not moved. A finger that rests on a card can open its menu, so
+# this is only the second try (scripts/expo-go-look.sh).
+appId: host.exp.Exponent
+---
+- swipe:
+    start: 50%, 75%
+    end: 50%, 30%
+    duration: 250
+- waitForAnimationToEnd

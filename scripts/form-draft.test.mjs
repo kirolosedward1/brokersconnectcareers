@@ -51,7 +51,7 @@ function storage({ quota = Infinity, broken = false } = {}) {
 
 const { DRAFT_MAX_AGE_MS, draftKey, forgetDrafts, pruneDrafts, readDraft, removeDraft, writeDraft } =
   await import('../src/lib/form-draft.ts');
-const { uploadFailure } = await import('../src/lib/upload-failure.ts');
+const { afterDenied, uploadFailure } = await import('../src/lib/upload-failure.ts');
 
 const NOW = Date.UTC(2026, 9, 16, 12, 0, 0);
 
@@ -147,6 +147,33 @@ is('a 403', uploadFailure({ status: 403, statusCode: '403', message: 'Unauthoriz
 is('no response', uploadFailure({ name: 'StorageUnknownError', message: 'Failed to fetch' }), 'network');
 is('Safari’s no response', uploadFailure({ message: 'Load failed' }), 'network');
 is('a server error', uploadFailure({ status: 500, statusCode: '500', message: 'Internal Server Error' }), 'failed');
+
+console.log('— after a refusal by policy: signed out, or only offline?');
+is('somebody signed in may not upload here', afterDenied({ data: { user: { id: 'u' } }, error: null }), 'denied');
+is('the call itself threw: offline, not signed out', afterDenied(null), 'network');
+is('the auth server could not be reached: offline, not signed out', afterDenied({ data: { user: null }, error: { name: 'AuthRetryableFetchError' } }), 'network');
+is('no session: sign in again', afterDenied({ data: { user: null }, error: { name: 'AuthSessionMissingError' } }), 'signed_out');
+is('a revoked session: sign in again', afterDenied({ data: { user: null }, error: { name: 'AuthApiError' } }), 'signed_out');
+
+console.log('— every way out of an account takes its drafts with it');
+{
+  const { readdirSync, readFileSync, statSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const walk = (dir) =>
+    readdirSync(dir).flatMap((name) => {
+      const path = join(dir, name);
+      return statSync(path).isDirectory() ? walk(path) : /\.tsx?$/.test(name) ? [path] : [];
+    });
+  // A browser leaving an account: signing out here, or the account deleted.
+  const exits = walk('src').filter((path) => {
+    const text = readFileSync(path, 'utf8');
+    return /^['"]use client['"]/m.test(text) && /signOut\(\{\s*scope:\s*'local'|deleteMyAccount\(\)/.test(text);
+  });
+  is('found the ways out', exits.length >= 3, true);
+  for (const path of exits) {
+    is(`${path} forgets the drafts`, readFileSync(path, 'utf8').includes('forgetDrafts()'), true);
+  }
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

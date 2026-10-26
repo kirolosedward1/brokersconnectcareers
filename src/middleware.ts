@@ -2,9 +2,10 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
 import { routing, locales, ENGLISH_ENABLED } from '@/i18n/routing';
 import { updateSession } from '@/lib/supabase/middleware';
+import { redirectForEntry } from '@/lib/auth/entry-redirects';
 import { secondFactorChallenge } from '@/lib/auth/second-factor';
 import { safeNext } from '@/lib/safe-next';
-import { recordState } from '@/lib/seo/record-exists';
+import { goneRewritePath, recordState } from '@/lib/seo/record-exists';
 import { parseLandingSlug } from '@/lib/taxonomy';
 
 const handleI18n = createIntlMiddleware(routing);
@@ -55,8 +56,27 @@ function stripLocale(pathname: string): { locale: string; path: string } {
   return { locale: routing.defaultLocale, path: pathname };
 }
 
+/**
+ * The path, or a page under it. A prefix, not a decision that a string is an
+ * internal URL — that decision is safeNext's, and a `startsWith('/')` here is
+ * what the auth test treats as a second copy of it.
+ */
+function under(path: string, prefix: string): boolean {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
 function localized(locale: string, path: string): string {
   return locale === routing.defaultLocale ? path : `/${locale}${path}`;
+}
+
+/**
+ * A rewrite replaces the response that refreshed the session. The new cookies
+ * have to travel with it, or a signed-in reader who hit a missing listing
+ * would keep the token this request just rotated out.
+ */
+function carrySession(from: NextResponse, to: NextResponse): NextResponse {
+  for (const cookie of from.headers.getSetCookie()) to.headers.append('set-cookie', cookie);
+  return to;
 }
 
 /**
@@ -110,14 +130,32 @@ async function handle(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // English is translated but unpublished. Send /en/* to the Arabic equivalent
-  // rather than 404-ing it, and do it temporarily (307) so the URLs are not
-  // written off by search engines while the language is merely paused.
+  // English is translated but unpublished. Send /en and every page under it
+  // to the Arabic equivalent rather than 404-ing it, and do it temporarily
+  // (307) so the URLs are not written off by search engines while the language
+  // is merely paused.
   if (!ENGLISH_ENABLED) {
     const { pathname, search } = request.nextUrl;
-    if (pathname === '/en' || pathname.startsWith('/en/')) {
+    if (under(pathname, '/en')) {
       const target = pathname === '/en' ? '/' : pathname.slice(3);
       return NextResponse.redirect(new URL(`${target}${search}`, request.url), 307);
+    }
+  }
+
+  /*
+    `/welcome` is the app's signed-out marketing screen. On the website that
+    screen is the home page, for a signed-in reader and a signed-out one, so
+    the redirect is permanent and does not wait on the session. It runs before
+    the locale rewrite: `/en/welcome` has already been sent to `/welcome` above
+    while English is unpublished, and this hop does not point back at itself.
+  */
+  {
+    const { locale, path } = stripLocale(request.nextUrl.pathname);
+    if (path === '/welcome') {
+      const entry = redirectForEntry(path, request.nextUrl.search, false, false);
+      if (entry) {
+        return NextResponse.redirect(new URL(localized(locale, entry.href), request.url), entry.status);
+      }
     }
   }
 
@@ -130,18 +168,33 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   // still a better outcome than falling all the way through to the bare
   // fallback below and losing the locale rewrite with it.
   const { locale, path } = stripLocale(request.nextUrl.pathname);
-  const inConsole = path === '/admin' || path.startsWith('/admin/');
+  const inConsole = under(path, '/admin');
 
   let user = null;
   let isAdmin: boolean | null | undefined;
   let secondFactorDue = false;
+  let accessToken: string | null = null;
   try {
-    ({ user, isAdmin, secondFactorDue = false } = await updateSession(request, response, { checkAdmin: inConsole }));
+    ({ user, isAdmin, secondFactorDue = false, accessToken = null } = await updateSession(request, response, {
+      checkAdmin: inConsole,
+    }));
   } catch (error) {
     console.warn(
       '[middleware] session refresh failed, treating the request as anonymous:',
       error instanceof Error ? error.message : error,
     );
+  }
+
+  /*
+    `/mfa` is the app's code screen. Here the code is entered on the account
+    page, and where that is depends on the session, so the redirect is
+    temporary and not cached. The target is never `/mfa` or `/welcome`.
+  */
+  const entry = redirectForEntry(path, request.nextUrl.search, Boolean(user), secondFactorDue);
+  if (entry) {
+    const redirected = NextResponse.redirect(new URL(localized(locale, entry.href), request.url), entry.status);
+    if (entry.status === 307) redirected.headers.set('cache-control', 'private, no-store');
+    return redirected;
   }
 
   const needsAuth = PROTECTED.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
@@ -177,25 +230,64 @@ async function handle(request: NextRequest): Promise<NextResponse> {
   }
 
   /*
-    A detail URL whose record an anonymous visitor cannot see gets a real 404.
+    A detail URL this reader cannot see gets a real 404, signed in or not.
 
     The job, company and agent pages stream behind a loading skeleton, so by
     the time they learn their record is missing the 200 has been sent and
     notFound() can only draw the not-found UI under it. Asked here instead,
-    before anything is sent, and answered with the catch-all route — which
-    does not stream and so 404s properly — in the visitor's own language.
+    before anything is sent, and answered by the catch-all — which calls
+    notFound() and does not stream — in the visitor's own language.
 
-    Anonymous requests only. That is every crawler, and it is the one reader
-    for whom "not visible" and "not there" are the same thing: an owner
-    previewing a draft, or somebody a hidden profile applied to, is signed in
-    and goes through to the page, which decides for them as it always has.
-    Any failure to get an answer lets the request through unchanged.
+    Signed out, the anonymous key is the reader. Signed in, the question is
+    asked again with their session, so a draft they own, a listing they
+    applied to, or a consultant card they may open still reaches the page.
+    A card they are not allowed to open at all is left to the page, which
+    redirects them. No session token means the anonymous answer cannot be
+    trusted for them, so a miss is left to the page too. Any failure to get
+    an answer lets the request through unchanged.
   */
-  if (!user && request.method === 'GET' && (await recordState(path, parseLandingSlug)) === 'missing') {
+  /*
+    The gone page is only reached through the rewrite below, which carries the
+    header and the 410. A direct request for the internal path is a normal
+    miss, answered by the catch-all the same way every other unknown URL is.
+  */
+  if (under(path, '/gone')) {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}/__missing${path}`;
     url.search = '';
-    return NextResponse.rewrite(url);
+    return carrySession(response, NextResponse.rewrite(url));
+  }
+
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    const token = user ? accessToken : null;
+    const state = await recordState(path, parseLandingSlug, fetch, token);
+    // A signed-in reader with no token cannot be judged by the anonymous
+    // answer: that answer calls their own draft missing.
+    if (state === 'missing' && !(user && !token)) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/${locale}/__missing${path}`;
+      url.search = '';
+      return carrySession(response, NextResponse.rewrite(url));
+    }
+    /*
+      Expired, for everyone: an anonymous reader and a signed-in one see the
+      same ended listing. The status is set on this rewrite. The page it draws
+      does not stream behind a loading skeleton, and a cache must not keep a
+      410 after the listing is renewed.
+    */
+    if (state === 'gone') {
+      const target = goneRewritePath(locale, path);
+      if (target) {
+        const url = request.nextUrl.clone();
+        url.pathname = target;
+        url.search = '';
+        const headers = new Headers(request.headers);
+        headers.set('x-bc-gone', '1');
+        const rewritten = NextResponse.rewrite(url, { request: { headers }, status: 410 });
+        rewritten.headers.set('cache-control', 'no-store');
+        return carrySession(response, rewritten);
+      }
+    }
   }
 
   // A signed-in user with nothing left to do on /sign-in should not sit there.

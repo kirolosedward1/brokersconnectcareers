@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
+import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -12,11 +13,9 @@ import { ApplicationTimeline } from '~/components/applications/timeline';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Illustration } from '~/components/ui/illustration';
-import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
+import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
-  canWithdraw,
-  STATUS_VARIANT,
   useMyApplications,
   useWithdrawApplication,
   type CandidateApplication,
@@ -57,7 +56,7 @@ export default function ApplicationsScreen() {
       />
     );
   } else if (applications.isPending) {
-    body = <LoadingState />;
+    body = <SkeletonScreen />;
   } else if (applications.isError && !applications.data) {
     // Never "you have not applied" for a read that failed.
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;
@@ -149,7 +148,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const locale = useLocale();
   const { colors } = useTheme();
   const withdraw = useWithdrawApplication();
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'unavailable' | 'failed' | null>(null);
 
   const job = application.job;
   if (!job) return null;
@@ -158,16 +157,17 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const shown = displayJobStatus(job);
 
   const confirmWithdraw = () => {
-    dialog.alert(t('app.applications.withdrawTitle', { title }), t('app.applications.withdrawBody'), [
+    dialog.alert(t('myApplications.withdrawTitle', { title }), t('myApplications.withdrawBody'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('dashboard.withdraw'),
         style: 'destructive',
         onPress: () => {
-          setFailed(false);
+          setFailed(null);
           withdraw.mutate(application.id, {
             onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
-            onError: () => setFailed(true),
+            onError: (error) =>
+              setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
           });
         },
       },
@@ -185,21 +185,21 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[3] }}>
-        <View style={{ flex: 1, gap: 2 }}>
+        <View style={{ flex: 1, gap: space[0.5] }}>
           <Pressable
             accessibilityRole="link"
             onPress={() => router.push({ pathname: '/jobs/[slug]', params: { slug: job.slug } })}
           >
             <Text weight="semibold">{title}</Text>
           </Pressable>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: 2 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[3], rowGap: space[0.5] }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <Building2 size={14} color={colors.mutedForeground} />
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, job.company.name_ar, job.company.name_en)}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
               <MapPin size={14} color={colors.mutedForeground} />
               <Text variant="small" tone="mutedForeground">
                 {localized(locale, job.district.name_ar, job.district.name_en)}
@@ -207,7 +207,11 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
             </View>
           </View>
         </View>
-        <Badge variant={STATUS_VARIANT[application.status]} label={t(`applicationStatus.${application.status}`)} />
+        {application.status === 'withdrawn' ? (
+          <Badge label={t('applicationStatus.withdrawn')} />
+        ) : (
+          <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+        )}
       </View>
 
       {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
@@ -268,7 +272,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 
       {failed ? (
         <Text variant="caption" tone="destructive" accessibilityRole="alert">
-          {t('common.errorBody')}
+          {failed === 'unavailable' ? t('myApplications.withdrawUnavailable') : t('common.errorBody')}
         </Text>
       ) : null}
     </View>
@@ -278,6 +282,6 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 /** A sentence about the row it sits in: a rule down its leading edge, no box. */
 function Aside({ color, children }: { color: string; children: React.ReactNode }) {
   return (
-    <View style={{ borderStartWidth: 2, borderStartColor: color, paddingStart: space[3], gap: 2 }}>{children}</View>
+    <View style={{ borderStartWidth: 2, borderStartColor: color, paddingStart: space[3], gap: space[0.5] }}>{children}</View>
   );
 }

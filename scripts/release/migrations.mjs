@@ -571,6 +571,9 @@ function changedOutsideMigrations(mergeBase) {
  */
 const RENUMBERED = {
   '20260101000068_what_the_provider_said_happened.sql': '20260101000069_what_the_provider_said_happened.sql',
+  // Merged under the version my_company_is_nobodys_when_signed_out already had
+  // (and production had applied); renumbered before production ran it.
+  '20260101000350_a_cv_line_or_a_note_written_twice_by_one_retry.sql': '20260101000357_a_cv_line_or_a_note_written_twice_by_one_retry.sql',
 };
 
 function lint(options) {

@@ -61,6 +61,9 @@ export default async function AgentPage({ params }: { params: Promise<Params> })
     a colleague's address. A directory reader with no row gets the 404.
   */
   if (!agent) {
+    // A directory reader with no row is a 404. Middleware already answered
+    // that with a real status when it could; this is the same decision when
+    // the lookup could not. Anyone else is redirected by the guard, not 404'd.
     await requireAgentProfileViewer(locale, { user_id: null });
     notFound();
   }

@@ -17,7 +17,9 @@ import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { corner, font, gutter, hitTarget, space, type as scale } from '~/theme/tokens';
 import { useGatedModal } from '~/lib/sheet-gate';
+import { useConfirmDiscard } from '~/lib/use-leave-guard';
 import { useSheetFence } from '~/components/ui/sheet-fence';
+import { useAnnounce } from '~/lib/use-announce';
 
 type Target = ReportInput['target'];
 
@@ -71,6 +73,8 @@ export function ReportButton({
   const { session } = useSession();
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
+  // Said to VoiceOver too: a live region is Android's alone.
+  useAnnounce(t('thanks'), sent);
 
   if (sent) {
     return (
@@ -136,6 +140,16 @@ function ReportSheet({
   const [detail, setDetail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Pulled down with a reason chosen or a word typed, the sheet stays and asks
+  // first (iOS hands the attempt to onRequestClose); while the report is being
+  // sent it does not go at all.
+  const dirty = reason !== null || detail.trim() !== '';
+  const confirmDiscard = useConfirmDiscard();
+  const requestClose = () => {
+    if (pending) return;
+    if (dirty) confirmDiscard(onClose);
+    else onClose();
+  };
 
   // Each opening starts empty — no reason chosen for the reader, no refusal
   // left over from the last time — as the filter sheet starts from the board.
@@ -180,7 +194,7 @@ function ReportSheet({
   }
 
   return (
-    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal={!dirty && !pending} onRequestClose={requestClose}>
       <KeyboardRoom>
         <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View

@@ -16,9 +16,10 @@ const LETTERS = { sm: 'headline', md: 'title', lg: 'display' } as const satisfie
  * A company's mark — the website's CompanyLogo.
  *
  * A supplied logo fills its tile edge to edge, as an app's icon fills its
- * own: a square one exactly, a wider one losing a little at its sides. White
- * behind it, for a logo drawn on nothing (most are drawn for a white ground).
- * Without one, the
+ * own: a square one exactly, a wider one whole, with white above and below —
+ * contain, as the website draws it, never cover: a logo cropped to fill a
+ * square is a logo with its name cut off. White behind it, for a logo drawn
+ * on nothing (most are drawn for a white ground). Without one, the
  * first letter on one of four theme tints — sapphire, champagne, the hero's
  * navy, stone — chosen from the slug by the website's hash, so a company is
  * always drawn in the same one.
@@ -66,7 +67,7 @@ export function CompanyLogo({
         <Image
           source={{ uri: logo }}
           recyclingKey={logo}
-          contentFit="cover"
+          contentFit="contain"
           style={{ flex: 1 }}
           onError={() => setFailedLogo(logo)}
           accessible={false}

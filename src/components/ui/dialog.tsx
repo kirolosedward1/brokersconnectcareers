@@ -171,7 +171,7 @@ export function Dialog({
   */
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/50"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/50 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
       onMouseDown={(event) => {
         if (!boxRef.current?.contains(event.target as Node)) onClose();
       }}
@@ -183,7 +183,8 @@ export function Dialog({
           aria-modal="true"
           aria-label={label}
           tabIndex={-1}
-          className="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg"
+          // Fades in and rises a little, once, as it opens; nothing on the way out, where it would only hold up what comes next.
+          className="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-2 motion-safe:duration-200"
         >
           <button
             type="button"

@@ -1,17 +1,15 @@
 import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import { isAdmin } from '@/lib/permissions';
 import type { ApprovalStatus, SafetyFlag, UserRole } from '@/lib/supabase/database.types';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
-import { AlertTriangle, ExternalLink, Info, KeyRound, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
+import { AlertTriangle, Info, KeyRound, ShieldAlert, ShieldCheck } from '~/components/ui/lucide';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useAdminDoor } from '~/features/admin/door';
-import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
@@ -19,11 +17,6 @@ import { space } from '~/theme/tokens';
 /** Whole days since a date, as the website's queues count a wait. */
 export function daysSince(date: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000));
-}
-
-/** A page of the website's console, in the in-app browser: what the app's console leaves to it. */
-export function openOnWebsite(path: string) {
-  WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
 }
 
 /**
@@ -62,10 +55,12 @@ export function AdminGate({ children }: { children: ReactNode }) {
         body={t('app.admin.door.enrolBody')}
         action={
           <View style={{ gap: space[2], alignSelf: 'stretch' }}>
+            {/* Set up here, on the phone (src/app/mfa-enrol.tsx): the verify lifts this
+                session to aal2, and the door, keyed by the session's token, opens. */}
             <Button
-              label={t('app.admin.door.enrolOpen')}
-              icon={<ExternalLink size={18} color={colors.primaryForeground} />}
-              onPress={() => openOnWebsite('/dashboard/account?mfa=required')}
+              label={t('account.mfaSetup')}
+              icon={<ShieldCheck size={18} color={colors.primaryForeground} />}
+              onPress={() => router.push('/mfa-enrol')}
             />
             <Button
               label={t('app.admin.door.enrolDone')}

@@ -1,5 +1,8 @@
 import 'server-only';
+import { RETRYABLE_TEMPLATES } from './retryable';
 import {
+  notifyBrokerOfJobApproval,
+  notifyBrokerOfWithdrawal,
   notifyCandidateOfApplication,
   notifyCandidateOfStatus,
   notifyCompanyVerification,
@@ -48,7 +51,9 @@ export const REBUILDERS: Record<string, Rebuild> = {
   // state): rebuilt for everybody, a retry after an edit sent "your listing
   // is live" to every member again, about a listing back in review.
   job_approved: (id, userId) => notifyEmployerOfModeration(id, true, undefined, userId),
+  job_approved_owner: (id, userId) => notifyBrokerOfJobApproval(id, userId),
   job_rejected: (id, userId) => notifyEmployerOfModeration(id, false, undefined, userId),
+  candidate_withdrew: (id, userId) => notifyBrokerOfWithdrawal(id, userId),
   company_verified: (id, userId) => notifyCompanyVerification(id, true, undefined, userId),
   company_verification_needed: (id, userId) => notifyCompanyVerification(id, false, undefined, userId),
   company_verification_revoked: (id, userId) => notifyCompanyVerificationRevoked(id, userId),
@@ -67,8 +72,8 @@ export const REBUILDERS: Record<string, Rebuild> = {
  *
  *   saved_search_digest / company_follow_digest / applicant_digest — a
  *     point-in-time list. Stale is worse than absent.
- *   application_withdrawn — the application row is gone; there is nothing left
- *     to rebuild from.
+ *   application_withdrawn — the mail announces the moment they withdrew. The
+ *     row stays, but sending it again later would repeat an announcement.
  *   profile_ready / visibility_changed / account_approved / account_rejected —
  *     these carry a value at a moment (the visibility chosen, the decision
  *     made). Re-deriving would report the *current* value, which may no longer
@@ -96,7 +101,15 @@ export const NOT_RETRYABLE = [
  * that reported success would have hidden.
  *
  * Every template notify.ts sends is either rebuilt or listed above.
+ *
+ * The list itself lives in retryable.ts, which the app imports too (this
+ * file is server-only): the two are checked here, at load, to be one set.
  */
-export function isRetryable(template: string): boolean {
-  return Object.prototype.hasOwnProperty.call(REBUILDERS, template);
+export { isRetryable } from './retryable';
+
+{
+  const listed = new Set<string>(RETRYABLE_TEMPLATES);
+  const rebuilt = Object.keys(REBUILDERS);
+  const drift = [...rebuilt.filter((t) => !listed.has(t)), ...[...listed].filter((t) => !(t in REBUILDERS))];
+  if (drift.length) throw new Error(`email/retryable.ts and the rebuilders disagree about: ${drift.join(', ')}`);
 }

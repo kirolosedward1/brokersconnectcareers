@@ -118,7 +118,7 @@ begin
     insert into companies (owner_id, name_ar, name_en, slug, about_ar, headcount_band,
                            district_id, verification_status, verified_at)
     values (v_employer, 'حساب مراجعة التطبيق', 'App Review account', 'brokers-connect-app-review',
-            'الحساب ده بيستخدمه فريق مراجعة متجر التطبيقات عشان يجرّب التطبيق. الإعلانات اللي هنا للتجربة بس، والتقديم عليها لفريق المراجعة بس.',
+            'يستخدم فريق مراجعة متجر التطبيقات هذا الحساب لتجربة التطبيق. الإعلانات هنا للتجربة فقط، والتقديم إليها لفريق المراجعة فقط.',
             '1_10', v_district, 'verified', now())
     returning id into v_company;
   elsif not exists (select 1 from companies where id = v_company and owner_id = v_employer) then
@@ -137,8 +137,8 @@ begin
       'app-review-property-consultant', 'primary', 'full_time', 'junior_1_3', 1,
       v_district, 8000, 12000, 'percentage', 1.50,
       'عمولة 1.5٪ من قيمة الوحدة.', 'company_provided', array['social_insurance'],
-      'الإعلان ده موجود عشان فريق مراجعة متجر التطبيقات يجرّب التقديم ومتابعة المتقدمين. مش وظيفة حقيقية، والتقديم عليه لفريق المراجعة بس.',
-      'مفيش متطلبات: الإعلان للتجربة بس.', 'active',
+      'هذا الإعلان موجود لكي يجرّب فريق مراجعة متجر التطبيقات التقديم ومتابعة المتقدمين. ليست وظيفة حقيقية، والتقديم إليه لفريق المراجعة فقط.',
+      'لا توجد متطلبات: الإعلان للتجربة فقط.', 'active',
       v_first_published, now() + interval '30 days'
     )
     returning id into v_job;
@@ -159,8 +159,8 @@ begin
       'app-review-sales-manager', 'resale', 'full_time', 'mid_3_5', 1,
       v_district, 15000, 20000, 'percentage', 1.00,
       'عمولة 1٪ من قيمة البيع.', 'company_provided', array['social_insurance', 'medical'],
-      'الإعلان ده موجود عشان فريق مراجعة متجر التطبيقات يجرّب التقديم من حساب المتقدّم. مش وظيفة حقيقية، والتقديم عليه لفريق المراجعة بس.',
-      'مفيش متطلبات: الإعلان للتجربة بس.', 'active',
+      'هذا الإعلان موجود لكي يجرّب فريق مراجعة متجر التطبيقات التقديم من حساب المتقدّم. ليست وظيفة حقيقية، والتقديم إليه لفريق المراجعة فقط.',
+      'لا توجد متطلبات: الإعلان للتجربة فقط.', 'active',
       v_second_published, now() + interval '30 days'
     );
   end if;
@@ -177,7 +177,7 @@ begin
   on conflict (user_id) do nothing;
 
   insert into applications (job_id, candidate_id, status, experience_band, note, cv_path)
-  select v_job, v_candidate, 'new', 'junior_1_3', 'متاح أبدأ فوراً.', p->>'cv'
+  select v_job, v_candidate, 'new', 'junior_1_3', 'متاح للبدء فوراً.', p->>'cv'
    where not exists (select 1 from applications where job_id = v_job and candidate_id = v_candidate);
 
   -- Hidden by choice: only the owner's own change stamps that a visibility was

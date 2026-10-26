@@ -11,8 +11,10 @@ import { ApplicantsSuspended } from '@/components/employer/applicants-suspended'
 import { markApplicantsSeen } from '@/lib/applicants-seen';
 import { createClient } from '@/lib/supabase/server';
 import { formatNumber } from '@/lib/utils';
+import { APPLICATION_STAGES, PIPELINE_STAGES, orderInbox, withdrawnAtMissing } from '@/lib/application-stages';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional, raise } from '@/lib/queries/error';
+import { looseArabicNeedle } from '@/lib/search/needle';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import type {
   ApplicationNoteRow,
@@ -59,8 +61,6 @@ type Row = {
  * that has no listings to have applicants on.
  */
 const NO_COMPANY = '00000000-0000-0000-0000-000000000000';
-
-const STAGES = ['new', 'shortlisted', 'interview', 'hired', 'rejected'] as const;
 
 /**
  * How many applicant cards this page draws.
@@ -140,8 +140,13 @@ export default async function AllApplicantsPage({
     applicant on the platform rather than nobody, which is a confusing way to
     find out you typed a wildcard.
   */
-  const query_ = (rawQuery ?? '').trim().slice(0, 80);
-  const pattern = query_ ? `%${query_.replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
+  /*
+    And with the letters Arabic spells more than one way left open, as the
+    console's lists and the app's inbox read a name (lib/search/needle.ts):
+    «احمد» found nobody called «أحمد» here while it found them on the phone.
+  */
+  const query_ = looseArabicNeedle((rawQuery ?? '').trim().slice(0, 80));
+  const pattern = query_ ? `%${query_}%` : null;
   const supabase = await createClient();
 
   /*
@@ -177,49 +182,52 @@ export default async function AllApplicantsPage({
     number that only appears at two hundred times today's data. Revisit it with
     traffic, not with instinct.
   */
-  let query = supabase
-    .from('applications')
-    .select(
-      `
-      id, status, created_at, note, decision_note, cv_path, experience_band, employer_viewed_at,
-      candidate:profiles!inner (
-        full_name,
-        whatsapp_phone,
-        avatar_url,
-        agent_profiles (
-          slug, headline_ar, headline_en, years_experience,
-          tracks, district_ids, units_closed, volume_egp
-        )
-      ),
-      job:jobs!inner (id, title_ar, title_en, track)
-    `,
-    )
-    .eq('job.company_id', viewer.company?.id ?? NO_COMPANY)
-    .order('created_at', { ascending: false })
-    .limit(APPLICANTS_SHOWN);
+  // A fresh builder each time: the fallback below has to ask again, and a
+  // builder that has already been sent cannot be.
+  const activeStage = APPLICATION_STAGES.find((value) => value === stage);
+  const filtered = () => {
+    let next = supabase
+      .from('applications')
+      .select(
+        `
+        id, status, created_at, note, decision_note, cv_path, experience_band, employer_viewed_at,
+        candidate:profiles!inner (
+          full_name,
+          whatsapp_phone,
+          avatar_url,
+          agent_profiles (
+            slug, headline_ar, headline_en, years_experience,
+            tracks, district_ids, units_closed, volume_egp
+          )
+        ),
+        job:jobs!inner (id, title_ar, title_en, track)
+      `,
+      )
+      .eq('job.company_id', viewer.company?.id ?? NO_COMPANY);
 
-  // Narrowed rather than asserted, so an unknown ?stage= in the URL is simply
-  // ignored instead of reaching the query as an invalid enum value.
-  const activeStage = STAGES.find((value) => value === stage);
-  if (activeStage) query = query.eq('status', activeStage);
-  /*
-    The same rule the stage gets, which this filter was left out of.
+    // Narrowed rather than asserted, so an unknown ?stage= in the URL is simply
+    // ignored instead of reaching the query as an invalid enum value.
+    if (activeStage) next = next.eq('status', activeStage);
+    /*
+      The same rule the stage gets, which this filter was left out of.
 
-    `?job=` is compared against a uuid column, so anything that is not one is
-    not a filter that matches nothing — it is a cast error on the way to the
-    database. Row-level security would have refused another company's id
-    anyway; this is about the shape, and about the page below rendering "no
-    applicants yet" for a URL that was simply malformed.
-  */
-  if (jobFilter && UUID.test(jobFilter)) query = query.eq('job_id', jobFilter);
-  if (band) query = query.eq('experience_band', band);
-  // On the joined listing — `jobs!inner` above is what makes this a filter
-  // rather than a null-out of the embed.
-  if (track) query = query.eq('job.track', track);
-  // On the joined profile, which is why that embed is `!inner`. Filtered in
-  // the database rather than over the 200 rows this page fetches — a search
-  // that quietly only looks at the most recent page is worse than none.
-  if (pattern) query = query.ilike('candidate.full_name', pattern);
+      `?job=` is compared against a uuid column, so anything that is not one is
+      not a filter that matches nothing — it is a cast error on the way to the
+      database. Row-level security would have refused another company's id
+      anyway; this is about the shape, and about the page below rendering "no
+      applicants yet" for a URL that was simply malformed.
+    */
+    if (jobFilter && UUID.test(jobFilter)) next = next.eq('job_id', jobFilter);
+    if (band) next = next.eq('experience_band', band);
+    // On the joined listing — `jobs!inner` above is what makes this a filter
+    // rather than a null-out of the embed.
+    if (track) next = next.eq('job.track', track);
+    // On the joined profile, which is why that embed is `!inner`. Filtered in
+    // the database rather than over the 200 rows this page fetches — a search
+    // that quietly only looks at the most recent page is worse than none.
+    if (pattern) next = next.ilike('candidate.full_name', pattern);
+    return next;
+  };
 
   /*
     The error is read, not dropped.
@@ -235,7 +243,18 @@ export default async function AllApplicantsPage({
     this page. The console has an error boundary with a Retry, which is a
     truthful answer where "nobody applied" is not.
   */
-  const { data, error } = await query;
+  // Withdrawn last before the cap, and only on the mixed list. A single stage
+  // is already one kind of row, and newest-first is what that view is for.
+  // Sorting the page afterwards would let a run of recent withdrawals fill
+  // the two hundred and hide an older application that is still open. A
+  // database without withdrawn_at yet has no withdrawn rows, so created_at
+  // alone is the same order.
+  const first = filtered();
+  const ordered = activeStage ? first.order('created_at', { ascending: false }) : orderInbox(first);
+  let { data, error } = await ordered.limit(APPLICANTS_SHOWN);
+  if (!activeStage && error && withdrawnAtMissing(error)) {
+    ({ data, error } = await filtered().order('created_at', { ascending: false }).limit(APPLICANTS_SHOWN));
+  }
   if (error) raise(error, 'loading the applicant inbox');
 
   const rows = (data ?? []) as unknown as Row[];
@@ -328,10 +347,12 @@ export default async function AllApplicantsPage({
   if (countError) raise(countError, 'counting the applicant stages');
 
   const stageCount = new Map<string, number>();
+  let totalCount = 0;
   for (const item of (statuses ?? []) as { status: string }[]) {
+    if (item.status === 'withdrawn') continue;
     stageCount.set(item.status, (stageCount.get(item.status) ?? 0) + 1);
+    totalCount += 1;
   }
-  const totalCount = (statuses ?? []).length;
 
   const districts = await optional(getDistricts(), []);
   const districtName = new Map(
@@ -403,7 +424,7 @@ export default async function AllApplicantsPage({
    * paints its own ground, so this holds in both themes without a dark variant
    * and without a token that only exists inside a media query.
    */
-  const STAGE_COLOUR: Record<(typeof STAGES)[number], string> = {
+  const STAGE_COLOUR: Record<(typeof PIPELINE_STAGES)[number], string> = {
     new: 'oklch(0.55 0.16 266)',
     shortlisted: 'oklch(0.55 0.16 300)',
     interview: 'oklch(0.52 0.13 70)',
@@ -569,7 +590,7 @@ export default async function AllApplicantsPage({
           </span>
         </Link>
 
-        {STAGES.map((value) => {
+        {PIPELINE_STAGES.map((value) => {
           const active = stage === value;
           const count = stageCount.get(value) ?? 0;
           return (

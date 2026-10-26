@@ -18,7 +18,7 @@ export type ExperienceBand = 'fresh_0_1' | 'junior_1_3' | 'mid_3_5' | 'senior_5_
 export type LeadsSource = 'company_provided' | 'self_generated' | 'hybrid';
 export type CommissionType = 'percentage' | 'split' | 'undisclosed' | 'none';
 export type JobStatus = 'draft' | 'pending_review' | 'active' | 'expired' | 'closed' | 'rejected';
-export type ApplicationStatus = 'new' | 'shortlisted' | 'interview' | 'hired' | 'rejected';
+export type ApplicationStatus = 'new' | 'shortlisted' | 'interview' | 'hired' | 'rejected' | 'withdrawn';
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected';
 export type AgentVisibility = 'public' | 'verified_employers_only' | 'hidden';
 export type AgentAvailability = 'open_to_offers' | 'employed_not_looking' | 'actively_searching';
@@ -228,6 +228,8 @@ export type ApplicationRow = Timestamped & {
   employer_viewed_at: string | null;
   /** The employer's reason for the current status. The candidate sees it. */
   decision_note: string | null;
+  /** Set when the candidate withdraws. Null on a standing application. */
+  withdrawn_at: string | null;
 };
 
 export type CandidateSummary = {
@@ -413,6 +415,8 @@ export type AgentExperienceRow = Timestamped & {
   ended: string | null;
   highlights: string | null;
   sort_order: number;
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
+  idempotency_key?: string | null;
 };
 
 export type AgentEducationRow = Timestamped & {
@@ -423,6 +427,8 @@ export type AgentEducationRow = Timestamped & {
   field: string | null;
   graduated: number | null;
   sort_order: number;
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
+  idempotency_key?: string | null;
 };
 
 export type AgentCertificationRow = Timestamped & {
@@ -433,6 +439,8 @@ export type AgentCertificationRow = Timestamped & {
   issued: string | null;
   expires: string | null;
   sort_order: number;
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
+  idempotency_key?: string | null;
 };
 
 /**
@@ -448,6 +456,8 @@ export type ApplicationNoteRow = {
   author_id: string | null;
   body: string;
   created_at: string;
+  /** The form's own key, so a retry finds this row rather than writing a second (migration 350). Absent until 350 is applied. */
+  idempotency_key?: string | null;
 };
 
 export type AgentProfileRow = Timestamped & {
@@ -592,6 +602,15 @@ export type LeasedEmailRow = {
   user_id: string | null;
   attempts: number;
   lock_token: string;
+  /**
+   * Filled in by the sweeper after the lease, from the row itself. The lease
+   * function does not return them. `ageUnknown` means that read failed or
+   * missed the row: the sweeper treats it as outside the 48-hour window.
+   */
+  created_at?: string | null;
+  requeued_at?: string | null;
+  status?: EmailStatus;
+  ageUnknown?: boolean;
 };
 
 /** Somebody asking for help, or an owner asking for their account to be deleted (migrations 201, 330). */
@@ -731,6 +750,8 @@ export type SettleLeasedOutcome = 'cancelled' | 'dead' | 'defer' | 'failed';
 export type SavedJobRow = Timestamped & {
   candidate_id: string;
   job_id: string;
+  /** The candidate's own line about the listing (migration 356): 1–300 characters, or null. */
+  note: string | null;
 };
 
 /**
@@ -1348,12 +1369,29 @@ export type Database = {
         { company_id: string; period: string; granted_at?: string }
       >;
       /**
-       * Written through claim_email/record_email_attempt rather than a plain
-       * insert, so the unique dedupe key is claimed in one statement. RLS is on
-       * with no policies at all: the only readers are the service role and
-       * admins going through email_activity().
+       * The ordinary path is claim_email then record_email_attempt, so the
+       * dedupe key is claimed in one statement. The insert shape is the
+       * fallback for a claim that itself failed and left no row: a retryable
+       * `failed` attempt, and nothing else. RLS is on with no policies at all:
+       * the only readers are the service role and admins going through
+       * email_activity().
        */
-      email_log: Table<EmailLogRow, never>;
+      email_log: Table<
+        EmailLogRow,
+        {
+          /** Set by the app before the insert, so a lost response still names this row. */
+          id?: string;
+          template: string;
+          recipient: string;
+          status?: EmailStatus;
+          error?: string | null;
+          dedupe_key?: string | null;
+          user_id?: string | null;
+          entity_type?: string | null;
+          entity_id?: string | null;
+          next_attempt_at?: string | null;
+        }
+      >;
       /** Scheduled-job runs. RLS on, no policies: service role and admin functions only. */
       job_runs: Table<JobRunRow, never>;
       /** Its owner reads it; register_push_device / unregister_push_device write it; the sender disables it. */
@@ -1535,6 +1573,15 @@ export type Database = {
        */
       candidate_summary: { Args: Empty; Returns: CandidateSummary };
       employer_summary: { Args: Empty; Returns: EmployerSummary };
+      /**
+       * The candidate withdraws their own open application. Empty when it is
+       * not theirs or the outcome is no longer open. previous_cv_path is the
+       * file the row was holding; the row itself keeps cv_path null.
+       */
+      withdraw_application: {
+        Args: { p_id: string };
+        Returns: { application_id: string; previous_cv_path: string | null }[];
+      };
       admin_summary: { Args: Empty; Returns: AdminSummary };
       employer_trend: { Args: Empty; Returns: EmployerTrend };
       admin_trend: { Args: Empty; Returns: AdminTrend };

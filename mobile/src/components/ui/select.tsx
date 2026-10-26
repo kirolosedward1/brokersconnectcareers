@@ -4,6 +4,7 @@ import { Check, ChevronDown, X } from '~/components/ui/lucide';
 import { useTranslations } from 'use-intl';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useFieldError } from './field';
@@ -47,6 +48,7 @@ export function Select<T extends string | number>({
   // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
   const fence = useSheetFence();
   const { colors } = useTheme();
+  const large = useLargeText();
   const insets = useSafeAreaInsets();
   const error = useFieldError();
   const [open, setOpen] = useState(false);
@@ -80,22 +82,22 @@ export function Select<T extends string | number>({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: space[2],
-          paddingHorizontal: space[4] - 2,
+          paddingHorizontal: space[3.5],
           ...corner('lg'),
           borderWidth: 1,
           borderColor: error ? colors.destructive : colors.input,
           backgroundColor: pressed ? colors.muted : colors.card,
         })}
       >
-        {/* Inline, the words wrap rather than cut: it is how the largest text sizes show a choice. */}
-        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel ? undefined : 1} style={{ flexShrink: 1 }}>
+        {/* Inline, or at the largest text sizes, the words wrap rather than cut. */}
+        <Text tone={current ? 'foreground' : 'mutedForeground'} numberOfLines={inlineLabel || large ? undefined : 1} style={{ flexShrink: 1 }}>
           {inlineLabel ? <Text tone="mutedForeground">{`${label}: `}</Text> : null}
           {current?.label ?? placeholder}
         </Text>
         <ChevronDown size={18} color={colors.mutedForeground} />
       </Pressable>
 
-      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
+      <Modal visible={gate.visible} onDismiss={gate.onDismiss} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={() => setOpen(false)}>
         <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
           <View
             style={{

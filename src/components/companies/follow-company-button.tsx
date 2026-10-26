@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { BellPlus, BellRing } from 'lucide-react';
-import { useRouter } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
+import { useSignInGate } from '@/components/auth/sign-in-gate';
 import { cn } from '@/lib/utils';
 import { followCompany, unfollowCompany } from '@/lib/actions/saved-searches';
 import { reach } from '@/lib/reach';
@@ -18,10 +18,11 @@ import { useSessionRecovery } from '@/lib/session-expired';
  * and the same switch on the dashboard. The button says the outcome — you will
  * hear about new roles — rather than the mechanism.
  *
- * Offered to signed-out readers too, pointing at sign-in with a `next` back to
- * the company. Hiding it would mean only people who already have an account
- * ever discover it, which is backwards for something whose whole job is to
- * bring people back.
+ * Offered to signed-out readers too: pressed, the sign-in dialog opens over
+ * the page (sign-in-gate.tsx) and the follow goes through once they are in,
+ * with `next` back to the company for a sign-up or a one-tap provider. Hiding
+ * it would mean only people who already have an account ever discover it,
+ * which is backwards for something whose whole job is to bring people back.
  *
  * Signed-in readers get it only if they are candidates, which the company page
  * decides — the row this writes is a candidate's, and the insert policy says
@@ -44,7 +45,7 @@ export function FollowCompanyButton({
 }) {
   const t = useTranslations('companies');
   const tCommon = useTranslations('common');
-  const router = useRouter();
+  const requireSignIn = useSignInGate();
 
   const [following, setFollowing] = useState(initialFollowing);
   const [error, setError] = useState<string | null>(null);
@@ -53,10 +54,15 @@ export function FollowCompanyButton({
 
   function onClick() {
     if (!signedIn) {
-      router.push(`/sign-in?next=${encodeURIComponent(`/companies/${slug}`)}`);
+      void requireSignIn({ reason: 'follow', next: `/companies/${slug}` }).then((ok) => {
+        if (ok) toggle();
+      });
       return;
     }
+    toggle();
+  }
 
+  function toggle() {
     // Optimistic, like every other bookmark on the site: the state is one
     // click to restore, and waiting on a round trip to acknowledge a follow
     // makes the page feel broken.
