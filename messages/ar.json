@@ -1293,7 +1293,22 @@
     "appealsCount": "التظلمات: {count} (منها {open} مفتوحة)",
     "decisionsCount": "القرارات على هذا الحساب: {count}",
     "notesCount": "الملاحظات: {count}",
-    "activityEmpty": "لا شيء بعد."
+    "activityEmpty": "لا شيء بعد.",
+    "help": "دليل الاستخدام",
+    "helpLede": "شرح كل شاشة في لوحة الإدارة: ماذا تفعل، وكيف تُستخدم، وما الذي يتغيّر بعد القرار.",
+    "helpSearchLabel": "ابحث في الدليل",
+    "helpSearchPlaceholder": "ابحث عن شاشة أو إجراء أو حالة…",
+    "helpEmptyTitle": "لا توجد نتائج مطابقة",
+    "helpEmptyBody": "جرّب جزءًا من اسم الشاشة أو نص الزر. البحث يتجاهل التشكيل، ويساوي بين أشكال الألف، وبين التاء المربوطة والهاء، وبين الألف المقصورة والياء.",
+    "helpToc": "المحتويات",
+    "helpSteps": "الخطوات",
+    "helpFields": "الحقول والخيارات",
+    "helpStatuses": "الحالات",
+    "helpTips": "ملاحظات",
+    "helpOpen": "افتح الصفحة",
+    "helpContactLead": "إن لم تجد ما تبحث عنه، راسل الدعم:",
+    "helpResults": "{count, plural, one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
+    "helpClearSearch": "امسح البحث"
   },
   "reportReason": {
     "fake_listing": "إعلان وهمي",
