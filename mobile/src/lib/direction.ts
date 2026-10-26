@@ -1,29 +1,42 @@
 import { I18nManager } from 'react-native';
 import Constants from 'expo-constants';
-import { defaultLocale, dirOf, type Locale } from '@/lib/locale';
+import { defaultLocale, dirOf, ENGLISH_ENABLED, type Locale } from '@/lib/locale';
 
 /**
- * The direction the app is laid out in: right to left while it is Arabic only
- * (app.config.ts, `forcesRTL`), or when the phone's language asks for it.
+ * The direction the app is laid out in.
  *
- * Given to every view and every native bar by the app itself, not left to
- * the direction React Native fixes when the screen is created. Expo Go
- * creates that screen before it applies the app's `forcesRTL` whenever it
- * opens an update from the network or comes back from its own home screen
- * (SDK 57's EXAppViewController), and lays native bars out in Expo Go's own
- * language: the app came up left to right, with its tab bar the wrong way
- * round, on the owner's iPhone. Starting the app again to correct it did not
- * correct it there.
+ * While English is unpublished the app is Arabic, so this is Arabic's
+ * direction, taken from the locale when the module loads. It does not ask
+ * `I18nManager`, and it does not read `extra.forcesRTL`.
  *
- * So the root layout lays everything out in this direction (`direction` on
- * its outermost view, which React Native's layout and its text alignment
- * follow), the navigators' headers and back gestures take it from the
- * navigation's own direction (LocaleDirContext), and the tab bar is given it
- * (src/app/(tabs)/_layout.tsx). A build of the app is created right to left
- * already; there the same values change nothing.
+ * SDK 58 stopped turning iOS right to left from the phone's language when
+ * `supportsRTL` is set. `I18nManager.isRTL` is then true only after
+ * `forceRTL` — the expo-localization plugin writes that into the binary, and
+ * it takes effect on the next process start — or when the phone's language
+ * is one of the app's localizations (`CFBundleLocalizations` is `ar` and
+ * `en`). Neither holds in Expo Go. Expo Go does not use this app's
+ * Info.plist. It applies the manifest's `forcesRTL` after it has created
+ * the screen (an update opened from the network, or a return from its own
+ * home screen), and it resets an `I18nManager.forceRTL` call when its
+ * launcher opens. `Updates.reloadAsync` after forcing does not stick there;
+ * the app does not reload to correct direction.
+ *
+ * One value, so the layout and the glyphs that follow the reading cannot
+ * disagree. The root layout sets it on its outermost view, the navigators'
+ * headers and back gestures take it from LocaleDirContext, the tab bar is
+ * given it, and every sheet, chevron and mirrored icon reads it. There is
+ * no per-icon override.
+ *
+ * The day English is published, `forcesRTL` goes (app.config.ts) and a
+ * language switch has to decide the direction. Until that switch exists,
+ * the published app falls back to the manifest flag or `I18nManager`, which
+ * is the same limit as before this was the locale's.
  */
-export const appDirection: 'rtl' | 'ltr' =
-  Constants.expoConfig?.extra?.forcesRTL === true || I18nManager.isRTL ? 'rtl' : 'ltr';
+export const appDirection: 'rtl' | 'ltr' = !ENGLISH_ENABLED
+  ? dirOf(defaultLocale)
+  : Constants.expoConfig?.extra?.forcesRTL === true || I18nManager.isRTL
+    ? 'rtl'
+    : 'ltr';
 
 /**
  * The language the screens are drawn in.

@@ -459,11 +459,17 @@ describe("the app's alerts", () => {
     expect(withdraw).toHaveBeenCalledTimes(1);
   });
 
-  it("are iOS's own, which shows over any sheet, asked as given where nothing needs turning", () => {
+  it("are iOS's own, which shows over any sheet, with Cancel on the right while the phone is left to right", () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const buttons = [{ text: 'إلغاء', style: 'cancel' as const }, { text: 'تمام' }];
     dialog.alert('سؤال', 'تفاصيل', buttons);
-    expect(alert).toHaveBeenCalledWith('سؤال', 'تفاصيل', buttons);
+    // The app is Arabic. iOS lays its alert out in the phone's language, which
+    // this test does not set to Arabic, so Cancel is given last and unmarked:
+    // it stands on the right. Marked cancel, iOS would put it on the left.
+    expect(alert).toHaveBeenCalledWith('سؤال', 'تفاصيل', [
+      { text: 'تمام' },
+      { text: 'إلغاء', style: 'default' },
+    ]);
     alert.mockRestore();
   });
 });

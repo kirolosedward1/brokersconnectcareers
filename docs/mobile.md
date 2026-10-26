@@ -133,9 +133,13 @@ this, and every server call went on being refused with the old key).
   `mobile/src/i18n/messages/`. Numbers inside Arabic sentences are wrapped in
   left-to-right isolates (U+2066…U+2069) — the website's `<v>` tag.
   `@formatjs` polyfills give Hermes Arabic plurals and formatting.
-  The app says its own direction (`mobile/src/lib/direction.ts`) rather than
-  rely on the one React Native fixes when the screen is created, which Expo Go
-  sets too late: the root layout lays every view out in it, every navigator's
+  The app says its own direction (`mobile/src/lib/direction.ts`). While English
+  is unpublished that direction is Arabic's, from the locale, so it does not
+  wait on `I18nManager.isRTL` or on `Updates.reloadAsync`. SDK 58 no longer
+  turns RTL on from the phone's language, `forceRTL` applies only on the next
+  process start, and Expo Go resets that preference and applies the manifest's
+  `forcesRTL` after the screen exists. The root layout lays every view out in
+  this direction, every navigator's
   header and back gesture is told it (React Navigation's `LocaleDirContext`).
   The tab bar is the app's own, laid out like every other view: iOS lays its
   native bars out in the language the app runs in, which is English on an
@@ -709,11 +713,13 @@ the same requests to the real thing, in CI and on a computer:
 The quickest way onto a phone, with no Apple developer account: install Expo Go
 from the App Store, run `pnpm start:go` on a computer on the same Wi-Fi as the
 iPhone, and scan the QR code it prints with the iPhone's camera
-(`pnpm start:go --tunnel` when the two are not on the same network). Right to
-left comes from `extra.forcesRTL` in `app.config.ts`. Expo Go applies it only
-after it has created the screen when it opens an update from the network or
-comes back from its own home screen, so the app sets its direction itself
-(`mobile/src/lib/direction.ts`) and runs right to left either way.
+(`pnpm start:go --tunnel` when the two are not on the same network). While
+English is unpublished the app lays itself out right to left from the locale
+(`mobile/src/lib/direction.ts`). Expo Go applies `extra.forcesRTL` only after
+it has created the screen when it opens an update from the network or comes
+back from its own home screen, and it resets an `I18nManager.forceRTL` call,
+so a reload does not fix the direction there. The app's own direction does
+not wait for either.
 
 Sign in with Google returns to the app at `brokersconnect://auth/callback`,
 which has to be among Supabase's redirect URLs (Authentication → URL
