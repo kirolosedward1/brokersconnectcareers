@@ -66,6 +66,17 @@ export const AUTH_ERRORS: { match: RegExp; namespace: 'auth' | 'validation'; key
  * which the caller shows as the generic line, never as GoTrue's English.
  * The stable `code` is read first and the prose only when there is none.
  */
+/**
+ * GoTrue's answer when Sign in with Apple (or any provider) is switched off.
+ *
+ * The code is the generic `validation_failed`, which otherwise means a bad
+ * email address. The message is what tells the two apart, so this is matched
+ * before that table.
+ */
+export function appleProviderDisabled(error: { message: string }): boolean {
+  return /provider is not enabled/i.test(error.message);
+}
+
 export function knownAuthError(error: { message: string; code?: string } | string): AuthErrorKey | null {
   const message = typeof error === 'string' ? error : error.message;
   const code = typeof error === 'string' ? undefined : error.code;

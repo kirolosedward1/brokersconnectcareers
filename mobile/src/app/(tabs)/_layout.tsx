@@ -32,7 +32,7 @@ import { tabsFor, type TabName } from '~/lib/tabs';
  *
  * The bar is the app's own (src/components/navigation/tab-bar.tsx), not
  * iOS's: iOS 26's shrinks to the open tab alone as a list scrolls, and this
- * one keeps every tab, with its name, whole however the list scrolls. It
+ * one keeps every tab, growing smaller and dropping their names instead. It
  * is laid out in the app's direction (src/lib/direction.ts) like everything
  * else, so in Arabic Home is at the right — iOS's own bar ran left to right
  * on an iPhone set to English and in Expo Go.

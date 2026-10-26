@@ -60,6 +60,7 @@ import { useKeptDraft } from '~/lib/use-kept-draft';
 import { DraftNotice } from '~/components/ui/draft-notice';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
 import { useAnnounce } from '~/lib/use-announce';
@@ -245,6 +246,7 @@ function ApplyForm({
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
+  const large = useLargeText();
   const apply = useApplyToJob();
   const scroll = useRef<ScrollViewInstance>(null);
   const inView = useErrorsInView(scroll, ['fullName', 'whatsapp', 'experienceBand', 'cv']);
@@ -463,7 +465,7 @@ function ApplyForm({
                 ) : (
                   <Paperclip size={16} color={colors.mutedForeground} />
                 )}
-                <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
+                <Text variant="small" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
                   {attachment.kind === 'profile' ? t('app.apply.profileCv') : attachment.file.name}
                 </Text>
                 <Pressable
@@ -535,6 +537,7 @@ function QuickApply({
 }) {
   const t = useTranslations();
   const { colors } = useTheme();
+  const large = useLargeText();
   return (
     <Card style={{ gap: space[4] }}>
       <Text weight="semibold" accessibilityRole="header">
@@ -546,7 +549,7 @@ function QuickApply({
             <View style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center', ...corner('full'), backgroundColor: colors.secondary }}>
               <Icon size={16} color={colors.primary} />
             </View>
-            <Text weight="medium" numberOfLines={1} style={{ flex: 1, ...(ltr ? { writingDirection: 'ltr' as const } : null) }}>
+            <Text weight="medium" numberOfLines={large ? undefined : 1} style={{ flex: 1, ...(ltr ? { writingDirection: 'ltr' as const } : null) }}>
               {ltr ? `\u2066${value}\u2069` : value}
             </Text>
           </View>

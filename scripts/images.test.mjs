@@ -95,5 +95,335 @@ console.log('\n— what is refused');
   check('nothing', (await reencodeImage(new Uint8Array())) === null);
 }
 
+const { isHeicBytes, isHeicFile, compressionSteps, storageDetail, imageFailureCopy, deadline, HEIC_TIMEOUT_MS, PREPARING_IMAGE_AFTER_MS, IMAGE_ACCEPT, pickHeicFrame } = await import(
+  '../src/lib/image-upload.ts'
+);
+const { fileType } = await import('../src/lib/file-type.ts');
+
+console.log('\n— a picture chosen on the phone, before it is sent');
+{
+  const heic = new Uint8Array(12);
+  heic.set([0x00, 0x00, 0x00, 0x18], 0);
+  heic.set([...'ftyp'].map((c) => c.charCodeAt(0)), 4);
+  heic.set([...'heic'].map((c) => c.charCodeAt(0)), 8);
+  check('a HEIC ftyp box is a HEIC', isHeicBytes(heic));
+  check('a JPEG is not a HEIC', !isHeicBytes(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])));
+  check('IMG.HEIC is named as one', isHeicFile({ name: 'IMG.HEIC', type: '' }) && fileType({ name: 'IMG.HEIC', type: '' }) === 'image/heic');
+  check('image/heic is named as one', isHeicFile({ name: 'photo', type: 'image/heic' }));
+  check('a PNG is not', !isHeicFile({ name: 'logo.png', type: 'image/png' }) && fileType({ name: 'logo.png', type: '' }) === 'image/png');
+  check('the picker offers jpeg, png and webp only', IMAGE_ACCEPT === 'image/jpeg,image/png,image/webp');
+  const full = { primary: true, width: 4032, height: 3024 };
+  const preview = { primary: false, width: 384, height: 512 };
+  check('the primary frame is kept, not the preview', pickHeicFrame([preview, full]) === full);
+  check('a preview wearing the primary flag loses to the full frame', pickHeicFrame([{ ...preview, primary: true }, { ...full, primary: false }])?.width === 4032);
+  check('with no flag, the largest frame is the photograph', pickHeicFrame([{ ...preview, primary: false }, { ...full, primary: false }])?.width === 4032);
+  check('a single primary frame is that frame', pickHeicFrame([full]) === full);
+  check('the status line waits about three seconds', PREPARING_IMAGE_AFTER_MS === 3_000);
+  const steps = compressionSteps(4000, 1600);
+  check('reduction starts at the cap', steps[0].edge === 1600);
+  check(
+    'and each later edge is smaller',
+    steps.map((step) => step.edge).filter((edge, index, edges) => edges.indexOf(edge) === index).every((edge, index, edges) => index === 0 || edge < edges[index - 1]),
+  );
+  check('a storage sentence is one short line', storageDetail('  new   row \n violates  ') === 'new row violates');
+  check('and it stops at 300 characters', storageDetail('x'.repeat(400)).length === 300);
+  check('an empty storage sentence stays empty', storageDetail('   ') === '');
+  const copy = {
+    imageType: 'type',
+    imageUnreadable: 'unreadable',
+    imageTooLarge: 'large',
+    uploadRateLimited: 'rate',
+    storageError: 'storage:',
+    generic: 'generic',
+  };
+  check('the storage sentence is kept whole', imageFailureCopy('storage', 'new row violates row-level security policy', copy) === 'storage: new row violates row-level security policy');
+  check('a picture of the wrong kind says so', imageFailureCopy('file_type', undefined, copy) === 'type');
+  check('a picture that could not be read says so', imageFailureCopy('unreadable', undefined, copy) === 'unreadable');
+  check('one that will not shrink says so', imageFailureCopy('too_large', undefined, copy) === 'large');
+  check('anything else stays generic', imageFailureCopy('unavailable', undefined, copy) === 'generic');
+  check('a HEIC conversion is given about 20 seconds', HEIC_TIMEOUT_MS === 20_000);
+  check('a finished conversion is kept', (await deadline(Promise.resolve('jpeg'), 50)) === 'jpeg');
+  let timedOut = false;
+  try {
+    await deadline(new Promise(() => {}), 30);
+  } catch {
+    timedOut = true;
+  }
+  check('a conversion that never answers is stopped', timedOut);
+}
+
+const { readFileSync } = await import('node:fs');
+const { createRequire } = await import('node:module');
+const require = createRequire(import.meta.url);
+const libheif = require('libheif-js/wasm-bundle');
+const { decodeHeicPrimary } = await import('../src/lib/heic-decode.ts');
+
+function refusal(run) {
+  try {
+    run();
+    return '';
+  } catch (error) {
+    return error instanceof Error ? error.message : 'thrown';
+  }
+}
+
+// A 64×64 HEVC picture in a real HEIC container.
+const gradient = new Uint8Array(readFileSync(new URL('./fixtures/gradient.heic', import.meta.url)));
+// The same size, almost entirely white, with a small dark mark. A logo on a
+// white ground looks like this, and has to be kept.
+const whiteLogo = new Uint8Array(readFileSync(new URL('./fixtures/logo.heic', import.meta.url)));
+
+function boxEnd(bytes, name) {
+  let cursor = 0;
+  while (cursor + 8 <= bytes.length) {
+    let size = (bytes[cursor] << 24) | (bytes[cursor + 1] << 16) | (bytes[cursor + 2] << 8) | bytes[cursor + 3];
+    const type = String.fromCharCode(bytes[cursor + 4], bytes[cursor + 5], bytes[cursor + 6], bytes[cursor + 7]);
+    let header = 8;
+    if (size === 1) {
+      size = 0;
+      for (let i = 0; i < 8; i++) size = size * 256 + bytes[cursor + 8 + i];
+      header = 16;
+    }
+    if (type === name) return { cursor, size, header };
+    cursor += size;
+  }
+  return null;
+}
+
+/** The same photograph four times, as a 2×2 grid. `cut` points the other three tiles past the end of the file. */
+function gridOf(tile, mode) {
+  const u16 = (n) => Buffer.from([(n >> 8) & 255, n & 255]);
+  const u32 = (n) => Buffer.from([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+  const box = (type, body) => Buffer.concat([u32(8 + body.length), Buffer.from(type), body]);
+  const full = (type, version, flags, body) => box(type, Buffer.concat([Buffer.from([version, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255]), body]));
+  const infe = (id, type, hidden) => full('infe', 2, hidden ? 1 : 0, Buffer.concat([u16(id), u16(0), Buffer.from(type), Buffer.from([0])]));
+  const hdlr = Buffer.from(tile.subarray(40, 73));
+  const hvcC = Buffer.from(tile.subarray(172, 292));
+  const ispe64 = Buffer.from(tile.subarray(292, 312));
+  const colr = Buffer.from(tile.subarray(312, 331));
+  const pixi = Buffer.from(tile.subarray(331, 347));
+  const payload = Buffer.from(tile.subarray(378, 487));
+  const ispe128 = Buffer.from(ispe64);
+  ispe128.writeUInt32BE(128, 12);
+  ispe128.writeUInt32BE(128, 16);
+  const gridBytes = Buffer.from([0x00, 0x00, 0x01, 0x01, 0x00, 0x80, 0x00, 0x80]);
+  const ftyp = Buffer.from(tile.subarray(0, 28));
+  const iinf = full('iinf', 0, 0, Buffer.concat([u16(5), infe(1, 'grid', false), infe(2, 'hvc1', true), infe(3, 'hvc1', true), infe(4, 'hvc1', true), infe(5, 'hvc1', true)]));
+  const iref = full('iref', 0, 0, box('dimg', Buffer.concat([u16(1), u16(4), u16(2), u16(3), u16(4), u16(5)])));
+  const ipco = box('ipco', Buffer.concat([hvcC, ispe64, colr, pixi, ispe128]));
+  const assoc = (id, bytes) => Buffer.concat([u16(id), Buffer.from([bytes.length]), Buffer.from(bytes)]);
+  const ipma = full('ipma', 0, 0, Buffer.concat([u32(5), assoc(1, [0x85, 0x04]), assoc(2, [0x81, 0x02, 0x03, 0x04]), assoc(3, [0x81, 0x02, 0x03, 0x04]), assoc(4, [0x81, 0x02, 0x03, 0x04]), assoc(5, [0x81, 0x02, 0x03, 0x04])]));
+  const iprp = box('iprp', Buffer.concat([ipco, ipma]));
+  const pitm = full('pitm', 0, 0, u16(1));
+  const ilocSize = 8 + 4 + 2 + 2 + 5 * 14;
+  const metaSize = 8 + 4 + hdlr.length + pitm.length + ilocSize + iinf.length + iref.length + iprp.length;
+  const payloadAt = ftyp.length + metaSize + 8;
+  const tileAt = payloadAt + gridBytes.length;
+  const past = tileAt + payload.length + 80;
+  const ilocBody = Buffer.alloc(2 + 2 + 5 * 14);
+  ilocBody[0] = 0x44;
+  ilocBody.writeUInt16BE(5, 2);
+  const items = [
+    [1, payloadAt, gridBytes.length],
+    [2, tileAt, payload.length],
+    [3, mode === 'cut' ? past : tileAt, payload.length],
+    [4, mode === 'cut' ? past : tileAt, payload.length],
+    [5, mode === 'cut' ? past : tileAt, payload.length],
+  ];
+  let cursor = 4;
+  for (const [id, offset, length] of items) {
+    ilocBody.writeUInt16BE(id, cursor);
+    ilocBody.writeUInt16BE(1, cursor + 4);
+    ilocBody.writeUInt32BE(offset, cursor + 6);
+    ilocBody.writeUInt32BE(length, cursor + 10);
+    cursor += 14;
+  }
+  const iloc = full('iloc', 0, 0, ilocBody);
+  const meta = full('meta', 0, 0, Buffer.concat([hdlr, pitm, iloc, iinf, iref, iprp]));
+  return new Uint8Array(Buffer.concat([ftyp, meta, box('mdat', Buffer.concat([gridBytes, payload]))]));
+}
+
+/**
+ * A 128×64 picture stored as two tiles. `rotation` is 90 or 270 degrees
+ * counter-clockwise, the way an iPhone keeps a portrait (irot). `mirror` is
+ * the imir axis. `cut` points the second tile past the end of the file.
+ */
+function landscapeGrid(tile, { rotation = 0, mirror = null, cut = false } = {}) {
+  const u16 = (n) => Buffer.from([(n >> 8) & 255, n & 255]);
+  const u32 = (n) => Buffer.from([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+  const box = (type, body) => Buffer.concat([u32(8 + body.length), Buffer.from(type), body]);
+  const full = (type, version, flags, body) => box(type, Buffer.concat([Buffer.from([version, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255]), body]));
+  const infe = (id, type, hidden) => full('infe', 2, hidden ? 1 : 0, Buffer.concat([u16(id), u16(0), Buffer.from(type), Buffer.from([0])]));
+  const hdlr = Buffer.from(tile.subarray(40, 73));
+  const hvcC = Buffer.from(tile.subarray(172, 292));
+  const ispe64 = Buffer.from(tile.subarray(292, 312));
+  const colr = Buffer.from(tile.subarray(312, 331));
+  const pixi = Buffer.from(tile.subarray(331, 347));
+  const payload = Buffer.from(tile.subarray(378, 487));
+  const ispeOut = Buffer.from(ispe64);
+  ispeOut.writeUInt32BE(128, 12);
+  ispeOut.writeUInt32BE(64, 16);
+  const transforms = [];
+  if (rotation) transforms.push(box('irot', Buffer.from([rotation / 90])));
+  if (mirror) transforms.push(box('imir', Buffer.from([mirror === 'horizontal' ? 1 : 0])));
+  const gridBytes = Buffer.from([0x00, 0x00, 0x00, 0x01, 0x00, 0x80, 0x00, 0x40]);
+  const ftyp = Buffer.from(tile.subarray(0, 28));
+  const iinf = full('iinf', 0, 0, Buffer.concat([u16(3), infe(1, 'grid', false), infe(2, 'hvc1', true), infe(3, 'hvc1', true)]));
+  const iref = full('iref', 0, 0, box('dimg', Buffer.concat([u16(1), u16(2), u16(2), u16(3)])));
+  const ipco = box('ipco', Buffer.concat([hvcC, ispe64, colr, pixi, ispeOut, ...transforms]));
+  const assoc = (id, bytes) => Buffer.concat([u16(id), Buffer.from([bytes.length]), Buffer.from(bytes)]);
+  const gridProps = [0x85, 0x04];
+  for (let index = 6; index < 6 + transforms.length; index++) gridProps.push(0x80 | index);
+  const ipma = full('ipma', 0, 0, Buffer.concat([u32(3), assoc(1, gridProps), assoc(2, [0x81, 0x02, 0x03, 0x04]), assoc(3, [0x81, 0x02, 0x03, 0x04])]));
+  const iprp = box('iprp', Buffer.concat([ipco, ipma]));
+  const pitm = full('pitm', 0, 0, u16(1));
+  const ilocSize = 8 + 4 + 2 + 2 + 3 * 14;
+  const metaSize = 8 + 4 + hdlr.length + pitm.length + ilocSize + iinf.length + iref.length + iprp.length;
+  const payloadAt = ftyp.length + metaSize + 8;
+  const tileAt = payloadAt + gridBytes.length;
+  const past = tileAt + payload.length + 80;
+  const ilocBody = Buffer.alloc(2 + 2 + 3 * 14);
+  ilocBody[0] = 0x44;
+  ilocBody.writeUInt16BE(3, 2);
+  const items = [
+    [1, payloadAt, gridBytes.length],
+    [2, tileAt, payload.length],
+    [3, cut ? past : tileAt, payload.length],
+  ];
+  let cursor = 4;
+  for (const [id, offset, length] of items) {
+    ilocBody.writeUInt16BE(id, cursor);
+    ilocBody.writeUInt16BE(1, cursor + 4);
+    ilocBody.writeUInt32BE(offset, cursor + 6);
+    ilocBody.writeUInt32BE(length, cursor + 10);
+    cursor += 14;
+  }
+  const iloc = full('iloc', 0, 0, ilocBody);
+  const meta = full('meta', 0, 0, Buffer.concat([hdlr, pitm, iloc, iinf, iref, iprp]));
+  return new Uint8Array(Buffer.concat([ftyp, meta, box('mdat', Buffer.concat([gridBytes, payload]))]));
+}
+
+function turn(pixels, width, height, rotation, mirror) {
+  let current = pixels;
+  let w = width;
+  let h = height;
+  if (rotation === 90 || rotation === 270) {
+    const next = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const nx = rotation === 90 ? y : h - 1 - y;
+        const ny = rotation === 90 ? w - 1 - x : x;
+        next.set(current.subarray((y * w + x) * 4, (y * w + x) * 4 + 4), (ny * h + nx) * 4);
+      }
+    }
+    current = next;
+    [w, h] = [h, w];
+  }
+  if (mirror) {
+    const next = new Uint8Array(current.length);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const nx = mirror === 'horizontal' ? w - 1 - x : x;
+        const ny = mirror === 'vertical' ? h - 1 - y : y;
+        next.set(current.subarray((y * w + x) * 4, (y * w + x) * 4 + 4), (ny * w + nx) * 4);
+      }
+    }
+    current = next;
+  }
+  return { pixels: current, width: w, height: h };
+}
+
+console.log('\n— a HEIC that is not a whole picture');
+{
+  const photo = decodeHeicPrimary(libheif, gradient);
+  check('a complete HEIC is the photograph, at its own size', photo.width === 64 && photo.height === 64, `${photo.width}×${photo.height}`);
+
+  const logo = decodeHeicPrimary(libheif, whiteLogo);
+  let pale = 0;
+  let mark = 0;
+  for (let i = 0; i < logo.width * logo.height; i++) {
+    const offset = i * 4;
+    const red = logo.pixels[offset];
+    const green = logo.pixels[offset + 1];
+    const blue = logo.pixels[offset + 2];
+    if (red > 240 && green > 240 && blue > 240) pale += 1;
+    if (red * 0.299 + green * 0.587 + blue * 0.114 < 40) mark += 1;
+  }
+  check(
+    'a mostly-white logo, with a small mark, is kept',
+    logo.width === 64 && logo.height === 64 && pale / (logo.width * logo.height) > 0.95 && mark > 0,
+    `${logo.width}×${logo.height}, ${pale} pale, ${mark} dark`,
+  );
+
+  const mdat = boxEnd(gradient, 'mdat');
+  const cut = gradient.subarray(0, mdat.cursor + mdat.header + 16);
+  check('a HEIC cut short is refused', refusal(() => decodeHeicPrimary(libheif, cut)) === 'truncated');
+
+  const junk = new Uint8Array(gradient);
+  let state = 0x12345678;
+  for (let i = mdat.cursor + mdat.header; i < junk.length; i++) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    junk[i] = state & 255;
+  }
+  const junked = refusal(() => decodeHeicPrimary(libheif, junk));
+  check('random bytes after a real header are refused by the decode itself', junked === 'decode' || junked === 'warning' || junked === 'truncated', junked);
+
+  const whole = decodeHeicPrimary(libheif, gridOf(gradient, 'full'));
+  check('a whole grid is the full frame, not one tile', whole.width === 128 && whole.height === 128, `${whole.width}×${whole.height}`);
+  const shortGrid = refusal(() => decodeHeicPrimary(libheif, gridOf(gradient, 'cut')));
+  check('a grid whose later tiles were cut off is refused by the item check', shortGrid === 'truncated' || shortGrid === 'warning' || shortGrid === 'decode', shortGrid);
+
+  const stored = decodeHeicPrimary(libheif, landscapeGrid(gradient));
+  check('a landscape grid is stored wider than it is tall', stored.width === 128 && stored.height === 64, `${stored.width}×${stored.height}`);
+  for (const rotation of [90, 270]) {
+    const upright = decodeHeicPrimary(libheif, landscapeGrid(gradient, { rotation }));
+    const expected = turn(stored.pixels, stored.width, stored.height, rotation, null);
+    let same = upright.width === expected.width && upright.height === expected.height && upright.pixels.length === expected.pixels.length;
+    if (same) {
+      for (let i = 0; i < upright.pixels.length; i++) {
+        if (upright.pixels[i] !== expected.pixels[i]) {
+          same = false;
+          break;
+        }
+      }
+    }
+    check(
+      `a grid rotated ${rotation}° comes out upright`,
+      upright.height > upright.width && same,
+      `${upright.width}×${upright.height}`,
+    );
+  }
+  const mirrored = decodeHeicPrimary(libheif, landscapeGrid(gradient, { mirror: 'horizontal' }));
+  const mirrorExpected = turn(stored.pixels, stored.width, stored.height, 0, 'horizontal');
+  let mirrorSame = mirrored.width === mirrorExpected.width && mirrored.height === mirrorExpected.height;
+  if (mirrorSame) {
+    for (let i = 0; i < mirrored.pixels.length; i++) {
+      if (mirrored.pixels[i] !== mirrorExpected.pixels[i]) {
+        mirrorSame = false;
+        break;
+      }
+    }
+  }
+  check('a mirrored grid is the same picture, flipped', mirrorSame, `${mirrored.width}×${mirrored.height}`);
+  const turned = decodeHeicPrimary(libheif, landscapeGrid(gradient, { rotation: 90, mirror: 'horizontal' }));
+  const turnedExpected = turn(stored.pixels, stored.width, stored.height, 90, 'horizontal');
+  let turnedSame = turned.width === turnedExpected.width && turned.height === turnedExpected.height;
+  if (turnedSame) {
+    for (let i = 0; i < turned.pixels.length; i++) {
+      if (turned.pixels[i] !== turnedExpected.pixels[i]) {
+        turnedSame = false;
+        break;
+      }
+    }
+  }
+  check(
+    'a portrait grid that is also mirrored comes out upright',
+    turned.height > turned.width && turnedSame,
+    `${turned.width}×${turned.height}`,
+  );
+  const cutTurned = refusal(() => decodeHeicPrimary(libheif, landscapeGrid(gradient, { rotation: 90, cut: true })));
+  check('a rotated grid whose tile was cut off is still refused', cutTurned === 'truncated', cutTurned);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

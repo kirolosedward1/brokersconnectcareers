@@ -59,7 +59,7 @@ export function runProvider(
 }
 
 /**
- * "Continue with Apple" and "Continue with Google", each shown only when it is
+ * Sign in or sign up with Apple and with Google, each shown only when it is
  * offered (useSocialProviders) — above the form with the website's "or" under
  * them, or (`separator={false}`) as the ways in themselves, with another of the
  * same kind after them (`children`: "Continue with email").
@@ -115,7 +115,7 @@ export function SocialSignIn({
         ) : null}
         {google ? (
           <Button
-            label={t('continueWithGoogle')}
+            label={mode === 'sign-up' ? t('signUpWithGoogle') : t('signInWithGoogle')}
             variant="outline"
             size="lg"
             icon={<GoogleMark />}
@@ -148,7 +148,7 @@ function Separator() {
 /**
  * The one-tap sign-ins as round buttons, the mark alone on white: for beside
  * another button over a dark picture (the welcome's Sign in), where a full
- * "Continue with Google" would not fit. Each only when it is offered
+ * "Sign in with Google" would not fit. Each only when it is offered
  * (useSocialProviders), Google's first and Apple's after it, the same size —
  * Apple's no less prominent than Google's (App Review 4.8). White under
  * Apple's mark, as Apple asks of its button on a dark ground. Busy, the one
@@ -185,7 +185,7 @@ export function SocialCircles({
         <ProviderCircle
           testID="welcome-google"
           size={size}
-          label={t('auth.continueWithGoogle')}
+          label={t('auth.signInWithGoogle')}
           hint={t('app.welcome.signInGoogleHint')}
           disabled={disabled}
           busy={running === 'google'}
@@ -198,7 +198,7 @@ export function SocialCircles({
         <ProviderCircle
           testID="welcome-apple"
           size={size}
-          label={t('auth.continueWithApple')}
+          label={t('auth.signInWithApple')}
           hint={t('app.welcome.signInAppleHint')}
           disabled={disabled}
           busy={running === 'apple'}

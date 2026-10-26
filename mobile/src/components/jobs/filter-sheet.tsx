@@ -30,6 +30,7 @@ import { useSearchSuggestions, withSuggestion, type SearchSuggestion, type Span 
 import { useDistricts, useGovernorates } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { haptic } from '~/lib/haptics';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { useGatedModal } from '~/lib/sheet-gate';
@@ -299,6 +300,7 @@ const SUGGESTION_ICONS: Record<SearchSuggestion['kind'], ComponentType<LucidePro
  * (the sheet's scroll view keeps taps that are handled).
  */
 function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggestion: SearchSuggestion) => void }) {
+  const large = useLargeText();
   const t = useTranslations('app.jobs');
   const { colors } = useTheme();
   const suggestions = useSearchSuggestions(typed);
@@ -359,7 +361,7 @@ function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggesti
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 {elsewhere ? (
-                  <Text weight="medium" numberOfLines={2}>
+                  <Text weight="medium" numberOfLines={large ? undefined : 2}>
                     {suggestion.label}
                   </Text>
                 ) : (
@@ -412,8 +414,9 @@ function Marked({
   mark: ColorValue;
   ground: ColorValue;
 }) {
+  const large = useLargeText();
   return (
-    <Text variant={variant} weight={weight} numberOfLines={2} style={{ color: ink }}>
+    <Text variant={variant} weight={weight} numberOfLines={large ? undefined : 2} style={{ color: ink }}>
       {text.slice(0, span.start)}
       <Text variant={variant} weight={weight} style={{ color: mark, backgroundColor: ground }}>
         {text.slice(span.start, span.end)}

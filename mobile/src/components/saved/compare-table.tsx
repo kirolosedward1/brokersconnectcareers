@@ -12,6 +12,7 @@ import { MoveHorizontal, TrendingUp } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { bestOf } from '~/features/saved/compare';
+import { useShrinkingTabBar } from '~/features/tab-bar';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, motion, space } from '~/theme/tokens';
@@ -55,6 +56,7 @@ export function CompareTable({ jobs }: { jobs: JobListItem[] }) {
   const { width } = useWindowDimensions();
   const large = useLargeText();
   const best = bestOf(jobs);
+  const shrink = useShrinkingTabBar();
 
   const room = width - gutter * 2;
   const least = large ? LEAST_COLUMN_LARGE : LEAST_COLUMN;
@@ -92,6 +94,7 @@ export function CompareTable({ jobs }: { jobs: JobListItem[] }) {
 
   return (
     <ScrollView
+      {...shrink}
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{ paddingTop: space[4], paddingBottom: space[10], gap: space[4] }}
     >
@@ -145,6 +148,7 @@ export function CompareTable({ jobs }: { jobs: JobListItem[] }) {
 
 /** Who is hiring, at the head of a column: the mark, the title, the company with its verified tick. */
 function Head({ job, width }: { job: JobListItem; width: number }) {
+  const large = useLargeText();
   const locale = useLocale();
   const { colors, lift } = useTheme();
   const title = localized(locale, job.title_ar, job.title_en);
@@ -163,11 +167,11 @@ function Head({ job, width }: { job: JobListItem; width: number }) {
       }}
     >
       <CompanyLogo name={company} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
-      <Text variant="small" weight="semibold" accessibilityRole="header" numberOfLines={3}>
+      <Text variant="small" weight="semibold" accessibilityRole="header" numberOfLines={large ? undefined : 3}>
         {title}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: space[1] }}>
-        <Text variant="caption" tone="mutedForeground" numberOfLines={2} style={{ flexShrink: 1 }}>
+        <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 2} style={{ flexShrink: 1 }}>
           {company}
         </Text>
         {job.company.verification_status === 'verified' ? <VerifiedMark size={14} /> : null}
@@ -219,6 +223,7 @@ function Cell({ job, width, main, sub, best }: { job: JobListItem; width: number
 
 /** The way to the listing itself, at the foot of its column. */
 function OpenLink({ job, width }: { job: JobListItem; width: number }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -242,7 +247,7 @@ function OpenLink({ job, width }: { job: JobListItem; width: number }) {
         backgroundColor: pressed ? colors.muted : colors.card,
       })}
     >
-      <Text variant="small" weight="semibold" tone="primary" numberOfLines={1} style={{ flexShrink: 1 }}>
+      <Text variant="small" weight="semibold" tone="primary" numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
         {t('app.jobMenu.open')}
       </Text>
       <ForwardChevron size={16} color={colors.primary} />

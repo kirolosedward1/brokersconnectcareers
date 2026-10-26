@@ -19,6 +19,7 @@ import { useTabList } from '~/features/tab-bar';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { useLargeText } from '~/theme/large-text';
 
 /**
  * The background work, in one place — the website's /admin/operations. It
@@ -149,6 +150,7 @@ function useSeconds() {
 
 /** One scheduled task: its last run and how it went, or that it has never run at all — the most important row this screen can show. */
 function JobRow({ job, row }: { job: string; row: ScheduledJobOverviewRow | null }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const seconds = useSeconds();
@@ -171,7 +173,7 @@ function JobRow({ job, row }: { job: string; row: ScheduledJobOverviewRow | null
         )}
       </View>
       {row?.last_error ? (
-        <Text variant="caption" tone="destructive" numberOfLines={3}>
+        <Text variant="caption" tone="destructive" numberOfLines={large ? undefined : 3}>
           {row.last_error}
         </Text>
       ) : null}
@@ -230,6 +232,7 @@ function Outbox({ outbox }: { outbox: OutboxOverview | null }) {
  * it from, so a button there would report a success that never happens.
  */
 function DeadLetter({ row }: { row: EmailDeadLetterRow }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
@@ -237,7 +240,7 @@ function DeadLetter({ row }: { row: EmailDeadLetterRow }) {
   return (
     <Card style={{ gap: space[3] }}>
       <View style={{ gap: 2 }}>
-        <Text variant="small" weight="semibold" selectable numberOfLines={1} style={{ writingDirection: 'ltr' }}>
+        <Text variant="small" weight="semibold" selectable numberOfLines={large ? undefined : 1} style={{ writingDirection: 'ltr' }}>
           {row.recipient}
         </Text>
         <Text variant="caption" tone="mutedForeground">
@@ -259,7 +262,7 @@ function DeadLetter({ row }: { row: EmailDeadLetterRow }) {
         <Fact label={t('admin.opsGaveUpAt')}>{formatDateTime(row.gave_up_at, locale)}</Fact>
       </View>
       {row.error ? (
-        <Text variant="caption" tone="destructive" numberOfLines={3}>
+        <Text variant="caption" tone="destructive" numberOfLines={large ? undefined : 3}>
           {`${t('admin.emailError')}: ${row.error}`}
         </Text>
       ) : null}
@@ -298,6 +301,7 @@ function statsLine(stats: JobRunRow['stats'] | null): string {
 
 /** One run of a task: when, how long, and what it counted — or why it failed. */
 function Run({ row }: { row: JobRunRow }) {
+  const large = useLargeText();
   const t = useTranslations();
   const locale = useLocale();
   const seconds = useSeconds();
@@ -311,11 +315,11 @@ function Run({ row }: { row: JobRunRow }) {
         {`${t('admin.opsStarted')}: ${formatDateTime(row.started_at, locale)} · ${t('admin.opsDuration')}: ${seconds(row.duration_ms)}`}
       </Text>
       {row.error ? (
-        <Text variant="caption" tone="destructive" numberOfLines={3}>
+        <Text variant="caption" tone="destructive" numberOfLines={large ? undefined : 3}>
           {row.error}
         </Text>
       ) : (
-        <Text variant="caption" tone="mutedForeground" numberOfLines={2} style={{ writingDirection: 'ltr' }}>
+        <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 2} style={{ writingDirection: 'ltr' }}>
           {`${t('admin.opsStats')}: ${statsLine(row.stats) || '—'}`}
         </Text>
       )}

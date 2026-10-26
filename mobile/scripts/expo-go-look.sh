@@ -400,23 +400,23 @@ open_app jobs
 see 3f-jobs-after-tour 'الفلاتر'
 
 open_app companies
-see 3d-companies 'الموثّقة بس'
+see 3d-companies 'الموثّقة فقط'
 in_header 3d-companies 'شركات العقارات'
 open_app account
-see 4-account 'ادخل على حسابك'
+see 4-account 'سجّل الدخول إلى حسابك'
 in_header 4-account 'حسابي'
 open_app sign-in
-see 5-sign-in 'أهلاً بيك تاني'
+see 5-sign-in 'مرحبًا بعودتك'
 
 # Back to Expo Go's own home, and the app opened again from there: the other case.
 xcrun simctl terminate "$udid" host.exp.Exponent > /dev/null 2>&1 || true
 xcrun simctl launch "$udid" host.exp.Exponent > /dev/null
 sleep 8
 xcrun simctl io "$udid" screenshot "$out/6-expo-go-home.png" > /dev/null 2>&1 || true
+# The welcome was skipped at the first open, and a skip is kept on the phone
+# (src/features/welcome.ts): opened again, the app goes straight to Home.
 open_app
-see 7-welcome-again 'إنشاء حساب'
-skip
-see 8-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
+see 7-home-again 'منصة متخصصة لوظائف العقارات في مصر' 'الرئيسية'
 
 for verdict in "$out"/*.verdict; do
   if grep -q 'LEFT TO RIGHT' "$verdict"; then

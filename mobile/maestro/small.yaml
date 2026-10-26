@@ -1,0 +1,9 @@
+# The smallest iPhone at the largest accessibility text size: the app opens,
+# the welcome shows every way on (launch.yaml asserts them) and Home follows.
+# Only that: at this size a long screen rightly puts what the other passes
+# wait for below its fold, which is not a fault.
+appId: net.brokersconnect.app
+name: Small phone, largest text
+---
+- runFlow: launch.yaml
+- takeScreenshot: 1-home

@@ -3,6 +3,7 @@ import { FlatList, Keyboard, Modal, Pressable, StyleSheet, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
 import { westernDigits } from '@/lib/search/arabic';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { Button } from './button';
@@ -66,6 +67,7 @@ export function MonthField({
   clearLabel?: string;
   untilNow?: boolean;
 }) {
+  const large = useLargeText();
   const t = useTranslations();
   // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
   const fence = useSheetFence();
@@ -122,7 +124,7 @@ export function MonthField({
           backgroundColor: pressed ? colors.muted : colors.card,
         })}
       >
-        <Text tone={shown ? 'foreground' : 'mutedForeground'} numberOfLines={1} style={{ flexShrink: 1 }}>
+        <Text tone={shown ? 'foreground' : 'mutedForeground'} numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
           {shown ?? t('app.profile.monthChoose')}
         </Text>
         <Calendar size={18} color={colors.mutedForeground} />

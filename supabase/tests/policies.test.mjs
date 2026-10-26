@@ -1277,7 +1277,7 @@ report.section('a photo is the account\'s own photo');
   const google = await as(candidate, `
     update profiles set avatar_url = 'https://lh3.googleusercontent.com/a/ACg8ocK=s96-c'
      where id = '${candidate}' returning id`);
-  report.check('and so is the picture Google handed over', google.ok && google.rows.length === 1, google.error);
+  report.check('a Google picture is not: sign-up no longer copies one (migration 364)', !google.ok);
 
   const elsewhere = await as(candidate, `
     update profiles set avatar_url = 'https://xyz.supabase.co/storage/v1/object/public/avatars/${publicAgent}/a1b2c3.webp'

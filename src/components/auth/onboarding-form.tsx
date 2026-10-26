@@ -32,6 +32,7 @@ export function OnboardingForm({
   locale,
   ownerId,
   defaultName,
+  privateRelay = false,
   defaultRole,
   districts,
   next,
@@ -40,6 +41,11 @@ export function OnboardingForm({
   /** Whose draft this form keeps (lib/form-draft.ts). */
   ownerId: string;
   defaultName: string;
+  /**
+   * The address Apple issued is a Hide My Email relay. The name field stays
+   * empty unless Apple actually sent a name, and this says why.
+   */
+  privateRelay?: boolean;
   /** Pre-selects the account type when the sign-up door already implied one. */
   defaultRole?: 'candidate' | 'employer';
   /** For the company block, which only appears for an employer. */
@@ -196,6 +202,7 @@ export function OnboardingForm({
       <Field
         label={t('fullName')}
         htmlFor="fullName"
+        hint={privateRelay ? t('appleRelayHint') : undefined}
         error={errors.fullName ? tValidation('required') : undefined}
       >
         <Input
