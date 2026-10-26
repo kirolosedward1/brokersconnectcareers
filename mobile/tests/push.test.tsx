@@ -452,8 +452,8 @@ describe('a tapped push', () => {
   });
 
   it('opens the last one tapped, when an earlier tap is answered after it', async () => {
-    const result = renderRouter(app, { initialUrl: '/' });
-    await screen.findByText(ar.app.push.promptTitle);
+    const result = await renderRouter(app, { initialUrl: '/' });
+    await screen.findByText(ar.app.push.promptTitleCandidate);
     const listener = jest.mocked(Notifications.addNotificationResponseReceivedListener).mock.calls.at(-1)?.[0];
 
     // The first tap's answer is slow (a poor connection); the second's is not.
