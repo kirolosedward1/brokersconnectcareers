@@ -7,7 +7,7 @@ import { isPending, jobReminders } from './reminders';
 
 /**
  * Notes and reminders were the phone's alone until they moved to the bookmark
- * (the note in migration 356, the reminder in migration 365). The first time a person's saved list is read after that,
+ * (the note in migration 356, the reminder in migration 366). The first time a person's saved list is read after that,
  * what this phone kept for them is posted once: each note to a bookmark that
  * has none, each reminder still to go off to a bookmark that has none. One the
  * account already holds wins — it was written since, on the website or
