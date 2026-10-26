@@ -11,6 +11,9 @@ import { CoverArt } from '@/components/blog/cover-art';
 import { getAllPosts, getPost, getPostLocales, getPostSlugs } from '@/lib/blog';
 import { env } from '@/lib/env';
 import { formatDate, isoDate } from '@/lib/utils';
+import { fitDescription, fitTitle } from '@/lib/seo/meta-text';
+import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
+import { BreadcrumbTrail } from '@/components/breadcrumb-trail';
 
 type Params = { locale: string; slug: string };
 
@@ -32,6 +35,10 @@ export async function generateMetadata({
   if (!post) return {};
 
   const path = `/blog/${slug}`;
+  const tMeta = await getTranslations({ locale, namespace: 'meta' });
+  const description = fitDescription(post.description, tMeta('descriptionPad'));
+  const title = fitTitle(post.title, 45);
+  const pageUrl = `${env.siteUrl}${locale === 'ar' ? '' : `/${locale}`}${path}`;
   // Only advertise a translation that both exists as a file and is published.
   const available = getPostLocales(slug).filter((item) => activeLocales.includes(item));
   const languages: Record<string, string> = {};
@@ -39,15 +46,18 @@ export async function generateMetadata({
   if (available.includes('en')) languages.en = `/en${path}`;
 
   return {
-    title: post.title,
-    description: post.description,
+    title,
+    description,
     alternates: ENGLISH_ENABLED
       ? { canonical: locale === routing.defaultLocale ? path : `/${locale}${path}`, languages }
       : { canonical: path },
     openGraph: {
       type: 'article',
-      title: post.title,
-      description: post.description,
+      title: fitTitle(post.title, 60),
+      description,
+      url: pageUrl,
+      locale: locale === 'ar' ? 'ar_EG' : 'en_US',
+      images: [{ url: '/brand/og.jpg', width: 1200, height: 630, alt: tMeta('tagline') }],
       publishedTime: isoDate(post.date),
       authors: [post.author],
     },
@@ -63,12 +73,20 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
   if (!post) notFound();
 
   const t = await getTranslations('blog');
+  const tMeta = await getTranslations('meta');
+  const tCommon = await getTranslations('common');
+  const crumbs = [
+    { name: tMeta('siteName'), path: '/' },
+    { name: t('title'), path: '/blog' },
+    { name: post.title },
+  ];
   const more = getAllPosts(locale)
     .filter((item) => item.slug !== slug)
     .slice(0, 2);
 
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd(crumbs, locale)} />
       <JsonLd
         data={{
           '@context': 'https://schema.org',
@@ -84,6 +102,10 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
       />
 
       <div className="mx-auto max-w-2xl px-4 py-14">
+        <BreadcrumbTrail
+          label={tCommon('breadcrumb')}
+          items={crumbs.map((crumb) => ({ name: crumb.name, href: crumb.path }))}
+        />
         <Button asChild variant="ghost" className="mb-8 -ms-3">
           <Link href="/blog">
             <ArrowLeft className="rtl-flip" aria-hidden />

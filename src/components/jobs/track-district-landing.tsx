@@ -5,7 +5,7 @@ import { JobCard } from '@/components/jobs/job-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { buildLandingSlug, JOB_TRACKS } from '@/lib/taxonomy';
-import { EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
+import { anonymousJobs, EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { getBrowseCounts, getLandingFacts } from '@/lib/queries/browse';
 import { optional } from '@/lib/queries/error';
@@ -34,7 +34,7 @@ export async function TrackDistrictLanding({
   const tTrack = await getTranslations('track');
 
   const [{ jobs, total }, districts, counts, facts] = await Promise.all([
-    queryJobs({ ...EMPTY_FILTERS, tracks: [track], districtSlugs: [district.slug] }),
+    queryJobs({ ...EMPTY_FILTERS, tracks: [track], districtSlugs: [district.slug] }, anonymousJobs()),
     getDistricts(),
     // Both allowed to fail: without them the page is still its listings.
     optional(getBrowseCounts(), null),

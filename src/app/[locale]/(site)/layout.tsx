@@ -1,8 +1,11 @@
+import { getTranslations } from 'next-intl/server';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
-import { PolicyNotice } from '@/components/legal/policy-notice';
 import { SignInGateProvider } from '@/components/auth/sign-in-gate';
+import { SessionProvider } from '@/components/session/session-provider';
+import { LivePolicyNotice } from '@/components/session/live-policy-notice';
 import { enabledProviders } from '@/lib/auth-providers';
+import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 
 /**
@@ -30,17 +33,37 @@ export default async function SiteLayout({
   // For the sign-in dialog Save, Follow and Apply open over a page; cached
   // for five minutes, as the sign-in page's own read is.
   const providers = await enabledProviders();
+  const tLegal = await getTranslations('legal');
+  const link = (href: '/terms' | '/privacy') =>
+    function PolicyLink(chunks: React.ReactNode) {
+      return (
+        <Link href={href} target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+          {chunks}
+        </Link>
+      );
+    };
 
   return (
     <SignInGateProvider locale={locale as Locale} googleEnabled={providers.google} appleEnabled={providers.apple}>
-      <SiteHeader locale={locale as Locale} />
-      {/* Somebody signed in who has not agreed to the documents as they are
-          now; nothing for anybody else. */}
-      <PolicyNotice />
-      <main id="main" tabIndex={-1} className="flex-1">
-        {children}
-      </main>
-      <SiteFooter locale={locale} />
+      {/* The chrome is the visitor's. A session cookie fills the account
+          cluster in the browser, which is what lets these pages be cached. */}
+      <SessionProvider>
+        <SiteHeader locale={locale as Locale} />
+        <LivePolicyNotice agreeLabel={tLegal('agree')} failedLabel={tLegal('agreeFailed')}>
+          <div className="text-sm">
+            <p id="policy-notice-title" className="font-medium">
+              {tLegal('updatedTitle')}
+            </p>
+            <p className="mt-0.5 leading-relaxed text-muted-foreground">
+              {tLegal.rich('updatedBody', { terms: link('/terms'), privacy: link('/privacy') })}
+            </p>
+          </div>
+        </LivePolicyNotice>
+        <main id="main" tabIndex={-1} className="flex-1">
+          {children}
+        </main>
+        <SiteFooter locale={locale} />
+      </SessionProvider>
     </SignInGateProvider>
   );
 }

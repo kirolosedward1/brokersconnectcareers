@@ -22,6 +22,7 @@ import { Illustration } from '@/components/illustration';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { WhatsAppMark } from '@/components/brand-marks';
 import { JobBrowse } from '@/components/home/job-browse';
+import { PopularLandings } from '@/components/jobs/popular-landings';
 import { JobCard } from '@/components/jobs/job-card';
 import type { BrowseCounts } from '@/lib/queries/browse';
 import type { JobListItem } from '@/lib/queries/jobs';
@@ -65,6 +66,9 @@ export async function Landing({
       */}
       <Hero locale={locale} />
       <JobBrowse locale={locale} counts={counts} districts={districts} />
+      <div className="shell">
+        <PopularLandings locale={locale} id="home-landings" className="border-t border-border py-8" />
+      </div>
       <LatestJobs />
       <Features />
       <HowItWorks />

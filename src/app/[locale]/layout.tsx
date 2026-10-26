@@ -15,6 +15,8 @@ import {
 } from "@/i18n/routing";
 import { PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { env } from '@/lib/env';
+import { JsonLd } from '@/components/json-ld';
+import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/site-jsonld';
 import '../globals.css';
 import { Analytics } from '@/components/analytics';
 
@@ -87,7 +89,6 @@ export async function generateMetadata({
       type: "website",
       siteName: t("siteName"),
       locale: locale === "ar" ? "ar_EG" : "en_US",
-      alternateLocale: locale === "ar" ? "en_US" : "ar_EG",
       /**
        * A static card, not a generated one.
        *
@@ -133,6 +134,7 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "nav" });
+  const tMeta = await getTranslations({ locale, namespace: "meta" });
 
   return (
     <html
@@ -187,6 +189,8 @@ export default async function LocaleLayout({
         />
       </head>
       <body className="flex min-h-dvh flex-col">
+        <JsonLd data={organizationJsonLd(env.siteUrl, tMeta("siteName"))} />
+        <JsonLd data={websiteJsonLd(env.siteUrl, tMeta("siteName"))} />
         {/* Only what the public site's client components read. The console
             nests its own provider and adds its half. See client-messages.ts. */}
         <NextIntlClientProvider
