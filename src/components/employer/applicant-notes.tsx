@@ -157,11 +157,10 @@ export function ApplicantNotes({
         className="flex min-h-9 w-full items-center gap-1.5 rounded-md text-start text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <Lock className="size-3.5 shrink-0" aria-hidden />
-        {t('notesTitle')}
+        <span className="min-w-0 flex-1">{t('notesTitle')}</span>
         {notes.length ? (
           <span className="numeral rounded bg-muted px-1.5 text-foreground">{notes.length}</span>
         ) : null}
-        <span className="font-normal">— {t('notesHint')}</span>
         <ChevronDown
           className={cn('ms-auto size-4 shrink-0 transition-transform', open && 'rotate-180')}
           aria-hidden
