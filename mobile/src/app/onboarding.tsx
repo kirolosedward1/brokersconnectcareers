@@ -35,6 +35,7 @@ import { signOutHere } from '~/features/push/device';
 import { useDistricts } from '~/features/taxonomy';
 import { markupTags } from '~/i18n/rich';
 import { callAction } from '~/lib/api';
+import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
@@ -382,7 +383,7 @@ function OnboardingForm({
     setPending(false);
   }
 
-  const openSitePage = (path: string) => WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
+  const openSitePage = (path: string) => WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
   const last = index === steps.length - 1;
 
   return (

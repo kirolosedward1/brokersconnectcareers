@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import { Button } from '~/components/ui/button';
 import { EmptyState } from '~/components/ui/states';
+import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { startPath } from '~/lib/tabs';
@@ -54,7 +55,7 @@ export default function NotFoundScreen() {
               <Button
                 label={t('app.account.openWebsite')}
                 variant="outline"
-                onPress={() => WebBrowser.openBrowserAsync(`${env.siteUrl}${address}`).catch(() => {})}
+                onPress={() => WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${address}`)).catch(() => {})}
               />
             ) : null}
           </View>

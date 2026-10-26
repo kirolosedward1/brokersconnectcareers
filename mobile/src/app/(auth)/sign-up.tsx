@@ -21,6 +21,7 @@ import { confirmationPath, intentFromParams, intentParams } from '~/features/aut
 import { useLand } from '~/features/auth/land';
 import type { ProviderOutcome } from '~/features/auth/providers';
 import { callAction } from '~/lib/api';
+import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
 import { useErrorFeedback } from '~/lib/haptics';
 import { supabase } from '~/lib/supabase';
@@ -286,5 +287,5 @@ export default function SignUpScreen() {
 }
 
 function openSitePage(path: '/terms' | '/privacy') {
-  WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
+  WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
 }

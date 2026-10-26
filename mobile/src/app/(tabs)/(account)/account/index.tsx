@@ -47,6 +47,7 @@ import { useTabList } from '~/features/tab-bar';
 import { buildMarker, publishedAt, shownVersion } from '~/features/update';
 import { ApiError } from '~/lib/api';
 import { useScreenRefresh } from '~/lib/use-pull-refresh';
+import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
 import { useSession } from '~/lib/session';
 import { useTheme, type ThemePreference } from '~/theme/provider';
@@ -278,7 +279,7 @@ export default function AccountScreen() {
           <Row
             icon={<ExternalLink size={18} color={colors.primary} />}
             label={t('app.account.openWebsite')}
-            onPress={() => WebBrowser.openBrowserAsync(env.siteUrl).catch(() => {})}
+            onPress={() => WebBrowser.openBrowserAsync(withAppMarker(env.siteUrl)).catch(() => {})}
           />
           {supportEmail ? (
             <Row
@@ -363,7 +364,7 @@ export default function AccountScreen() {
 
 /** A page of the website, in the in-app browser: the policies live there, in one copy. */
 function openSitePage(path: '/privacy' | '/terms') {
-  WebBrowser.openBrowserAsync(`${env.siteUrl}${path}`).catch(() => {});
+  WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
 }
 
 function Row({

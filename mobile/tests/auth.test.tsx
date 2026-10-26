@@ -270,9 +270,9 @@ describe('the Account tab', () => {
     expect(screen.getByText(ar.footer.operatedBy.replace('{name}', 'Top Suite Digital Marketing'))).toBeTruthy();
 
     await press(ar.footer.privacy);
-    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy`);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy?app=1`);
     await press(ar.footer.terms);
-    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms`);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms?app=1`);
     await press(ar.licenses.title);
     expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
   });
@@ -459,9 +459,9 @@ describe('creating an account', () => {
   it('says where the policies are where the address is asked for, and opens them', async () => {
     await renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.press(await screen.findByText(ar.footer.privacy));
-    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy`);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy?app=1`);
     fireEvent.press(screen.getByText(ar.footer.terms));
-    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms`);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms?app=1`);
     expect(server.asked('/auth/v1/signup')).toHaveLength(0);
   });
 
@@ -583,9 +583,9 @@ describe('onboarding', () => {
     expect(agreement.props.accessibilityActions.map((action: { label: string }) => action.label)).toEqual([ar.footer.terms, ar.footer.privacy]);
 
     fireEvent(agreement, 'accessibilityAction', { nativeEvent: { actionName: 'terms' } });
-    expect(WebBrowser.openBrowserAsync).toHaveBeenLastCalledWith(`${SITE}/terms`);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenLastCalledWith(`${SITE}/terms?app=1`);
     fireEvent(agreement, 'accessibilityAction', { nativeEvent: { actionName: 'privacy' } });
-    expect(WebBrowser.openBrowserAsync).toHaveBeenLastCalledWith(`${SITE}/privacy`);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenLastCalledWith(`${SITE}/privacy?app=1`);
     // Neither ticks the box.
     expect(agreement.props.accessibilityState).toMatchObject({ checked: false });
   });
