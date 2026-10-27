@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Building2, Eye, Gift, MessagesSquare, Signpost } from 'lucide-react';
 import { Logo } from '@/components/logo';
@@ -16,9 +15,9 @@ type Audience = 'candidate' | 'employer';
  * lit. That is the only motion, and it is off when the reader has asked
  * for less.
  *
- * The line at the foot is a count from the database, or the app's real
- * coming-soon sentence when there is nothing to count. It never invents
- * either.
+ * The line at the foot is a count from the database, and only when that
+ * count is real. Nothing here is invented, and a failed read leaves the
+ * foot off rather than a sentence.
  */
 const POINTS = {
   candidate: [
@@ -36,11 +35,11 @@ const POINTS = {
 export async function BrandPanel({ audience }: { audience?: Audience }) {
   const t = await getTranslations('auth');
   const tMeta = await getTranslations('meta');
-  const tApp = await getTranslations('jobs.appPromo');
   const locale = await getLocale();
   const proof = await getMarketProof();
   const hiring = audience === 'employer';
   const points = hiring ? POINTS.employer : POINTS.candidate;
+  const hasProof = proof.jobs != null || proof.companies != null;
 
   return (
     <aside
@@ -56,22 +55,19 @@ export async function BrandPanel({ audience }: { audience?: Audience }) {
         />
       </div>
 
-      <div className="auth-panel-rise relative z-10 px-12 pt-12 xl:px-16">
+      <div className="auth-panel-rise relative z-10 px-12 pt-14 xl:px-16">
         <h2
           id="auth-panel-title"
-          className="max-w-md text-[2rem] font-bold leading-[1.35] xl:text-[2.25rem]"
+          className="text-[1.75rem] font-bold leading-tight xl:text-[2rem]"
         >
           {hiring ? t('panelTitleEmployer') : t('panelTitle')}
         </h2>
-        <p className="auth-panel-muted mt-4 max-w-sm text-base leading-relaxed">
-          {hiring ? t('panelLedeEmployer') : t('panelLede')}
-        </p>
 
-        <ul className="mt-10 max-w-md space-y-5">
+        <ul className="mt-8 space-y-4">
           {points.map(({ key, icon: Icon }) => (
-            <li key={key} className="flex items-start gap-3.5">
-              <Icon className="auth-panel-icon mt-1 size-5 shrink-0" strokeWidth={1.75} aria-hidden />
-              <span className="text-base leading-relaxed">{t(key)}</span>
+            <li key={key} className="flex items-center gap-3">
+              <Icon className="auth-panel-icon size-5 shrink-0" strokeWidth={1.75} aria-hidden />
+              <span className="text-base">{t(key)}</span>
             </li>
           ))}
         </ul>
@@ -81,9 +77,11 @@ export async function BrandPanel({ audience }: { audience?: Audience }) {
         <Facade />
       </div>
 
-      <div className="auth-panel-foot auth-panel-rise-late relative z-10 px-12 py-6 xl:px-16">
-        <Proof locale={locale} jobs={proof.jobs} companies={proof.companies} comingSoon={tApp.rich('comingSoon', { bdi: (chunks) => <bdi>{chunks}</bdi> })} />
-      </div>
+      {hasProof ? (
+        <div className="auth-panel-foot auth-panel-rise-late relative z-10 px-12 py-5 xl:px-16">
+          <Proof locale={locale} jobs={proof.jobs} companies={proof.companies} />
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -92,19 +90,13 @@ function Proof({
   locale,
   jobs,
   companies,
-  comingSoon,
 }: {
   locale: string;
   jobs: number | null;
   companies: number | null;
-  comingSoon: ReactNode;
 }) {
-  if (jobs == null && companies == null) {
-    return <p className="auth-panel-muted text-sm leading-relaxed">{comingSoon}</p>;
-  }
-
   return (
-    <p className="text-[0.95rem] leading-relaxed">
+    <p className="text-sm leading-none">
       {jobs != null ? <Count locale={locale} count={jobs} kind="jobs" /> : null}
       {jobs != null && companies != null ? <Join /> : null}
       {companies != null ? <Count locale={locale} count={companies} kind="companies" /> : null}
