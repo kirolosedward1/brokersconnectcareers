@@ -345,6 +345,7 @@ function OnboardingForm({
       whatsapp,
       locale: profileLocale,
       agreed: true,
+      attribution: { inApp: true },
       visibility: role === 'candidate' ? (visibility ?? undefined) : undefined,
       company:
         role === 'employer'

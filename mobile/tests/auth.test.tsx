@@ -551,6 +551,7 @@ describe('onboarding', () => {
         whatsapp: '01001234567',
         locale: 'ar',
         agreed: true,
+        attribution: { inApp: true },
         visibility: 'hidden',
       },
     });
@@ -660,6 +661,7 @@ describe('onboarding', () => {
         whatsapp: '01001234567',
         locale: 'ar',
         agreed: true,
+        attribution: { inApp: true },
         company: { nameAr: 'نايل بروكرز', website: null, headcountBand: null, districtId: null },
       },
     });

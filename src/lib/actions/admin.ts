@@ -381,6 +381,35 @@ export async function revealContact(
   return { ok: true, data: { email: row.email, phone: row.whatsapp_phone } };
 }
 
+const testFlagSchema = z.object({
+  userId: z.string().uuid().optional(),
+  companyId: z.string().uuid().optional(),
+  test: z.boolean(),
+  reason: z.string().trim().max(500).optional(),
+});
+
+/** Mark a row as ours, or take the mark off. Recorded. Nobody is emailed. */
+export async function setTestFlag(input: unknown): Promise<AdminResult> {
+  const parsed = testFlagSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const { userId, companyId, test, reason } = parsed.data;
+  if (Boolean(userId) === Boolean(companyId)) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_set_test_flag', {
+    p_user: userId ?? null,
+    p_company: companyId ?? null,
+    p_test: test,
+    p_reason: reason ?? null,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  return { ok: true };
+}
+
 const roleSchema = z.object({
   userId: z.string().uuid(),
   role: z.enum(['candidate', 'employer', 'admin']),

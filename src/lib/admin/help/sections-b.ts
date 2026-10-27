@@ -241,19 +241,19 @@ export const SECTIONS_B: HelpSection[] = [
       },
       {
         id: 'accounts-contact',
-        title: t('عرض بيانات التواصل', 'Revealing contact details'),
+        title: t('بيانات التواصل', 'Contact details'),
         summary: t(
-          'لا تظهر بيانات التواصل في أي قائمة. «اعرض بيانات التواصل» يطلب سببًا من ثلاثة أحرف حتى ثلاثمئة، ويُسجَّل السبب مع اسمك قبل أن يعود البريد والهاتف. بعد العرض: «سُجّل أنك فتحت بيانات التواصل هذه والسبب.» على حسابك أنت يظهر «هذا حسابك.»',
-          'Contact details are not on any list. Reveal contact details asks for a reason of three to three hundred characters, and records the reason with your name before the email and phone come back. Afterwards: “It is recorded that you opened these contact details, and why.” On your own account the page says This is your account.',
+          'لا تظهر بيانات التواصل في أي قائمة. على صفحة الحساب تظهر في «التواصل» مباشرة: البريد، وهل هو مؤكَّد، والهاتف مع رابط اتصال وواتساب. الاطّلاع يُسجَّل بهدوء، من دون سبب يُكتب، ومرة في الساعة للحساب نفسه.',
+          'Contact details are not on any list. On the account page they are already in Contact: the email, whether it is verified, and the phone with a call link and WhatsApp. The look is recorded quietly, with no reason to type, and once an hour for the same account.',
         ),
         href: '/admin/users',
         steps: [
-          t('من «التواصل» اضغط «اعرض بيانات التواصل».', 'Under Contact, press Reveal contact details.'),
-          t('اكتب «السبب».', 'Write the reason.'),
-          t('اقرأ «البريد الإلكتروني» و«الهاتف». الرابط يفتح واتساب إن وُجد رقم.', 'Read Email and Phone. The link opens WhatsApp when there is a number.'),
+          t('افتح الحساب.', 'Open the account.'),
+          t('اقرأ «البريد الإلكتروني» و«الهاتف» في «التواصل».', 'Read Email and Phone under Contact.'),
+          t('الرابط يفتح البريد أو الاتصال أو واتساب.', 'A link opens mail, the phone, or WhatsApp.'),
         ],
         tips: [
-          t('بيانات تواصل الاستشاري ليست في دليل الإدارة. صفحة الملف تقول: «بيانات التواصل على صفحة الحساب، ويجب أن تكتب سببًا.»', 'A consultant’s contact details are not on the admin directory. The profile page says: contact details are on the account page, and you must write a reason.'),
+          t('بيانات تواصل الاستشاري ليست في دليل الإدارة. صفحة الملف تقول: «بيانات التواصل على صفحة الحساب.»', 'A consultant’s contact details are not on the admin directory. The profile page says contact details are on the account page.'),
         ],
       },
       {

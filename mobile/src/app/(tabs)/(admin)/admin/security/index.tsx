@@ -167,7 +167,7 @@ function Strips({ summary }: { summary: SecuritySummary }) {
     { label: t('admin.secReveals'), value: n(summary.reveals_24h), onPress: here },
     { label: t('admin.secSuspended'), value: n(summary.accounts_suspended), onPress: go('/admin/users', { status: 'rejected' }) },
     { label: t('admin.secReportsOpen'), value: n(summary.reports_open), onPress: go('/admin/reports') },
-    { label: t('admin.secJobsPending'), value: n(summary.jobs_pending), onPress: go('/admin/jobs') },
+    { label: t('admin.secJobsPending'), value: n(summary.jobs_pending), onPress: go('/admin/jobs', { status: 'pending' }) },
     { label: t('admin.secSignups'), value: n(summary.signups_24h), onPress: go('/admin/users') },
   ];
 

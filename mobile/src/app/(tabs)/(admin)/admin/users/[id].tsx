@@ -19,7 +19,6 @@ import {
   Ban,
   Check,
   CirclePause,
-  Eye,
   Flag,
   FlagOff,
   Lock,
@@ -50,8 +49,6 @@ const TABS: readonly Tab[] = ['overview', 'activity', 'security', 'record'];
 const JOB_STATES: readonly JobStatus[] = ['draft', 'pending_review', 'active', 'expired', 'closed', 'rejected'];
 
 /** What a lever's answer carries when the website reveals a contact. */
-type RevealedContact = { email: string | null; phone: string };
-
 /**
  * One account's file — the website's /admin/users/<id>: who they are, what
  * they belong to, how they sign in, what they have done, and what the admins
@@ -88,8 +85,6 @@ function File({ id }: { id: string | undefined }) {
   const file = useAccountFile(id);
   const pull = usePullRefresh(() => file.refetch());
   const [tab, setTab] = useState<Tab>('overview');
-  // A contact revealed on this screen stays through its tabs (Contact says why).
-  const [contact, setContact] = useState<RevealedContact | null>(null);
 
   if (!id) return <NotFoundState />;
   if (file.isPending) return <LoadingState />;
@@ -130,7 +125,7 @@ function File({ id }: { id: string | undefined }) {
       />
 
       {tab === 'overview' ? (
-        <Overview account={account} self={self} contact={contact} onReveal={setContact} />
+        <Overview account={account} self={self} />
       ) : tab === 'activity' ? (
         <Activity account={account} self={self} />
       ) : tab === 'security' ? (
@@ -171,17 +166,7 @@ function LinkRow({ label, onPress, children }: { label: string; onPress: () => v
 }
 
 /** Who they are and what they belong to, with the account's own levers and its contact. */
-function Overview({
-  account,
-  self,
-  contact,
-  onReveal,
-}: {
-  account: AccountFile;
-  self: boolean;
-  contact: RevealedContact | null;
-  onReveal: (contact: RevealedContact) => void;
-}) {
+function Overview({ account, self }: { account: AccountFile; self: boolean }) {
   const t = useTranslations();
   const locale = useLocale();
   const roleLabel = useRoleLabel();
@@ -255,7 +240,7 @@ function Overview({
       ) : null}
 
       <Actions account={account} self={self} />
-      <Contact account={account} self={self} contact={contact} onReveal={onReveal} />
+      <Contact account={account} self={self} />
     </>
   );
 }
@@ -406,26 +391,14 @@ function Actions({ account, self }: { account: AccountFile; self: boolean }) {
 }
 
 /**
- * The phone number and the email, behind a reason — the website's
- * RevealContact. Held in the screen's state (File) and nowhere else: not in
- * the query cache, not in the address, and gone with the screen — but not
- * with a tab switch, which would ask for a second reveal, and a second record,
- * for one look-up. The reason is recorded with the request, so "who looked
- * this person up, and why" always has an answer.
+ * Email and phone, already on the page. The database records the look.
+ * Nothing is asked, and the same hour does not write the look again.
  */
-function Contact({
-  account,
-  self,
-  contact,
-  onReveal,
-}: {
-  account: AccountFile;
-  self: boolean;
-  contact: RevealedContact | null;
-  onReveal: (contact: RevealedContact) => void;
-}) {
+function Contact({ account, self }: { account: AccountFile; self: boolean }) {
   const t = useTranslations();
   const { colors } = useTheme();
+  const contact = account.contact;
+  const phone = contact?.phone?.trim() || '';
 
   return (
     <Card style={{ gap: space[3] }}>
@@ -434,59 +407,36 @@ function Contact({
         <Text variant="small" tone="mutedForeground">
           {t('admin.contactSelf')}
         </Text>
-      ) : contact ? (
-        <View style={{ gap: space[3], padding: space[3], ...corner('lg'), backgroundColor: colors.warningMuted }}>
-          <Facts>
-            <Fact label={t('admin.contactEmail')}>
-              <Text variant="small" selectable style={{ writingDirection: 'ltr' }}>
-                {contact.email ?? '—'}
-              </Text>
-            </Fact>
-            <Fact label={t('admin.contactPhone')}>
-              <Text variant="small" selectable style={{ writingDirection: 'ltr' }}>
-                {contact.phone}
-              </Text>
-            </Fact>
-          </Facts>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-            <Button
-              label={t('app.admin.openWhatsApp')}
-              size="sm"
-              icon={<MessageCircle size={16} color={colors.primaryForeground} />}
-              onPress={() => Linking.openURL(whatsappLink(contact.phone)).catch(() => {})}
-            />
-            <Button
-              label={t('app.admin.call')}
-              variant="outline"
-              size="sm"
-              icon={<Phone size={16} color={colors.foreground} />}
-              onPress={() => Linking.openURL(`tel:${contact.phone}`).catch(() => {})}
-            />
-          </View>
-          <Text variant="caption" tone="mutedForeground">
-            {t('admin.contactRecorded')}
+      ) : null}
+      <Facts>
+        <Fact label={t('admin.contactEmail')}>
+          <Text variant="small" selectable style={{ writingDirection: 'ltr' }}>
+            {contact?.email?.trim() || '—'}
           </Text>
+        </Fact>
+        <Fact label={t('admin.contactPhone')}>
+          <Text variant="small" selectable style={{ writingDirection: 'ltr' }}>
+            {phone || '—'}
+          </Text>
+        </Fact>
+      </Facts>
+      {phone ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+          <Button
+            label={t('app.admin.openWhatsApp')}
+            size="sm"
+            icon={<MessageCircle size={16} color={colors.primaryForeground} />}
+            onPress={() => Linking.openURL(whatsappLink(phone)).catch(() => {})}
+          />
+          <Button
+            label={t('app.admin.call')}
+            variant="outline"
+            size="sm"
+            icon={<Phone size={16} color={colors.foreground} />}
+            onPress={() => Linking.openURL(`tel:${phone}`).catch(() => {})}
+          />
         </View>
-      ) : (
-        <Button
-          label={t('admin.revealContact')}
-          variant="outline"
-          icon={<Eye size={18} color={colors.foreground} />}
-          onPress={() =>
-            openDecision({
-              lever: { do: 'reveal', userId: account.profile.id },
-              title: t('admin.revealContact'),
-              reason: 'required',
-              reasonLabel: t('admin.reasonOnRecord'),
-              reasonMax: 300,
-              confirmLabel: t('admin.revealContact'),
-              onDone: (data) => {
-                if (data && typeof data === 'object' && 'phone' in data) onReveal(data as RevealedContact);
-              },
-            })
-          }
-        />
-      )}
+      ) : null}
     </Card>
   );
 }

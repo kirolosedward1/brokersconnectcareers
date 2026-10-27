@@ -19,7 +19,7 @@ type AdminTranslate = (key: 'jobsQueue' | 'reports' | 'users') => string;
 export function shortcutsFor(actor: Actor, t: Translate, adminT: AdminTranslate = (key) => key): QuickActions.Action[] {
   if (isAdmin(actor)) {
     return [
-      { id: 'queue', title: adminT('jobsQueue'), icon: 'symbol:checkmark.shield', params: { href: '/admin/jobs' } },
+      { id: 'queue', title: adminT('jobsQueue'), icon: 'symbol:checkmark.shield', params: { href: '/admin/jobs?status=pending' } },
       { id: 'reports', title: adminT('reports'), icon: 'symbol:flag', params: { href: '/admin/reports' } },
       { id: 'accounts', title: adminT('users'), icon: 'symbol:person.2', params: { href: '/admin/users' } },
     ];

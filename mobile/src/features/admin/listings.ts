@@ -42,6 +42,7 @@ export type ListingsView =
   | 'all';
 
 export const LISTINGS_VIEWS: readonly ListingsView[] = [
+  'all',
   'pending',
   'flagged',
   'live',
@@ -52,7 +53,6 @@ export const LISTINGS_VIEWS: readonly ListingsView[] = [
   'closed',
   'rejected',
   'draft',
-  'all',
 ];
 
 export const LISTINGS_PAGE_SIZE = 25;

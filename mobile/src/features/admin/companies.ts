@@ -16,8 +16,8 @@ import { useOpen } from './record';
 
 /**
  * The companies — the website's /admin/companies and /admin/companies/<id>,
- * read the same way: every view the website has (the verification queue
- * first, oldest first; every other view newest first), searched over both
+ * read the same way: every view the website has («الكل» first and selected;
+ * the verification queue oldest first; every other view newest first), searched over both
  * names and the slug, twenty-five at a time; and one company's page with
  * everything the website's shows. Every read is an admin's alone (queries.ts
  * says why) and waits for the console's door.
@@ -25,7 +25,7 @@ import { useOpen } from './record';
 
 export type CompaniesView = 'pending' | 'verified' | 'unverified' | 'rejected' | 'suspended' | 'all';
 
-export const COMPANIES_VIEWS: readonly CompaniesView[] = ['pending', 'verified', 'unverified', 'rejected', 'suspended', 'all'];
+export const COMPANIES_VIEWS: readonly CompaniesView[] = ['all', 'pending', 'verified', 'unverified', 'rejected', 'suspended'];
 
 export const COMPANIES_PAGE_SIZE = 25;
 
@@ -107,6 +107,8 @@ export type CompanyMember = {
   role: CompanyMemberRole;
   created_at: string;
   profile: { id: string; full_name: string; approval_status: ApprovalStatus } | null;
+  /** Email and phone, when the contact function answered. Absent until it does. */
+  contact?: { email: string | null; phone: string | null } | null;
 };
 
 export type CompanyListing = {
@@ -202,10 +204,22 @@ export function useCompanyFile(id: string | undefined) {
 
       const review = signals.data?.[0];
       const listings = (jobs.data ?? []) as unknown as CompanyListing[];
+      const people = (members.data ?? []) as unknown as CompanyMember[];
+      const ids = people.flatMap((member) => (member.profile ? [member.profile.id] : []));
+      const contacts = ids.length ? await supabase.rpc('admin_view_contacts', { p_users: ids }) : null;
+      const byId = new Map<string, { email: string | null; phone: string | null }>();
+      if (contacts && !contacts.error && Array.isArray(contacts.data)) {
+        for (const row of contacts.data) {
+          byId.set(row.user_id, { email: row.email, phone: row.whatsapp_phone });
+        }
+      }
       return {
         company,
         papers: (documents.data ?? []) as CompanyPaper[],
-        members: (members.data ?? []) as unknown as CompanyMember[],
+        members: people.map((member) => ({
+          ...member,
+          contact: member.profile ? (byId.get(member.profile.id) ?? null) : null,
+        })),
         listings,
         listingsTotal: jobs.count ?? listings.length,
         openListingReports: jobReports.count ?? 0,

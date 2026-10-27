@@ -61,9 +61,9 @@ export default function AdminListingsScreen() {
   );
 }
 
-/** The view a link asks for, in the website's own terms (`?status=` on /admin/jobs); the review queue otherwise. */
+/** The view a link asks for, in the website's own terms (`?status=` on /admin/jobs); every listing otherwise. */
 function viewFor(status: string | undefined): ListingsView {
-  return (LISTINGS_VIEWS as readonly string[]).includes(status ?? '') ? (status as ListingsView) : 'pending';
+  return (LISTINGS_VIEWS as readonly string[]).includes(status ?? '') ? (status as ListingsView) : 'all';
 }
 
 function Listings() {

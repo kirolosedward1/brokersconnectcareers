@@ -247,7 +247,7 @@ describe('the shortcuts held from the app icon', () => {
     ]);
     expect(hrefs(null)).toEqual(['/jobs', '/companies']);
     expect(hrefs({ userId: 'u', profile: { role: 'admin', approval_status: 'approved' }, company: null })).toEqual([
-      '/admin/jobs',
+      '/admin/jobs?status=pending',
       '/admin/reports',
       '/admin/users',
     ]);
@@ -257,6 +257,6 @@ describe('the shortcuts held from the app icon', () => {
         profile: { role: 'admin', approval_status: 'approved' },
         company: { id: 'c', verification_status: 'verified' },
       }),
-    ).toEqual(['/admin/jobs', '/admin/reports', '/admin/users']);
+    ).toEqual(['/admin/jobs?status=pending', '/admin/reports', '/admin/users']);
   });
 });

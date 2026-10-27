@@ -289,6 +289,11 @@ function MemberRow({
         {owner ? <Badge variant="outline" label={t('admin.owner')} /> : null}
         <ApprovalBadge status={profile.approval_status} />
       </View>
+      {member.contact?.email || member.contact?.phone ? (
+        <Text variant="caption" tone="mutedForeground" selectable style={{ writingDirection: 'ltr', textAlign: 'left' }}>
+          {[member.contact.email, member.contact.phone].filter(Boolean).join(' · ')}
+        </Text>
+      ) : null}
     </LinkRow>
   );
 }
