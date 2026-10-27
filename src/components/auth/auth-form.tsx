@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Building2, MailCheck, RefreshCw, UserRound } from 'lucide-react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
+import { Building2, Mail, MailCheck, RefreshCw, UserRound } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
@@ -110,6 +110,50 @@ export function AuthForm({
   // query string anybody can craft. An unusable value falls back to onboarding
   // rather than being handed to the router to turn into a 404.
   const next = safeNext(nextPath ?? searchParams.get('next')) ?? undefined;
+  const queryError = searchParams.get('error');
+  const queryEmail = (searchParams.get('email') ?? '').trim();
+  const prefilledEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(queryEmail) ? queryEmail : '';
+  /*
+    Sign-in starts on Google. The address and password stay folded until
+    somebody asks, unless an error is already on the page or an address is
+    already in the field — then there is nothing to hide them for.
+  */
+  const collapseEmail = mode === 'sign-in' && (googleEnabled || appleEnabled);
+  const [emailOpen, setEmailOpen] = useState(() => !collapseEmail || Boolean(queryError) || prefilledEmail.length > 0);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const emailPanelId = useId();
+  const emailToggleId = useId();
+  const focusEmail = useRef(false);
+
+  useEffect(() => {
+    if (!collapseEmail) return;
+    const field = emailRef.current;
+    if (!field) return;
+    const sync = () => {
+      if (field.value.trim()) setEmailOpen(true);
+    };
+    sync();
+    const timer = window.setTimeout(sync, 400);
+    field.addEventListener('input', sync);
+    return () => {
+      window.clearTimeout(timer);
+      field.removeEventListener('input', sync);
+    };
+  }, [collapseEmail]);
+
+  useEffect(() => {
+    if (!emailOpen || !focusEmail.current) return;
+    focusEmail.current = false;
+    emailRef.current?.focus();
+  }, [emailOpen]);
+
+  function toggleEmail() {
+    setEmailOpen((open) => {
+      const nextOpen = !open;
+      if (nextOpen) focusEmail.current = true;
+      return nextOpen;
+    });
+  }
 
   // Onboarding is where a new account chooses its role; if the door already
   // implied one, hand it over. An existing account skips onboarding entirely,
@@ -153,6 +197,10 @@ export function AuthForm({
   const confirmationRedirect = () => `${window.location.origin}${confirmationPath()}`;
 
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!collapseEmail) return;
+    if (error || queryError || prefilledEmail) setEmailOpen(true);
+  }, [collapseEmail, error, queryError, prefilledEmail]);
   const [checkEmail, setCheckEmail] = useState(false);
   /** Kept so the confirmation can be sent again without retyping it. */
   const [pendingEmail, setPendingEmail] = useState('');
@@ -484,9 +532,40 @@ export function AuthForm({
         </>
       ) : null}
 
+      {collapseEmail ? (
+        <Button
+          id={emailToggleId}
+          type="button"
+          variant="secondary"
+          size="lg"
+          className="w-full max-w-full min-w-0"
+          aria-expanded={emailOpen}
+          aria-controls={emailPanelId}
+          disabled={pending}
+          onClick={toggleEmail}
+        >
+          <Mail aria-hidden />
+          <span className="min-w-0">{t('signInWithEmail')}</span>
+        </Button>
+      ) : null}
+
+      <div
+        id={collapseEmail ? emailPanelId : undefined}
+        role={collapseEmail ? 'region' : undefined}
+        aria-labelledby={collapseEmail ? emailToggleId : undefined}
+        inert={collapseEmail && !emailOpen ? true : undefined}
+        className={
+          collapseEmail
+            ? 'grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none'
+            : undefined
+        }
+        style={collapseEmail ? { gridTemplateRows: emailOpen ? '1fr' : '0fr' } : undefined}
+      >
+        <div className={collapseEmail ? `min-h-0 overflow-hidden ${emailOpen ? 'pt-4' : ''}` : undefined}>
       <form onSubmit={onSubmit} className="space-y-4">
         <Field label={t('email')} htmlFor="email">
           <Input
+            ref={emailRef}
             id="email"
             name="email"
             type="email"
@@ -494,6 +573,7 @@ export function AuthForm({
             autoComplete="email"
             dir="ltr"
             inputMode="email"
+            defaultValue={prefilledEmail || undefined}
           />
         </Field>
 
@@ -606,6 +686,8 @@ export function AuthForm({
           })}
         </p>
       ) : null}
+        </div>
+      </div>
 
       {/* Sign-in only. Offering a demo account on the sign-up screen would be
           arguing against the thing that screen exists to do. */}

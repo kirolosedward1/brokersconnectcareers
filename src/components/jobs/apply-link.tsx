@@ -7,9 +7,9 @@ import { useSignInGate } from '@/components/auth/sign-in-gate';
 
 /**
  * The Apply button: a link to the apply form for somebody signed in, and for
- * a visitor the sign-in dialog first (sign-in-gate.tsx), naming the listing,
- * then the same form — in place of the round trip through the sign-in page
- * that lost them the listing they were reading.
+ * a visitor the sign-in dialog first (sign-in-gate.tsx), then the same
+ * form — in place of the round trip through the sign-in page that lost
+ * them the listing they were reading.
  */
 export function ApplyLink({
   href,

@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
-import { Briefcase } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Link, useRouter } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
@@ -41,7 +40,10 @@ export type SignInAsk = {
   reason: 'save' | 'follow' | 'apply' | 'report';
   /** Where to come back to, as a path: the listing, the company, the apply form. */
   next: string;
-  /** For Apply: the listing named, so the gate reads as a step inside something already begun. */
+  /**
+   * For Apply: the listing this came from. The dialog used to print it.
+   * Callers still pass it; the sheet itself does not.
+   */
   intent?: { job: string; company: string };
 };
 
@@ -105,19 +107,6 @@ export function SignInGateProvider({
         <Dialog open onClose={() => settle(false)} label={titles[ask.reason]} closeLabel={tCommon('close')}>
           <div className="space-y-5">
             <h2 className="pe-8 text-lg font-semibold">{titles[ask.reason]}</h2>
-
-            {/* The listing named, as the sign-in page names it (return-intent.tsx). */}
-            {ask.intent ? (
-              <div className="flex gap-3 rounded-xl border border-border bg-card p-4">
-                <Briefcase className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-sm font-bold">{t('applyingTo', { job: ask.intent.job })}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t('applyingToCompany', { company: ask.intent.company })}
-                  </p>
-                </div>
-              </div>
-            ) : null}
 
             <AuthForm
               mode="sign-in"
