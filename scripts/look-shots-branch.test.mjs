@@ -61,6 +61,10 @@ function pushShots(remote, run, shots, extraEnv = {}) {
       PR_NUMBER: '1',
       LOOK_SHOTS_REMOTE: remote,
       LOOK_SHOTS_SKIP_COMMENT: '1',
+      // The look job's runner has no global git identity. Rebase has to work
+      // from the repo-local one the script writes.
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_SYSTEM: '/dev/null',
       ...extraEnv,
     },
     encoding: 'utf8',

@@ -112,6 +112,10 @@ else
 fi
 work=$(mktemp -d)
 git init -q "$work"
+# The runner has no global identity. commit -c sets it for the shot commit;
+# rebase makes the follow-up commit itself, and refuses an empty name.
+git -C "$work" config user.name github-actions
+git -C "$work" config user.email github-actions@github.com
 git -C "$work" remote add origin "$remote"
 if git -C "$work" fetch --depth 1 origin look-shots:look-shots 2>/dev/null; then
   git -C "$work" checkout -q look-shots
