@@ -207,8 +207,8 @@ export const SECTIONS_B: HelpSection[] = [
         id: 'accounts-standing',
         title: t('التفعيل والإيقاف والتعليق', 'Approve, suspend and hold'),
         summary: t(
-          'من «الإجراءات». حسابات المشرفين لا تُوقَف من هنا، ويظهر بدل الأزرار «لا تُوقَف حسابات المشرفين من هنا.» التفعيل والاستعادة بلا سبب ويصل صاحبهما بريد. التعليق والإيقاف يحتاجان «السبب (يصل إلى صاحب الحساب)».',
-          'From Actions. Admin accounts are not suspended from here, and the buttons are replaced by “Admin accounts cannot be suspended from here.” Approval and restoration need no reason, and the person is emailed. A hold and a suspension need “Reason (sent to the account holder)”.',
+          'من «الإجراءات». حسابات المشرفين لا تُوقَف من هنا، ويظهر بدل الأزرار «لا تُوقَف حسابات المشرفين من هنا.» التفعيل والاستعادة بلا سبب ويصل صاحبهما بريد. التعليق والإيقاف يعرضان «السبب (اختياري، يصل إلى صاحب الحساب)»، ويمكن تركه فارغًا.',
+          'From Actions. Admin accounts are not suspended from here, and the buttons are replaced by “Admin accounts cannot be suspended from here.” Approval and restoration need no reason, and the person is emailed. A hold and a suspension offer “Reason (optional, sent to the account holder)”, and it may be left empty.',
         ),
         fields: [
           { label: t('فعّل الحساب', 'Approve the account'), detail: t('يستطيع الحساب العمل مرة أخرى، ويصل صاحبه بريد. يظهر ما دام غير مفعّل.', 'The account can work again, and its owner is emailed. Shown while it is not approved.') },
@@ -243,8 +243,8 @@ export const SECTIONS_B: HelpSection[] = [
         id: 'accounts-contact',
         title: t('عرض بيانات التواصل', 'Revealing contact details'),
         summary: t(
-          'لا تظهر بيانات التواصل في أي قائمة. «اعرض بيانات التواصل» يطلب سببًا من ثلاثة أحرف حتى ثلاثمئة، ويُسجَّل السبب مع اسمك قبل أن يعود البريد والهاتف. بعد العرض: «سُجّل أنك فتحت بيانات التواصل هذه والسبب.» على حسابك أنت يظهر «هذا حسابك.»',
-          'Contact details are not on any list. Reveal contact details asks for a reason of three to three hundred characters, and records the reason with your name before the email and phone come back. Afterwards: “It is recorded that you opened these contact details, and why.” On your own account the page says This is your account.',
+          'لا تظهر بيانات التواصل في أي قائمة. «اعرض بيانات التواصل» يعرض سببًا اختياريًا حتى ثلاثمئة حرف، ويُسجَّل مع اسمك قبل أن يعود البريد والهاتف. إن تركته فارغًا يُحفظ السجل بلا سبب. بعد العرض: «سُجّل أنك فتحت بيانات التواصل هذه والسبب.» على حسابك أنت يظهر «هذا حسابك.»',
+          'Contact details are not on any list. Reveal contact details offers an optional reason of up to three hundred characters, and records it with your name before the email and phone come back. Leave it empty and the record stores no reason. Afterwards: “It is recorded that you opened these contact details, and why.” On your own account the page says This is your account.',
         ),
         href: '/admin/users',
         steps: [

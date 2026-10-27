@@ -477,7 +477,7 @@ describe('a report line', () => {
     fireEvent.press(screen.getByRole('button', { name: `${ar.admin.dismissAbusive}: منى علي` }));
     expect(await screen.findByText(ar.admin.dismissAbusiveBody)).toBeTruthy();
     const field = screen.getByLabelText(ar.admin.abusiveReasonLabel);
-    expect(confirmButton(ar.admin.dismissAbusive).props.accessibilityState?.disabled).toBe(true);
+    expect(confirmButton(ar.admin.dismissAbusive).props.accessibilityState?.disabled).toBe(false);
 
     fireEvent.changeText(field, 'بيبلّغ عن كل إعلان منافس');
     await act(async () => {

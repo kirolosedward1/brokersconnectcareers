@@ -399,7 +399,7 @@ describe("a company's page", () => {
 
     fireEvent.press(screen.getByRole('button', { name: ar.admin.revokeVerification }));
     expect(await screen.findByText(ar.admin.revokeVerificationBody)).toBeTruthy();
-    expect(confirmButton(ar.admin.revokeVerification).props.accessibilityState?.disabled).toBe(true);
+    expect(confirmButton(ar.admin.revokeVerification).props.accessibilityState?.disabled).toBe(false);
     fireEvent.changeText(screen.getByLabelText(ar.admin.reasonLabel), 'الورق طلع مزوّر');
     await act(async () => {
       fireEvent.press(confirmButton(ar.admin.revokeVerification));
@@ -418,7 +418,7 @@ describe("a company's page", () => {
     expect(screen.queryByRole('button', { name: ar.admin.restoreCompany })).toBeNull();
     fireEvent.press(screen.getByRole('button', { name: ar.admin.suspendCompany }));
     expect(await screen.findByText(ar.admin.suspendCompanyBody)).toBeTruthy();
-    expect(confirmButton(ar.admin.suspendCompany).props.accessibilityState?.disabled).toBe(true);
+    expect(confirmButton(ar.admin.suspendCompany).props.accessibilityState?.disabled).toBe(false);
     fireEvent.changeText(screen.getByLabelText(ar.admin.reasonToCompany), 'شركة وهمية');
     await act(async () => {
       fireEvent.press(confirmButton(ar.admin.suspendCompany));

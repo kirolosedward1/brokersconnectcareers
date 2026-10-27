@@ -17,8 +17,8 @@ import { jobIsLive } from '@/lib/job-state';
  * Same contract as the console's other levers (lib/actions/admin.ts): one call
  * to a database function through the admin's own session, which refuses
  * anybody but an admin, locks what it changes, refuses a transition that makes
- * no sense, requires a reason where somebody is owed one, and writes the audit
- * record in the same transaction. A success here means both committed.
+ * no sense, keeps a reason when one was typed, and writes the audit record in
+ * the same transaction. A blank reason is stored as null. A success here means both committed.
  */
 async function assertAdmin() {
   const supabase = await createClient();
@@ -70,13 +70,21 @@ export async function closeReports(input: unknown): Promise<ActionResult<{ moved
 const reportingSchema = z.object({
   userId: z.string().uuid(),
   restrict: z.boolean(),
-  reason: z.string().trim().min(3).max(500),
+  reason: z
+    .string()
+    .trim()
+    .max(500)
+    .nullish()
+    .transform((value) => value || null),
 });
 
-/** Stop, or allow again, one account's reports. A reason is always required. */
+/** Stop, or allow again, one account's reports. A reason is optional. */
 export async function setReportingRestriction(input: unknown): Promise<ActionResult> {
   const parsed = reportingSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'reason_required' };
+  if (!parsed.success) {
+    const tooLong = parsed.error.issues.some((issue) => issue.code === 'too_big');
+    return { ok: false, error: tooLong ? 'reason_too_long' : 'invalid' };
+  }
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };

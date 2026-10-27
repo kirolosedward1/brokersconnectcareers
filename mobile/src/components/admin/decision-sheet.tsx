@@ -27,20 +27,21 @@ export type Decision = {
   body?: string;
   confirmLabel: string;
   destructive?: boolean;
-  /** Whether a reason is asked for: required where somebody is owed one (the database insists too). */
+  /** Whether a reason is asked for. Both required and optional submit with the box empty. */
   reason: 'none' | 'optional' | 'required';
-  /** Who reads the reason: "Note (sent to the company)". */
+  /** Who reads the reason: "Note (optional, sent to the company)". */
   reasonLabel?: string;
   /** The longest reason the lever takes; the admin functions' own cap unless a lever says otherwise. */
   reasonMax?: number;
-  /** The shortest a required reason may be; the admin functions' three characters unless a lever says otherwise (a note is any words). */
+  /**
+   * A floor for the text itself, when the box is the action rather than a reason.
+   * A moderation note is the note: an empty one is nothing to save. Reasons have no floor.
+   */
   reasonMin?: number;
   /** Shown once the website answered ok, with what it answered: a contact revealed, a count of sessions ended. */
   onDone?: (data: unknown) => void;
 };
 
-/** The shortest reason the admin functions accept (reason_required). */
-const REASON_MIN = 3;
 const REASON_MAX = 500;
 
 /** Refusals that mean the screen is out of date: what is there now is read again. */
@@ -73,8 +74,8 @@ export function DecisionSheet({
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const reasonMin = decision.reasonMin ?? REASON_MIN;
-  const tooShort = decision.reason === 'required' && text.trim().length < reasonMin;
+  const reasonMin = decision.reasonMin;
+  const tooShort = reasonMin != null && text.trim().length < reasonMin;
   // A reason typed: pulled down, the sheet stays and asks first (iOS hands the attempt to onRequestClose).
   const dirty = text.trim() !== '';
   const confirmDiscard = useConfirmDiscard();
@@ -186,7 +187,7 @@ export function DecisionSheet({
             {decision.reason !== 'none' ? (
               <View style={{ gap: space[1] }}>
                 <Text variant="small" weight="medium">
-                  {`${decision.reasonLabel ?? t('admin.reasonLabel')}${decision.reason === 'optional' ? ` (${t('common.optional')})` : ''}`}
+                  {decision.reasonLabel ?? t('admin.reasonLabel')}
                 </Text>
                 <TextInput
                   value={text}
@@ -216,11 +217,6 @@ export function DecisionSheet({
                     textAlign: appDirection === 'rtl' ? 'right' : 'left',
                   }}
                 />
-                {decision.reason === 'required' && reasonMin === REASON_MIN ? (
-                  <Text variant="caption" tone="mutedForeground">
-                    {t('admin.errors.reason_required')}
-                  </Text>
-                ) : null}
               </View>
             ) : null}
 

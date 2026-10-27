@@ -199,9 +199,21 @@ report.section('listing moderation follows the lifecycle, and records itself');
   report.check('a draft cannot be published over the employer\'s head',
     !draft.ok && /invalid_transition/.test(draft.error ?? ''), draft.error);
 
-  const noReason = await as(admin, `select admin_moderate_job('${pendingJob}', 'reject', '  ')`);
-  report.check('a rejection without a reason is refused',
-    !noReason.ok && /reason_required/.test(noReason.error ?? ''), noReason.error);
+  const noReason = await session(admin, async (q) => {
+    await q(`select admin_moderate_job('${pendingJob}', 'reject', '  ')`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${pendingJob}' and action = 'job.reject' order by id desc limit 1`);
+    return audit;
+  });
+  report.check('a rejection may omit its reason, and the record stores nothing',
+    noReason.ok && noReason.value?.reason == null, JSON.stringify(noReason.value ?? noReason.error));
+
+  const shortReason = await session(admin, async (q) => {
+    await q(`select admin_moderate_job('${pendingJob}', 'reject', 'لا')`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${pendingJob}' and action = 'job.reject' order by id desc limit 1`);
+    return audit;
+  });
+  report.check('a two-letter reason is kept',
+    shortReason.ok && shortReason.value?.reason === 'لا', JSON.stringify(shortReason.value ?? shortReason.error));
 
   const changes = await session(admin, async (q) => {
     await q(`select admin_moderate_job('${pendingJob}', 'request_changes', 'اكتب الراتب')`);
@@ -282,8 +294,15 @@ report.section('a suspended company stays off the board by every path');
   report.check('the company cannot lift its own suspension',
     !lift.ok && /suspension is an admin action/.test(lift.error ?? ''), lift.error);
 
-  const noReason = await as(admin, `select admin_set_company_suspension('${rowad}', false, '')`);
-  report.check('restoring needs a reason too', !noReason.ok && /reason_required/.test(noReason.error ?? ''));
+  const noReason = await session(admin, async (q) => {
+    await q(`select admin_set_company_suspension('${rowad}', false, '')`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${rowad}' and action = 'company.restored' order by id desc limit 1`);
+    const [row] = await q(`select suspended_at is null as up from companies where id = '${rowad}'`);
+    return { audit, row };
+  });
+  report.check('restoring may omit its reason, and the record stores nothing',
+    noReason.ok && noReason.value?.row?.up === true && noReason.value?.audit?.reason == null,
+    JSON.stringify(noReason.value ?? noReason.error));
 
   const restore = await as(admin, `select admin_set_company_suspension('${rowad}', false, 'تم التحقق')`);
   report.check('an admin restores it', restore.ok, restore.error);
@@ -458,8 +477,14 @@ report.section('reports reach companies and consultants, and cannot be forged');
 // ---------------------------------------------------------------------------
 report.section('contact details are revealed one at a time, with a reason, on record');
 {
-  const noReason = await as(admin, `select * from admin_reveal_contact('${candidate}', '')`);
-  report.check('no reason, no number', !noReason.ok && /reason_required/.test(noReason.error ?? ''));
+  const noReason = await session(admin, async (q) => {
+    const [row] = await q(`select email is not null as has_email from admin_reveal_contact('${candidate}', '')`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${candidate}' and action = 'user.contact_revealed' order by id desc limit 1`);
+    return { row, audit };
+  });
+  report.check('a contact may be opened with no reason, and the record stores nothing',
+    noReason.ok && noReason.value?.row?.has_email === true && noReason.value?.audit?.reason == null,
+    JSON.stringify(noReason.value ?? noReason.error));
 
   const reveal = await session(admin, async (q) => {
     const [row] = await q(`select * from admin_reveal_contact('${candidate}', 'شكوى من شركة')`);
@@ -532,9 +557,15 @@ report.section('account search pages on the server and never returns contact det
 // ---------------------------------------------------------------------------
 report.section('account decisions need reasons, refuse no-ops and are recorded');
 {
-  const noReason = await as(admin, `select set_account_approval('${publicAgent}', 'rejected', null)`);
-  report.check('a suspension without a reason is refused',
-    !noReason.ok && /reason_required/.test(noReason.error ?? ''), noReason.error);
+  const noReason = await session(admin, async (q) => {
+    await q(`select set_account_approval('${publicAgent}', 'rejected', null)`);
+    const [profile] = await q(`select approval_status from profiles where id = '${publicAgent}'`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${publicAgent}' and action = 'user.suspended' order by id desc limit 1`);
+    return { profile, audit };
+  });
+  report.check('a suspension may omit its reason, and the record stores nothing',
+    noReason.ok && noReason.value?.profile?.approval_status === 'rejected' && noReason.value?.audit?.reason == null,
+    JSON.stringify(noReason.value ?? noReason.error));
 
   const noop = await as(admin, `select set_account_approval('${publicAgent}', 'approved', null)`);
   report.check('approving an approved account is refused rather than repeated',
@@ -667,8 +698,15 @@ report.section('accounts managed from one place (migration 355)');
   // The role.
   let r = await as(admin, `select admin_set_role('${admin}', 'candidate', 'سبب كافٍ')`);
   report.check('an admin cannot change their own role', !r.ok && /own role/.test(r.error ?? ''), r.error);
-  r = await as(admin, `select admin_set_role('${candidate}', 'admin', '')`);
-  report.check('making an admin needs a reason', !r.ok && /reason_required/.test(r.error ?? ''), r.error);
+  const blankRole = await session(admin, async (q) => {
+    await q(`select admin_set_role('${candidate}', 'admin', '')`);
+    const [profile] = await q(`select role from profiles where id = '${candidate}'`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${candidate}' and action = 'user.promoted' order by id desc limit 1`);
+    return { profile, audit };
+  });
+  report.check('making an admin may omit its reason, and the record stores nothing',
+    blankRole.ok && blankRole.value?.profile?.role === 'admin' && blankRole.value?.audit?.reason == null,
+    JSON.stringify(blankRole.value ?? blankRole.error));
   r = await as(admin, `select admin_set_role('${candidate}', 'employer', 'سبب كافٍ')`);
   report.check('a candidate is not made an employer by an admin', !r.ok && /invalid_transition/.test(r.error ?? ''), r.error);
   r = await as(admin, `select admin_set_role('${candidate}', 'candidate', 'سبب كافٍ')`);
@@ -738,8 +776,13 @@ report.section('accounts managed from one place (migration 355)');
   // The door.
   r = await as(admin, `select admin_set_sign_in_block('${admin}', true, 'سبب كافٍ')`);
   report.check('an admin cannot block their own sign-in', !r.ok && /own sign-in/.test(r.error ?? ''), r.error);
-  r = await as(admin, `select admin_set_sign_in_block('${candidate}', true, '')`);
-  report.check('blocking sign-in needs a reason', !r.ok && /reason_required/.test(r.error ?? ''), r.error);
+  const blankBlock = await session(admin, async (q) => {
+    await q(`select admin_set_sign_in_block('${candidate}', true, '')`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${candidate}' and action = 'user.sign_in_blocked' order by id desc limit 1`);
+    return audit;
+  });
+  report.check('blocking sign-in may omit its reason, and the record stores nothing',
+    blankBlock.ok && blankBlock.value?.reason == null, JSON.stringify(blankBlock.value ?? blankBlock.error));
 
   const block = await session(admin, async (q) => {
     const [first] = await q(`select admin_set_sign_in_block('${candidate}', true, 'حساب مخترق') as n`);

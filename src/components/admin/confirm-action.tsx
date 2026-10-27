@@ -13,6 +13,7 @@ import {
   moderateReports,
   reviewCompany,
   setAccountApproval,
+  setAccountTest,
   setAgentRestriction,
   setCompanySuspension,
   setJobFeatured,
@@ -20,7 +21,9 @@ import {
   setUserRole,
   type JobModerationAction,
 } from '@/lib/actions/admin';
+import { setApplicationStatus } from '@/lib/actions/applications';
 import { closeReports, decideAppeal, setReportingRestriction } from '@/lib/actions/moderation';
+import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import type { ActionResult } from '@/lib/actions/jobs';
 import { isAdminErrorCode } from '@/lib/admin/errors';
 import { announceDone } from '@/components/admin/console-toaster';
@@ -64,7 +67,9 @@ export type AdminLever =
   // The account itself (migration 355): its role, its door, its devices.
   | { do: 'role'; userId: string; role: 'candidate' | 'employer' | 'admin' }
   | { do: 'signInBlock'; userId: string; block: boolean }
-  | { do: 'sessions'; userId: string };
+  | { do: 'sessions'; userId: string }
+  | { do: 'accountTest'; userId: string; test: boolean }
+  | { do: 'application'; applicationId: string; status: ApplicationStatus; from: ApplicationStatus };
 
 function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>> {
   switch (lever.do) {
@@ -102,6 +107,15 @@ function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>>
       return setSignInBlock({ userId: lever.userId, block: lever.block, reason });
     case 'sessions':
       return endSessions({ userId: lever.userId, reason });
+    case 'accountTest':
+      return setAccountTest({ userId: lever.userId, test: lever.test, reason });
+    case 'application':
+      return setApplicationStatus({
+        applicationId: lever.applicationId,
+        status: lever.status,
+        from: lever.from,
+        decisionNote: reason,
+      });
   }
 }
 
@@ -121,11 +135,11 @@ function sessionsEndedOf(data: unknown): number | null {
 /**
  * A lever, its confirmation, and its outcome.
  *
- * `reason` decides the dialog: `required` will not submit without three
- * characters (the database refuses it anyway — this only saves the round
- * trip), `optional` offers the box, `none` asks only for the confirmation.
- * Nothing in the console acts on one click; even an approval is a
- * confirmation, because it emails somebody and cannot be un-sent.
+ * `reason` decides the dialog: `required` and `optional` both offer the box
+ * and both submit with it empty — a reason is optional everywhere, and the
+ * label already says so. `none` asks only for the confirmation. Nothing in
+ * the console acts on one click; even an approval is a confirmation, because
+ * it emails somebody and cannot be un-sent.
  *
  * The success line appears only after the action returned ok, which is only
  * after the change and its audit record committed together.
@@ -142,6 +156,7 @@ export function ConfirmAction({
   icon,
   size = 'sm',
   className,
+  chrome = 'default',
 }: {
   lever: AdminLever;
   label: string;
@@ -155,6 +170,8 @@ export function ConfirmAction({
   icon?: React.ReactNode;
   size?: ButtonProps['size'];
   className?: string;
+  /** `icon` is a table button with the label as its tooltip. `menu` is a row in the ⋯ menu. */
+  chrome?: 'default' | 'icon' | 'menu';
 }) {
   const t = useTranslations('admin');
   const tCommon = useTranslations('common');
@@ -167,8 +184,6 @@ export function ConfirmAction({
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const tooShort = reason === 'required' && text.trim().length < 3;
-
   function close() {
     if (pending) return;
     setOpen(false);
@@ -176,7 +191,7 @@ export function ConfirmAction({
   }
 
   function confirm() {
-    if (pending || tooShort) return;
+    if (pending) return;
     startTransition(async () => {
       setError(null);
       let result: ActionResult<unknown>;
@@ -219,16 +234,24 @@ export function ConfirmAction({
     <>
       <Button
         type="button"
-        variant={variant}
-        size={size}
-        className={className}
+        variant={chrome === 'menu' ? 'ghost' : variant}
+        size={chrome === 'icon' ? 'icon' : size}
+        title={chrome === 'icon' ? label : undefined}
+        aria-label={chrome === 'icon' ? label : undefined}
+        className={
+          chrome === 'icon'
+            ? `size-8 ${className ?? ''}`
+            : chrome === 'menu'
+              ? `min-h-11 w-full justify-start px-3 ${className ?? ''}`
+              : className
+        }
         onClick={() => {
           setDone(false);
           setOpen(true);
         }}
       >
         {icon}
-        {label}
+        {chrome === 'icon' ? <span className="sr-only">{label}</span> : label}
       </Button>
 
       {done ? (
@@ -246,7 +269,7 @@ export function ConfirmAction({
 
           {reason !== 'none' ? (
             <Field
-              label={`${reasonLabel ?? t('reasonLabel')}${reason === 'optional' ? ` (${tCommon('optional')})` : ''}`}
+              label={reasonLabel ?? t('reasonLabel')}
               htmlFor={fieldId}
             >
               <Textarea
@@ -256,7 +279,6 @@ export function ConfirmAction({
                 maxLength={500}
                 rows={3}
                 className="min-h-20"
-                aria-required={reason === 'required'}
               />
             </Field>
           ) : null}
@@ -275,7 +297,7 @@ export function ConfirmAction({
               type="button"
               variant={variant === 'destructive' ? 'destructive' : variant === 'success' ? 'success' : 'default'}
               onClick={confirm}
-              disabled={pending || tooShort}
+              disabled={pending}
               aria-busy={pending}
             >
               {pending ? tCommon('loading') : (confirmLabel ?? label)}

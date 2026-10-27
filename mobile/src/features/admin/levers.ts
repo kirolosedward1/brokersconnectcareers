@@ -68,23 +68,23 @@ export function pullLever(lever: Lever, reason: string): Promise<ActionResult<un
         note: given(reason),
       });
     case 'reporting':
-      return callAction('setReportingRestriction', { userId: lever.userId, restrict: lever.restrict, reason: reason.trim() });
+      return callAction('setReportingRestriction', { userId: lever.userId, restrict: lever.restrict, reason: given(reason) });
     case 'role':
-      return callAction('setUserRole', { userId: lever.userId, role: lever.role, reason: reason.trim() });
+      return callAction('setUserRole', { userId: lever.userId, role: lever.role, reason: given(reason) });
     case 'signInBlock':
-      return callAction('setSignInBlock', { userId: lever.userId, block: lever.block, reason: reason.trim() });
+      return callAction('setSignInBlock', { userId: lever.userId, block: lever.block, reason: given(reason) });
     case 'sessions':
-      return callAction('endSessions', { userId: lever.userId, reason: reason.trim() });
+      return callAction('endSessions', { userId: lever.userId, reason: given(reason) });
     case 'reveal':
-      return callAction('revealContact', { userId: lever.userId, reason: reason.trim() });
+      return callAction('revealContact', { userId: lever.userId, reason: given(reason) });
     case 'note':
       return callAction('addModerationNote', { targetType: lever.targetType, targetId: lever.targetId, body: reason.trim() });
     case 'featured':
       return callAction('setJobFeatured', { jobId: lever.jobId, featured: lever.featured });
     case 'suspension':
-      return callAction('setCompanySuspension', { companyId: lever.companyId, suspend: lever.suspend, reason: reason.trim() });
+      return callAction('setCompanySuspension', { companyId: lever.companyId, suspend: lever.suspend, reason: given(reason) });
     case 'restriction':
-      return callAction('setAgentRestriction', { agentId: lever.agentId, restrict: lever.restrict, reason: reason.trim() });
+      return callAction('setAgentRestriction', { agentId: lever.agentId, restrict: lever.restrict, reason: given(reason) });
     case 'closeReports':
       return callAction('closeReports', { ids: lever.ids, status: lever.status, abusive: lever.abusive ?? false, note: given(reason) });
     case 'appeal':

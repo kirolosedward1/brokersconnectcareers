@@ -256,8 +256,15 @@ report.section('a reporting ban is an admin decision, on the record');
   report.check('and the ban is recorded with its reason',
     ban.value?.audit?.action === 'user.reporting_restricted' && ban.value.audit.reason === 'بلاغات كيدية متكررة');
 
-  const noReason = await as(admin, `select admin_set_reporting_restriction('${candidate4}', true, '')`);
-  report.check('a ban needs a reason', !noReason.ok && /reason_required/.test(noReason.error ?? ''), noReason.error);
+  const noReason = await session(admin, async (q) => {
+    await q(`select admin_set_reporting_restriction('${candidate4}', true, '')`);
+    const [row] = await q(`select reason from reporting_restrictions where user_id = '${candidate4}'`);
+    const [audit] = await q(`select reason from admin_audit_log where target_id = '${candidate4}' and action = 'user.reporting_restricted' order by id desc limit 1`);
+    return { row, audit };
+  });
+  report.check('a ban may omit its reason, and the record stores nothing',
+    noReason.ok && noReason.value?.row?.reason == null && noReason.value?.audit?.reason == null,
+    JSON.stringify(noReason.value ?? noReason.error));
 
   const lifted = await session(admin, async (q) => {
     await q(`select admin_set_reporting_restriction('${candidate4}', true, 'سبب كاف للاختبار')`);
@@ -398,8 +405,13 @@ report.section('bad faith is recorded, and decides nothing by itself');
     `insert into reports (job_id, reporter_id, reason) values ('${job}', '${candidate4}', 'impersonation') returning id`);
   const id = filed.rows[0]?.id;
 
-  const noReason = await as(admin, `select admin_close_reports(array['${id}']::uuid[], 'dismissed', null, true)`);
-  report.check('calling a report bad faith needs a reason', !noReason.ok && /reason_required/.test(noReason.error ?? ''), noReason.error);
+  const noReason = await session(admin, async (q) => {
+    await q(`select admin_close_reports(array['${id}']::uuid[], 'dismissed', null, true)`);
+    return (await q(`select status, abusive from reports where id = '${id}'`))[0];
+  });
+  report.check('a bad-faith dismissal may omit its reason',
+    noReason.ok && noReason.value?.status === 'dismissed' && noReason.value?.abusive === true,
+    JSON.stringify(noReason.value ?? noReason.error));
 
   const wrong = await as(admin, `select admin_close_reports(array['${id}']::uuid[], 'resolved', 'سبب', true)`);
   report.check('and is only ever a dismissal', !wrong.ok && /invalid_action/.test(wrong.error ?? ''), wrong.error);
@@ -824,8 +836,13 @@ report.section('appeals: one message about one decision, and one answer');
     `insert into moderation_appeals (subject_type, subject_id, appellant_id, message) values ('job', '${job}', '${employerVerified}', 'أدخلها مباشرة بدون فحص')`);
   report.check('or file one around the checks', !insert.ok, insert.error);
 
-  const upheldNoReason = await as(admin, `select admin_decide_appeal('${appealId}', false)`);
-  report.check('upholding needs a reason — the company asked why', !upheldNoReason.ok && /reason_required/.test(upheldNoReason.error ?? ''), upheldNoReason.error);
+  const upheldNoReason = await session(admin, async (q) => {
+    await q(`select admin_decide_appeal('${appealId}', false)`);
+    return (await q(`select status, decision_note from moderation_appeals where id = '${appealId}'`))[0];
+  });
+  report.check('upholding may omit its note, and the record stores nothing',
+    upheldNoReason.ok && upheldNoReason.value?.status === 'upheld' && upheldNoReason.value?.decision_note == null,
+    JSON.stringify(upheldNoReason.value ?? upheldNoReason.error));
 
   const decided = await session(admin, async (q) => {
     const [{ r }] = await q(`select admin_decide_appeal('${appealId}', true, 'راجعنا: الإعلان مختلف فعلاً') as r`);

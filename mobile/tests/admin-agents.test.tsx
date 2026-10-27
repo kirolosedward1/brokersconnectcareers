@@ -347,7 +347,7 @@ describe("a consultant's profile", () => {
     expect(await screen.findByText('the public page')).toBeTruthy();
   });
 
-  it('restricts the profile through the website, only once a reason is typed, and says so only once the website has', async () => {
+  it('restricts the profile through the website with the reason it is given, and the confirm starts enabled', async () => {
     let answer: (value: unknown) => void = () => {};
     server.on('POST /api/mobile/v1/actions/setAgentRestriction', () => new Promise((resolve) => (answer = resolve)));
     await signIn();
@@ -357,7 +357,7 @@ describe("a consultant's profile", () => {
     expect(screen.queryByRole('button', { name: ar.admin.liftRestriction })).toBeNull();
     expect(await screen.findByText(ar.admin.restrictProfileBody)).toBeTruthy();
     const field = screen.getByLabelText(ar.admin.reasonToConsultant);
-    expect(confirmButton(ar.admin.restrictProfile).props.accessibilityState?.disabled).toBe(true);
+    expect(confirmButton(ar.admin.restrictProfile).props.accessibilityState?.disabled).toBe(false);
 
     fireEvent.changeText(field, 'انتحال شخصية');
     await act(async () => {

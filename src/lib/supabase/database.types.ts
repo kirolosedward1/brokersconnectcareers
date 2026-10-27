@@ -88,6 +88,10 @@ export type ProfileRow = Timestamped & {
   approved_at: string | null;
   /** full_name folded for search (migration 68). Generated, never written. */
   search_name?: string;
+  /** Ours: a seed or a QA login. Absent until migration 369. Set only from the console. */
+  is_test?: boolean;
+  /** Where the account came from. Absent until migration 369. Null reads as unknown. */
+  acquisition_source?: string | null;
 };
 
 export type GovernorateRow = {
@@ -1634,11 +1638,11 @@ export type Database = {
       /** Closes an account deletion request, on the record (migration 346). */
       admin_close_deletion_request: { Args: { p_id: string }; Returns: string };
       admin_set_company_suspension: {
-        Args: { p_company: string; p_suspend: boolean; p_reason: string };
+        Args: { p_company: string; p_suspend: boolean; p_reason: string | null };
         Returns: number;
       };
       admin_set_agent_restriction: {
-        Args: { p_agent: string; p_restrict: boolean; p_reason: string };
+        Args: { p_agent: string; p_restrict: boolean; p_reason: string | null };
         Returns: undefined;
       };
       admin_moderate_reports: {
@@ -1666,7 +1670,7 @@ export type Database = {
         Returns: number;
       };
       admin_set_reporting_restriction: {
-        Args: { p_user: string; p_restrict: boolean; p_reason: string };
+        Args: { p_user: string; p_restrict: boolean; p_reason: string | null };
         Returns: undefined;
       };
       admin_report_cases: {
@@ -1721,15 +1725,20 @@ export type Database = {
       };
       my_account_note: { Args: Empty; Returns: string | null };
       admin_reveal_contact: {
-        Args: { p_user: string; p_reason: string };
+        Args: { p_user: string; p_reason: string | null };
         Returns: { email: string | null; whatsapp_phone: string }[];
       };
       admin_user_facts: { Args: { p_user: string }; Returns: AdminUserFacts };
       admin_user_activity: { Args: { p_user: string }; Returns: AdminUserActivity };
       /** The account levers of migration 355. The two that touch sessions return how many they ended. */
-      admin_set_role: { Args: { p_user: string; p_role: UserRole; p_reason: string }; Returns: undefined };
-      admin_set_sign_in_block: { Args: { p_user: string; p_block: boolean; p_reason: string }; Returns: number };
-      admin_end_sessions: { Args: { p_user: string; p_reason: string }; Returns: number };
+      admin_set_role: { Args: { p_user: string; p_role: UserRole; p_reason: string | null }; Returns: undefined };
+      admin_set_sign_in_block: { Args: { p_user: string; p_block: boolean; p_reason: string | null }; Returns: number };
+      admin_end_sessions: { Args: { p_user: string; p_reason: string | null }; Returns: number };
+      /** Migration 369. Marks a row as ours, or clears that mark. */
+      admin_set_account_test: {
+        Args: { p_user: string; p_test: boolean; p_reason?: string | null };
+        Returns: undefined;
+      };
       /** Returns the storage path and records that this admin opened it. */
       admin_open_document: { Args: { p_document: string }; Returns: string };
       admin_search_users: {
@@ -1741,6 +1750,10 @@ export type Database = {
           p_offset?: number;
           /** Only accounts whose sign-in is blocked (true), or only those whose is not (false). Migration 355. */
           p_blocked?: boolean | null;
+          /** A known source id, or `unknown` for accounts with none. Migration 369. */
+          p_source?: string | null;
+          /** Leave test accounts out. Migration 369. */
+          p_hide_test?: boolean | null;
         };
         Returns: AdminUserSearchRow[];
       };

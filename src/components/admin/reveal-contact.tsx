@@ -32,7 +32,7 @@ export function RevealContact({ userId }: { userId: string }) {
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (pending || reason.trim().length < 3) return;
+    if (pending) return;
     startTransition(async () => {
       setError(null);
       try {
@@ -88,14 +88,12 @@ export function RevealContact({ userId }: { userId: string }) {
             <h2 className="text-base font-semibold">{t('revealContact')}</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">{t('revealContactBody')}</p>
           </div>
-          <Field label={t('reasonLabel')} htmlFor={fieldId}>
+          <Field label={t('reasonOnRecord')} htmlFor={fieldId}>
             <Input
               id={fieldId}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               maxLength={300}
-              required
-              minLength={3}
             />
           </Field>
           {error ? (
@@ -107,7 +105,7 @@ export function RevealContact({ userId }: { userId: string }) {
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>
               {tCommon('cancel')}
             </Button>
-            <SubmitButton disabled={pending || reason.trim().length < 3}>
+            <SubmitButton disabled={pending}>
               {pending ? tCommon('loading') : t('revealContact')}
             </SubmitButton>
           </div>

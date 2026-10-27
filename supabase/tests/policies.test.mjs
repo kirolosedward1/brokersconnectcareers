@@ -1950,7 +1950,7 @@ report.section('dashboard trends are gap-free and scoped like the summaries');
 
   const byAdmin = await as(admin, `select public.admin_trend() as s`);
   report.check('an admin can, over the same window',
-    byAdmin.ok && byAdmin.rows[0]?.s?.days?.length === 30, byAdmin.error);
+    byAdmin.ok && byAdmin.rows[0]?.s?.days?.length === 180, byAdmin.error);
 
   const anonEmployer = await as(null, `select public.employer_trend()`, 'anon');
   const anonAdmin = await as(null, `select public.admin_trend()`, 'anon');

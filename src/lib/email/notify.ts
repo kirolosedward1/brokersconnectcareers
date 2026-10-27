@@ -1179,7 +1179,7 @@ async function oneModerationNotice({
       heading: t.heading,
       blocks: [
         { kind: 'text', value: t.body(title) },
-        ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
+        ...(note?.trim() ? [{ kind: 'text' as const, value: t.reason(note.trim()) }] : []),
         { kind: 'facts', rows: [[t.labelJob, title]] },
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs/${job.id}/edit` },
       ],
@@ -1532,7 +1532,7 @@ export async function notifyAccountDecision(
             ]
           : [
               { kind: 'text', value: t.body },
-              ...(note ? [{ kind: 'text' as const, value: c.accountRejected.reason(note) }] : []),
+              ...(note?.trim() ? [{ kind: 'text' as const, value: c.accountRejected.reason(note.trim()) }] : []),
               { kind: 'security', value: c.accountRejected.contact },
             ],
       }),
@@ -1625,8 +1625,8 @@ export async function notifyCompanyVerification(
               logoUrl: trustedLogoUrl(company.logo_url, process.env.NEXT_PUBLIC_SUPABASE_URL),
               href: `${env.siteUrl}/companies/${company.slug}`,
             },
-            ...(!verified && reason
-              ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(reason) }]
+            ...(!verified && reason?.trim()
+              ? [{ kind: 'text' as const, value: c.companyVerificationNeeded.reason(reason.trim()) }]
               : []),
             {
               kind: 'button',

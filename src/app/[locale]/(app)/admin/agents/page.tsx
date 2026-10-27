@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { RotateCcw, ShieldAlert } from 'lucide-react';
 import { asLocale } from '@/i18n/routing';
 import { Avatar } from '@/components/ui/avatar';
+import { EntityLink } from '@/components/admin/entity-link';
+import { RowActions, type RowAction } from '@/components/admin/row-actions';
 import { AdminTable, FilterTabs, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
 import { ApprovalBadge, VisibilityBadge } from '@/components/admin/badges';
 import { requireAdmin } from '@/lib/auth';
@@ -97,7 +100,7 @@ export default async function AdminAgentsPage({
       cell: (row) => (
         <span className="inline-flex items-center gap-2">
           <Avatar src={row.profile.avatar_url} name={row.profile.full_name} size="xs" />
-          {row.profile.full_name}
+          <EntityLink href={`/admin/users/${row.profile.id}`}>{row.profile.full_name}</EntityLink>
         </span>
       ),
       mobile: 'title',
@@ -118,6 +121,43 @@ export default async function AdminAgentsPage({
       mobile: 'aside',
     },
     { key: 'joined', header: t('colJoined'), cell: (row) => formatDate(row.created_at, locale), mobile: 'hidden' },
+    {
+      key: 'actions',
+      header: t('colActions'),
+      className: 'w-px',
+      cell: (row) => {
+        const restricted = Boolean(row.restricted_at);
+        const action: RowAction = restricted
+          ? {
+              id: 'lift',
+              kind: 'lever',
+              primary: true,
+              tone: 'success',
+              label: t('liftRestriction'),
+              title: t('liftRestriction'),
+              body: t('liftRestrictionBody'),
+              icon: <RotateCcw aria-hidden />,
+              lever: { do: 'restrictAgent', agentId: row.id, restrict: false },
+              reason: 'optional',
+              reasonLabel: t('reasonToConsultant'),
+            }
+          : {
+              id: 'restrict',
+              kind: 'lever',
+              primary: true,
+              tone: 'destructive',
+              label: t('restrictProfile'),
+              title: t('restrictProfile'),
+              body: t('restrictProfileBody'),
+              icon: <ShieldAlert aria-hidden />,
+              lever: { do: 'restrictAgent', agentId: row.id, restrict: true },
+              reason: 'optional',
+              reasonLabel: t('reasonToConsultant'),
+            };
+        return <RowActions actions={[action]} />;
+      },
+      mobile: 'meta',
+    },
   ];
 
   return (
@@ -149,6 +189,7 @@ export default async function AdminAgentsPage({
         columns={columns}
         rowKey={(row) => row.id}
         rowHref={(row) => `/admin/agents/${row.id}`}
+        rowLabel={(row) => row.profile.full_name}
         empty={q ? t('searchNothing') : t('emptyQueue')}
       />
 

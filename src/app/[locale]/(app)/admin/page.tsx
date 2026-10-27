@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { asLocale } from '@/i18n/routing';
 import { StatStrip } from '@/components/dashboard/stat-tile';
-import { TrendChart } from '@/components/dashboard/trend-chart';
+import { ActivityChart } from '@/components/admin/activity-chart';
 import { PageHeader, SearchForm, Section, auditLabel } from '@/components/admin/kit';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -267,18 +267,20 @@ export default async function AdminOverviewPage({
       </div>
 
       {trend ? (
-        <TrendChart
-          id="admin-activity"
+        <ActivityChart
+          days={trend.days}
+          locale={locale}
           title={t('trendActivityTitle')}
           hint={t('trendActivityHint')}
-          days={trend.days.map((day) => day.d)}
-          series={[
-            { key: 'applications', label: t('statApplications'), tone: 'primary', values: trend.days.map((day) => day.applications) },
-            { key: 'published', label: t('trendPublished'), tone: 'success', values: trend.days.map((day) => day.published) },
-            { key: 'signups', label: t('trendSignups'), tone: 'warning', values: trend.days.map((day) => day.signups) },
-          ]}
-          locale={locale}
           empty={t('trendEmpty')}
+          labels={{
+            applications: t('statApplications'),
+            published: t('trendPublished'),
+            signups: t('trendSignups'),
+            ranges: { 7: t('trendRange7'), 30: t('trendRange30'), 90: t('trendRange90') },
+            rangeLabel: t('trendRangeLabel'),
+            versus: t('trendVersus'),
+          }}
         />
       ) : null}
 

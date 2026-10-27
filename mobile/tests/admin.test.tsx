@@ -878,21 +878,27 @@ describe('deciding on a listing', () => {
     await waitFor(() => expect(shownToast()?.message).toBe(`تم: ${ar.admin.approveListingTitle}`));
   });
 
-  it('will not reject without a reason, and sends the reason it is given', async () => {
+  it('rejects with an empty reason, and sends a reason when one is given', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.reject }));
-    const field = await screen.findByLabelText(ar.admin.reasonToCompany);
+    await screen.findByLabelText(ar.admin.reasonToCompany);
     const confirm = () => screen.getAllByRole('button', { name: ar.admin.reject }).at(-1)!;
-    expect(confirm().props.accessibilityState?.disabled).toBe(true);
-
-    fireEvent.changeText(field, 'يطلب فلوس من المتقدمين');
+    expect(confirm().props.accessibilityState?.disabled).toBe(false);
     await act(async () => {
       fireEvent.press(confirm());
     });
     await waitFor(() => expect(actionsCalled('moderateJob')).toHaveLength(1));
-    expect(actionsCalled('moderateJob')[0].body).toEqual({
+    expect(actionsCalled('moderateJob')[0].body).toEqual({ input: { jobId: JOB_ID, action: 'reject', version: 4 } });
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.admin.reject }));
+    fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonToCompany), 'يطلب فلوس من المتقدمين');
+    await act(async () => {
+      fireEvent.press(confirm());
+    });
+    await waitFor(() => expect(actionsCalled('moderateJob')).toHaveLength(2));
+    expect(actionsCalled('moderateJob')[1].body).toEqual({
       input: { jobId: JOB_ID, action: 'reject', version: 4, reason: 'يطلب فلوس من المتقدمين' },
     });
   });

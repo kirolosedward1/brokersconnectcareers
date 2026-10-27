@@ -42,8 +42,8 @@ export function PageHeader({
 }
 
 /**
- * Filters as links. A row that scrolls sideways on a phone rather than
- * wrapping into four lines of chips above the thing they filter.
+ * The one primary filter. Always one row: extra tabs scroll, they do not
+ * wrap into a second line above the list.
  */
 export function FilterTabs({
   label,
@@ -54,7 +54,7 @@ export function FilterTabs({
 }) {
   return (
     <nav aria-label={label} className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <ul className="flex w-max gap-1 border-b border-border sm:w-auto sm:flex-wrap">
+      <ul className="flex w-max gap-1 border-b border-border">
         {items.map((item) => (
           <li key={item.key}>
             <Link
@@ -91,6 +91,7 @@ export function SearchForm({
   keep = {},
   placeholder,
   label,
+  className,
 }: {
   locale: Locale;
   path: string;
@@ -98,9 +99,10 @@ export function SearchForm({
   keep?: Record<string, string | undefined>;
   placeholder: string;
   label: string;
+  className?: string;
 }) {
   return (
-    <form method="get" action={localeHref(locale, path)} role="search" className="flex w-full max-w-xl gap-2">
+    <form method="get" action={localeHref(locale, path)} role="search" className={cn('flex w-full gap-2', className)}>
       {Object.entries(keep).map(([key, value]) =>
         value ? <input key={key} type="hidden" name={key} value={value} /> : null,
       )}
@@ -142,15 +144,15 @@ export type Column<Row> = {
 /**
  * Rows of things, as a table on a desk and as a list of cards on a phone.
  *
- * Each row links to its detail page. On a phone the whole card is the link;
- * on a desk the first column is, so the rest of the row stays selectable for
- * copying an id or a name.
+ * Each row links to its detail page. The link is stretched over the row, and
+ * a name link inside a cell sits above it so the two do not both navigate.
  */
 export function AdminTable<Row>({
   rows,
   columns,
   rowKey,
   rowHref,
+  rowLabel,
   empty,
   caption,
 }: {
@@ -158,6 +160,8 @@ export function AdminTable<Row>({
   columns: Column<Row>[];
   rowKey: (row: Row) => string;
   rowHref?: (row: Row) => string;
+  /** Accessible name of the stretched row link. */
+  rowLabel?: (row: Row) => string;
   empty: string;
   caption: string;
 }) {
@@ -189,16 +193,17 @@ export function AdminTable<Row>({
           </thead>
           <tbody className="divide-y divide-border">
             {rows.map((row) => (
-              <tr key={rowKey(row)} className="align-top hover:bg-muted/30">
+              <tr key={rowKey(row)} className="relative align-top hover:bg-muted/30">
                 {columns.map((column, index) => (
                   <td key={column.key} className={cn('px-3 py-2.5', column.className)}>
                     {index === 0 && rowHref ? (
-                      <Link href={rowHref(row)} className="font-medium hover:text-primary hover:underline">
-                        {column.cell(row)}
-                      </Link>
-                    ) : (
-                      column.cell(row)
-                    )}
+                      <Link
+                        href={rowHref(row)}
+                        aria-label={rowLabel?.(row) ?? caption}
+                        className="absolute inset-0 z-0"
+                      />
+                    ) : null}
+                    {column.cell(row)}
                   </td>
                 ))}
               </tr>
@@ -208,8 +213,11 @@ export function AdminTable<Row>({
       </div>
 
       <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card md:hidden" aria-label={caption}>
-        {rows.map((row) => {
-          const body = (
+        {rows.map((row) => (
+          <li key={rowKey(row)} className="relative active:bg-muted/50">
+            {rowHref ? (
+              <Link href={rowHref(row)} aria-label={rowLabel?.(row) ?? caption} className="absolute inset-0 z-0" />
+            ) : null}
             <div className="flex items-start justify-between gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <div className="font-medium break-words">
@@ -233,19 +241,8 @@ export function AdminTable<Row>({
                 </div>
               ) : null}
             </div>
-          );
-          return (
-            <li key={rowKey(row)}>
-              {rowHref ? (
-                <Link href={rowHref(row)} className="block active:bg-muted/50">
-                  {body}
-                </Link>
-              ) : (
-                body
-              )}
-            </li>
-          );
-        })}
+          </li>
+        ))}
       </ul>
     </>
   );

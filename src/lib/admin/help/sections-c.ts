@@ -281,10 +281,10 @@ export const SECTIONS_C: HelpSection[] = [
         ),
         fields: [
           { label: t('بلا سبب', 'No reason'), detail: t('اعتماد إعلان، وتوثيق عند عدم اشتراط ملاحظة، وتمييز إعلان، وتفعيل حساب.', 'Approving a listing, verifying when a note is not required, featuring a listing, approving an account.') },
-          { label: t('سبب مطلوب', 'Reason required'), detail: t('ثلاثة أحرف على الأقل، وغالبًا حتى خمسمئة. إن كان يصل إلى شخص فعنوان الحقل يقول ذلك: إلى الشركة، أو إلى صاحب الحساب، أو إلى الاستشاري، أو إلى من طلب المراجعة.', 'At least three characters, and usually up to five hundred. When it reaches a person, the field’s label says so: to the company, to the account’s owner, to the consultant, or to the person who appealed.') },
+          { label: t('سبب اختياري', 'Reason optional'), detail: t('يمكن تركه فارغًا. السقف خمسمئة حرف في الغالب. إن كان يصل إلى شخص فعنوان الحقل يقول ذلك: إلى الشركة، أو إلى صاحب الحساب، أو إلى الاستشاري، أو إلى من طلب المراجعة.', 'It may be left empty. The ceiling is usually five hundred characters. When it reaches a person, the field’s label says so: to the company, to the account’s owner, to the consultant, or to the person who appealed.') },
           { label: t('سبب للسجل فقط', 'A reason for the record only'), detail: t('«السبب (يُسجَّل لدينا ولا يُرسل إلى أحد)»: الدور، وباب الدخول، ومنع البلاغات، ورفض بلاغ بسوء نية.', '“Why (kept on the record, sent to nobody)”: role, the sign-in door, restricting reports, and dismissing a report as bad faith.') },
           { label: t('ملاحظة داخلية', 'Internal note'), detail: t('من حرف حتى ألفين. لا تُعدَّل ولا تُحذف.', 'From one character up to two thousand. It is not edited and not deleted.') },
-          { label: t('سبب كشف التواصل', 'Contact-reveal reason'), detail: t('من ثلاثة أحرف حتى ثلاثمئة.', 'From three characters up to three hundred.') },
+          { label: t('سبب كشف التواصل', 'Contact-reveal reason'), detail: t('اختياري، وحتى ثلاثمئة حرف.', 'Optional, and up to three hundred characters.') },
         ],
         tips: [
           t('«أغلق الطلب» في طلبات الحذف هو الاستثناء: ينفَّذ من دون نافذة ومن دون سبب، ولا يحذف الحساب.', 'Close request on deletion requests is the exception: it runs without a dialog and without a reason, and it does not delete the account.'),
@@ -307,7 +307,7 @@ export const SECTIONS_C: HelpSection[] = [
           { label: t('تغيّرت الحالة ولم يعد هذا الإجراء مناسبًا الآن. تم تحديث الصفحة بالحالة الحالية.', 'The state has changed and this action no longer applies. The page now shows the current state.'), tone: 'warning' },
           { label: t('هذا آخر مشرف: ستبقى لوحة الإدارة من دون أحد. اجعل حسابًا آخر مشرفًا أولًا.', 'This is the last admin: the console would be left with nobody. Make another account an admin first.'), tone: 'destructive' },
           { label: t('تغيّر هذا بعد فتح الصفحة. تم تحديث الصفحة بالنسخة الحالية — اقرأها مرة أخرى قبل أن تقرر.', 'This changed after you opened the page. The page now shows it as it is — read it again before deciding.'), tone: 'warning' },
-          { label: t('اكتب سبب (3 حروف على الأقل).', 'Give a reason (at least three characters).'), tone: 'warning' },
+          { label: t('السبب اختياري. اتركه فارغًا إن لم يكن لديك ما تضيفه.', 'The reason is optional. Leave it empty when you have nothing to add.'), tone: 'warning' },
           { label: t('السبب أطول من المسموح.', 'The reason is too long.'), tone: 'warning' },
           { label: t('هذه الشركة غير موثّقة ولديها إعلان فعّال بالفعل. وثّقها أولًا أو أغلق إعلانها الحالي.', 'This company is unverified and already has a live listing. Verify it first or close the current one.'), tone: 'warning' },
           { label: t('نفد رصيد إعلانات هذه الشركة، والنشر يخصم إعلانًا من الرصيد.', 'This company has no post credits left, and publishing spends one.'), tone: 'warning' },

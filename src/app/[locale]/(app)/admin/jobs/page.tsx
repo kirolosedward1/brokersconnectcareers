@@ -1,16 +1,20 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Clock, Flag, Star } from 'lucide-react';
+import { Archive, Check, ChevronDown, ChevronUp, Clock, ExternalLink, Flag, Star, X } from 'lucide-react';
 import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
+import { EntityLink } from '@/components/admin/entity-link';
+import { RowActions, type RowAction } from '@/components/admin/row-actions';
+import { FilterBar } from '@/components/admin/filter-bar';
 import { AdminTable, FilterTabs, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
 import { JobStatusBadge } from '@/components/admin/badges';
 import { FlagCount } from '@/components/admin/safety';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must, mustPage } from '@/lib/admin/read';
-import { PAGE_SIZE, UUID_RE, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
+import { PAGE_SIZE, UUID_RE, cairoDayStart, dayOf, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
 import { looseArabicNeedle } from '@/lib/search/needle';
+import { formatDayMonth } from '@/lib/format';
 import { formatDate, formatNumber } from '@/lib/utils';
 import type { JobStatus, SafetyFlag } from '@/lib/supabase/database.types';
 
@@ -46,6 +50,8 @@ type View = (typeof VIEWS)[number];
 
 type JobListRow = {
   id: string;
+  slug: string;
+  version: number;
   title_ar: string;
   title_en: string | null;
   status: JobStatus;
@@ -73,6 +79,7 @@ export default async function AdminJobsPage({
   const q = param(sp, 'q');
   const view: View = oneOf(param(sp, 'status'), VIEWS, 'pending');
   const companyId = param(sp, 'company');
+  const published = dayOf(param(sp, 'published'));
   const page = pageOf(sp);
   const [from, to] = rangeOf(page);
   const now = new Date().toISOString();
@@ -98,7 +105,7 @@ export default async function AdminJobsPage({
 
   let query = supabase
     .from('jobs')
-    .select(`id, title_ar, title_en, status, is_featured, expires_at, published_at, created_at, ${embeds.join(', ')}`, {
+    .select(`id, slug, version, title_ar, title_en, status, is_featured, expires_at, published_at, created_at, ${embeds.join(', ')}`, {
       count: 'exact',
     });
 
@@ -144,6 +151,9 @@ export default async function AdminJobsPage({
   query = query.order('id').range(from, to);
 
   if (companyId && UUID_RE.test(companyId)) query = query.eq('company_id', companyId);
+  if (published) {
+    query = query.gte('published_at', cairoDayStart(published)).lt('published_at', cairoDayStart(published, 1));
+  }
   if (q && UUID_RE.test(q)) {
     query = query.eq('id', q);
   } else if (q) {
@@ -151,7 +161,7 @@ export default async function AdminJobsPage({
     if (needle) query = query.or(`title_ar.ilike.*${needle}*,title_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
   }
 
-  const current = { q, status: view === 'pending' ? undefined : view, company: companyId };
+  const current = { q, status: view === 'pending' ? undefined : view, company: companyId, published };
   const read = await mustPage(await query, 'loading listings', locale, {
     page,
     href: (n) => hrefWith('/admin/jobs', current, { page: n }),
@@ -171,14 +181,27 @@ export default async function AdminJobsPage({
   const t = await getTranslations('admin');
   const waitingDays = (since: string) => Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000));
 
+  const publicListing = (status: JobStatus) => status === 'active' || status === 'expired' || status === 'closed';
+
   const columns: Column<JobListRow>[] = [
-    { key: 'title', header: t('colListing'), cell: (row) => localized(locale, row.title_ar, row.title_en), mobile: 'title' },
+    {
+      key: 'title',
+      header: t('colListing'),
+      cell: (row) => (
+        <EntityLink href={`/admin/jobs/${row.id}`} className="font-medium">
+          {localized(locale, row.title_ar, row.title_en)}
+        </EntityLink>
+      ),
+      mobile: 'title',
+    },
     {
       key: 'company',
       header: t('colCompany'),
       cell: (row) => (
         <span className="inline-flex flex-wrap items-center gap-1">
-          {localized(locale, row.company.name_ar, row.company.name_en)}
+          <EntityLink href={`/admin/companies/${row.company.id}`}>
+            {localized(locale, row.company.name_ar, row.company.name_en)}
+          </EntityLink>
           {row.company.suspended_at ? <Badge variant="destructive">{t('suspended')}</Badge> : null}
         </span>
       ),
@@ -226,20 +249,91 @@ export default async function AdminJobsPage({
       ),
       mobile: 'aside',
     },
+    {
+      key: 'actions',
+      header: t('colActions'),
+      className: 'w-px',
+      cell: (row) => {
+        const index = rows.findIndex((item) => item.id === row.id);
+        const title = localized(locale, row.title_ar, row.title_en);
+        const actions: RowAction[] = [];
+        if (row.status === 'pending_review') {
+          actions.push({
+            id: 'approve',
+            kind: 'lever',
+            primary: true,
+            tone: 'success',
+            label: t('approve'),
+            title: t('approve'),
+            icon: <Check aria-hidden />,
+            lever: { do: 'job', jobId: row.id, action: 'approve', version: row.version },
+            reason: 'none',
+          });
+          actions.push({
+            id: 'reject',
+            kind: 'lever',
+            primary: true,
+            tone: 'destructive',
+            label: t('reject'),
+            title: t('reject'),
+            body: title,
+            icon: <X aria-hidden />,
+            lever: { do: 'job', jobId: row.id, action: 'reject', version: row.version },
+            reason: 'optional',
+            reasonLabel: t('reasonToCompany'),
+          });
+        }
+        if (row.status === 'active' || row.status === 'expired') {
+          actions.push({
+            id: 'close',
+            kind: 'lever',
+            primary: true,
+            label: t('closeListing'),
+            title: t('closeListing'),
+            body: title,
+            icon: <Archive aria-hidden />,
+            lever: { do: 'job', jobId: row.id, action: 'close', version: row.version },
+            reason: 'optional',
+            reasonLabel: t('reasonToCompany'),
+          });
+        }
+        if (publicListing(row.status)) {
+          actions.push({
+            id: 'public',
+            kind: 'link',
+            primary: true,
+            label: t('openPublic'),
+            icon: <ExternalLink aria-hidden />,
+            href: `/jobs/${row.slug}`,
+          });
+        }
+        if (index > 0) {
+          actions.push({
+            id: 'prev',
+            kind: 'link',
+            label: t('prevReview'),
+            icon: <ChevronUp aria-hidden />,
+            href: `/admin/jobs/${rows[index - 1].id}`,
+          });
+        }
+        if (index >= 0 && index < rows.length - 1) {
+          actions.push({
+            id: 'next',
+            kind: 'link',
+            label: t('nextReview'),
+            icon: <ChevronDown aria-hidden />,
+            href: `/admin/jobs/${rows[index + 1].id}`,
+          });
+        }
+        return <RowActions actions={actions} />;
+      },
+      mobile: 'meta',
+    },
   ];
 
   return (
     <div className="space-y-5">
       <PageHeader title={t('jobsQueue')} lede={t('jobsQueueLede')} />
-
-      <SearchForm
-        locale={locale}
-        path="/admin/jobs"
-        q={q}
-        keep={{ status: current.status, company: current.company }}
-        placeholder={t('jobsSearchPlaceholder')}
-        label={t('search')}
-      />
 
       <FilterTabs
         label={t('colStatus')}
@@ -251,6 +345,47 @@ export default async function AdminJobsPage({
         }))}
       />
 
+      <FilterBar
+        filters={[]}
+        chips={[
+          ...(q
+            ? [{
+                key: 'q',
+                label: t('searchChip', { q }),
+                href: hrefWith('/admin/jobs', current, { q: undefined }),
+                remove: t('removeFilter', { filter: t('search') }),
+              }]
+            : []),
+          ...(companyId
+            ? [{
+                key: 'company',
+                label: t('colCompany'),
+                href: hrefWith('/admin/jobs', current, { company: undefined }),
+                remove: t('removeFilter', { filter: t('colCompany') }),
+              }]
+            : []),
+          ...(published
+            ? [{
+                key: 'published',
+                label: formatDayMonth(`${published}T12:00:00Z`, locale),
+                href: hrefWith('/admin/jobs', current, { published: undefined }),
+                remove: t('removeFilter', { filter: t('filteredToDay') }),
+              }]
+            : []),
+        ]}
+        clearHref={hrefWith('/admin/jobs', { status: current.status }, {})}
+        clearLabel={t('clearListFilters')}
+      >
+        <SearchForm
+          locale={locale}
+          path="/admin/jobs"
+          q={q}
+          keep={{ status: current.status, company: current.company, published: current.published }}
+          placeholder={t('jobsSearchPlaceholder')}
+          label={t('search')}
+        />
+      </FilterBar>
+
       {view === 'quiet' ? <p className="text-sm text-muted-foreground">{t('quietHint')}</p> : null}
 
       <AdminTable
@@ -259,6 +394,7 @@ export default async function AdminJobsPage({
         columns={columns}
         rowKey={(row) => row.id}
         rowHref={(row) => `/admin/jobs/${row.id}`}
+        rowLabel={(row) => localized(locale, row.title_ar, row.title_en)}
         empty={q ? t('searchNothing') : t('emptyQueue')}
       />
 

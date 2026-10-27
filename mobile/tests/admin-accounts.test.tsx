@@ -311,14 +311,14 @@ describe("an account's file", () => {
     expect(screen.getByText(ar.admin.savedJobsCount.replace('{count}', '5'))).toBeTruthy();
   });
 
-  it('makes an admin through the website, only once a reason is typed', async () => {
+  it('makes an admin through the website, with or without a reason', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.admin.makeAdmin }));
     expect(await screen.findByText(ar.admin.makeAdminBody)).toBeTruthy();
     const field = screen.getByLabelText(ar.admin.reasonOnRecord);
-    expect(confirmButton(ar.admin.makeAdmin).props.accessibilityState?.disabled).toBe(true);
+    expect(confirmButton(ar.admin.makeAdmin).props.accessibilityState?.disabled).toBe(false);
 
     fireEvent.changeText(field, 'بيساعد في المراجعة');
     await act(async () => {

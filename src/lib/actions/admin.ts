@@ -17,9 +17,9 @@ import { refused } from '@/lib/observe';
  * Every mutation here is one call to an admin_* function (migration 318), made
  * through the caller's own session — never the service role. That function is
  * where the rules live: it refuses anybody who is not an admin, locks the row,
- * refuses a transition the product does not have, requires a reason where
- * somebody is owed one, and writes the audit record in the same transaction as
- * the change. So a success returned from here means the change and its record
+ * refuses a transition the product does not have, keeps a reason when one was
+ * typed, and writes the audit record in the same transaction as the change.
+ * A blank reason is stored as null. So a success returned from here means the change and its record
  * are both committed, and there is no path through this file that can report
  * success for a write that did not persist.
  *
@@ -50,7 +50,26 @@ async function assertAdmin() {
   return profile?.role === 'admin' ? supabase : null;
 }
 
-const reason = z.string().trim().max(500).optional();
+/**
+ * A reason the moderator may leave empty.
+ *
+ * Trimmed, capped, and blank (or omitted) becomes null so the audit row and
+ * the email both store nothing rather than an empty "السبب:" line.
+ */
+function optionalText(max: number) {
+  return z
+    .string()
+    .trim()
+    .max(max)
+    .nullish()
+    .transform((value) => value || null);
+}
+
+const reason = optionalText(500);
+
+function textError(error: z.ZodError): 'reason_too_long' | 'invalid' {
+  return error.issues.some((issue) => issue.code === 'too_big') ? 'reason_too_long' : 'invalid';
+}
 
 /** Every admin page reads through the console layout, so one call covers them. */
 function refreshConsole() {
@@ -127,7 +146,7 @@ async function withVersion(
 
 export async function moderateJob(input: unknown): Promise<AdminResult> {
   const parsed = moderateSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'invalid' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -203,7 +222,7 @@ const reviewSchema = z.object({
 
 export async function reviewCompany(input: unknown): Promise<AdminResult> {
   const parsed = reviewSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'invalid' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -243,12 +262,12 @@ export async function reviewCompany(input: unknown): Promise<AdminResult> {
 const suspensionSchema = z.object({
   companyId: z.string().uuid(),
   suspend: z.boolean(),
-  reason: z.string().trim().min(3).max(500),
+  reason: optionalText(500),
 });
 
 export async function setCompanySuspension(input: unknown): Promise<AdminResult<{ takenDown: number }>> {
   const parsed = suspensionSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'reason_required' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -301,12 +320,12 @@ const approvalSchema = z.object({
  * Approve, hold, suspend or restore an account.
  *
  * Goes through set_account_approval, where the rules that make this safe
- * live: admin only, never an admin as the target, never yourself, a reason for
- * a suspension, no repeat of a decision already made, and the record of it.
+ * live: admin only, never an admin as the target, never yourself, no repeat of
+ * a decision already made, and the record of it. A note is optional.
  */
 export async function setAccountApproval(input: unknown): Promise<AdminResult> {
   const parsed = approvalSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'invalid' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -350,7 +369,7 @@ export async function setAccountApproval(input: unknown): Promise<AdminResult> {
 
 const revealSchema = z.object({
   userId: z.string().uuid(),
-  reason: z.string().trim().min(3).max(300),
+  reason: optionalText(300),
 });
 
 /**
@@ -363,7 +382,7 @@ export async function revealContact(
   input: unknown,
 ): Promise<AdminResult<{ email: string | null; phone: string }>> {
   const parsed = revealSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'reason_required' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -384,7 +403,7 @@ export async function revealContact(
 const roleSchema = z.object({
   userId: z.string().uuid(),
   role: z.enum(['candidate', 'employer', 'admin']),
-  reason: z.string().trim().min(3).max(500),
+  reason: optionalText(500),
 });
 
 /**
@@ -392,12 +411,12 @@ const roleSchema = z.object({
  *
  * admin_set_role (migration 355) allows only the moves that involve the admin
  * role — a candidate or an employer made an admin, an admin made one of those
- * again — never yourself, never the last admin, and always with a reason on
- * the record. The person is not emailed: an admin is told by an admin.
+ * again — never yourself, never the last admin. A reason is optional and, when
+ * typed, is kept on the record. The person is not emailed: an admin is told by an admin.
  */
 export async function setUserRole(input: unknown): Promise<AdminResult> {
   const parsed = roleSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'reason_required' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -416,7 +435,7 @@ export async function setUserRole(input: unknown): Promise<AdminResult> {
 const signInBlockSchema = z.object({
   userId: z.string().uuid(),
   block: z.boolean(),
-  reason: z.string().trim().min(3).max(500),
+  reason: optionalText(500),
 });
 
 /**
@@ -430,7 +449,7 @@ const signInBlockSchema = z.object({
  */
 export async function setSignInBlock(input: unknown): Promise<AdminResult<{ sessionsEnded: number }>> {
   const parsed = signInBlockSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'reason_required' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -448,13 +467,13 @@ export async function setSignInBlock(input: unknown): Promise<AdminResult<{ sess
 
 const endSessionsSchema = z.object({
   userId: z.string().uuid(),
-  reason: z.string().trim().min(3).max(500),
+  reason: optionalText(500),
 });
 
 /** Sign one account out of every device (admin_end_sessions, migration 355). It can sign in again at once. */
 export async function endSessions(input: unknown): Promise<AdminResult<{ sessionsEnded: number }>> {
   const parsed = endSessionsSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'reason_required' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
@@ -469,6 +488,36 @@ export async function endSessions(input: unknown): Promise<AdminResult<{ session
   return { ok: true, data: { sessionsEnded: Number(data ?? 0) } };
 }
 
+const accountTestSchema = z.object({
+  userId: z.string().uuid(),
+  test: z.boolean(),
+  reason: optionalText(500),
+});
+
+/**
+ * Mark an account as ours (a seed, a QA login) or clear that mark.
+ *
+ * admin_set_account_test is migration 369. A database that does not have it
+ * yet answers not_migrated, and the list hides the toggle.
+ */
+export async function setAccountTest(input: unknown): Promise<AdminResult> {
+  const parsed = accountTestSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_set_account_test', {
+    p_user: parsed.data.userId,
+    p_test: parsed.data.test,
+    p_reason: parsed.data.reason,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Consultants
 // ---------------------------------------------------------------------------
@@ -476,12 +525,12 @@ export async function endSessions(input: unknown): Promise<AdminResult<{ session
 const restrictionSchema = z.object({
   agentId: z.string().uuid(),
   restrict: z.boolean(),
-  reason: z.string().trim().min(3).max(500),
+  reason: optionalText(500),
 });
 
 export async function setAgentRestriction(input: unknown): Promise<AdminResult> {
   const parsed = restrictionSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'reason_required' };
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
 
   const supabase = await assertAdmin();
   if (!supabase) return { ok: false, error: 'forbidden' };
