@@ -5,8 +5,8 @@ import { buildLandingSlug } from '@/lib/taxonomy';
  * company directory that the main nav already carries.
  *
  * Two anchors share /employers: the page is the indexable door for a company,
- * and "أعلن عن وظيفة" is the action that page is for. The post button in the
- * header still goes to the sign-in wall; these two stay on the public page.
+ * and "أعلن عن وظيفة" is the action that page is for. The signed-out header
+ * keeps sign-in and the post button only. These anchors stay in the footer.
  */
 export const SITELINK_PAGES = [
   { href: '/sign-in', key: 'signIn' },

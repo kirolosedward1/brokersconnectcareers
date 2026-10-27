@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, LogIn, PlusCircle, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { LayoutDashboard, LogIn, PlusCircle, ShieldCheck, Users } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { SiteBell } from '@/components/notifications/site-bell';
@@ -58,7 +58,6 @@ export function HeaderAccount({
   variant,
   locale,
   signIn,
-  signUp,
   postJob,
   admin,
   employerArea,
@@ -71,7 +70,6 @@ export function HeaderAccount({
   variant: 'bar' | 'menu';
   locale: Locale;
   signIn: string;
-  signUp: string;
   postJob: string;
   admin: string;
   employerArea: string;
@@ -99,13 +97,6 @@ export function HeaderAccount({
             {signIn}
           </Link>
           <Link
-            href="/sign-up"
-            className="flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
-          >
-            <UserPlus className="size-4" aria-hidden />
-            {signUp}
-          </Link>
-          <Link
             href={anonymousPostHref}
             className="mt-1 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-center text-sm font-medium text-primary-foreground"
           >
@@ -122,9 +113,6 @@ export function HeaderAccount({
             <LogIn className="rtl-flip" aria-hidden />
             {signIn}
           </Link>
-        </Button>
-        <Button asChild variant="ghost" className={`hidden 2xl:inline-flex ${ghostOnFilm}`}>
-          <Link href="/sign-up">{signUp}</Link>
         </Button>
         <Button asChild className="hidden sm:inline-flex">
           <Link href={anonymousPostHref}>

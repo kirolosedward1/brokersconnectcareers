@@ -3,7 +3,7 @@ import { Search } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { ENGLISH_ENABLED, type Locale } from '@/i18n/routing';
 import { postJobHref, siteNavFor, type SiteNavItem } from '@/lib/permissions';
-import { SITELINK_AREAS, SITELINK_PAGES, areaLandingPath } from '@/lib/seo/area-links';
+import { SITELINK_AREAS, areaLandingPath } from '@/lib/seo/area-links';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { MobileNav } from '@/components/mobile-nav';
 import { NavLink } from '@/components/nav-link';
@@ -42,7 +42,6 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
   const labels = {
     locale,
     signIn: t('signIn'),
-    signUp: t('signUp'),
     postJob: t('postJob'),
     admin: t('admin'),
     employerArea: t('employerArea'),
@@ -78,11 +77,6 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
             </NavLink>
           ))}
           <LiveAgentsLink label={t('agents')} />
-          {SITELINK_PAGES.filter((item) => item.key === 'forEmployers' || item.key === 'announceJob').map((item) => (
-            <NavLink key={item.key} href={item.href} className="hidden 2xl:inline-flex">
-              {t(item.key)}
-            </NavLink>
-          ))}
         </nav>
 
         <div className="ms-auto flex shrink-0 items-center justify-self-end gap-0.5 sm:gap-2">
@@ -96,11 +90,6 @@ export async function SiteHeader({ locale }: { locale: Locale }) {
               </NavLink>
             ))}
             <LiveAgentsLink label={t('agents')} block />
-            {SITELINK_PAGES.filter((item) => item.key === 'forEmployers' || item.key === 'announceJob').map((item) => (
-              <NavLink key={item.key} href={item.href} block>
-                {t(item.key)}
-              </NavLink>
-            ))}
             {SITELINK_AREAS.map((area) => (
               <NavLink key={area.slug} href={areaLandingPath(area.slug)} block>
                 {tFooter(area.key)}
