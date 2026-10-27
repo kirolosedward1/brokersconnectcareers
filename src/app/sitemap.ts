@@ -17,7 +17,7 @@ export const revalidate = 3600;
  * crawler those pages changed on every build. This is the date the static
  * copy last changed; bump it when that copy changes.
  */
-const CATALOGUE_LASTMOD = new Date('2026-10-24T00:00:00.000Z');
+const CATALOGUE_LASTMOD = new Date('2026-10-27T00:00:00.000Z');
 
 /** One entry per URL, with an ar/en pair only while English is published. */
 function entry(path: string, lastModified: string | Date): MetadataRoute.Sitemap[number] {
@@ -198,6 +198,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/app', catalogue),
     entry('/blog', newestPost),
     entry('/support', catalogue),
+    entry('/sign-in', catalogue),
+    entry('/sign-up', catalogue),
   ];
 
   // The policies, dated by their own `updated` line (the Arabic text, which

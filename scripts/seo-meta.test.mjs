@@ -4,7 +4,7 @@
  *   node --experimental-strip-types scripts/seo-meta.test.mjs   (in pnpm test:seo)
  */
 import { readFileSync } from 'node:fs';
-import { fitDescription, fitTitle, titleRoom } from '../src/lib/seo/meta-text.ts';
+import { fitDescription, fitTitle, titleRoom, withOpenings } from '../src/lib/seo/meta-text.ts';
 import { buildCompanySlug, buildJobSlug, slugify, slugifyEnglish } from '../src/lib/slug.ts';
 
 let pass = 0;
@@ -19,6 +19,13 @@ console.log('— fitting');
 check('a short title is left alone', fitTitle('وظائف إداريين') === 'وظائف إداريين');
 check('a long title breaks on a space', fitTitle('واحد اثنان ثلاثة اربعة خمسة', 12) === 'واحد اثنان');
 check('a long description is cut to 155', fitDescription('ا'.repeat(200)).length <= 155);
+check(
+  'a count lead stays first and within 155',
+  (() => {
+    const out = withOpenings('2708 وظيفة متاحة الآن.', 'و'.repeat(200));
+    return out.length <= 155 && out.startsWith('2708 وظيفة متاحة الآن.');
+  })(),
+);
 check(
   'a short description grows with the pad, then stays within 155',
   (() => {
@@ -41,6 +48,10 @@ const meta = JSON.parse(readFileSync('messages/ar.json', 'utf8')).meta;
 const descriptions = [
   'homeDescription',
   'jobsDescription',
+  'signInDescription',
+  'signUpDescription',
+  'companiesDescription',
+  'employersDescription',
   'privacyDescription',
   'termsDescription',
   'cookiesDescription',
@@ -53,12 +64,21 @@ for (const key of descriptions) {
 }
 const titles = [
   'jobsTitle',
+  'signInTitle',
+  'signUpTitle',
+  'companiesTitle',
+  'employersTitle',
   'privacyTitle',
   'termsTitle',
   'cookiesTitle',
   'refundsTitle',
   'accountDeletionTitle',
 ];
+check(
+  'homeTitle is the Arabic result title, at most 60 characters',
+  meta.homeTitle === 'بروكرز كونكت | وظائف المبيعات العقارية في مصر' && meta.homeTitle.length <= 60,
+  `${meta.homeTitle?.length} ${meta.homeTitle}`,
+);
 for (const key of titles) {
   const n = (meta[key] ?? '').length;
   check(`${key} is 50–60 characters`, n >= 50 && n <= 60, String(n));

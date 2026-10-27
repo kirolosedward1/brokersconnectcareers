@@ -95,7 +95,7 @@
     "test:phone": "node --experimental-strip-types scripts/phone.test.mjs",
     "test:action-errors": "node --experimental-strip-types scripts/action-errors.test.mjs",
     "test:paging": "node --experimental-strip-types scripts/admin-paging.test.mjs && node --experimental-strip-types scripts/company-filters.test.mjs",
-    "test:seo": "node --experimental-strip-types scripts/job-posting.test.mjs && node --experimental-strip-types scripts/record-exists.test.mjs && node --experimental-strip-types scripts/segment-rewrite.test.mjs && node --experimental-strip-types scripts/robots.test.mjs && node --experimental-strip-types scripts/seo-meta.test.mjs",
+    "test:seo": "node --experimental-strip-types scripts/job-posting.test.mjs && node --experimental-strip-types scripts/record-exists.test.mjs && node --experimental-strip-types scripts/segment-rewrite.test.mjs && node --experimental-strip-types scripts/robots.test.mjs && node --experimental-strip-types scripts/seo-meta.test.mjs && node --experimental-strip-types scripts/site-jsonld.test.mjs",
     "seo:check": "node --experimental-strip-types scripts/seo-check.mjs"
   },
   "dependencies": {

@@ -11,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { queryCompanies } from '@/lib/queries/companies';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { companiesHref } from '@/lib/company-filters';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
+import { withOpenings } from '@/lib/seo/meta-text';
+import { openingsLead } from '@/lib/seo/openings';
 
 export async function generateMetadata({
   params,
@@ -21,7 +24,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
-  const t = await getTranslations({ locale, namespace: 'companies' });
+  const tMeta = await getTranslations({ locale, namespace: 'meta' });
+  const lead = await openingsLead(locale);
 
   // A search, a district, the verified toggle or a later page is a view of
   // the directory, not a page of its own. Same rule as /jobs and /agents.
@@ -29,8 +33,8 @@ export async function generateMetadata({
   const isView = Boolean(q || district || verified) || (Number.parseInt(page ?? '1', 10) || 1) > 1;
 
   return {
-    title: t('title'),
-    description: t('lede'),
+    title: { absolute: tMeta('companiesTitle') },
+    description: withOpenings(lead, tMeta('companiesDescription'), tMeta('descriptionPad')),
     ...(isView
       ? { robots: { index: false, follow: true } }
       : { alternates: alternatesFor('/companies', locale) }),
@@ -71,7 +75,14 @@ export default async function CompaniesPage({
   const t = await getTranslations('companies');
   const tJobs = await getTranslations('jobs');
 
+  const tMeta = await getTranslations('meta');
+
   return (
+    <>
+    <BreadcrumbJsonLd
+      locale={locale}
+      crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: t('title') }]}
+    />
     <div className="shell py-6">
       <h1 className="text-xl font-bold">{t('title')}</h1>
       <p className="mt-0.5 text-sm text-muted-foreground">{t('lede')}</p>
@@ -165,5 +176,6 @@ export default async function CompaniesPage({
         }
       />
     </div>
+    </>
   );
 }

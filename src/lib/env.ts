@@ -1,3 +1,5 @@
+import { canonicalSiteUrl } from '@/lib/seo/canonical-host';
+
 /**
  * Environment access in one place, so a missing variable fails loudly at the
  * point of use rather than as `undefined` three layers down.
@@ -54,10 +56,12 @@ export const env = {
    * precisely so this cannot happen.
    */
   get siteUrl() {
-    return (
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
-    ).replace(/\/$/, '');
+    return canonicalSiteUrl(
+      (
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+      ).replace(/\/$/, ''),
+    );
   },
   get cronSecret() {
     return process.env.CRON_SECRET ?? '';

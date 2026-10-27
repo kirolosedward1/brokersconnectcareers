@@ -2,7 +2,10 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
+import { withOpenings } from '@/lib/seo/meta-text';
+import { openingsLead } from '@/lib/seo/openings';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
 import { ReturnIntent } from '@/components/auth/return-intent';
@@ -34,8 +37,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
-  const t = await getTranslations({ locale, namespace: 'auth' });
-  return { title: t('signUp'), robots: { index: false, follow: false } };
+  const t = await getTranslations({ locale, namespace: 'meta' });
+  const lead = await openingsLead(locale);
+  return {
+    title: { absolute: t('signUpTitle') },
+    description: withOpenings(lead, t('signUpDescription'), t('descriptionPad')),
+    alternates: alternatesFor('/sign-up', locale),
+  };
 }
 
 export default async function SignUpPage({
@@ -56,8 +64,14 @@ export default async function SignUpPage({
 
   const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
+  const tMeta = await getTranslations('meta');
 
   return (
+    <>
+    <BreadcrumbJsonLd
+      locale={locale}
+      crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: t('signUpTitle') }]}
+    />
     <AuthShell>
       <div className="mx-auto w-full max-w-sm">
         <h1 className="text-3xl font-bold">{t('signUpTitle')}</h1>
@@ -84,5 +98,6 @@ export default async function SignUpPage({
         </div>
       </div>
     </AuthShell>
+    </>
   );
 }

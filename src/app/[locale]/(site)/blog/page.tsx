@@ -7,6 +7,7 @@ import { asLocale, alternatesFor, routing, type Locale } from '@/i18n/routing';
 import { CoverArt } from '@/components/blog/cover-art';
 import { Badge } from '@/components/ui/badge';
 import { getAllPosts } from '@/lib/blog';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
 import { formatDate, isoDate } from '@/lib/utils';
 
 export async function generateMetadata({
@@ -37,8 +38,14 @@ export default async function BlogIndexPage({
 
   const posts = getAllPosts(locale);
   const t = await getTranslations('blog');
+  const tMeta = await getTranslations('meta');
 
   return (
+    <>
+    <BreadcrumbJsonLd
+      locale={locale}
+      crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: t('title') }]}
+    />
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
       {/* The one public page that is about reading rather than doing, so it
           is the one that opens with a picture — beside the title from `sm`,
@@ -105,5 +112,6 @@ export default async function BlogIndexPage({
         </ul>
       )}
     </div>
+    </>
   );
 }
