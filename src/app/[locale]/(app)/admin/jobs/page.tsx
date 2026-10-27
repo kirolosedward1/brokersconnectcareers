@@ -13,6 +13,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must, mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, UUID_RE, cairoDayStart, dayOf, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
+import { defaultSort, jobListContext, jobReviewHref } from '@/lib/admin/job-neighbours';
 import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDayMonth } from '@/lib/format';
 import { formatDate, formatNumber } from '@/lib/utils';
@@ -31,6 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
  * `active` one whose window has passed.
  */
 const VIEWS = [
+  'all',
   'pending',
   // Waiting for review, and the listing's own text carries a high-weight
   // flag (migration 327): money asked of the candidate, ID or bank details,
@@ -44,7 +46,6 @@ const VIEWS = [
   'closed',
   'rejected',
   'draft',
-  'all',
 ] as const;
 type View = (typeof VIEWS)[number];
 
@@ -77,7 +78,7 @@ export default async function AdminJobsPage({
 
   const sp = await searchParams;
   const q = param(sp, 'q');
-  const view: View = oneOf(param(sp, 'status'), VIEWS, 'pending');
+  const view: View = oneOf(param(sp, 'status'), VIEWS, 'all');
   const companyId = param(sp, 'company');
   const published = dayOf(param(sp, 'published'));
   const page = pageOf(sp);
@@ -161,7 +162,8 @@ export default async function AdminJobsPage({
     if (needle) query = query.or(`title_ar.ilike.*${needle}*,title_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
   }
 
-  const current = { q, status: view === 'pending' ? undefined : view, company: companyId, published };
+  const current = { q, status: view === 'all' ? undefined : view, company: companyId, published };
+  const reviewContext = jobListContext({ tab: view, sort: defaultSort(view), q, company: companyId });
   const read = await mustPage(await query, 'loading listings', locale, {
     page,
     href: (n) => hrefWith('/admin/jobs', current, { page: n }),
@@ -313,7 +315,7 @@ export default async function AdminJobsPage({
             kind: 'link',
             label: t('prevReview'),
             icon: <ChevronUp aria-hidden />,
-            href: `/admin/jobs/${rows[index - 1].id}`,
+            href: jobReviewHref(rows[index - 1].id, reviewContext),
           });
         }
         if (index >= 0 && index < rows.length - 1) {
@@ -322,7 +324,7 @@ export default async function AdminJobsPage({
             kind: 'link',
             label: t('nextReview'),
             icon: <ChevronDown aria-hidden />,
-            href: `/admin/jobs/${rows[index + 1].id}`,
+            href: jobReviewHref(rows[index + 1].id, reviewContext),
           });
         }
         return <RowActions actions={actions} />;
@@ -340,7 +342,7 @@ export default async function AdminJobsPage({
         items={VIEWS.map((value) => ({
           key: value,
           label: t(`jobView.${value}`),
-          href: hrefWith('/admin/jobs', current, { status: value === 'pending' ? undefined : value }),
+          href: hrefWith('/admin/jobs', current, { status: value === 'all' ? undefined : value }),
           active: view === value,
         }))}
       />
@@ -393,7 +395,7 @@ export default async function AdminJobsPage({
         rows={rows}
         columns={columns}
         rowKey={(row) => row.id}
-        rowHref={(row) => `/admin/jobs/${row.id}`}
+        rowHref={(row) => jobReviewHref(row.id, reviewContext)}
         rowLabel={(row) => localized(locale, row.title_ar, row.title_en)}
         empty={q ? t('searchNothing') : t('emptyQueue')}
       />

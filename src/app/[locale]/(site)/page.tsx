@@ -6,6 +6,8 @@ import { getDistricts } from '@/lib/queries/taxonomy';
 import { anonymousJobs, EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
 import { getBrowseCounts } from '@/lib/queries/browse';
+import { withOpenings } from '@/lib/seo/meta-text';
+import { openingsLead } from '@/lib/seo/openings';
 
 /**
  * The public landing. A signed-in reader is rewritten to /signed-home before
@@ -20,7 +22,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'meta' });
-  return { description: t('homeDescription'), alternates: alternatesFor('/', locale) };
+  const lead = await openingsLead(locale);
+  return {
+    title: { absolute: t('homeTitle') },
+    description: withOpenings(lead, t('homeDescription'), t('descriptionPad')),
+    alternates: alternatesFor('/', locale),
+  };
 }
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {

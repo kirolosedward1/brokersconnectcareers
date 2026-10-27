@@ -12,6 +12,7 @@ import { getAllPosts, getPost, getPostLocales, getPostSlugs } from '@/lib/blog';
 import { env } from '@/lib/env';
 import { formatDate, isoDate } from '@/lib/utils';
 import { fitDescription, fitTitle } from '@/lib/seo/meta-text';
+import { SITE_NAME } from '@/lib/seo/site-jsonld';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
 import { BreadcrumbTrail } from '@/components/breadcrumb-trail';
 
@@ -53,6 +54,7 @@ export async function generateMetadata({
       : { canonical: path },
     openGraph: {
       type: 'article',
+      siteName: SITE_NAME,
       title: fitTitle(post.title, 60),
       description,
       url: pageUrl,

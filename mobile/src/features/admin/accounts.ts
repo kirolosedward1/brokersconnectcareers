@@ -28,7 +28,7 @@ import { useAdminDoor } from './door';
 
 export type AccountsView = 'pending' | 'all' | 'candidates' | 'employers' | 'admins' | 'suspended' | 'blocked';
 
-export const ACCOUNTS_VIEWS: readonly AccountsView[] = ['pending', 'all', 'candidates', 'employers', 'admins', 'suspended', 'blocked'];
+export const ACCOUNTS_VIEWS: readonly AccountsView[] = ['all', 'pending', 'candidates', 'employers', 'admins', 'suspended', 'blocked'];
 
 export const ACCOUNTS_PAGE_SIZE = 25;
 
@@ -147,6 +147,8 @@ export type AccountFile = {
   reportingBan: { reason: string; created_at: string } | null;
   audit: AdminAuditRow[];
   notes: ModerationNoteRow[];
+  /** Email and phone, already on the page. Null when the database has no such function yet. */
+  contact: { email: string | null; phone: string; emailConfirmed: boolean } | null;
 };
 
 /**
@@ -212,6 +214,9 @@ export function useAccountFile(id: string | undefined) {
       if (audit.error) throw audit.error;
       if (notes.error) throw notes.error;
 
+      const contacts = await supabase.rpc('admin_view_contacts', { p_users: [user] });
+      const contactRow = contacts.error || !Array.isArray(contacts.data) ? null : contacts.data[0];
+
       return {
         profile,
         facts: (facts.data ?? {}) as AdminUserFacts,
@@ -222,6 +227,9 @@ export function useAccountFile(id: string | undefined) {
         reportingBan: (reportingBan.data as AccountFile['reportingBan']) ?? null,
         audit: (audit.data ?? []) as AdminAuditRow[],
         notes: (notes.data ?? []) as ModerationNoteRow[],
+        contact: contactRow
+          ? { email: contactRow.email, phone: contactRow.whatsapp_phone, emailConfirmed: contactRow.email_confirmed }
+          : null,
       };
     },
   });

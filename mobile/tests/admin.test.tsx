@@ -1044,7 +1044,7 @@ describe('the other queues', () => {
 
   it("lists the companies whose papers wait, oldest first, and opens one's page where its papers and levers are", async () => {
     await signIn();
-    const result = await renderRouter(app, { initialUrl: '/admin/companies' });
+    const result = await renderRouter(app, { initialUrl: '/admin/companies?status=pending' });
 
     expect(await screen.findByText(company.name_ar)).toBeTruthy();
     // The website's own query for its verification queue: pending, with pending papers, the longest wait first.

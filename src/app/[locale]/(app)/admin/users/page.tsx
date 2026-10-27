@@ -7,12 +7,14 @@ import { RowActions, type RowAction } from '@/components/admin/row-actions';
 import { FilterBar } from '@/components/admin/filter-bar';
 import { AdminTable, FilterTabs, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
 import { ApprovalBadge } from '@/components/admin/badges';
+import { TestBadge } from '@/components/admin/crm';
 import { Badge } from '@/components/ui/badge';
+import { FIRST_SOURCES, isFirstSource } from '@/lib/attribution';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { leaveAnEmptyPage, must } from '@/lib/admin/read';
 import { PAGE_SIZE, UUID_RE, cairoDayStart, dayOf, hrefWith, oneOf, pageOf, param, type SearchParams } from '@/lib/admin/params';
-import { ACCOUNT_SOURCES, SOURCE_GROUPS, type AccountSource } from '@/lib/admin/sources';
+import { SOURCE_GROUPS } from '@/lib/admin/sources';
 import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDate } from '@/lib/utils';
 import type { ApprovalStatus, UserRole } from '@/lib/supabase/database.types';
@@ -30,6 +32,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
  */
 const STATUSES = ['all', 'pending', 'approved', 'rejected', 'blocked'] as const;
 const ROLES = ['all', 'candidate', 'employer', 'admin'] as const;
+const TEST = ['all', 'hide', 'only'] as const;
+const SOURCES = ['all', 'unknown', ...FIRST_SOURCES] as const;
 
 type JoinedProfile = {
   id: string;
@@ -37,6 +41,8 @@ type JoinedProfile = {
   full_name: string;
   approval_status: ApprovalStatus;
   created_at: string;
+  is_test?: boolean;
+  first_source?: string | null;
   company_members?: {
     company_id: string;
     companies: { id: string; name_ar: string; name_en: string | null } | null;
@@ -56,8 +62,9 @@ type UserListRow = {
   agent_restricted: boolean;
   last_sign_in_at: string | null;
   sign_in_blocked: boolean;
-  /** Null when the column is not on this database yet, so the toggle stays hidden. */
-  is_test: boolean | null;
+  /** Absent when this database has not learned the mark yet, so the toggle stays hidden. */
+  is_test?: boolean;
+  first_source?: string | null;
 };
 
 /**
@@ -66,7 +73,7 @@ type UserListRow = {
  * Search is the database's (admin_search_users): a name fragment through a
  * trigram index, or an exact email, phone or account id — matched without the
  * results ever carrying a phone number or an email. Contact details are on the
- * account's own page, one at a time, behind a reason.
+ * account's own page.
  *
  * Pending accounts sort first within any filter, because they are the work.
  */
@@ -85,12 +92,9 @@ export default async function AdminUsersPage({
   const q = param(sp, 'q');
   const status = oneOf(param(sp, 'status'), STATUSES, 'all');
   const role = oneOf(param(sp, 'role'), ROLES, 'all');
+  const test = oneOf(param(sp, 'test'), TEST, 'all');
+  const source = oneOf(param(sp, 'source'), SOURCES, 'all');
   const joined = dayOf(param(sp, 'joined'));
-  const sourceParam = param(sp, 'source');
-  const source: AccountSource | undefined = (ACCOUNT_SOURCES as readonly string[]).includes(sourceParam ?? '')
-    ? (sourceParam as AccountSource)
-    : undefined;
-  const hideTest = param(sp, 'test') === 'hide';
   const page = pageOf(sp);
 
   const supabase = await createClient();
@@ -103,7 +107,7 @@ export default async function AdminUsersPage({
     let query = supabase
       .from('profiles')
       .select(
-        'id, role, full_name, approval_status, created_at, company_members (company_id, companies (id, name_ar, name_en))',
+        'id, role, full_name, approval_status, created_at, is_test, first_source, company_members (company_id, companies (id, name_ar, name_en))',
         { count: 'exact' },
       )
       .gte('created_at', start)
@@ -118,9 +122,10 @@ export default async function AdminUsersPage({
       const needle = looseArabicNeedle(q);
       if (needle) query = query.ilike('full_name', `%${needle}%`);
     }
-    if (source === 'unknown') query = query.is('acquisition_source', null);
-    else if (source) query = query.eq('acquisition_source', source);
-    if (hideTest) query = query.eq('is_test', false);
+    if (source === 'unknown') query = query.is('first_source', null);
+    else if (source !== 'all') query = query.eq('first_source', source);
+    if (test === 'hide') query = query.eq('is_test', false);
+    else if (test === 'only') query = query.eq('is_test', true);
     const read = must(await query, 'loading accounts that joined that day');
     total = read.count ?? 0;
     rows = ((read.data ?? []) as unknown as JoinedProfile[]).map((profile) => {
@@ -138,25 +143,36 @@ export default async function AdminUsersPage({
         agent_restricted: false,
         last_sign_in_at: null,
         sign_in_blocked: false,
-        is_test: null,
+        is_test: profile.is_test,
+        first_source: profile.first_source ?? null,
       };
     });
   } else {
     // The blocked view asks for the block alone; every other view leaves
     // p_blocked out, which a database from before the column knows how to take.
-    const found = must(
-      await supabase.rpc('admin_search_users', {
-        p_query: q ?? null,
-        p_role: role === 'all' ? null : (role as UserRole),
-        p_status: status === 'all' || status === 'blocked' ? null : (status as ApprovalStatus),
-        p_limit: PAGE_SIZE,
-        p_offset: (page - 1) * PAGE_SIZE,
-        ...(status === 'blocked' ? { p_blocked: true } : {}),
-        ...(source ? { p_source: source } : {}),
-        ...(hideTest ? { p_hide_test: true } : {}),
-      }),
-      'searching accounts',
-    ).data;
+    // The test and source filters are the same: named only when they are set,
+    // so a database from before migration 368 still answers the list.
+    const base = {
+      p_query: q ?? null,
+      p_role: role === 'all' ? null : (role as UserRole),
+      p_status: status === 'all' || status === 'blocked' ? null : (status as ApprovalStatus),
+      p_limit: PAGE_SIZE,
+      p_offset: (page - 1) * PAGE_SIZE,
+      ...(status === 'blocked' ? { p_blocked: true } : {}),
+    };
+    const extra: { p_test?: boolean; p_source?: string } = {};
+    if (test === 'hide') extra.p_test = false;
+    else if (test === 'only') extra.p_test = true;
+    if (source !== 'all') extra.p_source = source;
+    let searched = await supabase.rpc('admin_search_users', { ...base, ...extra });
+    if (
+      searched.error &&
+      (searched.error.code === 'PGRST202' || searched.error.code === '42883') &&
+      (extra.p_test !== undefined || extra.p_source)
+    ) {
+      searched = await supabase.rpc('admin_search_users', base);
+    }
+    const found = must(searched, 'searching accounts').data;
     total = Number(found?.[0]?.total_count ?? 0);
     rows = (found ?? []).map((row) => ({
       id: row.id,
@@ -171,16 +187,9 @@ export default async function AdminUsersPage({
       agent_restricted: row.agent_restricted,
       last_sign_in_at: row.last_sign_in_at ?? null,
       sign_in_blocked: Boolean(row.sign_in_blocked),
-      is_test: null,
+      is_test: row.is_test,
+      first_source: row.first_source ?? null,
     }));
-  }
-
-  if (rows.length) {
-    const marks = await supabase.from('profiles').select('id, is_test').in('id', rows.map((row) => row.id));
-    if (!marks.error) {
-      const byId = new Map((marks.data ?? []).map((row) => [row.id, Boolean(row.is_test)]));
-      rows = rows.map((row) => ({ ...row, is_test: byId.get(row.id) ?? false }));
-    }
   }
 
   const t = await getTranslations('admin');
@@ -189,8 +198,8 @@ export default async function AdminUsersPage({
     q,
     status: status === 'all' ? undefined : status,
     role: role === 'all' ? undefined : role,
-    source: source || undefined,
-    test: hideTest ? 'hide' : undefined,
+    test: test === 'all' ? undefined : test,
+    source: source === 'all' ? undefined : source,
     joined,
   };
   await leaveAnEmptyPage(locale, {
@@ -212,7 +221,7 @@ export default async function AdminUsersPage({
           <EntityLink href={`/admin/users/${row.id}`} className="font-medium">
             {row.full_name}
           </EntityLink>
-          {row.is_test ? <Badge variant="outline">{t('testBadge')}</Badge> : null}
+          {row.is_test ? <TestBadge /> : null}
         </span>
       ),
       mobile: 'title',
@@ -237,6 +246,12 @@ export default async function AdminUsersPage({
       mobile: 'meta',
     },
     { key: 'joined', header: t('colJoined'), cell: (row) => formatDate(row.created_at, locale), mobile: 'meta' },
+    {
+      key: 'source',
+      header: t('colSource'),
+      cell: (row) => (isFirstSource(row.first_source) ? t(`source_${row.first_source}`) : t('sourceUnknown')),
+      mobile: 'hidden',
+    },
     {
       key: 'lastSignIn',
       header: t('lastSignIn'),
@@ -310,7 +325,7 @@ export default async function AdminUsersPage({
             reasonLabel: t('reasonOnRecord'),
           });
         }
-        if (!self && row.is_test !== null) {
+        if (!self && typeof row.is_test === 'boolean') {
           actions.push({
             id: 'test',
             kind: 'lever',
@@ -318,7 +333,7 @@ export default async function AdminUsersPage({
             title: row.is_test ? t('unmarkTest') : t('markTest'),
             body: row.full_name,
             icon: <FlaskConical aria-hidden />,
-            lever: { do: 'accountTest', userId: row.id, test: !row.is_test },
+            lever: { do: 'testFlag', userId: row.id, test: !row.is_test },
             reason: 'optional',
             reasonLabel: t('reasonOnRecord'),
           });
@@ -379,7 +394,7 @@ export default async function AdminUsersPage({
             kind: 'grouped',
             key: 'source',
             label: t('accountSource'),
-            valueLabel: source ? t(`source.${source}`) : undefined,
+            valueLabel: source === 'all' ? undefined : t(`source.${source}`),
             searchPlaceholder: t('accountSourceSearch'),
             empty: t('filterEmpty'),
             all: { value: 'all', label: t('filterAll'), href: hrefWith('/admin/users', current, { source: undefined }) },
@@ -394,15 +409,19 @@ export default async function AdminUsersPage({
             })),
           },
           {
-            kind: 'toggle',
+            kind: 'select',
             key: 'test',
-            label: t('hideTestAccounts'),
-            pressed: hideTest,
-            href: hrefWith('/admin/users', current, { test: hideTest ? undefined : 'hide' }),
+            label: t('testBadge'),
+            valueLabel: test === 'hide' ? t('hideTest') : test === 'only' ? t('onlyTest') : undefined,
+            all: { value: 'all', label: t('filterAll'), href: hrefWith('/admin/users', current, { test: undefined }) },
+            options: [
+              { value: 'hide', label: t('hideTest'), href: hrefWith('/admin/users', current, { test: 'hide' }) },
+              { value: 'only', label: t('onlyTest'), href: hrefWith('/admin/users', current, { test: 'only' }) },
+            ],
           },
         ]}
         chips={[
-          ...(q ? [{ key: 'q', label: t('searchChip', { q }), href: hrefWith('/admin/users', current, { q: undefined }), remove: t('removeFilter', { filter: t('searchChip', { q }) }) }] : []),
+          ...(q ? [{ key: 'q', label: t('searchChip', { q }), href: hrefWith('/admin/users', current, { q: undefined }), remove: t('removeFilter', { filter: t('search') }) }] : []),
           ...(role !== 'all'
             ? [{
                 key: 'role',
@@ -411,7 +430,7 @@ export default async function AdminUsersPage({
                 remove: t('removeFilter', { filter: t('accountType') }),
               }]
             : []),
-          ...(source
+          ...(source !== 'all'
             ? [{
                 key: 'source',
                 label: `${t('accountSource')}: ${t(`source.${source}`)}`,
@@ -419,12 +438,12 @@ export default async function AdminUsersPage({
                 remove: t('removeFilter', { filter: t('accountSource') }),
               }]
             : []),
-          ...(hideTest
+          ...(test !== 'all'
             ? [{
                 key: 'test',
-                label: t('hideTestAccounts'),
+                label: test === 'hide' ? t('hideTest') : t('onlyTest'),
                 href: hrefWith('/admin/users', current, { test: undefined }),
-                remove: t('removeFilter', { filter: t('hideTestAccounts') }),
+                remove: t('removeFilter', { filter: test === 'hide' ? t('hideTest') : t('onlyTest') }),
               }]
             : []),
           ...(joined

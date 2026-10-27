@@ -257,7 +257,8 @@ export const SECTIONS_A: HelpSection[] = [
           { label: t('الحالة', 'Status'), detail: t('شارة الإعلان، و«ممول» إن كان مميزًا، وعدد البلاغات والعلامات.', 'The listing badge, Sponsored when it is featured, plus report and flag counts.') },
         ],
         statuses: [
-          { label: t('بانتظار المراجعة', 'Waiting for review'), tone: 'warning', detail: t('الافتراضي. الأقدم أولًا.', 'The default. Oldest first.') },
+          { label: t('الكل', 'All'), tone: 'outline', detail: t('الافتراضي. الأحدث أولًا.', 'The default. Newest first.') },
+          { label: t('بانتظار المراجعة', 'Waiting for review'), tone: 'warning', detail: t('طابور العمل، والأقدم أولًا. الشارة في القائمة الجانبية تفتحه.', 'The work queue, oldest first. The sidebar badge opens it.') },
           { label: t('عليها علامات', 'Flagged'), tone: 'destructive', detail: t('من طابور الانتظار، وفي النص نمط يستحق نظرة أقرب: مال، أو بطاقة أو بنك، أو رابط مموّه. العلامة ليست حكمًا.', 'From the waiting queue, where the text has a pattern worth a closer look: money, an identity or bank detail, or a disguised link. A flag is not a verdict.') },
           { label: t('منشورة', 'Live'), tone: 'success', detail: t('نشطة ولم ينتهِ تاريخها.', 'Active and not past its date.') },
           { label: t('تنتهي قريبًا', 'Expiring soon'), tone: 'warning', detail: t('نشطة وتنتهي خلال سبعة أيام.', 'Active and expiring within seven days.') },
@@ -267,7 +268,6 @@ export const SECTIONS_A: HelpSection[] = [
           { label: t('مغلقة', 'Closed'), tone: 'outline' },
           { label: t('مرفوضة', 'Rejected'), tone: 'destructive' },
           { label: t('مسودات', 'Drafts'), tone: 'default' },
-          { label: t('الكل', 'All'), tone: 'outline' },
         ],
         tips: [
           t('في «من دون متقدمين» تظهر الجملة: منشورة منذ أكثر من ثلاثة أيام ولم يتقدّم أحد — غالبًا تحتاج تعديلًا أو المحتوى غير واضح.', 'On No applicants the page says: live for more than three days with nobody applied — it usually needs an edit, or the content is unclear.'),
@@ -309,8 +309,8 @@ export const SECTIONS_A: HelpSection[] = [
         steps: [
           t('اقرأ الوصف والعلامات في «أمور تستحق نظرة».', 'Read the description and the lines under What to look at.'),
           t('اضغط الإجراء واقرأ نص النافذة قبل التأكيد.', 'Press the action and read the dialog before confirming.'),
-          t('في «اطلب تعديل» أو «رفض» اكتب «الملاحظة (تصل إلى الشركة)».', 'For Request changes or Reject, write The note (sent to the company).'),
-          t('بعد النجاح تظهر «تم» وتُحدَّث الصفحة.', 'On success the page says Done and refreshes.'),
+          t('في «اطلب تعديل» أو «رفض» اكتب «الملاحظة (اختياري، تصل إلى الشركة)» إن كان لديك ما تقوله، أو اتركها فارغة.', 'For Request changes or Reject, write Note (optional, sent to the company) when you have something to say, or leave it empty.'),
+          t('بعد الاعتماد أو الرفض تنتقل الصفحة إلى الإعلان التالي بانتظار المراجعة، وتقول «تمت الموافقة — الانتقال للتالي». إن لم يبقَ شيء: «لا توجد إعلانات أخرى بانتظار المراجعة».', 'After approval or rejection the page moves to the next listing waiting for review, and says Approved — moving to the next. When none remain: No other listings are waiting for review.'),
         ],
         fields: [
           { label: t('اعتماد', 'Approve'), detail: t('«نشر الإعلان»: يظهر على الموقع فورًا لمدة ثلاثين يومًا، ويصل الشركة بريد. يُطبَّق حد الإعلان الواحد للشركات غير الموثّقة، والرصيد إن كان النشر يخصم منه.', 'Publish the listing: it appears on the site at once for thirty days, and the company is emailed. The one-listing limit for an unverified company applies, and credits apply when publishing spends one.') },
@@ -383,8 +383,8 @@ export const SECTIONS_A: HelpSection[] = [
     id: 'companies',
     title: t('توثيق الشركات', 'Company verification'),
     lede: t(
-      '«الشركات»: كل الشركات — وأولها ما تنتظر مستنداته مراجعة، الأقدم أولًا.',
-      'Companies: every company — documents waiting for review first, oldest first.',
+      '«الشركات» تفتح على «الكل». طابور المستندات المنتظرة تبويب، والأقدم أولًا.',
+      'Companies opens on All. Documents waiting for review are a tab, oldest first.',
     ),
     features: [
       {
@@ -403,12 +403,12 @@ export const SECTIONS_A: HelpSection[] = [
           { label: t('الحالة', 'Status'), detail: t('شارة التوثيق، و«موقوفة» إن وُجد إيقاف.', 'The verification badge, and Suspended when a suspension is in place.') },
         ],
         statuses: [
-          { label: t('مستنداتها قيد المراجعة', 'Documents in review'), tone: 'warning', detail: t('تبويب الانتظار الافتراضي.', 'The default waiting tab.') },
+          { label: t('الكل', 'All'), tone: 'outline', detail: t('الافتراضي.', 'The default.') },
+          { label: t('مستنداتها قيد المراجعة', 'Documents in review'), tone: 'warning', detail: t('طابور الانتظار، والأقدم أولًا.', 'The waiting queue, oldest first.') },
           { label: t('موثّقة', 'Verified'), tone: 'success' },
           { label: t('غير موثّقة', 'Unverified'), tone: 'outline' },
           { label: t('التوثيق مرفوض', 'Verification rejected'), tone: 'destructive' },
           { label: t('موقوفة', 'Suspended'), tone: 'destructive', detail: t('إيقاف الشركة، وهو غير حالة التوثيق.', 'The company’s suspension, which is separate from verification.') },
-          { label: t('الكل', 'All'), tone: 'outline' },
         ],
       },
       {

@@ -1,17 +1,14 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Check, Star, X } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { EntityLink } from '@/components/admin/entity-link';
-import { RowActions, type RowAction } from '@/components/admin/row-actions';
 import { AdminTable, FilterTabs, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { mustPage } from '@/lib/admin/read';
 import { PAGE_SIZE, UUID_RE, cairoDayStart, dayOf, hrefWith, oneOf, pageOf, param, rangeOf, type SearchParams } from '@/lib/admin/params';
-import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { looseArabicNeedle } from '@/lib/search/needle';
 import { formatDate } from '@/lib/utils';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
@@ -153,29 +150,6 @@ export default async function AdminApplicationsPage({
       mobile: 'meta',
     },
     { key: 'status', header: t('colStatus'), cell: (row) => <Badge variant="outline">{tApplication(row.status)}</Badge>, mobile: 'aside' },
-    {
-      key: 'actions',
-      header: t('colActions'),
-      className: 'w-px',
-      cell: (row) => {
-        if (row.status === 'withdrawn') return null;
-        const actions: RowAction[] = PIPELINE_STAGES.filter((status) => status !== row.status).map((status) => ({
-          id: status,
-          kind: 'lever' as const,
-          primary: status === 'shortlisted' && row.status === 'new',
-          tone: status === 'rejected' ? ('destructive' as const) : status === 'hired' ? ('success' as const) : undefined,
-          label: t('moveApplication', { status: tApplication(status) }),
-          title: t('moveApplication', { status: tApplication(status) }),
-          body: row.candidate?.full_name,
-          icon: status === 'rejected' ? <X aria-hidden /> : status === 'hired' || status === 'shortlisted' ? <Check aria-hidden /> : <Star aria-hidden />,
-          lever: { do: 'application' as const, applicationId: row.id, status, from: row.status },
-          reason: 'optional' as const,
-          reasonLabel: t('reasonToUser'),
-        }));
-        return <RowActions actions={actions} />;
-      },
-      mobile: 'meta',
-    },
   ];
 
   return (

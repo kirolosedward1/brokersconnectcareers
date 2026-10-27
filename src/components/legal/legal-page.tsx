@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { alternatesFor, asLocale, type Locale } from '@/i18n/routing';
 import { LegalDocument } from '@/components/legal-document';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
 import { getLegalDoc, type LegalSlug } from '@/lib/legal';
 
 type Props = {
@@ -82,8 +83,28 @@ export function legalPage(slug: LegalSlug) {
     const otherLang: Locale = doc?.lang === 'ar' ? 'en' : 'ar';
     const hasOther = getLegalDoc(slug, otherLang)?.lang === otherLang;
     const tOther = await getTranslations({ locale: otherLang, namespace: 'legal' });
+    const tMeta = await getTranslations({ locale, namespace: 'meta' });
+    const tFooter = await getTranslations({ locale, namespace: 'footer' });
+    const crumb =
+      doc?.title ||
+      tFooter(
+        slug === 'privacy'
+          ? 'privacy'
+          : slug === 'terms'
+            ? 'terms'
+            : slug === 'cookies'
+              ? 'cookies'
+              : slug === 'refunds'
+                ? 'refunds'
+                : 'accountDeletion',
+      );
 
     return (
+      <>
+      <BreadcrumbJsonLd
+        locale={locale}
+        crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: crumb }]}
+      />
       <LegalDocument
         doc={doc}
         locale={locale}
@@ -97,6 +118,7 @@ export function legalPage(slug: LegalSlug) {
             : null
         }
       />
+      </>
     );
   }
 

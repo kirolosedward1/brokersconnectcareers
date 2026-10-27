@@ -92,12 +92,12 @@ function Overview() {
   const appsDelta = o.applications.last_7d - o.applications.prev_7d;
 
   const attention: StatCell[] = [
-    { label: t('dashboard.statQueue'), value: n(o.jobs.pending), tone: o.jobs.pending > 0 ? 'accent' : 'default', onPress: go('/admin/jobs') },
+    { label: t('dashboard.statQueue'), value: n(o.jobs.pending), tone: o.jobs.pending > 0 ? 'accent' : 'default', onPress: go('/admin/jobs', { status: 'pending' }) },
     {
       label: t('dashboard.statQueueOld'),
       value: n(o.jobs.pending_24h),
       tone: o.jobs.pending_24h > 0 ? 'urgent' : 'default',
-      onPress: go('/admin/jobs'),
+      onPress: go('/admin/jobs', { status: 'pending' }),
     },
     {
       label: t('dashboard.statReports'),

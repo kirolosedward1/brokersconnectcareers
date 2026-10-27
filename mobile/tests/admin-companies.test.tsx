@@ -105,6 +105,10 @@ beforeEach(async () => {
     url.searchParams.get('id')?.startsWith('eq.') ? [one] : { body: [row], headers: { 'content-range': '0-0/1' } },
   );
   server.on('GET /rest/v1/company_documents', () => papers);
+  server.on('POST /rest/v1/rpc/admin_view_contacts', [
+    { user_id: company.owner_id, email: 'owner@demo.test', whatsapp_phone: '+201012345671', email_confirmed: true },
+    { user_id: OTHER_USER, email: 'mona@demo.test', whatsapp_phone: '+201012345672', email_confirmed: false },
+  ]);
   server.on('GET /rest/v1/company_members', [
     { role: 'admin', created_at: '2026-07-01T10:00:00Z', profile: { id: company.owner_id, full_name: 'أحمد سمير', approval_status: 'approved' } },
     { role: 'recruiter', created_at: '2026-08-01T10:00:00Z', profile: { id: OTHER_USER, full_name: 'منى علي', approval_status: 'pending' } },
@@ -215,23 +219,29 @@ function confirmButton(label: string) {
 const view = (name: string) => screen.getByRole('radio', { name });
 
 describe('the companies', () => {
-  it('draws the verification queue first, oldest first, and every other view newest first, as the website asks for them', async () => {
+  it('draws every company first, and the verification queue oldest first, as the website asks for them', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/companies' });
 
     expect(await screen.findByText(company.name_ar)).toBeTruthy();
     // (postgrest-js sends the select without its spaces.)
     expect(lastAsked().get('select')).toBe(
-      'id,name_ar,name_en,slug,logo_url,verification_status,suspended_at,created_at,jobs(count),company_members(count),company_documents!inner(id)',
+      'id,name_ar,name_en,slug,logo_url,verification_status,suspended_at,created_at,jobs(count),company_members(count)',
     );
-    expect(lastAsked().get('verification_status')).toBe('eq.pending');
-    expect(lastAsked().get('company_documents.status')).toBe('eq.pending');
-    expect(lastAsked().get('order')).toBe('created_at.asc,id.asc');
+    expect(lastAsked().has('verification_status')).toBe(false);
+    expect(lastAsked().has('company_documents.status')).toBe(false);
+    expect(lastAsked().get('order')).toBe('created_at.desc,id.asc');
     expect(lastAsked().get('offset')).toBe('0');
     expect(lastAsked().get('limit')).toBe('25');
-    expect(view(ar.admin.verification.pending).props.accessibilityState).toMatchObject({ checked: true });
+    expect(view(ar.admin.filterAll).props.accessibilityState).toMatchObject({ checked: true });
+
+    fireEvent.press(view(ar.admin.verification.pending));
+    await waitFor(() => expect(lastAsked().get('verification_status')).toBe('eq.pending'));
+    expect(lastAsked().get('company_documents.status')).toBe('eq.pending');
+    expect(lastAsked().get('order')).toBe('created_at.asc,id.asc');
+    expect(lastAsked().get('select')).toContain('company_documents!inner(id)');
     // The website's columns: the listings and the people counted, the standing, when it joined.
-    expect(screen.getByText(`${ar.admin.colListings}: 3 · ${ar.admin.colMembers}: 1`)).toBeTruthy();
+    expect(await screen.findByText(`${ar.admin.colListings}: 3 · ${ar.admin.colMembers}: 1`)).toBeTruthy();
     // The view's chip, and the row's own badge.
     expect(screen.getAllByText(ar.admin.verification.pending)).toHaveLength(2);
 
@@ -324,6 +334,8 @@ describe("a company's page", () => {
     // The people: the owner marked, each one's standing.
     expect(screen.getByText(ar.admin.owner)).toBeTruthy();
     expect(screen.getByText(ar.admin.memberRole.recruiter)).toBeTruthy();
+    expect(screen.getByText(/owner@demo\.test/)).toBeTruthy();
+    expect(screen.getByText(/\+201012345672/)).toBeTruthy();
     // The listings: the twenty newest of every status, the exact total, and the open reports on them.
     expect(screen.getByText(ar.admin.listingsCount.replace('{count}', '7'))).toBeTruthy();
     expect(screen.getByText(/4 متقدمين/)).toBeTruthy();

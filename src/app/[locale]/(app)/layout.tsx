@@ -5,6 +5,7 @@ import { asLocale } from '@/i18n/routing';
 import { CONSOLE_MESSAGES, PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
 import { AppShell, type AppNavGroup } from '@/components/dashboard/app-shell';
 import { MailOffBanner } from '@/components/admin/mail-off-banner';
+import { RememberFirstTouch } from '@/components/attribution/remember';
 import { PolicyNotice } from '@/components/legal/policy-notice';
 import { StandingNotice } from '@/components/moderation/standing-notice';
 import { SuspensionGate } from '@/components/moderation/suspension-gate';
@@ -161,7 +162,7 @@ export default async function AppLayout({
     items: [
       { href: '/admin', label: t('overview'), icon: 'admin' },
       {
-        href: '/admin/jobs',
+        href: '/admin/jobs?status=pending',
         label: tAdmin('jobsQueue'),
         icon: 'queue',
         badge: adminCounts?.queue_total,
@@ -255,6 +256,7 @@ export default async function AppLayout({
       {/* Admins only: a platform that cannot send email should say so on every
           console page, not only the one page about email. */}
       {showAdmin ? <MailOffBanner /> : null}
+      <RememberFirstTouch />
 
       {/* The Terms and the Privacy policy as they are now, until agreed to. */}
       <PolicyNotice inset />

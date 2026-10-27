@@ -50,8 +50,7 @@ export default function AdminAccountsScreen() {
 
 /**
  * The view a link asks for, in the website's own terms (`?status=`, `?role=`
- * on /admin/users — the overview's figures, a push); the waiting accounts
- * otherwise.
+ * on /admin/users — the overview's figures, a push); every account otherwise.
  */
 function viewFor(status: string | undefined, role: string | undefined): AccountsView {
   if (status === 'blocked') return 'blocked';
@@ -60,7 +59,7 @@ function viewFor(status: string | undefined, role: string | undefined): Accounts
   if (role === 'candidate') return 'candidates';
   if (role === 'employer') return 'employers';
   if (role === 'admin') return 'admins';
-  return status === 'approved' || status === 'all' ? 'all' : 'pending';
+  return 'all';
 }
 
 function useViewLabels(): Record<AccountsView, string> {

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { BadgeCheck, Ban, ExternalLink, Mail, ShieldOff } from 'lucide-react';
+import { BadgeCheck, Ban, ExternalLink, FlaskConical, Mail, ShieldOff } from 'lucide-react';
 import { asLocale, localized } from '@/i18n/routing';
 import { EntityLink } from '@/components/admin/entity-link';
 import { RowActions, type RowAction } from '@/components/admin/row-actions';
 import { FilterBar } from '@/components/admin/filter-bar';
 import { AdminTable, FilterTabs, Num, PageHeader, Pager, SearchForm, type Column } from '@/components/admin/kit';
 import { VerificationBadge } from '@/components/admin/badges';
+import { TestBadge } from '@/components/admin/crm';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -22,19 +23,20 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   return { title: t('companiesQueue'), robots: { index: false, follow: false } };
 }
 
-const FILTERS = ['pending', 'verified', 'unverified', 'rejected', 'suspended', 'all'] as const;
+const FILTERS = ['all', 'pending', 'verified', 'unverified', 'rejected', 'suspended'] as const;
+const TEST = ['all', 'hide', 'only'] as const;
 
 type CompanyListRow = Pick<
   CompanyRow,
   'id' | 'owner_id' | 'name_ar' | 'name_en' | 'slug' | 'logo_url' | 'verification_status' | 'suspended_at' | 'created_at'
-> & { jobs: { count: number }[]; company_members: { count: number }[] };
+> & { is_test?: boolean; jobs: { count: number }[]; company_members: { count: number }[] };
 
 /**
- * Every company, with the verification queue as the first tab.
+ * Every company. «الكل» is first and selected until a filter is chosen.
  *
- * The queue is oldest-first — the company that has waited longest is the one
- * to read next — and every other view newest-first. Searching reaches names in
- * both languages and the slug, through trigram indexes rather than a scan.
+ * The waiting queue is oldest-first — the company that has waited longest is
+ * the one to read next — and every other view newest-first. Searching reaches
+ * names in both languages and the slug, through trigram indexes rather than a scan.
  */
 export default async function AdminCompaniesPage({
   params,
@@ -49,40 +51,49 @@ export default async function AdminCompaniesPage({
 
   const sp = await searchParams;
   const q = param(sp, 'q');
-  const status = oneOf(param(sp, 'status'), FILTERS, 'pending');
+  const status = oneOf(param(sp, 'status'), FILTERS, 'all');
+  const test = oneOf(param(sp, 'test'), TEST, 'all');
   const page = pageOf(sp);
   const [from, to] = rangeOf(page);
 
   const supabase = await createClient();
-  let query = supabase
-    .from('companies')
-    .select(
-      `id, owner_id, name_ar, name_en, slug, logo_url, verification_status, suspended_at, created_at, jobs (count), company_members (count)${
-        status === 'pending' ? ', company_documents!inner (id)' : ''
-      }`,
-      { count: 'exact' },
-    )
-    .order('created_at', { ascending: status === 'pending' })
-    .order('id')
-    .range(from, to);
+  const columnsFor = (withTest: boolean) =>
+    `id, owner_id, name_ar, name_en, slug, logo_url, verification_status, suspended_at, created_at${withTest ? ', is_test' : ''}, jobs (count), company_members (count)${
+      status === 'pending' ? ', company_documents!inner (id)' : ''
+    }`;
+  const build = (withTest: boolean) => {
+    let query = supabase
+      .from('companies')
+      .select(columnsFor(withTest), { count: 'exact' })
+      .order('created_at', { ascending: status === 'pending' })
+      .order('id')
+      .range(from, to);
+    if (status === 'suspended') query = query.not('suspended_at', 'is', null);
+    else if (status !== 'all') {
+      query = query.eq('verification_status', status);
+      if (status === 'pending') query = query.eq('company_documents.status', 'pending');
+    }
+    if (withTest && test === 'hide') query = query.eq('is_test', false);
+    if (withTest && test === 'only') query = query.eq('is_test', true);
+    const needle = q ? looseArabicNeedle(q) : '';
+    if (needle) query = query.or(`name_ar.ilike.*${needle}*,name_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
+    return query;
+  };
 
-  if (status === 'suspended') query = query.not('suspended_at', 'is', null);
-  else if (status !== 'all') {
-    query = query.eq('verification_status', status);
-    if (status === 'pending') query = query.eq('company_documents.status', 'pending');
-  }
-
-  const needle = q ? looseArabicNeedle(q) : '';
-  if (needle) query = query.or(`name_ar.ilike.*${needle}*,name_en.ilike.*${needle}*,slug.ilike.*${needle}*`);
-
-  const read = await mustPage(await query, 'loading companies', locale, {
+  const current = {
+    q,
+    status: status === 'all' ? undefined : status,
+    test: test === 'all' ? undefined : test,
+  };
+  let read = await build(true);
+  if (read.error?.code === '42703' || read.error?.code === 'PGRST204') read = await build(false);
+  const pageRead = await mustPage(read, 'loading companies', locale, {
     page,
-    href: (n) => hrefWith('/admin/companies', { q, status: status === 'pending' ? undefined : status }, { page: n }),
+    href: (n) => hrefWith('/admin/companies', current, { page: n }),
   });
-  const rows = read.data as unknown as CompanyListRow[];
+  const rows = pageRead.data as unknown as CompanyListRow[];
 
   const t = await getTranslations('admin');
-  const current = { q, status: status === 'pending' ? undefined : status };
 
   const columns: Column<CompanyListRow>[] = [
     {
@@ -91,11 +102,12 @@ export default async function AdminCompaniesPage({
       cell: (row) => {
         const name = localized(locale, row.name_ar, row.name_en);
         return (
-          <span className="inline-flex items-center gap-2">
+          <span className="inline-flex flex-wrap items-center gap-2">
             <CompanyLogo logoUrl={row.logo_url} seed={row.slug} name={name} size="sm" />
             <EntityLink href={`/admin/companies/${row.id}`} className="font-medium">
               {name}
             </EntityLink>
+            {row.is_test ? <TestBadge /> : null}
           </span>
         );
       },
@@ -171,6 +183,19 @@ export default async function AdminCompaniesPage({
           icon: <ExternalLink aria-hidden />,
           href: `/companies/${row.slug}`,
         });
+        if (typeof row.is_test === 'boolean') {
+          actions.push({
+            id: 'test',
+            kind: 'lever',
+            label: row.is_test ? t('unmarkTest') : t('markTest'),
+            title: row.is_test ? t('unmarkTest') : t('markTest'),
+            body: name,
+            icon: <FlaskConical aria-hidden />,
+            lever: { do: 'testFlag', companyId: row.id, test: !row.is_test },
+            reason: 'optional',
+            reasonLabel: t('reasonOnRecord'),
+          });
+        }
         actions.push({
           id: 'email',
           kind: 'contact',
@@ -203,23 +228,42 @@ export default async function AdminCompaniesPage({
           key: value,
           label:
             value === 'all' ? t('filterAll') : value === 'suspended' ? t('suspended') : t(`verification.${value}`),
-          href: hrefWith('/admin/companies', current, { status: value === 'pending' ? undefined : value }),
+          href: hrefWith('/admin/companies', current, { status: value === 'all' ? undefined : value }),
           active: status === value,
         }))}
       />
-
       <FilterBar
-        filters={[]}
-        chips={
-          q
+        filters={[
+          {
+            kind: 'select',
+            key: 'test',
+            label: t('testBadge'),
+            valueLabel: test === 'hide' ? t('hideTest') : test === 'only' ? t('onlyTest') : undefined,
+            all: { value: 'all', label: t('filterAll'), href: hrefWith('/admin/companies', current, { test: undefined }) },
+            options: [
+              { value: 'hide', label: t('hideTest'), href: hrefWith('/admin/companies', current, { test: 'hide' }) },
+              { value: 'only', label: t('onlyTest'), href: hrefWith('/admin/companies', current, { test: 'only' }) },
+            ],
+          },
+        ]}
+        chips={[
+          ...(q
             ? [{
                 key: 'q',
                 label: t('searchChip', { q }),
                 href: hrefWith('/admin/companies', current, { q: undefined }),
                 remove: t('removeFilter', { filter: t('search') }),
               }]
-            : []
-        }
+            : []),
+          ...(test !== 'all'
+            ? [{
+                key: 'test',
+                label: test === 'hide' ? t('hideTest') : t('onlyTest'),
+                href: hrefWith('/admin/companies', current, { test: undefined }),
+                remove: t('removeFilter', { filter: test === 'hide' ? t('hideTest') : t('onlyTest') }),
+              }]
+            : []),
+        ]}
         clearHref={hrefWith('/admin/companies', { status: current.status }, {})}
         clearLabel={t('clearListFilters')}
       >
@@ -227,7 +271,7 @@ export default async function AdminCompaniesPage({
           locale={locale}
           path="/admin/companies"
           q={q}
-          keep={{ status: current.status }}
+          keep={{ status: current.status, test: current.test }}
           placeholder={t('companiesSearchPlaceholder')}
           label={t('search')}
         />
@@ -245,7 +289,7 @@ export default async function AdminCompaniesPage({
 
       <Pager
         page={page}
-        total={read.count}
+        total={pageRead.count}
         size={PAGE_SIZE}
         locale={locale}
         buildHref={(next) => hrefWith('/admin/companies', current, { page: next })}

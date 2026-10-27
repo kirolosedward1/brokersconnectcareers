@@ -400,6 +400,35 @@ export async function revealContact(
   return { ok: true, data: { email: row.email, phone: row.whatsapp_phone } };
 }
 
+const testFlagSchema = z.object({
+  userId: z.string().uuid().optional(),
+  companyId: z.string().uuid().optional(),
+  test: z.boolean(),
+  reason: optionalText(500),
+});
+
+/** Mark a row as ours, or take the mark off. Recorded. Nobody is emailed. */
+export async function setTestFlag(input: unknown): Promise<AdminResult> {
+  const parsed = testFlagSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
+  const { userId, companyId, test, reason } = parsed.data;
+  if (Boolean(userId) === Boolean(companyId)) return { ok: false, error: 'invalid' };
+
+  const supabase = await assertAdmin();
+  if (!supabase) return { ok: false, error: 'forbidden' };
+
+  const { error } = await supabase.rpc('admin_set_test_flag', {
+    p_user: userId ?? null,
+    p_company: companyId ?? null,
+    p_test: test,
+    p_reason: reason ?? null,
+  });
+  if (error) return { ok: false, error: adminErrorCode(error) };
+
+  refreshConsole();
+  return { ok: true };
+}
+
 const roleSchema = z.object({
   userId: z.string().uuid(),
   role: z.enum(['candidate', 'employer', 'admin']),
@@ -486,36 +515,6 @@ export async function endSessions(input: unknown): Promise<AdminResult<{ session
 
   refreshConsole();
   return { ok: true, data: { sessionsEnded: Number(data ?? 0) } };
-}
-
-const accountTestSchema = z.object({
-  userId: z.string().uuid(),
-  test: z.boolean(),
-  reason: optionalText(500),
-});
-
-/**
- * Mark an account as ours (a seed, a QA login) or clear that mark.
- *
- * admin_set_account_test is migration 369. A database that does not have it
- * yet answers not_migrated, and the list hides the toggle.
- */
-export async function setAccountTest(input: unknown): Promise<AdminResult> {
-  const parsed = accountTestSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: textError(parsed.error) };
-
-  const supabase = await assertAdmin();
-  if (!supabase) return { ok: false, error: 'forbidden' };
-
-  const { error } = await supabase.rpc('admin_set_account_test', {
-    p_user: parsed.data.userId,
-    p_test: parsed.data.test,
-    p_reason: parsed.data.reason,
-  });
-  if (error) return { ok: false, error: adminErrorCode(error) };
-
-  refreshConsole();
-  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

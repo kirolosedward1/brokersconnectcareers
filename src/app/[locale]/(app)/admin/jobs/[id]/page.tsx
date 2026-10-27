@@ -5,6 +5,7 @@ import { Check, ExternalLink, FilePen, Lock, RotateCcw, Star, StarOff, X, EyeOff
 import { Link } from '@/i18n/navigation';
 import { asLocale, localized } from '@/i18n/routing';
 import { ConfirmAction } from '@/components/admin/confirm-action';
+import { JobReviewNav } from '@/components/admin/job-review-nav';
 import { NoteForm } from '@/components/admin/note-form';
 import { JobStatusBadge, ReportStatusBadge, VerificationBadge } from '@/components/admin/badges';
 import { Facts, PageHeader, Section, Trail } from '@/components/admin/kit';
@@ -14,7 +15,8 @@ import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
 import { raise } from '@/lib/queries/error';
 import { listingNotes, noteFor } from '@/lib/listing-notes';
-import { UUID_RE } from '@/lib/admin/params';
+import { UUID_RE, param, type SearchParams } from '@/lib/admin/params';
+import { jobListContext, jobListHref, jobNeighbours, jobReviewHref, type JobListContext } from '@/lib/admin/job-neighbours';
 import { jobIsLive } from '@/lib/job-state';
 import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { formatDate, formatEgp, formatNumber } from '@/lib/utils';
@@ -66,12 +68,25 @@ type JobReport = {
  * does not need the applicants' names, and the application pages have them
  * when a case does.
  */
-export default async function AdminJobPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
+export default async function AdminJobPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<SearchParams>;
+}) {
   const { locale: rawLocale, id } = await params;
   const locale = asLocale(rawLocale);
   setRequestLocale(locale);
   await requireAdmin(locale);
   if (!UUID_RE.test(id)) notFound();
+  const sp = await searchParams;
+  const context = jobListContext({
+    tab: param(sp, 'tab') || param(sp, 'status'),
+    sort: param(sp, 'sort'),
+    q: param(sp, 'q'),
+    company: param(sp, 'company'),
+  });
 
   const supabase = await createClient();
   const job = must(
@@ -85,6 +100,12 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
     'loading a listing',
   ).data as unknown as JobDetail | null;
   if (!job) notFound();
+
+  const neighbours = await jobNeighbours(supabase as never, job, context);
+  const previousHref = neighbours.previousId ? jobReviewHref(neighbours.previousId, context) : null;
+  const nextHref = neighbours.nextId ? jobReviewHref(neighbours.nextId, context) : null;
+  const pendingContext: JobListContext = { ...context, tab: 'pending', sort: 'oldest' };
+  const pendingHref = neighbours.nextPendingId ? jobReviewHref(neighbours.nextPendingId, pendingContext) : null;
 
   // Why it was refused: beside it in job_moderation since migration 347, in
   // its own column before.
@@ -166,9 +187,10 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
     );
 
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5 pb-24 lg:mx-16 lg:pb-0">
+      <JobReviewNav previousHref={previousHref} nextHref={nextHref} position={neighbours.position} total={neighbours.total} />
       <PageHeader
-        back={{ href: '/admin/jobs', label: t('jobsQueue') }}
+        back={{ href: jobListHref(context), label: t('jobsQueue') }}
         title={title}
         lede={localized(locale, job.company.name_ar, job.company.name_en)}
         actions={
@@ -304,6 +326,9 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                     body={t('approveListingBody')}
                     variant="success"
                     icon={<Check aria-hidden />}
+                    listenFor="admin:open-approve"
+                    thenGo={pendingHref ?? undefined}
+                    toast={pendingHref ? t('approvedNext') : t('noMorePending')}
                   />
                   <ConfirmAction
                     lever={{ do: 'job', jobId: job.id, action: 'request_changes', version: job.version }}
@@ -323,6 +348,8 @@ export default async function AdminJobPage({ params }: { params: Promise<{ local
                     reasonLabel={t('reasonToCompany')}
                     variant="destructive"
                     icon={<X aria-hidden />}
+                    thenGo={pendingHref ?? undefined}
+                    toast={pendingHref ? t('rejectedNext') : t('noMorePending')}
                   />
                 </>
               ) : null}

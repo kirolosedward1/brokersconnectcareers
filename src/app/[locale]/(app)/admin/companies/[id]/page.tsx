@@ -7,6 +7,8 @@ import { asLocale, localized } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { CompanyLogo } from '@/components/companies/company-logo';
 import { ConfirmAction } from '@/components/admin/confirm-action';
+import { TestBadge } from '@/components/admin/crm';
+import { shownContacts } from '@/lib/admin/contacts';
 import { DocumentLink } from '@/components/admin/document-link';
 import { NoteForm } from '@/components/admin/note-form';
 import { ApprovalBadge, JobStatusBadge, ReportStatusBadge, VerificationBadge } from '@/components/admin/badges';
@@ -16,7 +18,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { must } from '@/lib/admin/read';
 import { UUID_RE } from '@/lib/admin/params';
-import { formatDate, formatNumber } from '@/lib/utils';
+import { formatDate, formatNumber, whatsappLink } from '@/lib/utils';
 import type {
   AdminAuditRow,
   ApprovalStatus,
@@ -81,9 +83,21 @@ export default async function AdminCompanyPage({
 
   const supabase = await createClient();
   const company = must(
-    await supabase.from('companies').select('*, district:districts (name_ar, name_en)').eq('id', id).maybeSingle(),
+    await supabase
+      .from('companies')
+      .select('*, district:districts (name_ar, name_en, governorate:governorates (name_ar, name_en))')
+      .eq('id', id)
+      .maybeSingle(),
     'loading a company',
-  ).data as (CompanyRow & { district: { name_ar: string; name_en: string } | null }) | null;
+  ).data as
+    | (CompanyRow & {
+        district: {
+          name_ar: string;
+          name_en: string;
+          governorate: { name_ar: string; name_en: string } | null;
+        } | null;
+      })
+    | null;
   if (!company) notFound();
 
   const [documents, members, jobs, reports, jobReports, audit, notes, moderation, signals] = await Promise.all([
@@ -120,6 +134,7 @@ export default async function AdminCompanyPage({
 
   const docs = must(documents, 'loading documents').data as CompanyDocumentRow[];
   const people = must(members, 'loading members').data as unknown as Member[];
+  const contacts = await shownContacts(supabase as never, people.flatMap((member) => (member.profile ? [member.profile.id] : [])));
   const listings = must(jobs, 'loading listings');
   const complaints = must(reports, 'loading reports').data as unknown as CompanyReport[];
   const openJobReports = must(jobReports, 'counting listing reports').count;
@@ -134,6 +149,12 @@ export default async function AdminCompanyPage({
   const tCompanyType = await getTranslations('companyType');
   const tBilling = await getTranslations('billing');
   const name = localized(locale, company.name_ar, company.name_en);
+  const districtName = company.district ? localized(locale, company.district.name_ar, company.district.name_en) : null;
+  const cityName = company.district?.governorate
+    ? localized(locale, company.district.governorate.name_ar, company.district.governorate.name_en)
+    : null;
+  const address = cityName && districtName ? t('cityArea', { city: cityName, area: districtName }) : districtName;
+  const websiteLabel = company.website?.replace(/^https?:\/\//, '').replace(/\/$/, '') ?? null;
   const status = company.verification_status;
   const suspended = Boolean(company.suspended_at);
   const openComplaints = complaints.filter((r) => r.status === 'open' || r.status === 'investigating');
@@ -146,6 +167,7 @@ export default async function AdminCompanyPage({
         lede={t('joinedOn', { date: formatDate(company.created_at, locale) })}
         actions={
           <>
+            {company.is_test ? <TestBadge /> : null}
             <VerificationBadge status={status} suspended={suspended} />
             <Link
               href={`/companies/${company.slug}`}
@@ -175,12 +197,20 @@ export default async function AdminCompanyPage({
                   { label: t('nameAr'), value: company.name_ar },
                   { label: t('nameEn'), value: company.name_en },
                   { label: t('companyType'), value: company.company_type ? tCompanyType(company.company_type) : '—' },
-                  { label: t('district'), value: company.district ? localized(locale, company.district.name_ar, company.district.name_en) : '—' },
+                  { label: t('founded'), value: formatDate(company.created_at, locale) },
+                  { label: t('address'), value: address || '—' },
                   {
                     label: t('website'),
-                    value: company.website ? (
-                      <a href={company.website} target="_blank" rel="noreferrer nofollow" dir="ltr" className="break-all text-primary hover:underline">
-                        {company.website}
+                    value: company.website && websiteLabel ? (
+                      <a
+                        href={company.website}
+                        target="_blank"
+                        rel="noreferrer nofollow"
+                        dir="ltr"
+                        title={company.website}
+                        className="block max-w-full truncate text-primary hover:underline"
+                      >
+                        {websiteLabel}
                       </a>
                     ) : null,
                   },
@@ -219,14 +249,66 @@ export default async function AdminCompanyPage({
             )}
           </Section>
 
+          <Section title={t('contact')}>
+            {people.length === 0 ? (
+              <p className="text-sm text-muted-foreground">—</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {people.map((member) => {
+                  if (!member.profile) return null;
+                  const contact = contacts.get(member.profile.id);
+                  const email = contact?.email?.trim() || '';
+                  const phone = contact?.phone?.trim() || '';
+                  return (
+                    <li key={member.profile.id} className="space-y-1 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Link href={`/admin/users/${member.profile.id}`} className="font-medium hover:text-primary hover:underline">
+                          {member.profile.full_name}
+                        </Link>
+                        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {t(`memberRole.${member.role}`)}
+                          {member.profile.id === company.owner_id ? <Badge variant="outline">{t('owner')}</Badge> : null}
+                        </span>
+                      </div>
+                      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                        {email ? (
+                          <a href={`mailto:${email}`} dir="ltr" className="text-primary hover:underline">
+                            {email}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                        {phone ? (
+                          <>
+                            <a href={`tel:${phone}`} dir="ltr" className="numeral text-primary hover:underline">
+                              {phone}
+                            </a>
+                            <a href={whatsappLink(phone)} className="text-primary hover:underline">
+                              {t('whatsapp')}
+                            </a>
+                          </>
+                        ) : null}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Section>
+
           <Section title={t('members')}>
             <ul className="divide-y divide-border">
               {people.map((member) =>
                 member.profile ? (
                   <li key={member.profile.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                    <Link href={`/admin/users/${member.profile.id}`} className="font-medium hover:text-primary hover:underline">
-                      {member.profile.full_name}
-                    </Link>
+                    <span className="min-w-0">
+                      <Link href={`/admin/users/${member.profile.id}`} className="font-medium hover:text-primary hover:underline">
+                        {member.profile.full_name}
+                      </Link>
+                      <span className="mt-0.5 block text-xs text-muted-foreground" dir="ltr">
+                        {contacts.get(member.profile.id)?.email || contacts.get(member.profile.id)?.phone || '—'}
+                      </span>
+                    </span>
                     <span className="flex items-center gap-2 text-xs text-muted-foreground">
                       {t(`memberRole.${member.role}`)}
                       {member.profile.id === company.owner_id ? <Badge variant="outline">{t('owner')}</Badge> : null}
@@ -361,6 +443,17 @@ export default async function AdminCompanyPage({
                 />
               ) : null}
             </div>
+          </Section>
+
+          <Section title={t('actions')}>
+            <ConfirmAction
+              lever={{ do: 'testFlag', companyId: company.id, test: !company.is_test }}
+              label={company.is_test ? t('unmarkTest') : t('markTest')}
+              title={company.is_test ? t('unmarkTest') : t('markTest')}
+              body={company.is_test ? t('unmarkTestBody') : t('markTestBody')}
+              reason="optional"
+              reasonLabel={t('reasonOnRecord')}
+            />
           </Section>
 
           <Section title={t('suspension')}>
