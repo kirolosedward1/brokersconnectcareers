@@ -7,7 +7,10 @@ import { asLocale, localized, type Locale } from '@/i18n/routing';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmAction } from '@/components/admin/confirm-action';
-import { RevealContact } from '@/components/admin/reveal-contact';
+import { ContactLines, FirstVisit, TestBadge } from '@/components/admin/crm';
+import { shownContacts } from '@/lib/admin/contacts';
+import { CV_BUCKET } from '@/lib/buckets';
+import { signedUrl } from '@/lib/storage';
 import { NoteForm } from '@/components/admin/note-form';
 import { ApprovalBadge, VerificationBadge, VisibilityBadge } from '@/components/admin/badges';
 import { Facts, FilterTabs, PageHeader, Section, Trail } from '@/components/admin/kit';
@@ -26,7 +29,10 @@ import type {
   ApprovalStatus,
   CompanyMemberRole,
   JobStatus,
+  JobTrack,
   ModerationNoteRow,
+  ReportReason,
+  ReportStatus,
   UserRole,
   VerificationStatus,
 } from '@/lib/supabase/database.types';
@@ -59,17 +65,29 @@ type Profile = {
   approved_at: string | null;
   /** The reviewer's note lives on profile_private (migration 305), readable by admins alone. */
   private: { approval_note: string | null } | null;
+  is_test?: boolean;
+  first_source?: string | null;
+  first_medium?: string | null;
+  first_campaign?: string | null;
+  first_referrer?: string | null;
+  first_landing_path?: string | null;
+  first_seen_at?: string | null;
 };
 
 type Membership = {
   role: CompanyMemberRole;
   created_at: string;
-  company: {
+    company: {
     id: string;
     name_ar: string;
     name_en: string | null;
     verification_status: VerificationStatus;
     suspended_at?: string | null;
+    district?: {
+      name_ar: string;
+      name_en: string;
+      governorate?: { name_ar: string; name_en: string } | null;
+    } | null;
   } | null;
 };
 
@@ -77,8 +95,22 @@ type RecentApplication = {
   id: string;
   status: ApplicationStatus;
   created_at: string;
-  job: { id: string; title_ar: string; title_en: string | null; status: JobStatus } | null;
+  job: {
+    id: string;
+    title_ar: string;
+    title_en: string | null;
+    status: JobStatus;
+    company: { id: string; name_ar: string; name_en: string | null } | null;
+  } | null;
 };
+
+function placeLine(locale: Locale, companies: Membership[], join: (city: string, area: string) => string): string | null {
+  const district = companies.find((row) => row.company?.district)?.company?.district;
+  if (!district) return null;
+  const city = district.governorate ? localized(locale, district.governorate.name_ar, district.governorate.name_en) : null;
+  const area = localized(locale, district.name_ar, district.name_en);
+  return city ? join(city, area) : area;
+}
 
 /** The states in the order the product moves through them, so a breakdown reads as a pipeline (as APPLICATION_STAGES does). */
 const LISTING_STATES: readonly JobStatus[] = ['draft', 'pending_review', 'active', 'expired', 'closed', 'rejected'];
@@ -87,10 +119,9 @@ const LISTING_STATES: readonly JobStatus[] = ['draft', 'pending_review', 'active
  * One account, as an operator needs to see it.
  *
  * Who they are, what they belong to, what they have done on the platform, and
- * what the admins have decided and written about them — without their phone
- * number or email, which are one deliberate, recorded click away. The profile
- * is read by naming its columns rather than `*`, so the number is not even in
- * the server's memory for this page.
+ * what the admins have decided and written about them. Email and phone are on
+ * the page: the look is recorded, and nothing has to be clicked. The profile
+ * is read by naming its columns rather than `*`.
  */
 export default async function AdminUserPage({
   params,
@@ -107,11 +138,17 @@ export default async function AdminUserPage({
   const tab = oneOf(param(await searchParams, 'tab'), TABS, 'overview');
 
   const supabase = await createClient();
-  const profileRead = await supabase
-    .from('profiles')
-    .select('id, role, full_name, avatar_url, locale, created_at, approval_status, approved_at, private:profile_private (approval_note)')
-    .eq('id', id)
-    .maybeSingle();
+  const profileColumns =
+    'id, role, full_name, avatar_url, locale, created_at, approval_status, approved_at, is_test, first_source, first_medium, first_campaign, first_referrer, first_landing_path, first_seen_at, private:profile_private (approval_note)';
+  let profileRead = await supabase.from('profiles').select(profileColumns).eq('id', id).maybeSingle();
+  // Code ahead of migration 368: the page still opens, without the badge or the source.
+  if (profileRead.error?.code === '42703' || profileRead.error?.code === 'PGRST204') {
+    profileRead = await supabase
+      .from('profiles')
+      .select('id, role, full_name, avatar_url, locale, created_at, approval_status, approved_at, private:profile_private (approval_note)')
+      .eq('id', id)
+      .maybeSingle();
+  }
   // The generated types do not know profile_private's foreign key yet, so the
   // embed is typed by hand, as the accounts list does.
   const profile = must(profileRead, 'loading an account').data as unknown as Profile | null;
@@ -120,10 +157,16 @@ export default async function AdminUserPage({
   // What every tab needs: the memberships (the overview lists them, the
   // activity tab links through them, and the role lever asks them what an
   // admin goes back to), and the aside's reporting record.
+  const contacts = await shownContacts(supabase as never, [profile.id]);
+  const facts = await supabase.rpc('admin_user_facts', { p_user: profile.id });
+  const providers = Array.isArray((facts.data as { providers?: unknown } | null)?.providers)
+    ? ((facts.data as { providers: unknown[] }).providers.filter((item) => typeof item === 'string') as string[])
+    : [];
+
   const [memberships, reportsFiled, reportingBan] = await Promise.all([
     supabase
       .from('company_members')
-      .select('role, created_at, company:companies (id, name_ar, name_en, verification_status, suspended_at)')
+      .select('role, created_at, company:companies (id, name_ar, name_en, verification_status, suspended_at, district:districts (name_ar, name_en, governorate:governorates (name_ar, name_en)))')
       .eq('user_id', id),
     supabase.from('reports').select('status, abusive').eq('reporter_id', id),
     // A ban on reporting is its own admin-only record (migration 326).
@@ -139,6 +182,28 @@ export default async function AdminUserPage({
   const tOnboarding = await getTranslations('onboarding');
   const n = (value: number) => formatNumber(value, locale);
 
+  const agentDistricts = await supabase.from('agent_profiles').select('district_ids').eq('user_id', id).maybeSingle();
+  const districtIds = (agentDistricts.data?.district_ids ?? []).slice(0, 4);
+  const districtRead = districtIds.length
+    ? await supabase
+        .from('districts')
+        .select('name_ar, name_en, governorate:governorates (name_ar, name_en)')
+        .in('id', districtIds)
+    : { data: [] };
+  const districtRows = (districtRead.data ?? []) as unknown as {
+    name_ar: string;
+    name_en: string;
+    governorate: { name_ar: string; name_en: string } | null;
+  }[];
+  const joinPlace = (city: string, area: string) => t('cityArea', { city, area });
+  const candidatePlace = districtRows
+    .map((district) => {
+      const area = localized(locale, district.name_ar, district.name_en);
+      const city = district.governorate ? localized(locale, district.governorate.name_ar, district.governorate.name_en) : null;
+      return city ? joinPlace(city, area) : area;
+    })
+    .join(' · ');
+
   const roleLabel =
     profile.role === 'employer' ? tOnboarding('roleEmployer') : profile.role === 'admin' ? t('title') : tOnboarding('roleCandidate');
   const self = viewer.userId === profile.id;
@@ -151,7 +216,12 @@ export default async function AdminUserPage({
         back={{ href: '/admin/users', label: t('users') }}
         title={profile.full_name}
         lede={`${roleLabel} · ${t('joinedOn', { date: formatDate(profile.created_at, locale) })}`}
-        actions={<ApprovalBadge status={profile.approval_status} />}
+        actions={
+          <>
+            {profile.is_test ? <TestBadge /> : null}
+            <ApprovalBadge status={profile.approval_status} />
+          </>
+        }
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
@@ -167,7 +237,15 @@ export default async function AdminUserPage({
           />
 
           {tab === 'overview' ? (
-            <OverviewTab supabase={supabase} profile={profile} companies={companies} locale={locale} roleLabel={roleLabel} />
+            <OverviewTab
+              supabase={supabase}
+              profile={profile}
+              companies={companies}
+              locale={locale}
+              roleLabel={roleLabel}
+              place={candidatePlace || placeLine(locale, companies, joinPlace) || ''}
+              lastSignIn={(facts.data as { last_sign_in_at?: string | null } | null)?.last_sign_in_at ?? null}
+            />
           ) : tab === 'activity' ? (
             <ActivityTab supabase={supabase} profile={profile} companies={companies} locale={locale} recordHref={tabHref('record')} />
           ) : tab === 'security' ? (
@@ -223,10 +301,25 @@ export default async function AdminUserPage({
                 ) : null}
               </div>
             )}
+            <div className="mt-3">
+              <ConfirmAction
+                lever={{ do: 'testFlag', userId: profile.id, test: !profile.is_test }}
+                label={profile.is_test ? t('unmarkTest') : t('markTest')}
+                title={profile.is_test ? t('unmarkTest') : t('markTest')}
+                body={profile.is_test ? t('unmarkTestBody') : t('markTestBody')}
+                reason="optional"
+                reasonLabel={t('reasonOnRecord')}
+              />
+            </div>
           </Section>
 
           <Section title={t('contact')}>
-            {self ? <p className="text-sm text-muted-foreground">{t('contactSelf')}</p> : <RevealContact userId={profile.id} />}
+            <ContactLines
+              name={profile.full_name}
+              contact={contacts.get(profile.id) ?? null}
+              place={candidatePlace || placeLine(locale, companies, joinPlace)}
+              providers={providers}
+            />
           </Section>
 
           <Section title={t('reportsFiled')}>
@@ -274,22 +367,51 @@ async function OverviewTab({
   companies,
   locale,
   roleLabel,
+  place,
+  lastSignIn,
 }: {
   supabase: Db;
   profile: Profile;
   companies: Membership[];
   locale: Locale;
   roleLabel: string;
+  place: string;
+  lastSignIn: string | null;
 }) {
-  const agent = await supabase.from('agent_profiles').select('id, slug, visibility, restricted_at').eq('user_id', profile.id).maybeSingle();
+  const agent = await supabase
+    .from('agent_profiles')
+    .select('id, slug, visibility, restricted_at, headline_ar, headline_en, years_experience, tracks, languages, summary_ar, summary_en, cv_path, district_ids')
+    .eq('user_id', profile.id)
+    .maybeSingle();
   const agentProfile = must(agent, 'loading the consultant profile').data as {
     id: string;
     slug: string;
     visibility: AgentVisibility;
     restricted_at?: string | null;
+    headline_ar: string | null;
+    headline_en: string | null;
+    years_experience: number | null;
+    tracks: string[] | null;
+    languages: string[] | null;
+    summary_ar: string | null;
+    summary_en: string | null;
+    cv_path: string | null;
+    district_ids: number[] | null;
   } | null;
 
   const t = await getTranslations('admin');
+  const tAgents = await getTranslations('agents');
+  const tTrack = await getTranslations('track');
+  const tLanguage = await getTranslations('language');
+  const tVisibility = await getTranslations('visibility');
+  const cv = agentProfile?.cv_path ? await signedUrl(CV_BUCKET, agentProfile.cv_path) : null;
+  const districtIds = (agentProfile?.district_ids ?? []).slice(0, 8);
+  const districtRows = districtIds.length
+    ? await supabase.from('districts').select('name_ar, name_en').in('id', districtIds)
+    : { data: [] as { name_ar: string; name_en: string }[] };
+  const districts = (districtRows.data ?? []).map((row) => localized(locale, row.name_ar, row.name_en)).join(' · ');
+  const headline = agentProfile ? localized(locale, agentProfile.headline_ar ?? '', agentProfile.headline_en) : '';
+  const bio = agentProfile ? localized(locale, agentProfile.summary_ar ?? '', agentProfile.summary_en) : '';
 
   return (
     <>
@@ -300,11 +422,25 @@ async function OverviewTab({
             items={[
               { label: t('colRole'), value: roleLabel },
               { label: t('colStatus'), value: <ApprovalBadge status={profile.approval_status} /> },
+              { label: t('colJoined'), value: formatDate(profile.created_at, locale) },
+              { label: t('lastSignIn'), value: lastSignIn ? formatDate(lastSignIn, locale) : '—' },
               { label: t('approvalNote'), value: profile.private?.approval_note ?? null },
               { label: t('accountId'), value: <code dir="ltr" className="text-xs break-all">{profile.id}</code> },
             ]}
           />
         </div>
+      </Section>
+
+      <Section title={t('firstVisit')}>
+        <FirstVisit
+          source={profile.first_source}
+          medium={profile.first_medium}
+          campaign={profile.first_campaign}
+          referrer={profile.first_referrer}
+          landingPath={profile.first_landing_path}
+          seenAt={profile.first_seen_at}
+          locale={locale}
+        />
       </Section>
 
       {companies.length ? (
@@ -332,12 +468,58 @@ async function OverviewTab({
 
       {agentProfile ? (
         <Section title={t('agentProfile')}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <Link href={`/admin/agents/${agentProfile.id}`} className="font-medium hover:text-primary hover:underline">
               {agentProfile.slug}
             </Link>
             <VisibilityBadge visibility={agentProfile.visibility} restricted={Boolean(agentProfile.restricted_at)} />
           </div>
+          <Facts
+            items={[
+              { label: t('headline'), value: headline || '—' },
+              {
+                label: t('years'),
+                value:
+                  agentProfile.years_experience == null
+                    ? '—'
+                    : tAgents('yearsExperience', { count: agentProfile.years_experience }),
+              },
+              {
+                label: tAgents('tracks'),
+                value: agentProfile.tracks?.length
+                  ? formatList(
+                      agentProfile.tracks.map((track) => tTrack(track as JobTrack)),
+                      locale,
+                    )
+                  : '—',
+              },
+              { label: tAgents('districts'), value: districts || place || '—' },
+              {
+                label: tAgents('languages'),
+                value: agentProfile.languages?.length
+                  ? formatList(
+                      agentProfile.languages.map((code) => (tLanguage.has(code as 'ar') ? tLanguage(code as 'ar') : code)),
+                      locale,
+                    )
+                  : '—',
+              },
+              {
+                label: t('profileVisibility'),
+                value: tVisibility.has(agentProfile.visibility) ? tVisibility(agentProfile.visibility) : agentProfile.visibility,
+              },
+              { label: t('bio'), value: bio || '—' },
+              {
+                label: tAgents('downloadCv'),
+                value: cv ? (
+                  <a href={cv} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                    {t('openCv')}
+                  </a>
+                ) : (
+                  '—'
+                ),
+              },
+            ]}
+          />
         </Section>
       ) : null}
     </>
@@ -379,7 +561,39 @@ async function ActivityTab({
   const t = await getTranslations('admin');
   const tApplication = await getTranslations('applicationStatus');
   const tJob = await getTranslations('jobStatus');
+  const tReason = await getTranslations('reportReason');
   const n = (value: number) => formatNumber(value, locale);
+
+  const agent = await supabase.from('agent_profiles').select('id').eq('user_id', profile.id).maybeSingle();
+  const agentId = agent.data?.id ?? null;
+  const [saved, alerts, received] = await Promise.all([
+    supabase
+      .from('saved_jobs')
+      .select('created_at, job:jobs (id, title_ar, title_en, company:companies (id, name_ar, name_en))')
+      .eq('candidate_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(8),
+    supabase
+      .from('saved_searches')
+      .select('id, label, alerts, created_at')
+      .eq('candidate_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(8),
+    agentId
+      ? supabase
+          .from('reports')
+          .select('id, reason, status, created_at')
+          .eq('agent_id', agentId)
+          .order('created_at', { ascending: false })
+          .limit(8)
+      : Promise.resolve({ data: [] as { id: string; reason: ReportReason; status: ReportStatus; created_at: string }[], error: null }),
+  ]);
+  const savedRows = (saved.error ? [] : (saved.data ?? [])) as unknown as {
+    created_at: string;
+    job: { id: string; title_ar: string; title_en: string | null; company: { id: string; name_ar: string; name_en: string | null } | null } | null;
+  }[];
+  const alertRows = (alerts.error ? [] : (alerts.data ?? [])) as { id: string; label: string; alerts: boolean; created_at: string }[];
+  const receivedRows = (received.error ? [] : (received.data ?? [])) as { id: string; reason: ReportReason; status: ReportStatus; created_at: string }[];
 
   const nothing =
     activity.applications.total === 0 &&
@@ -388,7 +602,10 @@ async function ActivityTab({
     activity.appeals.total === 0 &&
     activity.saved_jobs === 0 &&
     activity.notes === 0 &&
-    activity.decisions === 0;
+    activity.decisions === 0 &&
+    savedRows.length === 0 &&
+    alertRows.length === 0 &&
+    receivedRows.length === 0;
   if (nothing) {
     return (
       <Section title={t('userTabs.activity')}>
@@ -404,7 +621,7 @@ async function ActivityTab({
       ? must(
           await supabase
             .from('applications')
-            .select('id, status, created_at, job:jobs (id, title_ar, title_en, status)', { count: 'exact' })
+            .select('id, status, created_at, job:jobs (id, title_ar, title_en, status, company:companies (id, name_ar, name_en))', { count: 'exact' })
             .eq('candidate_id', profile.id)
             .order('created_at', { ascending: false })
             .limit(10),
@@ -445,11 +662,21 @@ async function ActivityTab({
               <ul className="divide-y divide-border text-sm">
                 {recent.map((application) => (
                   <li key={application.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                    <Link href={`/admin/applications/${application.id}`} className="min-w-0 truncate hover:text-primary hover:underline">
-                      {application.job ? localized(locale, application.job.title_ar, application.job.title_en) : '—'}
-                    </Link>
+                    <span className="min-w-0">
+                      {application.job ? (
+                        <Link href={`/admin/jobs/${application.job.id}`} className="block truncate hover:text-primary hover:underline">
+                          {localized(locale, application.job.title_ar, application.job.title_en)}
+                        </Link>
+                      ) : (
+                        '—'
+                      )}
+                      {application.job?.company ? (
+                        <Link href={`/admin/companies/${application.job.company.id}`} className="block truncate text-xs text-muted-foreground hover:underline">
+                          {localized(locale, application.job.company.name_ar, application.job.company.name_en)}
+                        </Link>
+                      ) : null}
+                    </span>
                     <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {application.job ? tJob(application.job.status) : null}
                       <Badge variant="outline">{tApplication(application.status)}</Badge>
                       {formatDate(application.created_at, locale)}
                     </span>
@@ -482,6 +709,59 @@ async function ActivityTab({
                 count: n(activity.listings.by_status[state] ?? 0),
               }))}
             />
+          )}
+        </Section>
+      ) : null}
+
+      {savedRows.length || activity.saved_jobs ? (
+        <Section title={t('savedJobsList', { count: n(activity.saved_jobs) })}>
+          {savedRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('noSaved')}</p>
+          ) : (
+            <ul className="divide-y divide-border text-sm">
+              {savedRows.map((row) => (
+                <li key={`${row.job?.id ?? 'job'}-${row.created_at}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  {row.job ? (
+                    <Link href={`/admin/jobs/${row.job.id}`} className="min-w-0 truncate hover:text-primary hover:underline">
+                      {localized(locale, row.job.title_ar, row.job.title_en)}
+                    </Link>
+                  ) : (
+                    '—'
+                  )}
+                  <span className="text-xs text-muted-foreground">{formatDate(row.created_at, locale)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      ) : null}
+
+      {alertRows.length ? (
+        <Section title={t('jobAlerts')}>
+          <ul className="divide-y divide-border text-sm">
+            {alertRows.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span className="min-w-0 truncate">{row.label}</span>
+                <span className="text-xs text-muted-foreground">{row.alerts ? t('alertOn') : t('alertOff')}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
+      {receivedRows.length || profile.role === 'candidate' ? (
+        <Section title={t('reportsReceived')}>
+          {receivedRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('noReportsReceived')}</p>
+          ) : (
+            <ul className="divide-y divide-border text-sm">
+              {receivedRows.map((row) => (
+                <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span>{tReason(row.reason)}</span>
+                  <span className="text-xs text-muted-foreground">{formatDate(row.created_at, locale)}</span>
+                </li>
+              ))}
+            </ul>
           )}
         </Section>
       ) : null}

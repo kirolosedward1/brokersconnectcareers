@@ -1,8 +1,9 @@
 'use client';
 
-import { useId, useState, useTransition } from 'react';
+import { useEffect, useId, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import { useRouter as useIntlRouter } from '@/i18n/navigation';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, Textarea } from '@/components/ui/field';
@@ -17,6 +18,7 @@ import {
   setCompanySuspension,
   setJobFeatured,
   setSignInBlock,
+  setTestFlag,
   setUserRole,
   type JobModerationAction,
 } from '@/lib/actions/admin';
@@ -64,7 +66,8 @@ export type AdminLever =
   // The account itself (migration 355): its role, its door, its devices.
   | { do: 'role'; userId: string; role: 'candidate' | 'employer' | 'admin' }
   | { do: 'signInBlock'; userId: string; block: boolean }
-  | { do: 'sessions'; userId: string };
+  | { do: 'sessions'; userId: string }
+  | { do: 'testFlag'; userId?: string; companyId?: string; test: boolean };
 
 function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>> {
   switch (lever.do) {
@@ -102,6 +105,8 @@ function pull(lever: AdminLever, reason: string): Promise<ActionResult<unknown>>
       return setSignInBlock({ userId: lever.userId, block: lever.block, reason });
     case 'sessions':
       return endSessions({ userId: lever.userId, reason });
+    case 'testFlag':
+      return setTestFlag({ userId: lever.userId, companyId: lever.companyId, test: lever.test, reason });
   }
 }
 
@@ -142,6 +147,9 @@ export function ConfirmAction({
   icon,
   size = 'sm',
   className,
+  thenGo,
+  toast,
+  listenFor,
 }: {
   lever: AdminLever;
   label: string;
@@ -155,10 +163,17 @@ export function ConfirmAction({
   icon?: React.ReactNode;
   size?: ButtonProps['size'];
   className?: string;
+  /** After a yes, go here instead of only re-reading this page. */
+  thenGo?: string;
+  /** The line the toast speaks when `thenGo` is set, or when the queue has nothing left. */
+  toast?: string;
+  /** A window event that opens this confirmation. Used by the review-page A key. */
+  listenFor?: string;
 }) {
   const t = useTranslations('admin');
   const tCommon = useTranslations('common');
   const router = useRouter();
+  const go = useIntlRouter();
   const fieldId = useId();
 
   const [open, setOpen] = useState(false);
@@ -168,6 +183,16 @@ export function ConfirmAction({
   const [pending, startTransition] = useTransition();
 
   const tooShort = reason === 'required' && text.trim().length < 3;
+
+  useEffect(() => {
+    if (!listenFor) return;
+    const open = () => {
+      setDone(false);
+      setOpen(true);
+    };
+    window.addEventListener(listenFor, open);
+    return () => window.removeEventListener(listenFor, open);
+  }, [listenFor]);
 
   function close() {
     if (pending) return;
@@ -206,6 +231,12 @@ export function ConfirmAction({
       // Only a lever that ends sessions says how many: allowing sign-in again
       // answers with the same shape and a count of none, which is no news.
       const ended = lever.do === 'sessions' || (lever.do === 'signInBlock' && lever.block) ? sessionsEndedOf(result.data) : null;
+      if (toast) {
+        announceDone(toast);
+        if (thenGo) go.push(thenGo);
+        else router.refresh();
+        return;
+      }
       announceDone(
         ended === null
           ? t('doneWhat', { what: title })

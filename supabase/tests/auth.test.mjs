@@ -660,6 +660,7 @@ report.section('the permission model says what the policies say');
   report.is(homeFor(anon), '/sign-in', 'a visitor\'s home is sign-in');
   report.is(homeFor(onboarding), '/onboarding', 'an un-onboarded account\'s is onboarding');
   report.is(homeFor(candidate), '/dashboard', 'a candidate\'s is the dashboard');
+  report.ok(homeFor(candidate) !== '/admin' && homeFor(employer) !== '/admin', 'a non-admin is not sent to the admin console');
   report.is(homeFor(employer), '/employer', 'an employer\'s is the employer console');
   report.is(homeFor(admin), '/admin', 'an admin\'s is the admin console — not the applications tab');
   report.is(directoryDeniedRedirect(candidate), '/dashboard/profile?notice=directory',

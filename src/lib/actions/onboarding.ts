@@ -12,6 +12,8 @@ import { clean, safeHttpUrl } from '@/lib/security/sanitize';
 import { publish } from '@/lib/notifications/events';
 import { currentPolicyVersions } from '@/lib/legal';
 import { logFailure } from '@/lib/observe';
+import { storedTouch } from '@/lib/actions/attribution';
+import { ownHosts, writeFirstTouch } from '@/lib/attribution-write';
 
 /**
  * A company answers more questions than a consultant does.
@@ -55,6 +57,23 @@ const schema = z
      * answer chosen in advance, never assumed. Ignored for a company.
      */
     visibility: z.enum(['public', 'verified_employers_only', 'hidden']).optional(),
+    /**
+     * The first visit, when the client already has it. The website also reads
+     * the cookie. Seen only at sign-up: an older account is left unknown.
+     */
+    attribution: z
+      .object({
+        referrer: z.string().max(300).nullable().optional(),
+        utmSource: z.string().max(80).nullable().optional(),
+        utmMedium: z.string().max(80).nullable().optional(),
+        utmCampaign: z.string().max(120).nullable().optional(),
+        gclid: z.boolean().optional(),
+        fbclid: z.boolean().optional(),
+        landingPath: z.string().max(200).nullable().optional(),
+        inApp: z.boolean().optional(),
+        seenAt: z.string().max(40).nullable().optional(),
+      })
+      .optional(),
   })
   .refine((value) => value.role !== 'employer' || value.company != null, {
     path: ['company'],
@@ -142,6 +161,14 @@ export async function completeOnboarding(input: unknown): Promise<ActionResult<{
     role = asPublicRole(existing?.role) ?? role;
   } else {
     role = asPublicRole(inserted?.role) ?? role;
+    const fromClient = parsed.data.attribution;
+    const carried =
+      fromClient && (fromClient.seenAt || fromClient.inApp || fromClient.referrer || fromClient.utmSource)
+        ? fromClient
+        : await storedTouch();
+    if (carried) {
+      await writeFirstTouch(supabase, user.id, { ...carried, seenAt: carried.seenAt ?? new Date().toISOString() }, ownHosts());
+    }
   }
 
   /*

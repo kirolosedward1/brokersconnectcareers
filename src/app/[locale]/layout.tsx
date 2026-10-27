@@ -21,6 +21,7 @@ import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/site-jsonld';
 import '../globals.css';
 import { Analytics } from '@/components/analytics';
 import { AppViewCookie } from '@/components/app-view-cookie';
+import { FirstTouchCapture } from '@/components/attribution/capture';
 
 /**
  * One family, both scripts.
@@ -223,6 +224,7 @@ export default async function LocaleLayout({
               read from pulling the cached pages into client rendering. */}
           <Suspense fallback={null}>
             <AppViewCookie />
+            <FirstTouchCapture />
           </Suspense>
         </NextIntlClientProvider>
         <Analytics />

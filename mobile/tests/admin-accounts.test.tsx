@@ -129,7 +129,9 @@ beforeEach(async () => {
   server.on('GET /rest/v1/moderation_notes', []);
   server.on('POST /api/mobile/v1/actions/setUserRole', { ok: true });
   server.on('POST /api/mobile/v1/actions/setSignInBlock', { ok: true, data: { sessionsEnded: 2 } });
-  server.on('POST /api/mobile/v1/actions/revealContact', { ok: true, data: { email: 'ahmed@example.com', phone: '+201001234567' } });
+  server.on('POST /rest/v1/rpc/admin_view_contacts', () => [
+    { user_id: OTHER_USER, email: 'ahmed@example.com', whatsapp_phone: '+201001234567', email_confirmed: true },
+  ]);
 
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
@@ -206,8 +208,8 @@ describe('the accounts', () => {
 
     expect(await screen.findByText('أحمد سمير')).toBeTruthy();
     expect(screen.getByText(ar.admin.approval.approved)).toBeTruthy();
-    // The waiting accounts first, as the website's queue; no words, no search.
-    expect(lastSearch()).toMatchObject({ p_query: null, p_role: null, p_status: 'pending', p_offset: 0 });
+    // Every account, as the website's list; no words, no search. Pending is a filter.
+    expect(lastSearch()).toMatchObject({ p_query: null, p_role: null, p_status: null, p_offset: 0 });
     // Named only by the view that needs it: a database before migration 355 knows the function without it.
     expect(lastSearch()).not.toHaveProperty('p_blocked');
 
@@ -342,60 +344,36 @@ describe("an account's file", () => {
     expect(actionsCalled('setSignInBlock')[0].body).toEqual({ input: { userId: OTHER_USER, block: true, reason: 'حساب مخترق' } });
   });
 
-  it('reveals the contact for a reason, and shows the number only once the website answered', async () => {
+  it('shows the email and the phone without a click, and calls and WhatsApp from them', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     await signIn();
     await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
-    let answer: (value: unknown) => void = () => {};
-    server.on('POST /api/mobile/v1/actions/revealContact', () => new Promise((resolve) => (answer = resolve)));
-    fireEvent.press(await screen.findByRole('button', { name: ar.admin.revealContact }));
-    fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonOnRecord), 'طلب دعم من صاحب الحساب');
-    await act(async () => {
-      fireEvent.press(confirmButton(ar.admin.revealContact));
-    });
-
-    await waitFor(() => expect(actionsCalled('revealContact')).toHaveLength(1));
-    expect(actionsCalled('revealContact')[0].body).toEqual({ input: { userId: OTHER_USER, reason: 'طلب دعم من صاحب الحساب' } });
-    // Asked, not yet answered: nothing is shown.
-    expect(screen.queryByText('+201001234567')).toBeNull();
-    await act(async () => {
-      answer({ ok: true, data: { email: 'ahmed@example.com', phone: '+201001234567' } });
-    });
     expect(await screen.findByText('+201001234567')).toBeTruthy();
     expect(screen.getByText('ahmed@example.com')).toBeTruthy();
-    expect(screen.getByText(ar.admin.contactRecorded)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.admin.revealContact })).toBeNull();
+    expect(server.asked('/rest/v1/rpc/admin_view_contacts').at(-1)?.body).toEqual({ p_users: [OTHER_USER] });
 
     fireEvent.press(screen.getByRole('button', { name: ar.app.admin.call }));
     expect(openURL).toHaveBeenCalledWith('tel:+201001234567');
     fireEvent.press(screen.getByRole('button', { name: ar.app.admin.openWhatsApp }));
     expect(openURL).toHaveBeenCalledWith('https://wa.me/201001234567');
 
-    // Still here after a look at another tab: one look-up, one record — not a
-    // second reveal for the same question.
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.security }));
     expect(await screen.findByText(ar.admin.signedInDevices)).toBeTruthy();
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.overview }));
     expect(await screen.findByText('+201001234567')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: ar.admin.revealContact })).toBeNull();
-    expect(actionsCalled('revealContact')).toHaveLength(1);
     openURL.mockRestore();
   });
 
-  it('shows nothing of the contact when the website refuses', async () => {
-    server.on('POST /api/mobile/v1/actions/revealContact', { ok: false, error: 'forbidden' });
+  it('shows an empty contact when the database has no such function yet', async () => {
+    server.on('POST /rest/v1/rpc/admin_view_contacts', { status: 404, body: { code: 'PGRST202', message: 'Could not find the function' } });
     await signIn();
     await renderRouter(app, { initialUrl: `/admin/users/${OTHER_USER}` });
 
-    fireEvent.press(await screen.findByRole('button', { name: ar.admin.revealContact }));
-    fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonOnRecord), 'طلب دعم من صاحب الحساب');
-    await act(async () => {
-      fireEvent.press(confirmButton(ar.admin.revealContact));
-    });
-
-    expect(await screen.findByText(ar.admin.errors.forbidden)).toBeTruthy();
+    expect(await screen.findByText(ar.admin.contact)).toBeTruthy();
     expect(screen.queryByText('+201001234567')).toBeNull();
-    expect(screen.queryByText(ar.admin.contactRecorded)).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.admin.revealContact })).toBeNull();
   });
 
   it('withholds "make an admin" while sign-in is blocked, and offers to allow it again', async () => {
