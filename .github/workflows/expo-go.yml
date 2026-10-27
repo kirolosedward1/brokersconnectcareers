@@ -264,6 +264,9 @@ jobs:
     # (mobile/scripts/expo-go-look.sh). On a pull request it then commits every
     # shot to the orphan branch look-shots and comments on the pull request
     # with public raw.githubusercontent.com links (scripts/post-look-shots.sh).
+    # That commit includes a root vercel.json with git.deploymentEnabled set
+    # to false. Vercel reads the config from the branch it deploys, and this
+    # branch is not main, so the flag on main never applies.
     permissions:
       contents: write
       pull-requests: write

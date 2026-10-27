@@ -62,5 +62,10 @@ try {
   rmSync(repo, { recursive: true, force: true });
 }
 
+const shots = spawnSync(process.execPath, [new URL('./look-shots-branch.test.mjs', import.meta.url).pathname], {
+  stdio: 'inherit',
+});
+if ((shots.status ?? 1) !== 0) failed += 1;
+
 console.log(`\n${failed ? `${failed} failed` : 'all passed'}`);
 process.exit(failed ? 1 : 0);
