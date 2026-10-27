@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import { saveFirstTouch } from '@/lib/actions/attribution';
 import { FIRST_TOUCH_STORAGE, parseTouch, touchFromCookieHeader } from '@/lib/attribution-cookie';
 
 const SENT = 'bc_touch_sent';
@@ -21,8 +20,17 @@ export function RememberFirstTouch() {
       return;
     }
     const raw = touchFromCookieHeader(document.cookie) ?? parseTouch(safeStore());
-    saveFirstTouch(raw ?? {})
-      .then((result) => {
+    // A POST, not the server action. Calling saveFirstTouch() from this layout
+    // races the console's streamed render (loading.tsx) and the app router
+    // then throws React's "more hooks than the previous render" on /admin.
+    fetch('/api/attribution', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(raw ?? {}),
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = (await response.json()) as { ok?: boolean };
         if (result.ok) {
           try {
             sessionStorage.setItem(SENT, '1');
