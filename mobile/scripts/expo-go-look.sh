@@ -118,7 +118,7 @@ PY
 # first-time tour of its developer menu on the way. Fails at once on an error
 # state. Leaves <shot>.png, .txt (the words) and .boxes (where they sit).
 see() {
-  local shot="$1" status deadline=$((SECONDS + 180)) args=()
+  local shot="$1" status deadline=$((SECONDS + 180)) args=() point=""
   shift
   for phrase in "$@"; do args+=(--expect "$phrase"); done
   for phrase in "${refused[@]}"; do args+=(--refuse "$phrase"); done
@@ -140,6 +140,30 @@ see() {
         close_menu
         sleep 2
         continue
+      fi
+      # iOS asks "Open in Expo Go?" before the app is in front. The link flow
+      # answers that once, and misses it when the question arrives afterwards.
+      # Left up, it covers every screen the rest of the run tries to read.
+      if grep -q 'Open in' "$out/$shot.txt"; then
+        "$ocr" "$out/$shot.png" --boxes > "$work/open.boxes" 2>/dev/null || true
+        point=""
+        point=$(python3 - "$work/open.boxes" <<'PY' || true
+import re, sys
+for raw in open(sys.argv[1], encoding="utf-8"):
+    m = re.match(r"y(-?\d+) x(-?\d+)-(-?\d+)  (.*)", raw.rstrip("\n"))
+    if not m:
+        continue
+    text = m[4].strip()
+    if text in ("Open", "فتح") and int(m[3]) - int(m[2]) < 25:
+        print(f"{(int(m[2]) + int(m[3])) // 2}%,{int(m[1]) + 1}%")
+        break
+PY
+        )
+        if [ -n "$point" ]; then
+          maestro --device "$udid" test -e "POINT=$point" "$flows/expo-go-tap.yaml" >> "$out/maestro.log" 2>&1 || true
+          sleep 2
+          continue
+        fi
       fi
       status=0
       python3 "$here/screen-check.py" "${args[@]}" < "$out/$shot.txt" 2> "$out/$shot.why" || status=$?
