@@ -8,7 +8,7 @@ import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { classifyTouch, hostOf } = await import('../src/lib/attribution.ts');
+const { classifyTouch, hostOf, landingPathOf } = await import('../src/lib/attribution.ts');
 const { parseTouch, serialiseTouch, touchFromCookieHeader } = await import('../src/lib/attribution-cookie.ts');
 const { writeFirstTouch } = await import('../src/lib/attribution-write.ts');
 
@@ -47,6 +47,10 @@ is('an instagram campaign wins over a meta click', classifyTouch({ utmSource: 'i
 console.log('\n— the app, and the path');
 is('the app wins over a referrer', classifyTouch({ inApp: true, referrer: 'https://www.google.com/' }, own).source, 'app');
 is('the path drops the query', classifyTouch({ landingPath: '/jobs?gclid=abc' }, own).landingPath, '/jobs');
+is('a full address keeps only its path', landingPathOf('https://brokersconnect.net/jobs?x=1'), '/jobs');
+is('a protocol-relative path is not stored', landingPathOf('//evil.example/jobs'), null);
+is('a backslash path is not stored', landingPathOf('/\\evil.example'), null);
+is('an encoded protocol-relative path is not stored', landingPathOf('/%2f%2fevil.example'), null);
 
 console.log('\n— the cookie keeps the first visit, and not a click id');
 const first = serialiseTouch({

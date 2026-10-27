@@ -8,6 +8,8 @@
  * that is stored; callers must not ask again with a later visit.
  */
 
+import { safeNext } from '@/lib/safe-next';
+
 export const FIRST_SOURCES = [
   'direct',
   'google',
@@ -127,18 +129,27 @@ function hostSource(host: string | null): FirstSource | null {
   return HOST_RULES.find((rule) => rule.test(host))?.source ?? null;
 }
 
-/** The path only, and only when it is a path on our site. */
+/**
+ * The path only, and only when it is a path on our site.
+ *
+ * `safeNext` is the one definition of an internal path. A full address is
+ * reduced to its pathname first. A protocol-relative value, a backslash, or
+ * an encoded `//` is not a path.
+ */
 export function landingPathOf(value: string | null | undefined): string | null {
   const text = value?.trim();
   if (!text) return null;
-  const path = text.startsWith('/') ? text : (() => {
-    try {
-      return new URL(text).pathname;
-    } catch {
-      return '';
-    }
-  })();
-  if (!path.startsWith('/') || path.startsWith('//')) return null;
+  const direct = safeNext(text);
+  const path =
+    direct ??
+    (() => {
+      try {
+        return safeNext(new URL(text).pathname);
+      } catch {
+        return null;
+      }
+    })();
+  if (!path) return null;
   const clean = path.split('?')[0]?.split('#')[0] ?? '';
   return clean.slice(0, 200) || null;
 }
