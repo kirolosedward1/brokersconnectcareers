@@ -1,6 +1,6 @@
 ---
 title: Cookies and storage on your device
-updated: 2026-10-26
+updated: 2026-10-27
 ---
 
 This page explains everything the Brokers Connect website keeps in your browser, and everything the app keeps on your phone, and why. It is part of our [Privacy policy](/privacy).
@@ -31,6 +31,12 @@ On the home page, the jobs list and a job's page, while you are signed out, the 
 
 **Forms you have not finished** — `bc-draft:…`, in your browser's local storage (localStorage).
 While you are signed in and typing into a job application, a job advert or the form that sets up your account, what you have typed is kept as you go, so that closing the tab, losing the connection or being asked to sign in again does not lose it. It is kept under your account only and shown back only to you, and it never includes a file you attached or your agreement to our terms. It is deleted as soon as the form is sent, when you choose "Start over", when you sign out, and in any case after seven days.
+
+**The first page this browser opened** — `bc_touch`, a cookie and a copy in local storage (localStorage), kept for 180 days.
+Written on the first page this browser opens here, and a later page does not replace it. It holds the path you landed on, the site you came from, the campaign name when the link carried one (`utm_source`, `utm_medium`, `utm_campaign`), whether that link had a Google or Meta click id (the id itself is not stored), whether the page was opened inside the app, and the time. When you create an account — or on the first signed-in visit, if the account is still new — that record is copied onto the account once. An account that already existed is left without it. Nothing in it is your name, your email, or a click id.
+
+**That this copy already reached your account** — `bc_touch_sent`, in session storage (sessionStorage).
+A flag only, with nothing about you, so the browser does not send the same record again after the account has taken it. Removed when you close the tab.
 
 ## What others set
 
