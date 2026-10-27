@@ -2,7 +2,10 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { asLocale, type Locale } from '@/i18n/routing';
+import { asLocale, alternatesFor, type Locale } from '@/i18n/routing';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
+import { withOpenings } from '@/lib/seo/meta-text';
+import { openingsLead } from '@/lib/seo/openings';
 import { AuthForm } from '@/components/auth/auth-form';
 import { AudienceSwitch } from '@/components/auth/audience-switch';
 import { ReturnIntent } from '@/components/auth/return-intent';
@@ -34,8 +37,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = asLocale(rawLocale);
-  const t = await getTranslations({ locale, namespace: 'auth' });
-  return { title: t('signIn'), robots: { index: false, follow: false } };
+  const t = await getTranslations({ locale, namespace: 'meta' });
+  const lead = await openingsLead(locale);
+  return {
+    title: { absolute: t('signInTitle') },
+    description: withOpenings(lead, t('signInDescription'), t('descriptionPad')),
+    alternates: alternatesFor('/sign-in', locale),
+  };
 }
 
 export default async function SignInPage({
@@ -84,8 +92,14 @@ export default async function SignInPage({
 
   const { google: googleEnabled, apple: appleEnabled } = await enabledProviders();
   const t = await getTranslations('auth');
+  const tMeta = await getTranslations('meta');
 
   return (
+    <>
+    <BreadcrumbJsonLd
+      locale={locale}
+      crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: t('signInTitle') }]}
+    />
     <AuthShell>
       <h1 className="w-full whitespace-nowrap text-center text-3xl font-bold">{t('signInTitle')}</h1>
       <div className="mx-auto mt-2 w-full max-w-sm">
@@ -129,5 +143,6 @@ export default async function SignInPage({
         </div>
       </div>
     </AuthShell>
+    </>
   );
 }

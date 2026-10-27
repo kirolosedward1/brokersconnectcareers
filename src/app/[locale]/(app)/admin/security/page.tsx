@@ -124,7 +124,7 @@ export default async function AdminSecurityPage({
               href: '/admin/users?status=rejected',
             },
             { label: t('secReportsOpen'), value: n(summary.reports_open), href: '/admin/reports' },
-            { label: t('secJobsPending'), value: n(summary.jobs_pending), href: '/admin/jobs' },
+            { label: t('secJobsPending'), value: n(summary.jobs_pending), href: '/admin/jobs?status=pending' },
             { label: t('secSignups'), value: n(summary.signups_24h), href: '/admin/users' },
           ]}
         />

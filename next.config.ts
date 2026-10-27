@@ -91,6 +91,23 @@ const nextConfig: NextConfig = {
     return [
       { source: '/contact', destination: '/support', permanent: true },
       { source: '/en/contact', destination: '/en/support', permanent: true },
+      /*
+        Apex to www, 301. The published origin is www.brokersconnect.net;
+        Search should not keep a second copy on the bare host. Query strings
+        are kept. Any other host (localhost, a preview) is left alone.
+      */
+      {
+        source: '/',
+        has: [{ type: 'host', value: 'brokersconnect.net' }],
+        destination: 'https://www.brokersconnect.net/',
+        statusCode: 301,
+      },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'brokersconnect.net' }],
+        destination: 'https://www.brokersconnect.net/:path*',
+        statusCode: 301,
+      },
     ];
   },
 

@@ -73,6 +73,8 @@ report.section('nobody but an admin reaches a lever');
     `select admin_moderate_reports('job', '${liveJob}', 'dismissed')`,
     `select admin_add_note('user', '${candidate}', 'ملاحظة')`,
     `select * from admin_reveal_contact('${candidate}', 'تواصل دعم')`,
+    `select * from admin_view_contacts(array['${candidate}']::uuid[])`,
+    `select admin_set_test_flag('${candidate}', null, true, null)`,
     `select admin_user_facts('${candidate}')`,
     `select * from admin_search_users('a')`,
     `select * from admin_search('ahmed')`,
@@ -491,6 +493,35 @@ report.section('contact details are revealed one at a time, with a reason, on re
   report.check('sign-in facts carry no credential and no address',
     facts.ok && 'email_confirmed' in f && !('email' in f) && !JSON.stringify(f).includes('password'),
     JSON.stringify(f));
+}
+
+// ---------------------------------------------------------------------------
+report.section('opening an account shows the contact without a reason, once an hour');
+{
+  const refused = await as(candidate, `select * from admin_view_contacts(array['${candidate}']::uuid[])`);
+  report.check('a candidate cannot read contact this way', !refused.ok);
+
+  const view = await session(admin, async (q) => {
+    const [row] = await q(`select * from admin_view_contacts(array['${candidate}']::uuid[])`);
+    const [{ n }] = await q(
+      `select count(*)::int as n from admin_audit_log where action = 'user.contact_viewed' and target_id = '${candidate}'`,
+    );
+    await q(`select * from admin_view_contacts(array['${candidate}']::uuid[])`);
+    const [{ n: again }] = await q(
+      `select count(*)::int as n from admin_audit_log where action = 'user.contact_viewed' and target_id = '${candidate}'`,
+    );
+    return { row, n, again };
+  });
+  report.check(
+    'an admin sees the email and the phone',
+    view.ok && view.value.row.email === 'candidate1@demo.test' && /^\+/.test(view.value.row.whatsapp_phone ?? ''),
+    JSON.stringify(view.value ?? view.error),
+  );
+  report.check(
+    'and the look is recorded once in the hour',
+    view.ok && view.value.n === 1 && view.value.again === 1,
+    JSON.stringify(view.value ?? view.error),
+  );
 }
 
 // ---------------------------------------------------------------------------

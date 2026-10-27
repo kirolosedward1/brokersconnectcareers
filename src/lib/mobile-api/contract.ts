@@ -84,6 +84,18 @@ export type OnboardingInput = {
   agreed: true;
   /** Who sees a candidate's directory card: asked, never assumed. Required for a candidate. */
   visibility?: AgentVisibility;
+  /** The first visit. The app sends `{ inApp: true }`; the website usually sends nothing and the cookie is read. */
+  attribution?: {
+    referrer?: string | null;
+    utmSource?: string | null;
+    utmMedium?: string | null;
+    utmCampaign?: string | null;
+    gclid?: boolean;
+    fbclid?: boolean;
+    landingPath?: string | null;
+    inApp?: boolean;
+    seenAt?: string | null;
+  };
 };
 
 export type AgentProfileInput = {

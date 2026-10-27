@@ -415,7 +415,7 @@ export function AppShell({
             aria-pressed={collapsed}
             className="hidden size-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted lg:grid"
           >
-            <PanelLeftClose className={cn('size-5 transition-transform', collapsed && 'rotate-180')} aria-hidden />
+            <PanelLeftClose className={cn('size-5 transition-transform rtl:-scale-x-100', collapsed && 'rotate-180')} aria-hidden />
           </button>
 
           <div className="ms-auto flex items-center gap-3">

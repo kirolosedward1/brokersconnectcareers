@@ -47,3 +47,16 @@ export function fitDescription(input: string, pad = ''): string {
   }
   return cut(text, 155, 120);
 }
+
+/**
+ * A live count in front of the page's own sentence, still inside 155.
+ *
+ * The lead is the part a sitelink shows first ("2708 وظيفة متاحة الآن.").
+ * An empty lead leaves the sentence as it was. The pad only fills a short
+ * sentence that has no count to lengthen it.
+ */
+export function withOpenings(lead: string, body: string, pad = ''): string {
+  const prefix = collapse(lead);
+  const text = prefix ? `${prefix} ${collapse(body)}` : collapse(body);
+  return fitDescription(text, pad);
+}

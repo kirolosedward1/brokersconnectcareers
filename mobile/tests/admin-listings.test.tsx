@@ -232,14 +232,14 @@ function confirmButton(label: string) {
 const view = (name: keyof typeof ar.admin.jobView) => screen.getByRole('radio', { name: ar.admin.jobView[name] });
 
 describe('the listings', () => {
-  it('draws the review queue first, asking exactly what the website asks, with what each listing flags', async () => {
+  it('draws every listing first, and the review queue oldest first, asking exactly what the website asks', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/jobs' });
 
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
     const asked = lastAsked();
-    expect(asked.get('status')).toBe('eq.pending_review');
-    expect(asked.get('order')).toBe('created_at.asc,id.asc');
+    expect(asked.has('status')).toBe(false);
+    expect(asked.get('order')).toBe('created_at.desc,id.asc');
     expect(asked.get('offset')).toBe('0');
     expect(asked.get('limit')).toBe('25');
     // (postgrest-js sends the select without its spaces.)
@@ -247,13 +247,16 @@ describe('the listings', () => {
       'id,title_ar,title_en,status,is_featured,expires_at,published_at,created_at,company:companies!inner(id,name_ar,name_en,verification_status,suspended_at),applications(count)',
     );
     expect(asked.has('company_id')).toBe(false);
-    // The flags, read for the waiting views only, by the ids drawn.
-    expect(server.asked('/rest/v1/rpc/admin_job_signals').at(-1)?.body).toEqual({ p_jobs: [JOB_ID] });
     // The website's columns: the company, how many applied, the status, and the featured mark.
     expect(screen.getByText(company.name_ar)).toBeTruthy();
     expect(screen.getByText(`${ar.admin.colApplicants}: 4`)).toBeTruthy();
     expect(screen.getByLabelText(ar.admin.featured)).toBeTruthy();
-    expect(view('pending').props.accessibilityState).toMatchObject({ checked: true });
+    expect(view('all').props.accessibilityState).toMatchObject({ checked: true });
+
+    fireEvent.press(view('pending'));
+    await waitFor(() => expect(lastAsked().get('status')).toBe('eq.pending_review'));
+    expect(lastAsked().get('order')).toBe('created_at.asc,id.asc');
+    expect(server.asked('/rest/v1/rpc/admin_job_signals').at(-1)?.body).toEqual({ p_jobs: [JOB_ID] });
   });
 
   it('runs each view as the website runs it', async () => {
@@ -265,8 +268,8 @@ describe('the listings', () => {
     await waitFor(() => expect(lastAsked().get('order')).toBe('published_at.desc,id.asc'));
     expect(lastAsked().get('status')).toBe('eq.active');
     expect(lastAsked().get('expires_at')).toMatch(/^gt\.\d{4}-/);
-    // Only the waiting views ask for flags.
-    expect(server.asked('/rest/v1/rpc/admin_job_signals')).toHaveLength(1);
+    // Only the waiting views ask for flags, and this screen opened on every listing.
+    expect(server.asked('/rest/v1/rpc/admin_job_signals')).toHaveLength(0);
 
     fireEvent.press(view('expiring'));
     await waitFor(() => expect(lastAsked().get('order')).toBe('expires_at.asc,id.asc'));
@@ -362,7 +365,7 @@ describe('the listings', () => {
     await renderRouter(app, { initialUrl: '/admin/jobs?status=nowhere&company=not-a-uuid' });
 
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
-    expect(lastAsked().get('status')).toBe('eq.pending_review');
+    expect(lastAsked().has('status')).toBe(false);
     expect(lastAsked().has('company_id')).toBe(false);
   });
 

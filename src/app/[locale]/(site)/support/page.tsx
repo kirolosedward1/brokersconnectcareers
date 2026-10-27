@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
 import { Link } from '@/i18n/navigation';
 import { alternatesFor, asLocale, type Locale } from '@/i18n/routing';
 import { SUPPORT_COPY, SUPPORT_EMAIL, supportLanguage } from '../../../../../content/support';
@@ -26,10 +27,16 @@ export default async function SupportPage({ params, searchParams }: Props) {
   setRequestLocale(locale);
   const lang = supportLanguage(locale, (await searchParams).lang);
   const copy = SUPPORT_COPY[lang];
+  const tMeta = await getTranslations('meta');
   const otherLang: Locale = lang === 'ar' ? 'en' : 'ar';
   const otherHref = otherLang === locale ? { pathname: '/support' } : { pathname: '/support', query: { lang: otherLang } };
 
   return (
+    <>
+    <BreadcrumbJsonLd
+      locale={locale}
+      crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: copy.title }]}
+    />
     <article lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className="mx-auto max-w-3xl px-4 py-14">
       <header className="mb-10 border-b border-border pb-6">
         <h1 className="text-3xl font-bold text-balance sm:text-4xl">{copy.title}</h1>
@@ -63,5 +70,6 @@ export default async function SupportPage({ params, searchParams }: Props) {
         ))}
       </div>
     </article>
+    </>
   );
 }

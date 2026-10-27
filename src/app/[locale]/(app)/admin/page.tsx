@@ -129,13 +129,13 @@ export default async function AdminOverviewPage({
             {
               label: t('statQueue'),
               value: n(o.jobs.pending),
-              href: '/admin/jobs',
+              href: '/admin/jobs?status=pending',
               tone: o.jobs.pending > 0 ? 'accent' : 'default',
             },
             {
               label: t('statQueueOld'),
               value: n(o.jobs.pending_24h),
-              href: '/admin/jobs',
+              href: '/admin/jobs?status=pending',
               tone: o.jobs.pending_24h > 0 ? 'urgent' : 'default',
             },
             {

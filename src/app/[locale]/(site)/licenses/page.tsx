@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor } from '@/i18n/routing';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
 import appNotices from '@/lib/licenses/app.json';
 import webNotices from '@/lib/licenses/web.json';
 import {
@@ -57,10 +58,16 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
   const t = await getTranslations('licenses');
+  const tMeta = await getTranslations('meta');
   const texts = uniqueTexts(website.licenses, app.licenses);
   const anchored = new Set(texts.map((entry) => entry.id));
 
   return (
+    <>
+    <BreadcrumbJsonLd
+      locale={locale}
+      crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: t('title') }]}
+    />
     <div className="mx-auto max-w-3xl px-4 py-14">
       <header className="mb-10 border-b border-border pb-6">
         <h1 className="text-3xl font-bold text-balance sm:text-4xl">{t('title')}</h1>
@@ -200,6 +207,7 @@ export default async function LicensesPage({ params }: { params: Promise<{ local
         ))}
       </section>
     </div>
+    </>
   );
 }
 

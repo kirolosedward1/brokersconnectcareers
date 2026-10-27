@@ -24,11 +24,11 @@ import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
 
 /**
- * The companies — the website's /admin/companies: every company, in the
- * website's views, the verification queue first (the company that has waited
- * longest at its top) and every other view newest first, searched by either
- * name or the slug, twenty-five at a time. A row opens the company's page,
- * where its papers, its people, its listings and every lever are.
+ * The companies — the website's /admin/companies. It opens on every company,
+ * newest first. The verification queue is a view: the company that has waited
+ * longest is at its top, and every other view is newest first. Search matches
+ * either name or the slug, twenty-five at a time. A row opens the company's
+ * page, where its papers, its people, its listings and every lever are.
  */
 export default function AdminCompaniesScreen() {
   const t = useTranslations();
@@ -42,9 +42,9 @@ export default function AdminCompaniesScreen() {
   );
 }
 
-/** The view a link asks for, in the website's own terms (`?status=` on /admin/companies); the queue otherwise. */
+/** The view a link asks for, in the website's own terms (`?status=` on /admin/companies); every company otherwise. */
 function viewFor(status: string | undefined): CompaniesView {
-  return (COMPANIES_VIEWS as readonly string[]).includes(status ?? '') ? (status as CompaniesView) : 'pending';
+  return (COMPANIES_VIEWS as readonly string[]).includes(status ?? '') ? (status as CompaniesView) : 'all';
 }
 
 function useViewLabels(): Record<CompaniesView, string> {
