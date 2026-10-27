@@ -179,6 +179,10 @@ const KNOWN_WRITERS = {
   'src/lib/form-draft.ts': "PREFIX = 'bc-draft:'",
   'src/lib/auth/google-one-tap.ts': "ONE_TAP_CLOSED_KEY = 'bc.google-one-tap'",
   'src/lib/app-view.ts': "APP_VIEW_COOKIE = 'bc_app'",
+  // The first page this browser opened. The key itself lives in
+  // attribution-cookie.ts; the cookie page names it `bc_touch`.
+  'src/components/attribution/capture.tsx': 'localStorage.setItem(FIRST_TOUCH_STORAGE',
+  'src/components/attribution/remember.tsx': "const SENT = 'bc_touch_sent'",
 };
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -197,7 +201,16 @@ for (const lang of ['ar', 'en']) {
   for (const name of ['sb-', 'bc-theme', 'bc.src', 'bc-draft:', 'bc.google-one-tap', 'bc_app']) {
     check(`cookies.${lang}.md lists ${name}`, cookies.includes(name));
   }
+  // `bc_touch` is a prefix of `bc_touch_sent`, so the cookie is matched with
+  // its backticks. The sent-flag is the sessionStorage key beside it.
+  check(`cookies.${lang}.md lists the bc_touch cookie`, cookies.includes('`bc_touch`'));
+  check(`cookies.${lang}.md lists bc_touch_sent`, cookies.includes('bc_touch_sent'));
 }
+check(
+  'bc_touch is the first-visit key',
+  read('src/lib/attribution-cookie.ts').includes("export const FIRST_TOUCH_COOKIE = 'bc_touch'") &&
+    read('src/lib/attribution-cookie.ts').includes("export const FIRST_TOUCH_STORAGE = 'bc_touch'"),
+);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
