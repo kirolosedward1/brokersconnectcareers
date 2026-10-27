@@ -150,7 +150,7 @@ export default async function AdminSecurityPage({
               <tbody>
                 {eventRows.map((event) => (
                   <tr key={event.id} className="border-t border-border">
-                    <td className="numeral whitespace-nowrap px-3 py-2">{when(event.created_at)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-start"><span className="numeral">{when(event.created_at)}</span></td>
                     <td className="px-3 py-2 font-mono text-xs" dir="ltr">
                       {event.kind}
                     </td>
@@ -198,7 +198,7 @@ export default async function AdminSecurityPage({
               <tbody>
                 {auditRows.map((entry) => (
                   <tr key={entry.id} className="border-t border-border">
-                    <td className="numeral whitespace-nowrap px-3 py-2">{when(entry.created_at)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 text-start"><span className="numeral">{when(entry.created_at)}</span></td>
                     <td className="px-3 py-2 font-mono text-xs" dir="ltr">
                       {entry.actor_role}
                       {entry.actor_id ? ` · ${entry.actor_id.slice(0, 8)}` : ''}
@@ -241,8 +241,8 @@ export default async function AdminSecurityPage({
                   <td className="px-3 py-2 font-mono text-xs" dir="ltr">
                     {limit.key}
                   </td>
-                  <td className="numeral px-3 py-2">{n(Math.round(limit.window_seconds / 60))}</td>
-                  <td className="numeral px-3 py-2">{n(limit.max_hits)}</td>
+                  <td className="px-3 py-2 text-start"><span className="numeral">{n(Math.round(limit.window_seconds / 60))}</span></td>
+                  <td className="px-3 py-2 text-start"><span className="numeral">{n(limit.max_hits)}</span></td>
                 </tr>
               ))}
             </tbody>

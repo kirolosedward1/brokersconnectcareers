@@ -368,8 +368,8 @@ export type MobileActions = {
     input: {
       jobId: string;
       action: 'approve' | 'reject' | 'request_changes' | 'unpublish' | 'close' | 'restore';
-      /** Sent to the company; required for every action but approve and restore. */
-      reason?: string;
+      /** Sent to the company when it says something. Blank is omitted. */
+      reason?: string | null;
       /** The listing's version as the screen showed it, so a decision is never made on text that changed. */
       version?: number;
     };
@@ -402,35 +402,35 @@ export type MobileActions = {
   /** A five-minute link to one verification document; asking is recorded. */
   getDocumentUrl: { input: { documentId: string }; output: ActionResult<{ url: string }> };
   /** One account's email and phone, for a reason that is recorded with the request. */
-  revealContact: { input: { userId: string; reason: string }; output: ActionResult<{ email: string | null; phone: string }> };
+  revealContact: { input: { userId: string; reason?: string | null }; output: ActionResult<{ email: string | null; phone: string }> };
   /** A note for other admins, on the record of what it is about. */
   addModerationNote: {
     input: { targetType: 'user' | 'company' | 'job' | 'agent' | 'application' | 'report'; targetId: string; body: string };
     output: ActionResult;
   };
   /** Stop, or allow again, one account's reports. */
-  setReportingRestriction: { input: { userId: string; restrict: boolean; reason: string }; output: ActionResult };
+  setReportingRestriction: { input: { userId: string; restrict: boolean; reason?: string | null }; output: ActionResult };
   /** Make an account an admin, or an admin a candidate or employer again (never yourself, never the last admin). */
-  setUserRole: { input: { userId: string; role: 'candidate' | 'employer' | 'admin'; reason: string }; output: ActionResult };
+  setUserRole: { input: { userId: string; role: 'candidate' | 'employer' | 'admin'; reason?: string | null }; output: ActionResult };
   /** Stop an account signing in at all (and end its sessions), or allow it again. */
-  setSignInBlock: { input: { userId: string; block: boolean; reason: string }; output: ActionResult<{ sessionsEnded: number }> };
+  setSignInBlock: { input: { userId: string; block: boolean; reason?: string | null }; output: ActionResult<{ sessionsEnded: number }> };
   /** Sign one account out of every device. */
-  endSessions: { input: { userId: string; reason: string }; output: ActionResult<{ sessionsEnded: number }> };
+  endSessions: { input: { userId: string; reason?: string | null }; output: ActionResult<{ sessionsEnded: number }> };
   /** Pin a live listing at the top of the board, or unpin it; recorded, nobody is told. */
   setJobFeatured: { input: { jobId: string; featured: boolean }; output: ActionResult };
   /** Suspend a company (its live and pending listings come down; the members are told) or lift the suspension (nothing comes back). */
   setCompanySuspension: {
-    input: { companyId: string; suspend: boolean; reason: string };
+    input: { companyId: string; suspend: boolean; reason?: string | null };
     output: ActionResult<{ takenDown: number }>;
   };
   /** Restrict a consultant's profile (hidden, the consultant told) or lift the restriction (stays hidden). */
-  setAgentRestriction: { input: { agentId: string; restrict: boolean; reason: string }; output: ActionResult };
+  setAgentRestriction: { input: { agentId: string; restrict: boolean; reason?: string | null }; output: ActionResult };
   /** Close reports by id: a deleted target's case, or one report dismissed as bad faith. */
   closeReports: {
     input: { ids: string[]; status: 'investigating' | 'resolved' | 'dismissed'; note?: string; abusive?: boolean };
     output: ActionResult<{ moved: number }>;
   };
-  /** Answer an appeal: reverse the decision (note optional) or let it stand (note required); the person is told. */
+  /** Answer an appeal. A note is optional either way; the person is told. */
   decideAppeal: { input: { appealId: string; overturn: boolean; note?: string }; output: ActionResult };
   /** Add or rename a district, governorate or developer; the slug is permanent once set. */
   saveTaxonomy: {

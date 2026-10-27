@@ -269,8 +269,10 @@ export default async function AdminJobPage({
             <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
               {counts.map(({ stage, count }) => (
                 <div key={stage} className="rounded-lg bg-muted/50 px-3 py-2">
-                  <dt className="text-xs text-muted-foreground">{tApplication(stage)}</dt>
-                  <dd className="numeral text-lg font-semibold">{formatNumber(count, locale)}</dd>
+                  <dt className="text-start text-xs text-muted-foreground">{tApplication(stage)}</dt>
+                  <dd className="text-start text-lg font-semibold">
+                    <span className="numeral">{formatNumber(count, locale)}</span>
+                  </dd>
                 </div>
               ))}
             </dl>

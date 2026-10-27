@@ -309,9 +309,9 @@ describe('answering an appeal', () => {
     fireEvent.press(await screen.findByRole('button', { name: `${ar.admin.appealUphold}: مستشار مبيعات` }));
     expect(await screen.findByText(ar.admin.appealUpholdBody)).toBeTruthy();
     const field = screen.getByLabelText(ar.admin.appealNoteToPerson);
-    expect(confirmButton(ar.admin.appealUphold).props.accessibilityState?.disabled).toBe(true);
+    expect(confirmButton(ar.admin.appealUphold).props.accessibilityState?.disabled).toBe(false);
     fireEvent.changeText(field, 'لا');
-    expect(confirmButton(ar.admin.appealUphold).props.accessibilityState?.disabled).toBe(true);
+    expect(confirmButton(ar.admin.appealUphold).props.accessibilityState?.disabled).toBe(false);
 
     fireEvent.changeText(field, 'الراتب الأساسي لسه مش مكتوب في الإعلان.');
     await act(async () => {

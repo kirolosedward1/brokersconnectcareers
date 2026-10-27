@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import { asLocale, localeHref, localized, type Locale } from '@/i18n/routing';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmAction } from '@/components/admin/confirm-action';
+import { RowActions, type RowAction } from '@/components/admin/row-actions';
 import { JobStatusBadge, ReportStatusBadge } from '@/components/admin/badges';
 import { FilterTabs, PageHeader, Pager } from '@/components/admin/kit';
 import { CompanySignalList, SafetyFlags, SeverityBadge } from '@/components/admin/safety';
@@ -284,6 +285,85 @@ export default async function AdminReportsPage({
     const job = item.target_type === 'job' ? jobSignals.get(item.target_id) : undefined;
     const company = item.target_type === 'company' ? companySignals.get(item.target_id) : undefined;
     const label = localized(locale, item.label_ar ?? '', item.label_en) || t('untitled');
+    const actions: RowAction[] = [];
+    if (live) {
+      if (item.open_reports > 0) {
+        actions.push({
+          id: 'investigate',
+          kind: 'lever',
+          primary: true,
+          label: t('investigate'),
+          title: t('investigate'),
+          body: t('investigateBody'),
+          icon: <Search aria-hidden />,
+          lever: { do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'investigating' },
+          reason: 'optional',
+        });
+      }
+      if (actionable) {
+        actions.push({
+          id: 'takedown',
+          kind: 'lever',
+          primary: true,
+          tone: 'destructive',
+          label: takeDown[item.target_type].label,
+          title: takeDown[item.target_type].label,
+          body: takeDown[item.target_type].body,
+          icon: takeDown[item.target_type].icon,
+          lever: {
+            do: 'reports',
+            targetType: item.target_type,
+            targetId: item.target_id,
+            status: 'resolved',
+            takeAction: true,
+          },
+          reason: 'optional',
+          reasonLabel: item.target_type === 'agent' ? t('reasonToConsultant') : t('reasonToCompany'),
+        });
+      }
+      actions.push({
+        id: 'resolve',
+        kind: 'lever',
+        label: t('resolveOnly'),
+        title: t('resolveOnly'),
+        body: t('resolveOnlyBody'),
+        icon: <CheckCheck aria-hidden />,
+        lever: { do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'resolved' },
+        reason: 'optional',
+      });
+      actions.push({
+        id: 'dismiss',
+        kind: 'lever',
+        label: t('dismissReports'),
+        title: t('dismissReports'),
+        body: t('dismissBody'),
+        icon: <ThumbsUp aria-hidden />,
+        lever: { do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'dismissed' },
+        reason: 'optional',
+      });
+    } else if (openIds.length) {
+      actions.push({
+        id: 'close-resolve',
+        kind: 'lever',
+        primary: true,
+        label: t('closeDeletedResolve'),
+        title: t('closeDeletedResolve'),
+        body: t('closeDeletedBody'),
+        icon: <CheckCheck aria-hidden />,
+        lever: { do: 'closeReports', ids: openIds, status: 'resolved' },
+        reason: 'optional',
+      });
+      actions.push({
+        id: 'close-dismiss',
+        kind: 'lever',
+        label: t('closeDeletedDismiss'),
+        title: t('closeDeletedDismiss'),
+        body: t('closeDeletedBody'),
+        icon: <ThumbsUp aria-hidden />,
+        lever: { do: 'closeReports', ids: openIds, status: 'dismissed' },
+        reason: 'optional',
+      });
+    }
 
     return (
       <li key={`${item.target_type}:${item.target_id}`} className="rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -357,79 +437,11 @@ export default async function AdminReportsPage({
 
         <ul className="mt-3 space-y-2">{reports.map((report) => reportLine(report, true))}</ul>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {live ? (
-            <>
-              {item.open_reports > 0 ? (
-                <ConfirmAction
-                  lever={{ do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'investigating' }}
-                  label={t('investigate')}
-                  title={t('investigate')}
-                  body={t('investigateBody')}
-                  reason="optional"
-                  icon={<Search aria-hidden />}
-                />
-              ) : null}
-              {actionable ? (
-                <ConfirmAction
-                  lever={{
-                    do: 'reports',
-                    targetType: item.target_type,
-                    targetId: item.target_id,
-                    status: 'resolved',
-                    takeAction: true,
-                  }}
-                  label={takeDown[item.target_type].label}
-                  title={takeDown[item.target_type].label}
-                  body={takeDown[item.target_type].body}
-                  reason="required"
-                  // Who reads it: a listing's company and a company's members get the
-                  // reason with the take-down, a consultant gets it on their profile.
-                  reasonLabel={item.target_type === 'agent' ? t('reasonToConsultant') : t('reasonToCompany')}
-                  variant="destructive"
-                  icon={takeDown[item.target_type].icon}
-                />
-              ) : null}
-              <ConfirmAction
-                lever={{ do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'resolved' }}
-                label={t('resolveOnly')}
-                title={t('resolveOnly')}
-                body={t('resolveOnlyBody')}
-                reason="optional"
-                icon={<CheckCheck aria-hidden />}
-              />
-              <ConfirmAction
-                lever={{ do: 'reports', targetType: item.target_type, targetId: item.target_id, status: 'dismissed' }}
-                label={t('dismissReports')}
-                title={t('dismissReports')}
-                body={t('dismissBody')}
-                reason="optional"
-                variant="ghost"
-                icon={<ThumbsUp aria-hidden />}
-              />
-            </>
-          ) : openIds.length ? (
-            <>
-              <ConfirmAction
-                lever={{ do: 'closeReports', ids: openIds, status: 'resolved' }}
-                label={t('closeDeletedResolve')}
-                title={t('closeDeletedResolve')}
-                body={t('closeDeletedBody')}
-                reason="optional"
-                icon={<CheckCheck aria-hidden />}
-              />
-              <ConfirmAction
-                lever={{ do: 'closeReports', ids: openIds, status: 'dismissed' }}
-                label={t('closeDeletedDismiss')}
-                title={t('closeDeletedDismiss')}
-                body={t('closeDeletedBody')}
-                reason="optional"
-                variant="ghost"
-                icon={<ThumbsUp aria-hidden />}
-              />
-            </>
-          ) : null}
-        </div>
+        {actions.length ? (
+          <div className="mt-4">
+            <RowActions actions={actions} />
+          </div>
+        ) : null}
       </li>
     );
   };

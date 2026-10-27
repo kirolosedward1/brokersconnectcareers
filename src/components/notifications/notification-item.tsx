@@ -42,7 +42,7 @@ export async function NotificationItem({
   // The sentence itself is shared with the mobile app and push delivery.
   const title = notificationTitle(notification, locale, tRoot as unknown as Translate);
 
-  const body = payload.note || null;
+  const body = payload.note?.trim() || null;
   const unread = !notification.read_at;
 
   const inner = (

@@ -208,7 +208,7 @@ export default async function AdminEmailPage({
               {activity.map((row) => (
                 <tr key={row.id} className="border-b border-border last:border-0">
                   <td className="p-3">
-                    <span className="numeral block max-w-[16rem] truncate" title={row.recipient}>
+                    <span className="numeral inline-block max-w-[16rem] truncate" title={row.recipient}>
                       {row.recipient}
                     </span>
                     <span className="text-xs text-muted-foreground">
@@ -226,7 +226,7 @@ export default async function AdminEmailPage({
                   <td className="p-3">
                     <Badge variant={VARIANT[row.status]}>{tStatus(row.status)}</Badge>
                     {row.attempts > 1 ? (
-                      <span className="numeral block pt-1 text-xs text-muted-foreground">
+                      <span className="numeral inline-block pt-1 text-xs text-muted-foreground">
                         {/* Capped at the outbox's MAX_EMAIL_ATTEMPTS. Rows from before
                             the old sweeper recorded a released retry as 99. */}
                         ×{formatNumber(Math.min(row.attempts, 5), locale)}

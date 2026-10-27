@@ -43,6 +43,16 @@ it('opens it a moment later when iOS never says the first has gone', () => {
   expect(menu.result.current.open).toBe(true);
 });
 
+it('opens the same sheet again when it is asked for while that one is still closing', () => {
+  const sheet = renderHook(() => useSheet());
+  act(() => sheet.result.current.show());
+  act(() => sheet.result.current.hide());
+  act(() => sheet.result.current.show());
+  expect(sheet.result.current.open).toBe(false);
+  act(() => jest.advanceTimersByTime(800));
+  expect(sheet.result.current).toMatchObject({ open: true, mounted: true });
+});
+
 it('shows a sheet opened by a flag (the filters, a picker) only once no other is closing, and counts its own closing', () => {
   const sort = renderHook(() => useSheet());
   const filters = renderHook(({ wanted }: { wanted: boolean }) => useGatedModal(wanted, jest.fn()), { initialProps: { wanted: false } });

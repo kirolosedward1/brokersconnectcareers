@@ -25,6 +25,14 @@ export function useSheet() {
   // Showing, for leaveSheets (sheet-gate.ts), which closes it as hide() does.
   const unlisted = useRef<(() => void) | null>(null);
   const hideNow = useRef<() => void>(() => {});
+  // A show() asked for while this sheet is still closing. The close must not
+  // take that next one down: both land in one turn, and the close was winning,
+  // so the sheet never appeared. Cleared once that close has had its say, so
+  // an unasked dismiss afterwards still counts.
+  const reopen = useRef(false);
+  // The close timer has not fired yet. The open it was waiting on must leave
+  // `reopen` set until that timer has decided to keep the sheet.
+  const closePending = useRef(false);
 
   useEffect(
     () => () => {
@@ -44,19 +52,24 @@ export function useSheet() {
   const gone = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
+    closePending.current = false;
+    // A show() since this close started is the next sheet. Taking this one
+    // down in the same turn set it closed again, and it never appeared.
+    const followed = reopen.current;
     // Gone while still meant to be open: iOS took it down unawares. Left
     // "open", the next show() did nothing and its button was dead.
-    if (open) {
+    if (!followed && open) {
       setOpen(false);
       unlisted.current?.();
       unlisted.current = null;
     }
-    setMounted(false);
+    if (!followed) setMounted(false);
     closed.current?.();
     closed.current = null;
     const next = then.current;
     then.current = null;
     next?.();
+    if (followed) reopen.current = false;
   };
 
   /** Closes it; `after` runs once it has gone. (Handed to onPress, it is given an event: only a function is kept.) */
@@ -68,6 +81,7 @@ export function useSheet() {
       next?.();
       return;
     }
+    reopen.current = false;
     setOpen(false);
     // No longer showing — once its closing is counted, so nothing waiting on
     // the sheets (leaveSheets) goes before it has gone.
@@ -86,6 +100,7 @@ export function useSheet() {
     closed.current = sheetClosing();
     unlist();
     if (timer.current) clearTimeout(timer.current);
+    closePending.current = true;
     timer.current = setTimeout(gone, CLOSING_MS);
   };
   useEffect(() => {
@@ -98,11 +113,16 @@ export function useSheet() {
     mounted: open || mounted,
     show() {
       if (open) return;
+      reopen.current = true;
       opening.current?.();
       opening.current = whenSheetsSettled(() => {
         opening.current = null;
+        if (!reopen.current) return;
         setMounted(true);
         setOpen(true);
+        // Nothing of this close is still waiting to run: the sheet is simply
+        // open, and a later unasked dismiss must be able to take it down.
+        if (!closePending.current) reopen.current = false;
         unlisted.current?.();
         unlisted.current = sheetShowing(() => hideNow.current());
       });

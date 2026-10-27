@@ -303,13 +303,13 @@ export const SECTIONS_A: HelpSection[] = [
         id: 'listings-review',
         title: t('مراجعة إعلان منتظر', 'Reviewing a listing that is waiting'),
         summary: t(
-          'ما دام الإعلان «قيد المراجعة» تظهر ثلاثة إجراءات تحت «المراجعة»: «اعتماد»، و«اطلب تعديل»، و«رفض». الاعتماد بلا سبب. التعديل والرفض يحتاجان ملاحظة تصل إلى الشركة، من ثلاثة أحرف على الأقل.',
-          'While a listing is In review, three actions sit under Moderation: Approve, Request changes, and Reject. Approval needs no reason. Changes and rejection need a note that reaches the company, at least three characters.',
+          'ما دام الإعلان «قيد المراجعة» تظهر ثلاثة إجراءات تحت «المراجعة»: «اعتماد»، و«اطلب تعديل»، و«رفض». الاعتماد بلا سبب. التعديل والرفض يعرضان ملاحظة تصل إلى الشركة، ويمكن تركها فارغة.',
+          'While a listing is In review, three actions sit under Moderation: Approve, Request changes, and Reject. Approval needs no reason. Changes and rejection offer a note that reaches the company, and it may be left empty.',
         ),
         steps: [
           t('اقرأ الوصف والعلامات في «أمور تستحق نظرة».', 'Read the description and the lines under What to look at.'),
           t('اضغط الإجراء واقرأ نص النافذة قبل التأكيد.', 'Press the action and read the dialog before confirming.'),
-          t('في «اطلب تعديل» أو «رفض» اكتب «الملاحظة (تصل إلى الشركة)».', 'For Request changes or Reject, write The note (sent to the company).'),
+          t('في «اطلب تعديل» أو «رفض» اكتب «الملاحظة (اختياري، تصل إلى الشركة)» إن كان لديك ما تقوله، أو اتركها فارغة.', 'For Request changes or Reject, write Note (optional, sent to the company) when you have something to say, or leave it empty.'),
           t('بعد الاعتماد أو الرفض تنتقل الصفحة إلى الإعلان التالي بانتظار المراجعة، وتقول «تمت الموافقة — الانتقال للتالي». إن لم يبقَ شيء: «لا توجد إعلانات أخرى بانتظار المراجعة».', 'After approval or rejection the page moves to the next listing waiting for review, and says Approved — moving to the next. When none remain: No other listings are waiting for review.'),
         ],
         fields: [
@@ -448,9 +448,9 @@ export const SECTIONS_A: HelpSection[] = [
         ],
         fields: [
           { label: t('توثيق', 'Verify'), detail: t('ما دامت غير موثّقة. إن وُجدت مستندات منتظرة تُعلَّم بأنها رُوجعت. إن لم تُرفع مستندات يقول النص أن توثّقها فقط إذا تأكدت بطريقة أخرى، وأن تكتب كيف. الملاحظة اختيارية.', 'While it is not verified. Pending documents are marked reviewed. If none were uploaded, the text says to verify only when you have checked another way, and to write how. The note is optional.') },
-          { label: t('اطلب تعديل', 'Request changes'), detail: t('في حالة «مستنداتها قيد المراجعة». تعود المستندات إلى الشركة مع ملاحظتك. السبب مطلوب.', 'While documents are in review. The documents go back to the company with your note. A reason is required.') },
-          { label: t('رفض', 'Reject'), detail: t('في الانتظار أو غير الموثّقة. تبقى غير موثّقة ومحدودة بإعلان واحد، ويصلها السبب. السبب مطلوب.', 'While pending or unverified. It stays unverified and limited to one listing, and receives the reason. A reason is required.') },
-          { label: t('سحب التوثيق', 'Revoke verification'), detail: t('للموثّقة. تُزال العلامة وتعود إلى حد الإعلان الواحد للإعلانات الجديدة. المنشورة حاليًا لا تتأثر. السبب مطلوب.', 'For a verified company. The mark goes and new listings return to the one-listing limit. Listings already published are not affected. A reason is required.') },
+          { label: t('اطلب تعديل', 'Request changes'), detail: t('في حالة «مستنداتها قيد المراجعة». تعود المستندات إلى الشركة مع ملاحظتك إن كتبتها. السبب اختياري.', 'While documents are in review. The documents go back to the company with your note, when you wrote one. The reason is optional.') },
+          { label: t('رفض', 'Reject'), detail: t('في الانتظار أو غير الموثّقة. تبقى غير موثّقة ومحدودة بإعلان واحد، ويصلها السبب إن كتبته. السبب اختياري.', 'While pending or unverified. It stays unverified and limited to one listing, and receives the reason when you wrote one. The reason is optional.') },
+          { label: t('سحب التوثيق', 'Revoke verification'), detail: t('للموثّقة. تُزال العلامة وتعود إلى حد الإعلان الواحد للإعلانات الجديدة. المنشورة حاليًا لا تتأثر. السبب اختياري.', 'For a verified company. The mark goes and new listings return to the one-listing limit. Listings already published are not affected. The reason is optional.') },
         ],
         statuses: [
           { label: t('غير موثّقة', 'Unverified'), tone: 'outline' },
@@ -469,8 +469,8 @@ export const SECTIONS_A: HelpSection[] = [
         href: '/admin/companies',
         steps: [
           t('من «الإيقاف» اضغط «أوقف الشركة».', 'Under Suspension, press Suspend the company.'),
-          t('اكتب «الملاحظة (تصل إلى الشركة)». ثلاثة أحرف على الأقل.', 'Write The note (sent to the company). At least three characters.'),
-          t('أكّد. للرفع لاحقًا: «ارفع الإيقاف»، والسبب مطلوب أيضًا.', 'Confirm. To lift it later: Lift the suspension, and a reason is required there too.'),
+          t('اكتب «الملاحظة (اختياري، تصل إلى الشركة)» إن كان لديك ما تقوله، أو اتركها فارغة.', 'Write Note (optional, sent to the company) when you have something to say, or leave it empty.'),
+          t('أكّد. للرفع لاحقًا: «ارفع الإيقاف»، والسبب اختياري هناك أيضًا.', 'Confirm. To lift it later: Lift the suspension, and the reason is optional there too.'),
         ],
         statuses: [
           { label: t('موقوفة', 'Suspended'), tone: 'destructive', detail: t('لافتة بتاريخ الإيقاف والسبب إن سُجّل.', 'A banner with the date and the reason when one was recorded.') },

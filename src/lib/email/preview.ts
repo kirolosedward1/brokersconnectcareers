@@ -234,7 +234,7 @@ const BUILDERS: Record<string, Builder> = {
             [t.labelCompany, w.company],
           ],
         },
-        ...(note ? [{ kind: 'text' as const, value: note }] : []),
+        ...(note?.trim() ? [{ kind: 'text' as const, value: note.trim() }] : []),
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/applications` },
       ],
     };
@@ -250,7 +250,7 @@ const BUILDERS: Record<string, Builder> = {
       heading: t.heading,
       blocks: [
         { kind: 'text', value: t.body(w.job, w.company) },
-        ...(note ? [{ kind: 'text' as const, value: note }] : []),
+        ...(note?.trim() ? [{ kind: 'text' as const, value: note.trim() }] : []),
         { kind: 'divider' },
         { kind: 'text', value: t.encouragement },
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/jobs` },
@@ -371,7 +371,7 @@ const BUILDERS: Record<string, Builder> = {
       heading: t.heading,
       blocks: [
         { kind: 'text', value: t.body(w.job) },
-        ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
+        ...(note?.trim() ? [{ kind: 'text' as const, value: t.reason(note.trim()) }] : []),
         { kind: 'facts', rows: [[t.labelJob, w.job]] },
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/jobs` },
       ],
@@ -445,7 +445,7 @@ const BUILDERS: Record<string, Builder> = {
       heading: t.heading,
       blocks: [
         { kind: 'text', value: t.body },
-        ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
+        ...(note?.trim() ? [{ kind: 'text' as const, value: t.reason(note.trim()) }] : []),
         { kind: 'security', value: t.contact },
       ],
     };
@@ -482,7 +482,7 @@ const BUILDERS: Record<string, Builder> = {
       blocks: [
         { kind: 'text', value: t.body(w.company) },
         { kind: 'company', name: w.company, href: `${env.siteUrl}/companies/example` },
-        ...(note ? [{ kind: 'text' as const, value: t.reason(note) }] : []),
+        ...(note?.trim() ? [{ kind: 'text' as const, value: t.reason(note.trim()) }] : []),
         { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
       ],
     };

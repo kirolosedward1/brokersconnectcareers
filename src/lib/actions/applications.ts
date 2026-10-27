@@ -403,6 +403,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
 
   revalidatePath('/employer/jobs');
   revalidatePath('/dashboard/applications');
+  revalidatePath('/admin', 'layout');
   return { ok: true };
 }
 

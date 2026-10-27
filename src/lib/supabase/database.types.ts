@@ -337,6 +337,7 @@ export type EmployerTrend =
       conversion: EmployerConversionRow[];
     };
 
+/** One row per Cairo day. Migration 369 returns 180 days so 90 can be compared with the 90 before. */
 export type AdminTrend = {
   days: { d: string; signups: number; published: number; applications: number }[];
 };
@@ -1437,7 +1438,7 @@ export type Database = {
       moderation_notes: Table<ModerationNoteRow, never>;
       /** Admin-only, written through admin_set_reporting_restriction(). */
       reporting_restrictions: Table<
-        { user_id: string; reason: string; restricted_by: string | null; created_at: string },
+        { user_id: string; reason: string | null; restricted_by: string | null; created_at: string },
         never
       >;
       /** Written through submit_appeal() and admin_decide_appeal() only. */
@@ -1648,11 +1649,11 @@ export type Database = {
       /** Closes an account deletion request, on the record (migration 346). */
       admin_close_deletion_request: { Args: { p_id: string }; Returns: string };
       admin_set_company_suspension: {
-        Args: { p_company: string; p_suspend: boolean; p_reason: string };
+        Args: { p_company: string; p_suspend: boolean; p_reason: string | null };
         Returns: number;
       };
       admin_set_agent_restriction: {
-        Args: { p_agent: string; p_restrict: boolean; p_reason: string };
+        Args: { p_agent: string; p_restrict: boolean; p_reason: string | null };
         Returns: undefined;
       };
       admin_moderate_reports: {
@@ -1680,7 +1681,7 @@ export type Database = {
         Returns: number;
       };
       admin_set_reporting_restriction: {
-        Args: { p_user: string; p_restrict: boolean; p_reason: string };
+        Args: { p_user: string; p_restrict: boolean; p_reason: string | null };
         Returns: undefined;
       };
       admin_report_cases: {
@@ -1735,7 +1736,7 @@ export type Database = {
       };
       my_account_note: { Args: Empty; Returns: string | null };
       admin_reveal_contact: {
-        Args: { p_user: string; p_reason: string };
+        Args: { p_user: string; p_reason: string | null };
         Returns: { email: string | null; whatsapp_phone: string }[];
       };
       /** Email and phone for the accounts on screen, with a silent audit row (migration 368). */
@@ -1750,9 +1751,9 @@ export type Database = {
       admin_user_facts: { Args: { p_user: string }; Returns: AdminUserFacts };
       admin_user_activity: { Args: { p_user: string }; Returns: AdminUserActivity };
       /** The account levers of migration 355. The two that touch sessions return how many they ended. */
-      admin_set_role: { Args: { p_user: string; p_role: UserRole; p_reason: string }; Returns: undefined };
-      admin_set_sign_in_block: { Args: { p_user: string; p_block: boolean; p_reason: string }; Returns: number };
-      admin_end_sessions: { Args: { p_user: string; p_reason: string }; Returns: number };
+      admin_set_role: { Args: { p_user: string; p_role: UserRole; p_reason: string | null }; Returns: undefined };
+      admin_set_sign_in_block: { Args: { p_user: string; p_block: boolean; p_reason: string | null }; Returns: number };
+      admin_end_sessions: { Args: { p_user: string; p_reason: string | null }; Returns: number };
       /** Returns the storage path and records that this admin opened it. */
       admin_open_document: { Args: { p_document: string }; Returns: string };
       admin_search_users: {

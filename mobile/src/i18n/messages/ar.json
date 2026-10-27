@@ -427,7 +427,7 @@
     "openWhatsApp": "افتح واتساب",
     "call": "اتصل",
     "addNote": "أضف ملاحظة",
-    "noteLabel": "الملاحظة (للمشرفين فقط)",
+    "noteLabel": "الملاحظة (اختياري، للمشرفين فقط)",
     "accountsLede": "ابحث عن أي حساب؛ ملفه فيه الوقائع، وما فعله، وكل الإجراءات.",
     "reports": {
       "dayPlaceholder": "YYYY-MM-DD",

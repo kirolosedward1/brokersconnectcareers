@@ -126,11 +126,11 @@ function sessionsEndedOf(data: unknown): number | null {
 /**
  * A lever, its confirmation, and its outcome.
  *
- * `reason` decides the dialog: `required` will not submit without three
- * characters (the database refuses it anyway — this only saves the round
- * trip), `optional` offers the box, `none` asks only for the confirmation.
- * Nothing in the console acts on one click; even an approval is a
- * confirmation, because it emails somebody and cannot be un-sent.
+ * `reason` decides the dialog: `required` and `optional` both offer the box
+ * and both submit with it empty — a reason is optional everywhere, and the
+ * label already says so. `none` asks only for the confirmation. Nothing in
+ * the console acts on one click; even an approval is a confirmation, because
+ * it emails somebody and cannot be un-sent.
  *
  * The success line appears only after the action returned ok, which is only
  * after the change and its audit record committed together.
@@ -147,6 +147,7 @@ export function ConfirmAction({
   icon,
   size = 'sm',
   className,
+  chrome = 'default',
   thenGo,
   toast,
   listenFor,
@@ -163,6 +164,8 @@ export function ConfirmAction({
   icon?: React.ReactNode;
   size?: ButtonProps['size'];
   className?: string;
+  /** `icon` is a table button with the label as its tooltip. `menu` is a row in the ⋯ menu. */
+  chrome?: 'default' | 'icon' | 'menu';
   /** After a yes, go here instead of only re-reading this page. */
   thenGo?: string;
   /** The line the toast speaks when `thenGo` is set, or when the queue has nothing left. */
@@ -182,8 +185,6 @@ export function ConfirmAction({
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const tooShort = reason === 'required' && text.trim().length < 3;
-
   useEffect(() => {
     if (!listenFor) return;
     const open = () => {
@@ -201,7 +202,7 @@ export function ConfirmAction({
   }
 
   function confirm() {
-    if (pending || tooShort) return;
+    if (pending) return;
     startTransition(async () => {
       setError(null);
       let result: ActionResult<unknown>;
@@ -250,16 +251,24 @@ export function ConfirmAction({
     <>
       <Button
         type="button"
-        variant={variant}
-        size={size}
-        className={className}
+        variant={chrome === 'menu' ? 'ghost' : variant}
+        size={chrome === 'icon' ? 'icon' : size}
+        title={chrome === 'icon' ? label : undefined}
+        aria-label={chrome === 'icon' ? label : undefined}
+        className={
+          chrome === 'icon'
+            ? `size-8 ${className ?? ''}`
+            : chrome === 'menu'
+              ? `min-h-11 w-full justify-start px-3 ${className ?? ''}`
+              : className
+        }
         onClick={() => {
           setDone(false);
           setOpen(true);
         }}
       >
         {icon}
-        {label}
+        {chrome === 'icon' ? <span className="sr-only">{label}</span> : label}
       </Button>
 
       {done ? (
@@ -277,7 +286,7 @@ export function ConfirmAction({
 
           {reason !== 'none' ? (
             <Field
-              label={`${reasonLabel ?? t('reasonLabel')}${reason === 'optional' ? ` (${tCommon('optional')})` : ''}`}
+              label={reasonLabel ?? t('reasonLabel')}
               htmlFor={fieldId}
             >
               <Textarea
@@ -287,7 +296,6 @@ export function ConfirmAction({
                 maxLength={500}
                 rows={3}
                 className="min-h-20"
-                aria-required={reason === 'required'}
               />
             </Field>
           ) : null}
@@ -306,7 +314,7 @@ export function ConfirmAction({
               type="button"
               variant={variant === 'destructive' ? 'destructive' : variant === 'success' ? 'success' : 'default'}
               onClick={confirm}
-              disabled={pending || tooShort}
+              disabled={pending}
               aria-busy={pending}
             >
               {pending ? tCommon('loading') : (confirmLabel ?? label)}

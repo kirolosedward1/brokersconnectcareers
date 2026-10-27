@@ -217,9 +217,9 @@ export default async function AdminOperationsPage({
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {outboxFigures.map((figure) => (
             <div key={figure.label} className="rounded-xl border border-border p-4">
-              <dt className="text-xs text-muted-foreground">{figure.label}</dt>
-              <dd className="numeral mt-1 text-xl font-semibold tabular-nums">
-                {formatNumber(figure.value, locale)}
+              <dt className="text-start text-xs text-muted-foreground">{figure.label}</dt>
+              <dd className="mt-1 text-start text-xl font-semibold">
+                <span className="numeral">{formatNumber(figure.value, locale)}</span>
               </dd>
             </div>
           ))}
@@ -259,7 +259,7 @@ export default async function AdminOperationsPage({
                 {dead.map((row) => (
                   <tr key={row.id} className="border-b border-border last:border-0">
                     <td className="p-3">
-                      <span className="numeral block max-w-[16rem] truncate" title={row.recipient}>
+                      <span className="numeral inline-block max-w-[16rem] truncate" title={row.recipient}>
                         {row.recipient}
                       </span>
                       <span className="text-xs text-muted-foreground">

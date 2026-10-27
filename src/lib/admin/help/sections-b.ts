@@ -207,8 +207,8 @@ export const SECTIONS_B: HelpSection[] = [
         id: 'accounts-standing',
         title: t('التفعيل والإيقاف والتعليق', 'Approve, suspend and hold'),
         summary: t(
-          'من «الإجراءات». حسابات المشرفين لا تُوقَف من هنا، ويظهر بدل الأزرار «لا تُوقَف حسابات المشرفين من هنا.» التفعيل والاستعادة بلا سبب ويصل صاحبهما بريد. التعليق والإيقاف يحتاجان «السبب (يصل إلى صاحب الحساب)».',
-          'From Actions. Admin accounts are not suspended from here, and the buttons are replaced by “Admin accounts cannot be suspended from here.” Approval and restoration need no reason, and the person is emailed. A hold and a suspension need “Reason (sent to the account holder)”.',
+          'من «الإجراءات». حسابات المشرفين لا تُوقَف من هنا، ويظهر بدل الأزرار «لا تُوقَف حسابات المشرفين من هنا.» التفعيل والاستعادة بلا سبب ويصل صاحبهما بريد. التعليق والإيقاف يعرضان «السبب (اختياري، يصل إلى صاحب الحساب)»، ويمكن تركه فارغًا.',
+          'From Actions. Admin accounts are not suspended from here, and the buttons are replaced by “Admin accounts cannot be suspended from here.” Approval and restoration need no reason, and the person is emailed. A hold and a suspension offer “Reason (optional, sent to the account holder)”, and it may be left empty.',
         ),
         fields: [
           { label: t('فعّل الحساب', 'Approve the account'), detail: t('يستطيع الحساب العمل مرة أخرى، ويصل صاحبه بريد. يظهر ما دام غير مفعّل.', 'The account can work again, and its owner is emailed. Shown while it is not approved.') },

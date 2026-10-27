@@ -427,7 +427,7 @@
     "openWhatsApp": "Open WhatsApp",
     "call": "Call",
     "addNote": "Add a note",
-    "noteLabel": "Note (admins only)",
+    "noteLabel": "Note (optional, admins only)",
     "accountsLede": "Find any account; its file has the facts, what it has done, and every lever.",
     "reports": {
       "dayPlaceholder": "YYYY-MM-DD",
