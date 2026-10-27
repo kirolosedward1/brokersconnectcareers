@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor } from '@/i18n/routing';
 import { EmployerLanding } from '@/components/home/employer-landing';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
 import { getViewer } from '@/lib/auth';
+import { withOpenings } from '@/lib/seo/meta-text';
+import { openingsLead } from '@/lib/seo/openings';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +15,12 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
-  const t = await getTranslations({ locale, namespace: 'landingPage' });
+  const t = await getTranslations({ locale, namespace: 'meta' });
+  const lead = await openingsLead(locale);
 
   return {
-    title: t('employerHero.title'),
-    description: t('employerHero.subtitle'),
+    title: { absolute: t('employersTitle') },
+    description: withOpenings(lead, t('employersDescription'), t('descriptionPad')),
     alternates: alternatesFor('/employers', locale),
   };
 }
@@ -69,12 +73,20 @@ export default async function EmployersPage({
   }
 
   const viewer = await getViewer();
+  const tMeta = await getTranslations('meta');
+  const tLanding = await getTranslations('landingPage');
 
   return (
-    <EmployerLanding
-      locale={locale}
-      consultantCount={consultantCount}
-      signedIn={Boolean(viewer)}
-    />
+    <>
+      <BreadcrumbJsonLd
+        locale={locale}
+        crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: tLanding('employerHero.title') }]}
+      />
+      <EmployerLanding
+        locale={locale}
+        consultantCount={consultantCount}
+        signedIn={Boolean(viewer)}
+      />
+    </>
   );
 }

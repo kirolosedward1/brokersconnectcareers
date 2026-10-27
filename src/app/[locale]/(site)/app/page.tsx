@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor } from '@/i18n/routing';
 import { GetAppLanding } from '@/components/get-app/get-app-landing';
+import { BreadcrumbJsonLd } from '@/components/seo/breadcrumb-jsonld';
+import { SITE_NAME } from '@/lib/seo/site-jsonld';
 
 /**
  * The social card is this page's own, not the site's: a link to "get the
@@ -22,7 +24,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const locale = asLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: 'appPage' });
-  const tMeta = await getTranslations({ locale, namespace: 'meta' });
 
   const title = t('meta.title');
   const description = t('meta.description');
@@ -33,7 +34,7 @@ export async function generateMetadata({
     alternates: alternatesFor('/app', locale),
     openGraph: {
       type: 'website',
-      siteName: tMeta('siteName'),
+      siteName: SITE_NAME,
       locale: locale === 'ar' ? 'ar_EG' : 'en_US',
       title,
       description,
@@ -59,5 +60,15 @@ export default async function GetAppPage({ params }: { params: Promise<{ locale:
   const locale = asLocale((await params).locale);
   setRequestLocale(locale);
 
-  return <GetAppLanding />;
+  const t = await getTranslations('appPage');
+  const tMeta = await getTranslations('meta');
+  return (
+    <>
+      <BreadcrumbJsonLd
+        locale={locale}
+        crumbs={[{ name: tMeta('siteName'), path: '/' }, { name: t('hero.title') }]}
+      />
+      <GetAppLanding />
+    </>
+  );
 }

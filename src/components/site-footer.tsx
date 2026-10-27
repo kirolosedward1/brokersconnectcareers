@@ -8,7 +8,8 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { JOB_TRACKS } from '@/lib/taxonomy';
 import { getDistricts } from '@/lib/queries/taxonomy';
 import { optional } from '@/lib/queries/error';
-import { siteNavFor } from '@/lib/permissions';
+import { siteNavFor, type SiteNavItem } from '@/lib/permissions';
+import { SITELINK_AREAS, SITELINK_PAGES, areaLandingPath } from '@/lib/seo/area-links';
 import { VisitorOnly } from '@/components/session/visitor-only';
 import { LiveAgentsLink } from '@/components/session/header-account';
 import { PopularLandings } from '@/components/jobs/popular-landings';
@@ -82,6 +83,12 @@ export async function SiteFooter({ locale }: { locale: string }) {
   const areas = FEATURED_DISTRICTS.map((slug) => bySlug.get(slug)).filter(
     (district): district is NonNullable<typeof district> => Boolean(district),
   );
+
+  function navLabel(key: SiteNavItem['key']) {
+    if (key === 'searchJobs') return tNav('jobs');
+    if (key === 'companies') return tNav('companiesShort');
+    return tNav(key);
+  }
 
 
   /**
@@ -181,6 +188,13 @@ export async function SiteFooter({ locale }: { locale: string }) {
               {siteNavFor(null).map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className={linkClass}>
+                    {navLabel(item.key)}
+                  </Link>
+                </li>
+              ))}
+              {SITELINK_PAGES.map((item) => (
+                <li key={item.key}>
+                  <Link href={item.href} className={linkClass}>
                     {tNav(item.key)}
                   </Link>
                 </li>
@@ -201,9 +215,15 @@ export async function SiteFooter({ locale }: { locale: string }) {
             </ul>
           </FooterGroup>
 
-          {areas.length ? (
-            <FooterGroup title={t('byArea')}>
+          <FooterGroup title={t('byArea')}>
               <ul className="lg:mt-2">
+                {SITELINK_AREAS.map((area) => (
+                  <li key={area.key}>
+                    <Link href={areaLandingPath(area.slug)} className={linkClass}>
+                      {t(area.key)}
+                    </Link>
+                  </li>
+                ))}
                 {areas.map((district) => (
                   <li key={district.slug}>
                     <Link
@@ -216,7 +236,6 @@ export async function SiteFooter({ locale }: { locale: string }) {
                 ))}
               </ul>
             </FooterGroup>
-          ) : null}
 
           {/* Every legal document, from every page: the policies have to be
               reachable from wherever somebody is when they want them, and the

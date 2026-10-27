@@ -15,9 +15,9 @@ import {
   type Locale,
 } from "@/i18n/routing";
 import { PUBLIC_MESSAGES, pick } from '@/i18n/client-messages';
-import { env } from '@/lib/env';
+import { configuredValue, env } from '@/lib/env';
 import { JsonLd } from '@/components/json-ld';
-import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/site-jsonld';
+import { SITE_NAME, organizationJsonLd, websiteJsonLd } from '@/lib/seo/site-jsonld';
 import '../globals.css';
 import { Analytics } from '@/components/analytics';
 import { AppViewCookie } from '@/components/app-view-cookie';
@@ -69,6 +69,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
+  const google = configuredValue(process.env.NEXT_PUBLIC_GSC_VERIFICATION);
 
   return {
     metadataBase: new URL(env.siteUrl),
@@ -89,7 +90,7 @@ export async function generateMetadata({
     */
     openGraph: {
       type: "website",
-      siteName: t("siteName"),
+      siteName: SITE_NAME,
       locale: locale === "ar" ? "ar_EG" : "en_US",
       /**
        * A static card, not a generated one.
@@ -121,6 +122,19 @@ export async function generateMetadata({
       `noindex` that notFound() adds — two robots tags on every soft 404.
       Pages that must stay out say so themselves.
     */
+    /*
+      Multiples of 48px, which is the size Google fetches for the result.
+      The files are the brand mark, and robots.txt does not keep them out.
+    */
+    icons: {
+      icon: [
+        { url: '/favicon.ico', sizes: '48x48' },
+        { url: '/favicon-48x48.png', type: 'image/png', sizes: '48x48' },
+        { url: '/favicon-96x96.png', type: 'image/png', sizes: '96x96' },
+        { url: '/favicon-192x192.png', type: 'image/png', sizes: '192x192' },
+      ],
+    },
+    ...(google ? { verification: { google } } : {}),
   };
 }
 
@@ -136,7 +150,6 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "nav" });
-  const tMeta = await getTranslations({ locale, namespace: "meta" });
 
   return (
     <html
@@ -191,8 +204,8 @@ export default async function LocaleLayout({
         />
       </head>
       <body className="flex min-h-dvh flex-col">
-        <JsonLd data={organizationJsonLd(env.siteUrl, tMeta("siteName"))} />
-        <JsonLd data={websiteJsonLd(env.siteUrl, tMeta("siteName"))} />
+        <JsonLd data={organizationJsonLd(env.siteUrl)} />
+        <JsonLd data={websiteJsonLd(env.siteUrl)} />
         {/* Only what the public site's client components read. The console
             nests its own provider and adds its half. See client-messages.ts. */}
         <NextIntlClientProvider

@@ -4,6 +4,7 @@
     "tagline": "The specialist job market for Egyptian real estate",
     "defaultDescription": "Real estate sales and brokerage jobs across Egypt — every listing says who supplies the leads, with the salary and commission in figures whenever the company publishes them.",
     "homeDescription": "Real estate sales and marketing jobs across Egypt, by area and specialism. Every ad says who supplies the leads, and the salary and commission in figures when the company publishes them.",
+    "homeTitle": "Brokers Connect | Real estate sales jobs in Egypt",
     "jobsTitle": "Real estate jobs open in Egypt today | Brokers Connect",
     "jobsDescription": "Browse real estate jobs open in Egypt now: off-plan, resale, rentals, commercial and administrative. Salary, commission and lead source are shown before you apply.",
     "privacyTitle": "Privacy policy for the data we collect | Brokers Connect",
@@ -16,11 +17,23 @@
     "refundsDescription": "The Brokers Connect refund policy: the platform sells nothing today, so nothing is refunded. This page says what is free now and what would change before any later sale.",
     "accountDeletionTitle": "How to delete your Brokers Connect account",
     "accountDeletionDescription": "How to delete your Brokers Connect account on the website or in the app, when a request is reviewed, what leaves your profile and applications, and what is kept.",
-    "descriptionPad": "Salary, commission and lead source are shown before you apply."
+    "descriptionPad": "Salary, commission and lead source are shown before you apply.",
+    "openingsLead": "{count} jobs open now.",
+    "signInTitle": "Sign in to Brokers Connect | Real estate jobs today",
+    "signInDescription": "Sign in to Brokers Connect to follow your applications and the real estate sales jobs open in Egypt, with the salary and commission shown before you apply.",
+    "signUpTitle": "Create a free Brokers Connect account | Real estate jobs",
+    "signUpDescription": "Create your Brokers Connect account to apply and follow real estate sales jobs in Egypt. Salary, commission and lead source are shown before you apply.",
+    "companiesTitle": "Real estate companies hiring in Egypt | Brokers Connect",
+    "companiesDescription": "Real estate companies hiring on Brokers Connect in Egypt, with a clear mark on the verified ones. Browse companies by area before you apply to their jobs.",
+    "employersTitle": "For companies | Post a real estate job in Egypt today",
+    "employersDescription": "Post a real estate sales job in Egypt on Brokers Connect. Each application arrives with the applicant's name and WhatsApp number, and the salary and commission are on the ad."
   },
   "nav": {
     "jobs": "Jobs",
     "companies": "Real estate companies",
+    "companiesShort": "Companies",
+    "forEmployers": "For companies",
+    "announceJob": "Post a job",
     "agents": "Consultant directory",
     "postJob": "Post a job",
     "signIn": "Sign in",
@@ -1424,7 +1437,10 @@
     "doorEmployerBody": "Your listing is reviewed before it goes live, and every application reaches you with the applicant’s name and WhatsApp number.",
     "byTrack": "By specialisation",
     "byArea": "By area",
-    "contact": "Contact us"
+    "contact": "Contact us",
+    "areaNewCairo": "Jobs in New Cairo",
+    "areaNewCapital": "Jobs in the New Administrative Capital",
+    "areaSheikhZayed": "Jobs in Sheikh Zayed"
   },
   "validation": {
     "required": "This field is required",

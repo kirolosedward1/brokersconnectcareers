@@ -9,6 +9,7 @@ import { jobPostingJsonLd } from '@/lib/seo/job-posting';
 import { jobIsLive, jobIsPublic } from '@/lib/job-state';
 import { getJobBySlug } from '@/lib/queries/jobs';
 import { fitDescription, fitTitle } from '@/lib/seo/meta-text';
+import { SITE_NAME } from '@/lib/seo/site-jsonld';
 import { env } from '@/lib/env';
 import { buildLandingSlug } from '@/lib/taxonomy';
 import { breadcrumbJsonLd } from '@/lib/seo/breadcrumbs';
@@ -76,6 +77,7 @@ export async function generateMetadata({
     openGraph: {
       title: fitTitle(`${title} — ${company}`, 60),
       description,
+      siteName: SITE_NAME,
       type: 'article',
       url: pageUrl(locale, path),
       locale: locale === 'ar' ? 'ar_EG' : 'en_US',

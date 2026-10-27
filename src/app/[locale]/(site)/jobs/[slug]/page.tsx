@@ -3,7 +3,8 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor, localized } from '@/i18n/routing';
 import { TrackDistrictLanding } from '@/components/jobs/track-district-landing';
 import { anonymousJobs, EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
-import { fitDescription, fitTitle, titleRoom } from '@/lib/seo/meta-text';
+import { fitTitle, titleRoom, withOpenings } from '@/lib/seo/meta-text';
+import { openingsLead } from '@/lib/seo/openings';
 import { parseLandingSlug } from '@/lib/taxonomy';
 import { getDistrictBySlug } from '@/lib/queries/taxonomy';
 import type { DistrictRow, JobTrack } from '@/lib/supabase/database.types';
@@ -74,10 +75,11 @@ export async function generateMetadata({
 
   const tMeta = await getTranslations({ locale, namespace: 'meta' });
   const metaTitle = fitTitle(t('metaTitle', { track, district }), titleRoom(tMeta('siteName')));
+  const lead = await openingsLead(locale, total);
 
   return {
     title: metaTitle,
-    description: fitDescription(t('subtitle', { track, district }), tMeta('descriptionPad')),
+    description: withOpenings(lead, t('subtitle', { track, district }), tMeta('descriptionPad')),
     ...(total === 0
       ? { robots: { index: false, follow: true } }
       : { alternates: alternatesFor(`/jobs/${slug}`, locale) }),
