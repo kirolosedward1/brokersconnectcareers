@@ -1,0 +1,4 @@
+# Agent skills. `next lint` and a root `eslint .` must not check them.
+# The app is linted from mobile/ (flat config); this file is what the
+# website's `next lint` reads.
+.cursor/

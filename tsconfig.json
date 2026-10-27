@@ -36,10 +36,11 @@
     "next-env.d.ts",
     ".next-build/types/**/*.ts"
   ],
-  "//": "The ' ?.ts' patterns exclude iCloud's duplicate files. This project lives under ~/Documents, which iCloud syncs, and it duplicates generated files inside .next/types as 'routes.d 2.ts' and the like while the build is writing them. Those duplicates fail typecheck with 'Duplicate identifier', which looks like a real break and is not. Note the glob: TypeScript supports only *, ? and **/ — it does NOT support [0-9] character classes, so the earlier '**/* [0-9].ts' matched nothing and this was never actually excluded. Verified by running tsc with the duplicates present.",
+  "//": "The ' ?.ts' patterns exclude iCloud's duplicate files. This project lives under ~/Documents, which iCloud syncs, and it duplicates generated files inside .next/types as 'routes.d 2.ts' and the like while the build is writing them. Those duplicates fail typecheck with 'Duplicate identifier', which looks like a real break and is not. Note the glob: TypeScript supports only *, ? and **/ — it does NOT support [0-9] character classes, so the earlier '**/* [0-9].ts' matched nothing and this was never actually excluded. Verified by running tsc with the duplicates present. `.cursor` is agent skills (markdown and helper scripts), not the site. The include globs above would typecheck any TypeScript they ship, and `pnpm typecheck` / `next build` would then fail on code this app does not run.",
   "exclude": [
     "node_modules",
     "mobile",
+    ".cursor",
     "**/* ?.ts",
     "**/* ?.tsx"
   ]

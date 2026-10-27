@@ -18,6 +18,11 @@ backups/
 *.dump
 *.age
 
+# Impeccable's launcher looks for an engine binary beside itself
+# (`.cursor/skills/impeccable/scripts/bin/<os>-<arch>/impeccable`) and otherwise
+# downloads it to ~/.impeccable. That binary is not part of this repo.
+.cursor/skills/impeccable/scripts/bin/
+
 # iCloud's copies of files it thinks it lost a race with.
 #
 # This project lives under ~/Documents, which iCloud Drive syncs, and on a
