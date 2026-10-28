@@ -49,6 +49,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 process.env.EXPO_PUBLIC_SUPABASE_URL ??= 'http://127.0.0.1:9';
 process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ??= 'test-publishable-key';
 process.env.EXPO_PUBLIC_SITE_URL ??= 'http://127.0.0.1:9';
+// Public client ids, so a test that presses Google configures the sheet.
+process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??= '100000000000-webclienttest.apps.googleusercontent.com';
+process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ??= '100000000000-iosclienttest.apps.googleusercontent.com';
+process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ??= '100000000000-androidclienttest.apps.googleusercontent.com';
 
 // React Native's test window reports a font scale of 2, an accessibility
 // text size, where the segmented control becomes a menu. The suites describe
@@ -82,6 +86,26 @@ jest.mock('react-native-webview', () => {
   }
   return { WebView, __webview: state };
 });
+
+// Google's sheet is the system's. The module is not in a test, and loading
+// the real package asks the native runtime for it.
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn(async () => true),
+    signIn: jest.fn(async () => ({ type: 'cancelled', data: null })),
+  },
+  statusCodes: {
+    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
+    SIGN_IN_REQUIRED: 'SIGN_IN_REQUIRED',
+    NULL_PRESENTER: 'NULL_PRESENTER',
+  },
+  isErrorWithCode: (error: { code?: unknown } | null) => Boolean(error && typeof error === 'object' && 'code' in error && error.code),
+  isCancelledResponse: (response: { type?: string } | null) => response?.type === 'cancelled',
+  isSuccessResponse: (response: { type?: string } | null) => response?.type === 'success',
+}));
 
 // Sign in with Apple is the system's sheet. Unavailable unless a test says
 // otherwise, and its button a plain one a test can press.

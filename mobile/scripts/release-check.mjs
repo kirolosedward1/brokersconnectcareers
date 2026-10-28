@@ -24,6 +24,18 @@ const require = createRequire(join(appRoot, 'package.json'));
 const BUNDLE_ID = 'net.brokersconnect.app';
 const SUPABASE = 'https://hiwdhicwsohbipxzazmb.supabase.co';
 const SITE = 'https://www.brokersconnect.net';
+const { iosGoogleUrlScheme } = require(join(appRoot, 'src/features/auth/google-client.js'));
+
+/** Public values the bundle may hold. The Google ids are client ids, not secrets, and may be unset. */
+const PUBLIC_ENV = [
+  'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID',
+  'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID',
+  'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID',
+  'EXPO_PUBLIC_SITE_URL',
+  'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+  'EXPO_PUBLIC_SUPABASE_URL',
+];
+const GOOGLE_CLIENT_ID = /^[0-9]+-[0-9A-Za-z_-]+\.apps\.googleusercontent\.com$/;
 
 let failures = 0;
 function check(label, ok, detail = '') {
@@ -60,11 +72,16 @@ check('builds for the store, not a development client', !production.developmentC
 check('builds for a device, not the simulator', !production.ios?.simulator);
 check('listens for updates on the production channel', production.channel === 'production');
 check('takes its build number from EAS, one higher each build', eas.cli?.appVersionSource === 'remote' && production.autoIncrement === true);
+const publicKeys = Object.keys(env).filter((key) => key.startsWith('EXPO_PUBLIC_'));
 check(
-  'carries only the three public EXPO_PUBLIC_ values, the ones the bundle may hold',
-  JSON.stringify(Object.keys(env).filter((key) => key.startsWith('EXPO_PUBLIC_')).sort()) ===
-    JSON.stringify(['EXPO_PUBLIC_SITE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SUPABASE_URL']),
+  'carries only the public EXPO_PUBLIC_ values the bundle may hold',
+  publicKeys.every((key) => PUBLIC_ENV.includes(key)),
+  publicKeys.filter((key) => !PUBLIC_ENV.includes(key)).join(', '),
 );
+for (const key of PUBLIC_ENV.filter((name) => name.startsWith('EXPO_PUBLIC_GOOGLE_'))) {
+  if (!env[key]) continue;
+  check(`${key} is a Google OAuth client id`, GOOGLE_CLIENT_ID.test(env[key]), env[key]);
+}
 check('talks to the production Supabase project', env.EXPO_PUBLIC_SUPABASE_URL === SUPABASE, env.EXPO_PUBLIC_SUPABASE_URL);
 check(
   "with the publishable key, never a secret or service-role one",
@@ -83,7 +100,14 @@ check(
 // ---------------------------------------------------------------------------
 section('the app as the production profile evaluates it (app.config.ts)');
 const saved = { ...process.env };
-for (const key of ['EAS_PROJECT_ID', 'EXPO_GO_UPDATE', 'GOOGLE_SERVICES_JSON']) delete process.env[key];
+for (const key of [
+  'EAS_PROJECT_ID',
+  'EXPO_GO_UPDATE',
+  'GOOGLE_SERVICES_JSON',
+  'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID',
+  'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID',
+  'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID',
+]) delete process.env[key];
 Object.assign(process.env, env);
 const { default: configure } = await import(join(appRoot, 'app.config.ts'));
 const config = configure({ config: {} });
@@ -134,6 +158,13 @@ const picker = config.plugins.find((plugin) => Array.isArray(plugin) && plugin[0
 check(
   'every permission the app asks for has its purpose in words, and the microphone is not asked for',
   Boolean(picker.photosPermission && picker.cameraPermission) && picker.microphonePermission === false,
+);
+const googleScheme = iosGoogleUrlScheme(env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+const googlePlugin = config.plugins.find((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin) === '@react-native-google-signin/google-signin');
+check(
+  googleScheme ? 'Google sign-in registers the reversed iOS client id' : 'Google sign-in waits until an iOS client id is set',
+  googleScheme ? googlePlugin?.[1]?.iosUrlScheme === googleScheme : googlePlugin === undefined,
+  JSON.stringify(googlePlugin),
 );
 
 // ---------------------------------------------------------------------------

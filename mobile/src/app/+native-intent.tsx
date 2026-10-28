@@ -19,7 +19,8 @@ import { leaveSheets, sheetsShowing } from '~/lib/sheet-gate';
  * PendingPath opens it (or the sign-in sheet) then. Nothing opens meanwhile.
  */
 export async function redirectSystemPath({ path }: { path: string; initial: boolean }): Promise<string | null> {
-  // Google's return, which the sign-in screen is waiting for itself (oauth-return.ts).
+  // A browser return the sign-in screen is already waiting for (oauth-return.ts).
+  // Google sign-in no longer starts one; a link that is one is still left to that screen.
   if (isAwaitedOAuthReturn(path)) return null;
   try {
     const actor = await readLastActor();

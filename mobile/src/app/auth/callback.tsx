@@ -12,12 +12,13 @@ import { useSession } from '~/lib/session';
 import { space } from '~/theme/tokens';
 
 /**
- * brokersconnect://auth/callback — where Google sends the browser back.
+ * brokersconnect://auth/callback — a code handed back to the app.
  *
- * The sign-in screen normally receives this address itself, from the
- * authentication browser, and exchanges the code there. If the system hands
- * the address to the app as an ordinary link instead, it arrives here and the
- * same exchange runs (the code is single-use, so it can only happen once).
+ * Google sign-in no longer returns here: the device's Google sheet gives an
+ * identity token, and Supabase exchanges that. A link that does arrive — a
+ * build that still opened the browser, or the system handing the address
+ * over as an ordinary link — exchanges its code here. The code is single-use,
+ * so that can only happen once.
  */
 export default function OAuthCallbackScreen() {
   const t = useTranslations();

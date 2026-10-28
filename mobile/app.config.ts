@@ -4,6 +4,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 // A static import, not `require`: scripts/publish-update.test.mjs loads this
 // file as ESM, where `require` is not defined.
 import { LAUNCH_MARK_WIDTH } from './src/components/brand/launch-size.js';
+import { iosGoogleUrlScheme } from './src/features/auth/google-client.js';
 
 /** The commit this bundle is published from, shown on Account so a phone can be matched to it. */
 function commitSha(): string | undefined {
@@ -104,6 +105,14 @@ const FACE_ID_PURPOSE = 'نستخدم Face ID لقفل التطبيق وفتحه
  * Go's SDK ("exposdk:58.0.0"), which no fingerprint of this app matches.
  */
 const forExpoGo = process.env.EXPO_GO_UPDATE === '1';
+
+/**
+ * Google Sign-In's iOS return scheme: the iOS client id, reversed. Absent
+ * until EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is a real client id, so a build is
+ * not given a scheme that is not Google's. Android needs no scheme here; it
+ * is the package name plus the signing certificate, set in Google Cloud.
+ */
+const googleIosScheme = iosGoogleUrlScheme(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
 
 /**
  * A store build opens at once on what it has and takes a new update from its
@@ -259,6 +268,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-sharing',
     'expo-status-bar',
     'expo-apple-authentication',
+    // The iOS URL scheme Google's sheet returns through. Omitted until the
+    // iOS client id is set (googleIosScheme, above): the plugin refuses a
+    // scheme that does not start with com.googleusercontent.apps.
+    ...(googleIosScheme ? [['@react-native-google-signin/google-signin', { iosUrlScheme: googleIosScheme }] as [string, { iosUrlScheme: string }]] : []),
     // The shortcuts held from the app's icon (src/components/navigation/home-shortcuts.tsx).
     'expo-quick-actions',
     [

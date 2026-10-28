@@ -4,7 +4,10 @@ import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { AuthRequest } from 'expo-auth-session';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import { confirmsDeletion, DELETE_WORD_ANY_KEYBOARD } from '@/lib/delete-confirmation';
 import { PendingPath } from '~/components/navigation/pending-path';
@@ -27,7 +30,6 @@ import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete
 import * as LicensesScreen from '../src/app/(tabs)/(account)/account/licenses';
 import * as ConfirmScreen from '../src/app/auth/confirm';
 import * as CallbackScreen from '../src/app/auth/callback';
-import { redirectSystemPath } from '../src/app/+native-intent';
 import * as MfaScreen from '../src/app/mfa';
 import * as OnboardingScreen from '../src/app/onboarding';
 import * as WelcomeScreen from '../src/app/welcome';
@@ -74,7 +76,18 @@ jest.mock('~/lib/session-storage', () => {
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
   openAuthSessionAsync: jest.fn(),
+  maybeCompleteAuthSession: jest.fn(),
 }));
+
+// The browser fallback builds an AuthRequest and prompts it. The native path
+// must not. The prompt is the one the mock constructor closes over.
+jest.mock('expo-auth-session', () => {
+  const actual = jest.requireActual('expo-auth-session');
+  const promptAsync = jest.fn(async () => ({ type: 'cancel' }));
+  const Request = jest.fn().mockImplementation((config: unknown) => ({ config, promptAsync }));
+  (Request as unknown as { promptAsync: typeof promptAsync }).promptAsync = promptAsync;
+  return { ...actual, AuthRequest: Request };
+});
 
 // Deterministic randomness and a readable "hash", so the nonce can be followed.
 jest.mock('expo-crypto', () => ({
@@ -939,66 +952,125 @@ describe('one-tap sign-in', () => {
     expect(JSON.parse((await AsyncStorage.getItem('auth:apple-sign-in')) ?? 'null')).toEqual({ userId: USER_ID, appleUser: 'apple-user' });
   });
 
-  it('Google: the system browser, the code back to the app, and PKCE', async () => {
+  it('Google: the device’s sheet, and the identity token, with no nonce and no Supabase browser', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({
+    jest.mocked(GoogleSignin.signIn).mockResolvedValue({
       type: 'success',
-      url: 'brokersconnect://auth/callback?code=google-code',
+      data: {
+        idToken: 'google-id-token',
+        serverAuthCode: null,
+        scopes: [],
+        user: { id: 'g', name: 'Sara', email: 'sara@example.com', photo: null, familyName: null, givenName: 'Sara' },
+      },
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await press(ar.auth.signInWithGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
-    const [authorize, returnTo] = jest.mocked(WebBrowser.openAuthSessionAsync).mock.calls[0];
-    const url = new URL(authorize);
-    expect(url.pathname).toBe('/auth/v1/authorize');
-    expect(url.searchParams.get('provider')).toBe('google');
-    expect(url.searchParams.get('redirect_to')).toBe('brokersconnect://auth/callback');
-    expect(url.searchParams.get('code_challenge_method')).toBe('s256');
-    expect(returnTo).toBe('brokersconnect://auth/callback');
-    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'pkce');
-    expect(exchange?.body).toMatchObject({ auth_code: 'google-code' });
+    expect(GoogleSignin.configure).toHaveBeenCalledWith({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    });
+    expect(GoogleSignin.hasPlayServices).not.toHaveBeenCalled();
+    expect(AuthRequest).not.toHaveBeenCalled();
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+    expect(server.asked('/auth/v1/authorize')).toHaveLength(0);
+    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'id_token');
+    expect(exchange?.body).toMatchObject({ provider: 'google', id_token: 'google-id-token' });
+    expect(exchange?.body).not.toHaveProperty('nonce');
   });
 
-  it('Google on Android: the return also arrives as a link, and the code is exchanged once', async () => {
-    // Android has no Apple button: Google stands on its own there.
+  it('Google on Android: Play services, then the identity token, and still no browser', async () => {
     const os = jest.replaceProperty(Platform, 'OS', 'android');
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
-    const back = 'brokersconnect://auth/callback?code=google-code';
-    let opened: string | null = 'not asked';
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockImplementation(async () => {
-      // What expo-router does with a link the system hands the app.
-      opened = await redirectSystemPath({ path: back, initial: false });
-      if (opened) act(() => router.navigate(opened as never));
-      return { type: 'success', url: back };
+    jest.mocked(GoogleSignin.signIn).mockResolvedValue({
+      type: 'success',
+      data: {
+        idToken: 'google-id-token',
+        serverAuthCode: null,
+        scopes: [],
+        user: { id: 'g', name: 'Sara', email: 'sara@example.com', photo: null, familyName: null, givenName: 'Sara' },
+      },
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
     await press(ar.auth.signInWithGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
-    expect(opened).toBeNull();
-    const exchanges = server.asked('/auth/v1/token').filter((request) => request.url.searchParams.get('grant_type') === 'pkce');
-    expect(exchanges).toHaveLength(1);
+    expect(GoogleSignin.hasPlayServices).toHaveBeenCalledWith({ showPlayServicesUpdateDialog: true });
+    expect(AuthRequest).not.toHaveBeenCalled();
+    expect(server.asked('/auth/v1/authorize')).toHaveLength(0);
+    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'id_token');
+    expect(exchange?.body).toMatchObject({ provider: 'google', id_token: 'google-id-token' });
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     os.restore();
   });
 
-  it('Google: closing the browser is not an error', async () => {
+  it('Google: dismissing the sheet is not an error', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({ type: 'cancel' } as Awaited<
-      ReturnType<typeof WebBrowser.openAuthSessionAsync>
-    >);
+    jest.mocked(GoogleSignin.signIn).mockResolvedValue({ type: 'cancelled', data: null });
     await renderRouter(app, { initialUrl: '/sign-in' });
     await press(ar.auth.signInWithGoogle);
-    await waitFor(() => expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalled());
-    // The sheet is usable again, and says nothing went wrong.
+    await waitFor(() => expect(GoogleSignin.signIn).toHaveBeenCalled());
+    // The sheet is usable again, and says nothing went wrong — and the browser was not opened instead.
     expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle, disabled: false })).toBeTruthy();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     expect(screen.getByText(ar.auth.signInTitle)).toBeTruthy();
+    expect(AuthRequest).not.toHaveBeenCalled();
+  });
+
+  it('Google in Expo Go: an identity token from accounts.google.com, with the nonce split', async () => {
+    const environment = jest.replaceProperty(Constants, 'executionEnvironment', ExecutionEnvironment.StoreClient);
+    jest.mocked(GoogleSignin.signIn).mockClear();
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    const prompt = (AuthRequest as unknown as { promptAsync: jest.Mock }).promptAsync;
+    prompt.mockResolvedValue({
+      type: 'success',
+      params: { id_token: 'google-id-token' },
+      authentication: null,
+      error: null,
+      errorCode: null,
+      url: 'https://accounts.google.com/back',
+    });
+    await renderRouter(app, { initialUrl: '/sign-in' });
+    await press(ar.auth.signInWithGoogle);
+
+    expect(await screen.findByText('home screen')).toBeTruthy();
+    expect(GoogleSignin.signIn).not.toHaveBeenCalled();
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+    const nonce = 'ab'.repeat(32);
+    const config = jest.mocked(AuthRequest).mock.calls[0][0] as unknown as {
+      clientId: string;
+      extraParams: { nonce: string };
+      responseType: string;
+    };
+    expect(config.clientId).toBe(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
+    expect(config.responseType).toBe('id_token');
+    expect(config.extraParams.nonce).toBe(`sha256:${nonce}`);
+    expect(prompt).toHaveBeenCalledWith(expect.objectContaining({ authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth' }));
+    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'id_token');
+    expect(exchange?.body).toMatchObject({ provider: 'google', id_token: 'google-id-token', nonce });
+    environment.restore();
+  });
+
+  it('Google: a binary without the native module asks Google the same way, and a cancel does not', async () => {
+    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
+    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
+    jest.mocked(GoogleSignin.signIn).mockRejectedValueOnce(
+      new Error("TurboModuleRegistry.getEnforcing(...): 'RNGoogleSignin' could not be found."),
+    );
+    const prompt = (AuthRequest as unknown as { promptAsync: jest.Mock }).promptAsync;
+    prompt.mockResolvedValueOnce({ type: 'cancel' });
+    await renderRouter(app, { initialUrl: '/sign-in' });
+    await press(ar.auth.signInWithGoogle);
+    await waitFor(() => expect(prompt).toHaveBeenCalled());
+    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle, disabled: false })).toBeTruthy();
+    expect(screen.queryByText(ar.common.errorBody)).toBeNull();
+    expect(server.asked('/auth/v1/token').filter((request) => request.url.searchParams.get('grant_type') === 'id_token')).toHaveLength(0);
   });
 });
 
@@ -1124,9 +1196,14 @@ describe('one-tap sign-in, as App Review asks', () => {
   it('signs in from the welcome with the round buttons beside Sign in, and closes it', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValue({
+    jest.mocked(GoogleSignin.signIn).mockResolvedValue({
       type: 'success',
-      url: 'brokersconnect://auth/callback?code=google-code',
+      data: {
+        idToken: 'google-id-token',
+        serverAuthCode: null,
+        scopes: [],
+        user: { id: 'g', name: 'Sara', email: 'sara@example.com', photo: null, familyName: null, givenName: 'Sara' },
+      },
     });
     await renderRouter(app, { initialUrl: '/welcome' });
     const google = await screen.findByRole('button', { name: ar.auth.signInWithGoogle });
@@ -1137,8 +1214,8 @@ describe('one-tap sign-in, as App Review asks', () => {
     fireEvent.press(google);
     expect(await screen.findByText('home screen')).toBeTruthy();
     await waitFor(() => expect(screen.queryByTestId('welcome')).toBeNull());
-    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'pkce');
-    expect(exchange?.body).toMatchObject({ auth_code: 'google-code' });
+    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'id_token');
+    expect(exchange?.body).toMatchObject({ provider: 'google', id_token: 'google-id-token' });
   });
 });
 

@@ -13,8 +13,9 @@ import { encryptedSessionStorage } from './session-storage';
  * come through here: they go to /api/mobile/v1 (see api.ts), which runs the
  * website's own server actions.
  *
- * PKCE, because the one redirect flow the app runs (Google, through the system
- * browser) must not put tokens in a URL. The session is stored encrypted
+ * PKCE, so a code that still arrives at the callback is exchanged without
+ * tokens in a URL. Google sign-in no longer uses that redirect: it hands
+ * Supabase an identity token. The session is stored encrypted
  * (session-storage.ts) and refreshed only while the app is in the foreground,
  * which is what Supabase recommends for React Native.
  */

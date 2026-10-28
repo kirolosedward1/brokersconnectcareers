@@ -95,7 +95,17 @@ console.log('\n— the configuration a store build is made from');
 /** app.config.ts evaluated with exactly these variables, as EAS or the publish script would. */
 async function configWith(vars) {
   const saved = { ...process.env };
-  for (const key of ['EAS_BUILD_PROFILE', 'EAS_PROJECT_ID', 'EXPO_GO_UPDATE', 'EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SITE_URL']) {
+  for (const key of [
+    'EAS_BUILD_PROFILE',
+    'EAS_PROJECT_ID',
+    'EXPO_GO_UPDATE',
+    'EXPO_PUBLIC_SUPABASE_URL',
+    'EXPO_PUBLIC_SUPABASE_ANON_KEY',
+    'EXPO_PUBLIC_SITE_URL',
+    'EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID',
+    'EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID',
+    'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID',
+  ]) {
     delete process.env[key];
   }
   Object.assign(process.env, vars);
