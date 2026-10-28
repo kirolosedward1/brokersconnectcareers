@@ -8,6 +8,10 @@
 # it. On anything but a pull request there is nowhere to comment, and this
 # exits without pushing.
 #
+# Every commit also writes vercel.json at the root. Vercel reads that file
+# from the branch it is deploying, and look-shots does not carry main's copy.
+# git.deploymentEnabled false skips the build of this branch.
+#
 #   scripts/post-look-shots.sh <output folder>
 #
 # LOOK_SHOTS_DRY=1 prints the comment and does not push. LOOK_SHOTS_REMOTE
@@ -108,6 +112,10 @@ else
 fi
 work=$(mktemp -d)
 git init -q "$work"
+# The runner has no global identity. commit -c sets it for the shot commit;
+# rebase makes the follow-up commit itself, and refuses an empty name.
+git -C "$work" config user.name github-actions
+git -C "$work" config user.email github-actions@github.com
 git -C "$work" remote add origin "$remote"
 if git -C "$work" fetch --depth 1 origin look-shots:look-shots 2>/dev/null; then
   git -C "$work" checkout -q look-shots
@@ -116,11 +124,21 @@ else
 fi
 mkdir -p "$work/$run"
 find "$shots" -maxdepth 1 -name '*.png' -exec cp {} "$work/$run/" \;
-git -C "$work" add "$run"
+# Written on every run, not only the first. The branch already exists without
+# this file, and a later commit has to bring it along or Vercel keeps building.
+cat > "$work/vercel.json" <<'EOF'
+{
+  "git": {
+    "deploymentEnabled": false
+  }
+}
+EOF
+git -C "$work" add "$run" vercel.json
 git -C "$work" -c user.name=github-actions -c user.email=github-actions@github.com \
   commit -qm "Look shots from run ${run}"
 # Another run may have pushed while this one committed. Rebase onto that
-# commit and push again; the branch is only ever fast-forwarded.
+# commit and push again; the branch is only ever fast-forwarded. Both runs
+# can add vercel.json together; the file is the same, so keep it and go on.
 pushed=0
 for _ in 1 2 3; do
   if git -C "$work" push origin HEAD:look-shots; then
@@ -128,7 +146,12 @@ for _ in 1 2 3; do
     break
   fi
   git -C "$work" fetch --depth 1 origin look-shots
-  git -C "$work" rebase origin/look-shots
+  if ! git -C "$work" rebase origin/look-shots; then
+    git -C "$work" checkout --theirs -- vercel.json
+    git -C "$work" add -- vercel.json
+    git -C "$work" -c user.name=github-actions -c user.email=github-actions@github.com \
+      -c core.editor=true rebase --continue
+  fi
 done
 [ "$pushed" = 1 ] || { echo "::error::could not push look-shots"; exit 1; }
 
