@@ -152,7 +152,17 @@ console.log('— crawl files');
   const footer = readFileSync('src/components/site-footer.tsx', 'utf8');
   const header = readFileSync('src/components/site-header.tsx', 'utf8');
   check('the footer links the sitelink pages and areas', footer.includes('SITELINK_PAGES') && footer.includes('SITELINK_AREAS'));
-  check('the header links the sitelink pages and areas', header.includes('SITELINK_PAGES') && header.includes('SITELINK_AREAS'));
+  check('the header links the area landings', header.includes('SITELINK_AREAS') && header.includes('areaLandingPath'));
+  check('the header does not repeat the employer or sign-up sitelinks', !header.includes('SITELINK_PAGES') && !header.includes('forEmployers') && !header.includes('announceJob'));
+
+  const account = readFileSync('src/components/session/header-account.tsx', 'utf8');
+  check('the signed-out header keeps sign-in and the post button', account.includes('href="/sign-in"') && account.includes('anonymousPostHref') && account.includes('{postJob}'));
+  check('the signed-out header does not offer sign-up', !account.includes('/sign-up'));
+
+  const panel = readFileSync('src/components/auth/brand-panel.tsx', 'utf8');
+  const proof = readFileSync('src/lib/queries/market-proof.ts', 'utf8');
+  check('the auth panel asks the database for its counts', panel.includes('getMarketProof') && proof.includes('getBrowseCounts') && proof.includes("verification_status', 'verified'"));
+  check('the auth panel has no baked-in count', !/\d{2,}\s*(وظيفة|published)/.test(panel));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

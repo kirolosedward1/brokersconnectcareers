@@ -150,8 +150,17 @@ function totp(secret, offset = 0) {
   return String((mac.readUInt32BE(at) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
 
+/** The address and password stay folded on sign-in until this button opens them. */
+async function openEmailSignIn(scope) {
+  const toggle = scope.getByRole('button', { name: CATALOGUE.auth.signInWithEmail });
+  if ((await toggle.count()) === 0) return;
+  if ((await toggle.first().getAttribute('aria-expanded')) === 'true') return;
+  await toggle.first().click();
+}
+
 async function signInThroughForm(page, email, password = PASSWORD) {
   await page.goto(`${SITE}/sign-in`);
+  await openEmailSignIn(page);
   await page.fill('input[name="email"]', email);
   await page.fill('input[name="password"]', password);
   await submit(page).click();
@@ -428,6 +437,7 @@ section('a visitor presses Save, signs in where they stand, and the listing is s
   await save.click();
   const dialog = page.locator('[role="dialog"]');
   check('Save signed out opens the sign-in dialog, on the listing', (await dialog.count()) === 1 && path(page) === `/jobs/${listing.slug}`, page.url());
+  await openEmailSignIn(dialog);
   await dialog.locator('input[name="email"]').fill(email);
   await dialog.locator('input[name="password"]').fill(password);
   await dialog.locator('form button[type="submit"]').click();
@@ -444,7 +454,7 @@ section('a visitor presses Save, signs in where they stand, and the listing is s
 }
 
 {
-  // Apply, signed out: the same dialog, naming the listing; dismissed, nothing moves.
+  // Apply, signed out: the same dialog, without the listing card; dismissed, nothing moves.
   const { page, context } = await device();
   const listing = (await sql("select slug, title_ar from jobs where status = 'active' and expires_at > now() order by published_at desc limit 1"))[0];
   await page.goto(`${SITE}/jobs/${listing.slug}`);
@@ -452,7 +462,11 @@ section('a visitor presses Save, signs in where they stand, and the listing is s
   await page.locator('main button:visible', { hasText: JOBS.apply }).first().click();
   const dialog = page.locator('[role="dialog"]');
   check('Apply signed out opens the sign-in dialog', (await dialog.count()) === 1, page.url());
-  check('and names the listing', (await dialog.getByText(listing.title_ar, { exact: false }).count()) >= 1);
+  check('and does not repeat the listing', (await dialog.getByText(listing.title_ar, { exact: false }).count()) === 0);
+  check(
+    'email stays behind its button',
+    (await dialog.getByRole('button', { name: CATALOGUE.auth.signInWithEmail }).getAttribute('aria-expanded')) === 'false',
+  );
   await page.keyboard.press('Escape');
   await sleep(300);
   check('Escape closes it and leaves the reader where they were', (await dialog.count()) === 0 && path(page) === `/jobs/${listing.slug}`, page.url());
