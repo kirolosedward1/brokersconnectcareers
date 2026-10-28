@@ -131,3 +131,11 @@ enabled = true
 client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
+# The phone's Google sheet cannot set a nonce GoTrue can check: iOS puts its
+# own nonce in the identity token, and the original sign-in module has no way
+# to choose it (mobile/src/features/auth/google.ts). The hosted project needs
+# the same switch, Authentication → Providers → Google → Skip nonce check.
+# The website's One Tap still sends a nonce; with this on, that nonce is not
+# verified. Client IDs for the app (web first, then iOS, then Android) are
+# set on the hosted provider, comma-separated, not in this file.
+skip_nonce_check = true

@@ -449,10 +449,15 @@ they are in, instead of the round trip through the sign-in page.
   Apple revokes it, or the website did while deleting the account (and the
   deletion then failed), that session ends on the phone with a word that it
   stopped, blaming nobody (`AppleCredentialWatch`). An Apple ID iOS does not know ends nothing, and a
-  session made by password is never asked about. **Google** runs Supabase's OAuth flow in
-  the system's authentication browser with PKCE, returning to
-  `brokersconnect://auth/callback`. Each button appears only when
-  `/api/mobile/v1/config` says the provider is on.
+  session made by password is never asked about. **Google** is the device's own
+  sheet (`@react-native-google-signin/google-signin`). The sheet returns an
+  identity token and the app gives it to `signInWithIdToken`. iOS never asks
+  to use the Supabase host to sign in. The original module cannot set a nonce,
+  and the iOS token carries one anyway, so the hosted Google provider needs
+  **Skip nonce check** (below). Expo Go has no native module: there the same
+  exchange runs on an identity token from `accounts.google.com`
+  (`expo-auth-session`), with a nonce the website's One Tap would recognise.
+  Each button appears only when `/api/mobile/v1/config` says the provider is on.
 - **Second factor.** An account with an authenticator is asked for its code
   after any sign-in, before anything else opens — and on the website before
   any page of the account (`src/lib/auth/second-factor.ts`), which asked only
@@ -793,7 +798,11 @@ Expo Go runs the app as itself, not as `net.brokersconnect.app`, so a few
 things need a development build instead:
 
 - Sign in with Apple: Apple issues the token to Expo Go, so the app does not
-  show the button there. Email and password, and Google, work.
+  show the button there. Email and password work. Google's own sheet does
+  not — Expo Go has no native module for it. The button stays, and asks
+  Google for an identity token in the browser (`accounts.google.com`, not
+  the Supabase host). That fallback needs the client ids below; the sheet
+  itself needs a development build.
 - Push notifications on Android: Expo Go has had none there since SDK 53, and
   the app offers none without Firebase (`pushAvailable()` in
   `src/features/push/device.ts`). On the iPhone, Expo Go registers the app's
@@ -845,8 +854,9 @@ production, with QA accounts made for it — never the demo accounts.
 - Signed out: the board's results match the website's for the same filters; a
   listing, a company, sharing a listing.
 - Sign up with email: the confirmation email's link opens the app and leads to
-  onboarding; Sign in with Apple, and with Google (the browser comes back to
-  the app signed in, with no error behind it).
+  onboarding; Sign in with Apple, and with Google (the device's account
+  sheet, then the app signed in, with no prompt naming supabase.co and no
+  error behind it).
 - Candidate: apply with a CV from Files; the employer sees the applicant and
   opens the CV; both emails arrive; the candidate sees "opened".
 - Employer: move an applicant — the candidate gets the push and the email;
@@ -893,7 +903,14 @@ production, with QA accounts made for it — never the demo accounts.
 
 The app is built with three public values (`mobile/.env.example`, and `eas.json`
 for EAS builds): the Supabase URL, the publishable key the website also ships
-to browsers, and the site URL. Nothing secret is in the app.
+to browsers, and the site URL. Google Sign-In adds three more, also public
+and also inlined into the bundle: `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`,
+`EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` and `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`.
+Empty until they exist. They belong in `eas.json`'s `build.base.env` as well
+as `mobile/.env`, because a build and an over-the-air update both take them
+from there. Nothing secret is in the app. A new native build is required
+after the module is added: the Google sheet is native code, and the iOS URL
+scheme (the iOS client id, reversed) is written at build time.
 
 On the website (Vercel):
 
@@ -915,9 +932,21 @@ In the Supabase dashboard (Authentication):
   bundle id `net.brokersconnect.app` among the client ids for the app. Both
   sign-in buttons appear once it is (`enabledProviders()`). The App Store
   requires Sign in with Apple wherever Google is offered.
-- **URL Configuration → Redirect URLs**: add `brokersconnect://auth/callback`
-  for Google in the app; the email links use the website's own callback,
-  which is already listed.
+- **Providers → Google**: the website's web client id and secret stay as they
+  are. **Client IDs** (authorized client ids), comma-separated, web client id
+  first, then the iOS client id, then the Android client id. The iOS identity
+  token's audience is the iOS client; Android's native token is issued for
+  the web client, which is why that one stays first. Turn **Skip nonce
+  check** on. The phone's sheet cannot supply a nonce GoTrue can check — iOS
+  puts its own in the token, and `@react-native-google-signin/google-signin`'s
+  original sign-in has no way to choose it. With the check left on, iOS
+  sign-in is refused. The switch is the whole Google provider, so the
+  website's One Tap nonce is not verified either. The local stack sets the
+  same switch (`supabase/config.toml`, `skip_nonce_check`).
+- **URL Configuration → Redirect URLs**: email links use the website's own
+  callback, which is already listed. Google sign-in no longer returns to
+  `brokersconnect://auth/callback`. The entry can stay for a build that
+  still exchanges a code.
 - **Emails → Templates**: the five in `supabase/templates/` (`docs/email.md`).
   Their links go to `/auth/confirm` with a token hash, which the app opens and
   verifies itself; Supabase's own templates end in the code flow, which only

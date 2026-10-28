@@ -1,10 +1,10 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
-import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '~/lib/supabase';
 import { rememberAppleSignIn } from './apple-credential';
-import { awaitingOAuthReturn, OAUTH_REDIRECT } from './oauth-return';
+import { signInWithGoogleAccount } from './google';
+import { OAUTH_REDIRECT } from './oauth-return';
 
 /**
  * The one-tap sign-ins, as the phone does them.
@@ -15,11 +15,9 @@ import { awaitingOAuthReturn, OAUTH_REDIRECT } from './oauth-return';
  * of the one Supabase is given, so a token lifted from Apple's response is no
  * use to anyone who does not also hold the original.
  *
- * Google: Supabase's own OAuth flow, in the system's authentication browser
- * (ASWebAuthenticationSession — Google refuses sign-ins in embedded web views).
- * PKCE: the verifier stays in this app's encrypted storage and the browser
- * only ever returns a one-time code to brokersconnect://auth/callback, which
- * the Supabase project must list as an allowed redirect.
+ * Google: the device's own Google sheet, and the same exchange (google.ts).
+ * Expo Go, which has no native module to show that sheet, asks Google for an
+ * identity token directly. Neither opens supabase.co.
  *
  * Neither needs a captcha: Supabase asks for one only with a password.
  */
@@ -121,20 +119,8 @@ export async function appleAuthorizationCode(): Promise<string | null> {
   }
 }
 
-export async function signInWithGoogle(): Promise<ProviderOutcome> {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: OAUTH_REDIRECT, skipBrowserRedirect: true },
-  });
-  if (error) return failed(error);
-  if (!data.url) return failed('google: no authorization url');
-
-  const authorize = data.url;
-  return awaitingOAuthReturn(async () => {
-    const result = await WebBrowser.openAuthSessionAsync(authorize, OAUTH_REDIRECT);
-    if (result.type !== 'success') return CANCELLED;
-    return completeOAuth(result.url);
-  });
+export function signInWithGoogle(): Promise<ProviderOutcome> {
+  return signInWithGoogleAccount(inExpoGo());
 }
 
 /**

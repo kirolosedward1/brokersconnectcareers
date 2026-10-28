@@ -1,17 +1,19 @@
-/** Where Google sends the browser back. Supabase's redirect allow list names it. */
+/**
+ * Where a browser sign-in used to send the person back. Google sign-in no
+ * longer opens one; a code that still arrives at this address is exchanged
+ * by the callback screen. Supabase's redirect allow list may still name it.
+ */
 export const OAUTH_REDIRECT = 'brokersconnect://auth/callback';
 
 /**
- * Whether a Google sign-in is waiting for the browser to come back.
+ * Whether a browser sign-in is waiting for its return.
  *
- * On iOS the authentication browser hands its return address to the sign-in
- * screen alone. On Android the same address also reaches the app as an
- * ordinary link, which opened the callback screen, and the two exchanged the
- * same single-use code: whichever came second was refused, and an error
- * covered a sign-in that had worked. While the sign-in screen waits for its
- * own answer, that link is left to it (src/app/+native-intent.tsx). One that
- * comes when nothing waits — the app was closed meanwhile — still opens the
- * callback screen, which finishes the sign-in there.
+ * Google sign-in no longer opens one. A code that still comes back — a build
+ * that did — can arrive twice: iOS hands the address to the screen that
+ * opened the browser, and Android also delivers it as a link. The two would
+ * exchange the same single-use code, and whichever came second was refused.
+ * While something waits, that link is left to it (src/app/+native-intent.tsx).
+ * One that comes when nothing waits still opens the callback screen.
  */
 let waiting = 0;
 
