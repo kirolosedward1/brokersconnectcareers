@@ -1647,7 +1647,8 @@
       "secondary": "See who's hiring"
     },
     "latest": {
-      "title": "Latest jobs"
+      "title": "Latest jobs",
+      "viewAll": "View all jobs"
     },
     "browse": {
       "title": "Browse real estate jobs",

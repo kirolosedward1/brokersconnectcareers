@@ -38,6 +38,30 @@ import type { Translate } from '@/lib/notifications/title';
 
 export const JOBS_PER_PAGE = 20;
 
+/**
+ * How many live listings the public home strip draws.
+ *
+ * Shorter than a board page. The strip is the board's first page with a
+ * tighter range — same filters, same order, one read — so showing twelve
+ * does not add a round trip and does not transfer more rows than `/jobs`.
+ */
+export const HOME_LATEST_JOBS = 12;
+
+/**
+ * How many rows one page of `queryJobs` asks for.
+ *
+ * A strip passes its own length. Anything else — omitted, not an integer,
+ * below one, or past a board page — stays at {@link JOBS_PER_PAGE}. The
+ * clamp is the point: a home-page limit cannot turn the busiest read on the
+ * site into an unbounded list, and it cannot ask for more than the board
+ * already does.
+ */
+export function listingPageSize(limit?: number): number {
+  if (typeof limit !== 'number' || !Number.isInteger(limit)) return JOBS_PER_PAGE;
+  if (limit < 1 || limit > JOBS_PER_PAGE) return JOBS_PER_PAGE;
+  return limit;
+}
+
 export type JobSort = 'newest' | 'salary' | 'seats';
 
 export type JobFilters = {

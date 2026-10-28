@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { asLocale, alternatesFor } from '@/i18n/routing';
 import { Landing } from '@/components/home/landing';
 import { getDistricts } from '@/lib/queries/taxonomy';
-import { anonymousJobs, EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
+import { anonymousJobs, EMPTY_FILTERS, HOME_LATEST_JOBS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
 import { getBrowseCounts } from '@/lib/queries/browse';
 import { withOpenings } from '@/lib/seo/meta-text';
@@ -37,7 +37,21 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const districts = await optional(getDistricts(), []);
   const [counts, latest] = await Promise.all([
     optional(getBrowseCounts(), null),
-    optional(queryJobs({ ...EMPTY_FILTERS }, anonymousJobs()), { jobs: [], total: 0, pageCount: 0, page: 1 }),
+    /*
+      Twelve live listings, on the read the page already makes.
+
+      Same anonymous client as before — a cookie client would opt this route
+      out of its cache — and a limit inside one board page, so the strip does
+      not add a round trip and does not transfer more rows than `/jobs`.
+      The route's `revalidate` is what caches the HTML; the limit is a
+      constant, so every anonymous visitor still shares that page.
+    */
+    optional(queryJobs({ ...EMPTY_FILTERS }, anonymousJobs(), { limit: HOME_LATEST_JOBS }), {
+      jobs: [],
+      total: 0,
+      pageCount: 0,
+      page: 1,
+    }),
   ]);
 
   return <Landing locale={locale} districts={districts} counts={counts} jobs={latest.jobs} />;

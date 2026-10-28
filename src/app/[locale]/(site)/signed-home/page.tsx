@@ -9,7 +9,7 @@ import { canAccessEmployerArea, homeFor } from '@/lib/permissions';
 import { redirect } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getDistricts } from '@/lib/queries/taxonomy';
-import { anonymousJobs, EMPTY_FILTERS, queryJobs } from '@/lib/queries/jobs';
+import { anonymousJobs, EMPTY_FILTERS, HOME_LATEST_JOBS, queryJobs } from '@/lib/queries/jobs';
 import { optional } from '@/lib/queries/error';
 import { getBrowseCounts } from '@/lib/queries/browse';
 
@@ -47,7 +47,12 @@ export default async function SignedHomePage({ params }: { params: Promise<{ loc
   if (!viewer.profile) {
     const [counts, latest] = await Promise.all([
       optional(getBrowseCounts(), null),
-      optional(queryJobs({ ...EMPTY_FILTERS }, anonymousJobs()), { jobs: [], total: 0, pageCount: 0, page: 1 }),
+      optional(queryJobs({ ...EMPTY_FILTERS }, anonymousJobs(), { limit: HOME_LATEST_JOBS }), {
+        jobs: [],
+        total: 0,
+        pageCount: 0,
+        page: 1,
+      }),
     ]);
     return <Landing locale={locale} districts={districts} counts={counts} jobs={latest.jobs} />;
   }
