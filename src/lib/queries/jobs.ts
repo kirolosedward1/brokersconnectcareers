@@ -11,7 +11,7 @@ import type {
   SalaryReferenceRow,
 } from '@/lib/supabase/database.types';
 import { buildJobQuery, searchText } from '@/lib/search/arabic';
-import { JOBS_PER_PAGE, type JobFilters } from '@/lib/job-filters';
+import { listingPageSize, type JobFilters } from '@/lib/job-filters';
 import { COMPANY_PUBLIC_COLUMNS } from '@/lib/company-member';
 import { LIST_SELECT, type JobDetail, type JobListItem } from '@/lib/job-list';
 import { logFailure } from '@/lib/observe';
@@ -33,6 +33,7 @@ export function anonymousJobs(): SupabaseLikeClient {
 
 export {
   JOBS_PER_PAGE,
+  HOME_LATEST_JOBS,
   EMPTY_FILTERS,
   parseJobFilters,
   serializeJobFilters,
@@ -194,11 +195,17 @@ const isMissingSearchDocuments = (error: { code?: string } | null) =>
  * listing someone paid to pin is labelled as sponsored wherever the board
  * shows it pinned; an alert has no such label, and "published since you last
  * heard" is a promise about recency that a pinned listing would break.
+ *
+ * `limit` shortens that one page for a strip that is not the board — the
+ * home page's twelve listings. It never widens the read: `listingPageSize`
+ * refuses anything above a board page, and an omitted limit is the board's
+ * own page, unchanged. The exact count still rides on the same request, so
+ * a shorter strip is not a second query and not a second cache.
  */
 export const queryJobs = cache(async function queryJobs(
   filters: JobFilters,
   client?: SupabaseLikeClient,
-  { pinSponsored = true }: { pinSponsored?: boolean } = {},
+  { pinSponsored = true, limit }: { pinSponsored?: boolean; limit?: number } = {},
 ): Promise<{
   jobs: JobListItem[];
   total: number;
@@ -253,9 +260,11 @@ export const queryJobs = cache(async function queryJobs(
     return query;
   };
 
+  const pageSize = listingPageSize(limit);
+
   const pageOf = (page: number) => {
-    const from = (page - 1) * JOBS_PER_PAGE;
-    return build().range(from, from + JOBS_PER_PAGE - 1);
+    const from = (page - 1) * pageSize;
+    return build().range(from, from + pageSize - 1);
   };
 
   let { data, error, count } = await pageOf(filters.page);
@@ -288,7 +297,7 @@ export const queryJobs = cache(async function queryJobs(
     const { count: total, error: countError } = await pageOf(1);
     if (countError) raise(countError, 'searching jobs');
 
-    const pageCount = Math.max(1, Math.ceil((total ?? 0) / JOBS_PER_PAGE));
+    const pageCount = Math.max(1, Math.ceil((total ?? 0) / pageSize));
     const { data: lastPage, error: lastError } = await pageOf(pageCount);
     if (lastError) raise(lastError, 'searching jobs');
 
@@ -321,7 +330,7 @@ export const queryJobs = cache(async function queryJobs(
   return {
     jobs: (data ?? []) as unknown as JobListItem[],
     total,
-    pageCount: Math.max(1, Math.ceil(total / JOBS_PER_PAGE)),
+    pageCount: Math.max(1, Math.ceil(total / pageSize)),
     page: filters.page,
   };
 });

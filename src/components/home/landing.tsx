@@ -25,6 +25,7 @@ import { JobBrowse } from '@/components/home/job-browse';
 import { PopularLandings } from '@/components/jobs/popular-landings';
 import { JobCard } from '@/components/jobs/job-card';
 import type { BrowseCounts } from '@/lib/queries/browse';
+import { HOME_LATEST_JOBS } from '@/lib/job-filters';
 import type { JobListItem } from '@/lib/queries/jobs';
 
 /**
@@ -160,9 +161,11 @@ export async function Landing({
   /**
    * The newest live listings, as the rows the board itself uses.
    *
-   * Real ones or nothing. Six is two rows of three facts-lines each side on a
-   * laptop — enough to show the board is alive and what a listing here looks
-   * like, short of becoming the board.
+   * Real ones or nothing. Twelve is six rows of the same two-column grid —
+   * one column on a phone — enough to browse from here, with the full board
+   * one button below. The page asks for `HOME_LATEST_JOBS` and no more; the
+   * slice is the same cap, so a caller that handed the whole first page
+   * still cannot draw past it.
    */
   async function LatestJobs() {
     if (jobs.length === 0) return null;
@@ -185,12 +188,21 @@ export async function Landing({
           </div>
 
           <ul className="mt-3 grid gap-2 lg:grid-cols-2">
-            {jobs.slice(0, 6).map((job) => (
+            {jobs.slice(0, HOME_LATEST_JOBS).map((job) => (
               <li key={job.id}>
                 <JobCard job={job} locale={locale} />
               </li>
             ))}
           </ul>
+
+          <div className="mt-6 flex justify-center">
+            <Button asChild variant="outline" className="w-full sm:w-auto sm:min-w-52">
+              <Link href="/jobs">
+                {t('latest.viewAll')}
+                <ArrowRight className="rtl-flip" aria-hidden />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
     );

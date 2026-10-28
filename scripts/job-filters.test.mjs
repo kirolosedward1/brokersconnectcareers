@@ -12,7 +12,7 @@ import { register } from 'node:module';
 
 register('../supabase/tests/alias-hooks.mjs', import.meta.url);
 
-const { activeFilterList, parseJobFilters, serializeJobFilters, EMPTY_FILTERS, JOB_FILTER_PARAMS } = await import(
+const { activeFilterList, parseJobFilters, serializeJobFilters, EMPTY_FILTERS, JOB_FILTER_PARAMS, JOBS_PER_PAGE, HOME_LATEST_JOBS, listingPageSize } = await import(
   '../src/lib/job-filters.ts'
 );
 
@@ -101,6 +101,14 @@ console.log('\n— the app names every parameter the board writes, and no other'
   is('every written key is in JOB_FILTER_PARAMS', [...written].filter((key) => !JOB_FILTER_PARAMS.includes(key)), []);
   is('and every JOB_FILTER_PARAMS key is written by a full board', JOB_FILTER_PARAMS.filter((key) => !written.has(key)), []);
 }
+
+console.log('\n— the home strip is a shorter board page, never a wider one');
+is('twelve listings', HOME_LATEST_JOBS, 12);
+is('inside one board page', HOME_LATEST_JOBS <= JOBS_PER_PAGE, true);
+is('the strip length is what the query asks for', listingPageSize(HOME_LATEST_JOBS), HOME_LATEST_JOBS);
+is('no limit is the board page', listingPageSize(undefined), JOBS_PER_PAGE);
+is('a limit past a board page stays a board page', listingPageSize(JOBS_PER_PAGE + 1), JOBS_PER_PAGE);
+is('zero, a fraction and a non-number stay a board page', [listingPageSize(0), listingPageSize(1.5), listingPageSize(Number.NaN)], [JOBS_PER_PAGE, JOBS_PER_PAGE, JOBS_PER_PAGE]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
