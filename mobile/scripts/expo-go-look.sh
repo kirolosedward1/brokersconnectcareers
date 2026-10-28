@@ -480,6 +480,11 @@ if grep -qE '^y[0-9]+ x[0-9-]+  (Playground|Welcome to your playground\.|Project
   echo "::error title=Expo Go: tour::the app was left during the tour (Expo Go's own screen showed): see the t1–t11 readings in the log"
 fi
 open_app jobs
+# The tour opens a listing from wherever its card sat and comes back there,
+# which can leave the filters above the screen. A finger drawn down the
+# margin, beside the cards, brings the top of the board back before it is read.
+tour 3e-board-top 'after the tour, toward the top of the board' "$flows/expo-go-scroll-up.yaml"
+tour 3e-board-top-again 'and once more, if the board was further down' "$flows/expo-go-scroll-up.yaml"
 see 3f-jobs-after-tour 'الفلاتر'
 
 open_app companies
