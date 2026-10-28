@@ -125,6 +125,18 @@ is('the tint is the brand blue at 7% on white', tintRule.includes('7%') && tintR
 is('tanween sits on the letter before the alef', ar.jobs.appPromo.comingSoon.includes('اً'), false);
 is('English is the same lines', Object.keys(en.jobs.appPromo), Object.keys(ar.jobs.appPromo));
 is('no caption while there is no QR', ar.jobs.appPromo.qrCaption, undefined);
+is(
+  'the rail frames the real jobs capture and does not link a store',
+  promo.includes('/app-screenshots/jobs.webp') &&
+    promo.includes('PhoneFrame') &&
+    promo.includes('screenshotAlt') &&
+    promo.includes('overflow-hidden') &&
+    !promo.includes('apps.apple.com') &&
+    !promo.includes('play.google.com'),
+  true,
+);
+is('Arabic screenshot label', ar.jobs.appPromo.screenshotAlt, 'قائمة الوظائف في تطبيق بروكرز كونكت');
+is('English screenshot label', en.jobs.appPromo.screenshotAlt, 'The jobs list in the Brokers Connect app');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
