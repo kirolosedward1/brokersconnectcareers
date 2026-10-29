@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import { Award, Briefcase, GraduationCap, Quote } from '~/components/ui/lucide';
-import { formatEgp, formatNumber } from '@/lib/format';
+import { formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { DistrictRow } from '@/lib/supabase/database.types';
 import { Card } from '~/components/ui/card';
@@ -10,6 +10,7 @@ import { Text } from '~/components/ui/text';
 import type { CvSections } from '~/features/profile/queries';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
+import { Money } from '~/components/ui/money';
 
 /**
  * The CV half of a consultant's page — the website's AgentCv. Nothing here
@@ -80,9 +81,7 @@ export function AgentCv({
                 <Text variant="caption" tone="mutedForeground">
                   {t('cv.volumeEgp')}
                 </Text>
-                <Text variant="title" weight="semibold">
-                  {formatEgp(volumeEgp, locale)}
-                </Text>
+                <Money value={volumeEgp} variant="title" weight="semibold" unitVariant="small" />
               </Card>
             ) : null}
           </View>

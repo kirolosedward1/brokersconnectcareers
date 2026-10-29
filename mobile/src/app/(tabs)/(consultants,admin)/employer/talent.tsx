@@ -174,7 +174,7 @@ function ShortlistRow({ row, districts }: { row: SavedAgentCardRow; districts: M
     >
       <View style={{ flexDirection: 'row', gap: space[3] }}>
         {row.is_unlocked && row.full_name ? (
-          <Avatar name={row.full_name} src={row.avatar_url} seed={row.slug ?? row.id} size="md" />
+          <Avatar name={row.full_name} src={row.avatar_url} size="md" />
         ) : (
           <Silhouette />
         )}

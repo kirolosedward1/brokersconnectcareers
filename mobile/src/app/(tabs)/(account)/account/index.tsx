@@ -147,7 +147,7 @@ export default function AccountScreen() {
                   radius={32}
                   onPress={() => router.push('/account/profile')}
                 >
-                  <Avatar name={viewer.profile.full_name} src={viewer.profile.avatar_url} seed={viewer.profile.id} size="lg" />
+                  <Avatar name={viewer.profile.full_name} src={viewer.profile.avatar_url} size="lg" />
                 </CompletenessRing>
               ) : null}
               <View style={{ flex: 1, gap: space[1] }}>

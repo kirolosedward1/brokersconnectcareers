@@ -459,7 +459,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
             <View style={{ flexDirection: 'row', gap: space[1] }}>
               <Scale size={13} color={colors.mutedForeground} style={{ marginTop: 3 }} />
               <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
-                {t.markup('compensation.reference', {
+                {t.markup('app.money.reference', {
                   low: formatEgp(reference.low, locale),
                   high: formatEgp(reference.high, locale),
                   count: reference.sample,

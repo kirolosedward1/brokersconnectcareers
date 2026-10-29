@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { createTranslator } from 'use-intl';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
@@ -29,6 +30,7 @@ import { fakeServer } from './server';
 */
 
 const ar = catalogues.ar;
+const tAr = createTranslator({ locale: 'ar', messages: catalogues.ar });
 // Read from the catalogue, so that renaming a track is a change of words, not of these tests.
 const landingTitle = ar.landing.title.replace('{track}', ar.track.primary).replace('{district}', newCairo.name_ar);
 const server = fakeServer();
@@ -176,12 +178,13 @@ describe('the board', () => {
     await waitFor(() => expect(spinning()).toBe(false));
   });
 
-  it('shows the listings, how many, and the pay in the website words', async () => {
+  it('shows the listings, how many, and the basic salary with its currency', async () => {
     await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('نتيجة واحدة')).toBeTruthy();
-    // The salary range with each number isolated left to right.
-    expect(screen.getByText('⁦10,000⁩ – ⁦15,000⁩ جنيه')).toBeTruthy();
+    // The salary range as one left-to-right run, low to high, with ج.م a month beside it.
+    expect(screen.getByText('⁦10,000 – 15,000⁩')).toBeTruthy();
+    expect(screen.getByText(` ${ar.app.money.perMonth}`)).toBeTruthy();
     // Nothing sponsored on the page, so nothing to explain about the order.
     expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
   });
@@ -226,10 +229,11 @@ describe('the board', () => {
       'إعلان ممول',
       ar.jobs.closedShort,
       ar.companies.verified,
-      '⁦10,000⁩ – ⁦15,000⁩ جنيه',
+      `⁦10,000 – 15,000⁩ ${ar.app.money.perMonth}`,
       ar.leadsSource.company_provided_short,
       ar.track.primary,
-      ar.experienceBand.junior_1_3,
+      // Three seats: the card's chip is the seats rather than the experience asked.
+      `3 ${tAr('jobs.seatsLabel', { count: 3 })}`,
     ]) {
       expect(spoken).toContain(said);
     }
@@ -388,8 +392,8 @@ describe('a listing', () => {
     expect(screen.getByText('بيع وحدات سكنية في مشروعات القاهرة الجديدة.')).toBeTruthy();
     expect(screen.getByText('بالم هيلز')).toBeTruthy();
     expect(screen.getByText('نسبة ⁦1.5⁩٪')).toBeTruthy();
-    // What listings like it pay, with the sample size.
-    expect(screen.getByText(/حسب 6 إعلانات منشورة/)).toBeTruthy();
+    // What listings like it pay, with the currency and the sample size.
+    expect(screen.getByText(/ج\.م — حسب ⁦6⁩ إعلانات منشورة/)).toBeTruthy();
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordJobView')).toHaveLength(1));
     expect(server.asked('/api/mobile/v1/actions/recordJobView')[0].body).toEqual({ input: { slug: listing.slug } });
   });

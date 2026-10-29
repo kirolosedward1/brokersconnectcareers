@@ -48,42 +48,44 @@ const photo = (name: string) => `${env.supabaseUrl}/storage/v1/object/public/ava
 const logo = (name: string) => `${env.supabaseUrl}/storage/v1/object/public/company-logos/${name}/logo.webp`;
 
 describe('a picture that does not load', () => {
-  // The letter is drawn, and kept from VoiceOver: the name beside it is what
-  // gets read, and a lone "س" before it was noise.
+  // The generic figure is drawn, and kept from VoiceOver: the name beside it
+  // is what gets read. Never the person's letter (v1.1: no initials).
   const drawn = { includeHiddenElements: true };
 
-  it("is the person's letter — for that photo only, when the list reuses the row for somebody else", () => {
+  it("is the generic person — for that photo only, when the list reuses the row for somebody else", () => {
     const view = render(<Avatar name="سارة" src={photo('sara')} />, { wrapper: Providers });
     act(() => screen.UNSAFE_getByType(Image).props.onError());
-    expect(screen.getByText('س', drawn)).toBeTruthy();
-    expect(screen.queryByText('س')).toBeNull();
+    expect(screen.getByTestId('person-silhouette', drawn)).toBeTruthy();
+    expect(screen.queryByTestId('person-silhouette')).toBeNull();
+    expect(screen.queryByText('س', drawn)).toBeNull();
 
     view.rerender(<Avatar name="عمر" src={photo('omar')} />);
     expect(screen.UNSAFE_getByType(Image).props.source).toEqual({ uri: photo('omar') });
   });
 
-  it("is the company's letter, not a blank white tile", () => {
+  it("is the generic building, not a blank white tile", () => {
     render(<CompanyLogo name="النيل" logoUrl={logo('nile')} />, { wrapper: Providers });
     act(() => screen.UNSAFE_getByType(Image).props.onError());
-    expect(screen.getByText('ا', drawn)).toBeTruthy();
-    expect(screen.queryByText('ا')).toBeNull();
+    expect(screen.getByTestId('building-silhouette', drawn)).toBeTruthy();
+    expect(screen.queryByTestId('building-silhouette')).toBeNull();
     expect(screen.UNSAFE_queryByType(Image)).toBeNull();
   });
 
-  it("is the company's letter, never fetched, for a logo on any other host", () => {
+  it("is the generic building, never fetched, for a logo on any other host", () => {
     // The column's path on a tracker's host: migration 344 cannot tell the hosts apart.
     render(
       <CompanyLogo name="النيل" logoUrl="https://tracker.example/storage/v1/object/public/company-logos/c1/p.png" />,
       { wrapper: Providers },
     );
     expect(screen.UNSAFE_queryByType(Image)).toBeNull();
-    expect(screen.getByText('ا', drawn)).toBeTruthy();
+    expect(screen.getByTestId('building-silhouette', drawn)).toBeTruthy();
   });
 
-  it('is a letter VoiceOver does not read when there was never a picture', () => {
+  it('is the generic person, which VoiceOver does not read, when there was never a picture', () => {
     render(<Avatar name="عمر" />, { wrapper: Providers });
-    expect(screen.getByText('ع', drawn)).toBeTruthy();
-    expect(screen.queryByText('ع')).toBeNull();
+    expect(screen.getByTestId('person-silhouette', drawn)).toBeTruthy();
+    expect(screen.queryByTestId('person-silhouette')).toBeNull();
+    expect(screen.queryByText('ع', drawn)).toBeNull();
   });
 });
 

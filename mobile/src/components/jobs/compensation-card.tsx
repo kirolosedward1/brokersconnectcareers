@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Banknote, HandCoins, Scale, Sparkles, Target } from '~/components/ui/lucide';
 import type { JobRow, SalaryReferenceRow } from '@/lib/supabase/database.types';
 import { formatEgp } from '@/lib/format';
+import { TABULAR } from '~/components/ui/num';
 import { Text } from '~/components/ui/text';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { markupTags } from '~/i18n/rich';
@@ -33,12 +34,13 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
   const t = useTranslations('compensation');
   const tLeads = useTranslations('leadsSource');
   const tBenefit = useTranslations('benefits');
+  const tMoney = useTranslations('app.money');
   const { colors, shadow } = useTheme();
   // Commission beside leads source, unless the text is at the accessibility
   // sizes: a 150-point column broke their words there.
   const cell = useLargeText() ? '100%' : 150;
   const pay = useCompensationText();
-  const salary = pay.salary(job, locale);
+  const salary = pay.salary(job);
   const hairline = { borderTopWidth: StyleSheet.hairlineWidth * 2, borderTopColor: colors.border };
 
   return (
@@ -56,17 +58,17 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
           {t('title')}
         </Text>
         <Label icon={<Banknote size={14} color={colors.mutedForeground} />}>{t('basicSalary')}</Label>
-        <Text variant="title">
-          <Text variant="title" weight="semibold" tone={salary.perMonth ? 'foreground' : 'mutedForeground'}>
-            {salary.amount}
+        <Text variant="title" accessibilityLabel={salary.unit ? `${salary.figures} ${salary.unit}` : salary.figures}>
+          <Text variant="title" weight="semibold" tone={salary.unit ? 'foreground' : 'mutedForeground'} style={TABULAR}>
+            {salary.figures}
           </Text>
-          {salary.perMonth ? <Text variant="small" tone="mutedForeground">{` ${salary.perMonth}`}</Text> : null}
+          {salary.unit ? <Text variant="small" tone="mutedForeground">{` ${salary.unit}`}</Text> : null}
         </Text>
         {reference ? (
           <View style={{ flexDirection: 'row', gap: space[1], marginTop: space[1] }}>
             <Scale size={13} color={colors.mutedForeground} style={{ marginTop: 3 }} />
             <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
-              {t.markup('reference', {
+              {tMoney.markup('reference', {
                 low: formatEgp(reference.low, locale),
                 high: formatEgp(reference.high, locale),
                 count: reference.sample,

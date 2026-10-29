@@ -82,7 +82,7 @@ export default function CompanyScreen() {
 
         <View style={{ gap: space[4] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
-            <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
+            <CompanyLogo name={name} logoUrl={company.logo_url} size="lg" />
             <View style={{ flex: 1, gap: space[2] }}>
               <Text variant="title" weight="semibold" accessibilityRole="header">
                 {name}

@@ -213,7 +213,7 @@ export function JobDetail({
 
         <View style={{ gap: space[4] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} />
+            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} />
             <View style={{ flex: 1, gap: space[0.5] }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[2], rowGap: space[0.5] }}>
                 <Text
@@ -364,7 +364,7 @@ export function JobDetail({
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
+            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} size="sm" />
             <Text variant="headline" weight="semibold" style={{ flex: 1 }}>
               {companyName}
             </Text>

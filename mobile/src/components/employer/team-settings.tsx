@@ -114,7 +114,7 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
               borderColor: colors.border,
             }}
           >
-            <Avatar name={name} seed={member.userId} />
+            <Avatar name={name} />
             <View style={{ flex: 1 }}>
               <Text variant="small" weight="medium" numberOfLines={large ? undefined : 1}>
                 {name}

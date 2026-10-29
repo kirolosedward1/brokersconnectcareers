@@ -293,10 +293,10 @@ describe("a candidate's home", () => {
         server.asked('/api/mobile/v1/jobs').some((request) => request.url.searchParams.get('posted') === '7' && request.url.searchParams.has('district')),
       ).toBe(true),
     );
-    expect(await screen.findByRole('link', { name: `4 ${ar.app.week.views}` })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: `4 ${ar.app.week.views.replace('<v>30</v>', '⁦30⁩')}` })).toBeTruthy();
     // Opened more than a week ago: not this week's.
     expect(screen.getByRole('link', { name: `0 ${ar.app.week.opened}` })).toBeTruthy();
-    fireEvent.press(screen.getByRole('link', { name: `4 ${ar.app.week.views}` }));
+    fireEvent.press(screen.getByRole('link', { name: `4 ${ar.app.week.views.replace('<v>30</v>', '⁦30⁩')}` }));
     await waitFor(() => expect(result.getPathname()).toBe('/account/profile'));
   });
 

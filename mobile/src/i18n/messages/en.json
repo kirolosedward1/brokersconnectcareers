@@ -6,7 +6,8 @@
     "account": "Account",
     "applicants": "Applicants",
     "consultants": "Consultants",
-    "jobsNew": "{name}, {count, plural, one {# new job} other {# new jobs}} since you last looked"
+    "jobsNew": "{name}, {count, plural, one {# new job} other {# new jobs}} since you last looked",
+    "applicationsMoved": "{name}, {count, plural, one {# application moved} other {# applications moved}}"
   },
   "offline": {
     "title": "No internet connection",
@@ -64,8 +65,9 @@
     "suggestKindTitle": "Job",
     "suggestKindCompany": "Company",
     "seenDivider": "Posted before you last looked",
-    "amountEgp": "EGP <v>{amount}</v>",
-    "searchLabel": "Search jobs"
+    "amountEgp": "<v>{amount}</v> EGP",
+    "searchLabel": "Search jobs",
+    "appliedChip": "Applied"
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -148,7 +150,7 @@
   "profile": {
     "edit": "Edit",
     "saveFirst": "Save your profile first; then you can add your experience, education and certificates.",
-    "yearsInvalid": "Enter a number from 0 to 60.",
+    "yearsInvalid": "Enter a number from <v>0</v> to <v>60</v>.",
     "numberInvalid": "Enter a whole number.",
     "monthInvalid": "Write the year and month like this: 2024-03",
     "endedHint": "Leave it empty if you still work there",
@@ -158,7 +160,7 @@
     "monthMonth": "Month",
     "monthClear": "Clear the date",
     "stillThere": "I still work there",
-    "yearInvalid": "Enter a year between 1950 and 2100.",
+    "yearInvalid": "Enter a year between <v>1950</v> and <v>2100</v>.",
     "chooseUpTo": "Choose up to <v>{count}</v>.",
     "ringLabel": "Your profile is <v>{percent}%</v> complete",
     "ringHint": "Opens your profile at what is missing",
@@ -196,7 +198,7 @@
     "accountEmployer": "Your account and listings",
     "accountEmployerHint": "A listing published, rejected or ending, your company’s verification, decisions about your account, support replies.",
     "quiet": "Quiet at night",
-    "quietHint": "Anything after 11 pm waits until 8 am, Cairo time.",
+    "quietHint": "Anything after <v>11</v> pm waits until <v>8</v> am, Cairo time.",
     "promptTitleCandidate": "Know When a Company Replies",
     "promptTitleEmployer": "Know When Someone Applies"
   },
@@ -359,11 +361,11 @@
   },
   "week": {
     "title": "Your week",
-    "lede": "The last 7 days",
+    "lede": "The last <v>7</v> days",
     "newJobsAreas": "New jobs in your areas",
     "newJobs": "New jobs on the board",
     "opened": "Applications companies opened",
-    "views": "Profile views, last 30 days"
+    "views": "Profile views, last <v>30</v> days"
   },
   "saved": {
     "closing": "{days, plural, =0 {Closes today} =1 {Closes tomorrow} other {Closes in # days}}",
@@ -476,5 +478,21 @@
   "dashboard": {
     "trendDown": "Down {value}",
     "trendUp": "Up {value}"
+  },
+  "money": {
+    "unit": "EGP",
+    "perMonth": "EGP / month",
+    "amount": "<v>{amount}</v> EGP",
+    "range": "<v>{min} – {max}</v> EGP",
+    "from": "From <v>{min}</v> EGP",
+    "upTo": "Up to <v>{max}</v> EGP",
+    "rangeFigures": "<v>{min} – {max}</v>",
+    "fromFigures": "From <v>{min}</v>",
+    "upToFigures": "Up to <v>{max}</v>",
+    "reference": "Similar listings pay a basic of <v>{low}</v>–<v>{high}</v> EGP — from {count, plural, one {<v>#</v> live listing} other {<v>#</v> live listings}} in the same track and governorate."
+  },
+  "landing": {
+    "factSalaryRange": "Basic salary from <v>{min}</v> to <v>{max}</v> EGP a month",
+    "factSalaryFrom": "Basic salary from <v>{min}</v> EGP a month"
   }
 }

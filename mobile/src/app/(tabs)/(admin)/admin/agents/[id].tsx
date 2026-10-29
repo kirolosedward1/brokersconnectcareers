@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { formatDate, formatEgp, formatList, formatNumber } from '@/lib/format';
+import { formatDate, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ReportStatus } from '@/lib/supabase/database.types';
 import { openDecision } from '~/components/admin/decision-sheet';
@@ -21,6 +21,7 @@ import { useDevelopers, useDistricts } from '~/features/taxonomy';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useMoney } from '~/features/money';
 
 /** The website's ReportStatusBadge: red open, amber under investigation, green resolved, plain dismissed. */
 const REPORT_VARIANT: Record<ReportStatus, 'destructive' | 'warning' | 'success' | 'default'> = {
@@ -76,7 +77,7 @@ function Profile({ id }: { id: string | undefined }) {
       contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[5] }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
-        <Avatar name={agent.profile.full_name} src={agent.profile.avatar_url} seed={agent.id} size="lg" />
+        <Avatar name={agent.profile.full_name} src={agent.profile.avatar_url} size="lg" />
         <View style={{ flex: 1, gap: space[1] }}>
           <Text variant="title" weight="semibold" accessibilityRole="header">
             {agent.profile.full_name}
@@ -205,6 +206,7 @@ function LinkRow({ label, onPress, children }: { label: string; onPress: () => v
  */
 function Facts({ agent }: { agent: AgentFile }) {
   const t = useTranslations();
+  const money = useMoney();
   const locale = useLocale();
   const { colors } = useTheme();
   const districts = useDistricts().data ?? [];
@@ -237,7 +239,7 @@ function Facts({ agent }: { agent: AgentFile }) {
         <Fact label={t('admin.colVisibility')}>{t(`visibility.${agent.visibility}`)}</Fact>
         <Fact label={t('admin.unitsClosed')}>{agent.units_closed != null ? formatNumber(agent.units_closed, locale) : '—'}</Fact>
         <Fact label={t('admin.volumeClosed')}>
-          {agent.volume_egp != null ? `${formatEgp(agent.volume_egp, locale)} ${t('common.egp')}` : '—'}
+          {agent.volume_egp != null ? money.amount(agent.volume_egp) : '—'}
         </Fact>
         <Fact label={t('admin.hasCv')}>{agent.has_cv ? t('admin.yes') : t('admin.no')}</Fact>
         <Fact label={t('admin.colJoined')}>{formatDate(agent.created_at, locale)}</Fact>

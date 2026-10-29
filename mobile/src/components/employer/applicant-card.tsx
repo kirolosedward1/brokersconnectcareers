@@ -3,7 +3,7 @@ import { Linking, Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Download, Eye, FileX2, MessageCircle, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
-import { formatDate, formatEgp, formatList } from '@/lib/format';
+import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
@@ -34,6 +34,7 @@ import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { useMoney } from '~/features/money';
 
 /**
  * One applicant, as a company reads them — the website's ApplicantCard: who
@@ -72,6 +73,7 @@ export function ApplicantCard({
   leaveTo?: (go: () => void) => void;
 }) {
   const t = useTranslations();
+  const money = useMoney();
   const locale = useLocale();
   const { colors, scheme } = useTheme();
   const { actor } = useSession();
@@ -217,7 +219,7 @@ export function ApplicantCard({
     <SwipeRow left={turnDown} right={shortlist}>
     <Card style={{ gap: space[3] }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <Avatar name={name} src={candidate?.avatar_url} seed={profile?.slug ?? name} size="md" />
+        <Avatar name={name} src={candidate?.avatar_url} size="md" />
         <View style={{ flex: 1, gap: 2 }}>
           <Text weight="semibold" accessibilityRole="header" style={withdrawn ? { color: withdrawnText } : undefined}>
             {name}
@@ -272,7 +274,7 @@ export function ApplicantCard({
                   profile.units_closed != null
                     ? t('agents.unitsClosedShort', { count: profile.units_closed })
                     : null,
-                  profile.volume_egp != null ? `${formatEgp(profile.volume_egp, locale)} ${t('common.egp')}` : null,
+                  profile.volume_egp != null ? money.amount(profile.volume_egp) : null,
                 ]
                   .filter(Boolean)
                   .join('   ')}

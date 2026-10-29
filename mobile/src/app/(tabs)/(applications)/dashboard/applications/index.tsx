@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useIsFocused } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate } from '@/lib/format';
@@ -20,6 +20,7 @@ import {
   useWithdrawApplication,
   type CandidateApplication,
 } from '~/features/applications/queries';
+import { useMarkStagesSeen } from '~/features/applications/moved';
 import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -40,6 +41,8 @@ export default function ApplicationsScreen() {
   const { colors, shadow } = useTheme();
   const { session } = useSession();
   const applications = useMyApplications();
+  // In view, what each application stands at is seen: the tab's badge for a move goes (features/applications/moved.ts).
+  useMarkStagesSeen(applications.data, useIsFocused() && Boolean(session));
   // A push about a move reads the list again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => applications.refetch());
   const list = useTabList();

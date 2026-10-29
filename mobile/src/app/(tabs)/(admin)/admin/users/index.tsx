@@ -181,7 +181,7 @@ function AccountRow({ account }: { account: AdminUserSearchRow }) {
       style={{ gap: space[3] }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <Avatar name={account.full_name} src={account.avatar_url} seed={account.id} size="md" />
+        <Avatar name={account.full_name} src={account.avatar_url} size="md" />
         <View style={{ flex: 1, gap: 2 }}>
           <Text weight="semibold">{account.full_name}</Text>
           <Text variant="small" tone="mutedForeground">

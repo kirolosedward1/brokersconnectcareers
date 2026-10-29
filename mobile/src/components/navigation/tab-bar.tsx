@@ -20,6 +20,7 @@ import { formatList, formatNumber } from '@/lib/format';
 import { Appear } from '~/components/motion/appear';
 import type { LucideProps } from '~/components/ui/lucide';
 import { PressableScale } from '~/components/ui/pressable-scale';
+import { PersonSilhouette } from '~/components/ui/silhouette';
 import { Text } from '~/components/ui/text';
 import { setTabBarSmall, useTabBarSmall } from '~/features/tab-bar';
 import { env } from '~/lib/env';
@@ -617,9 +618,11 @@ function clear(hex: string): string {
 type TabIconProps = { focused: boolean; color: ColorValue; size: number };
 
 /**
- * The Account tab's icon: the reader's own photo, round, when they have put
- * one on their account — ringed in the open tab's colour while it is open —
- * and otherwise the person's icon, as every other tab has.
+ * The Account tab's icon. Signed in, it is the reader themselves: their own
+ * photo, round, once they have put one on their account, and the generic
+ * person's silhouette until then (or when it does not load) — ringed in the
+ * open tab's colour while it is open. Signed out, the person's icon, as every
+ * other tab has one.
  */
 export function accountTabIcon(symbol: { default: SFSymbol; selected: SFSymbol }, Fallback: ComponentType<LucideProps>) {
   const Icon = tabIcon(symbol, Fallback);
@@ -633,11 +636,12 @@ function OwnPhoto({ focused, color, size, otherwise }: TabIconProps & { otherwis
   const photo = trustedAvatarUrl(viewer?.profile?.avatar_url, env.supabaseUrl);
   // Which photo failed, not whether one did: a new one is tried again.
   const [failed, setFailed] = useState<string | null>(null);
-  if (!photo || failed === photo) return otherwise;
+  if (!viewer) return otherwise;
+  const shown = photo && failed !== photo ? photo : null;
   const ring = 2;
   return (
     <View
-      testID="tab-photo"
+      testID={shown ? 'tab-photo' : 'tab-silhouette'}
       style={{
         width: size + ring * 2,
         height: size + ring * 2,
@@ -648,14 +652,20 @@ function OwnPhoto({ focused, color, size, otherwise }: TabIconProps & { otherwis
         borderColor: focused ? color : 'transparent',
       }}
     >
-      <Image
-        source={{ uri: photo }}
-        recyclingKey={photo}
-        contentFit="cover"
-        accessible={false}
-        onError={() => setFailed(photo)}
-        style={{ flex: 1, borderRadius: size / 2 }}
-      />
+      {shown ? (
+        <Image
+          source={{ uri: shown }}
+          recyclingKey={shown}
+          contentFit="cover"
+          accessible={false}
+          onError={() => setFailed(shown)}
+          style={{ flex: 1, borderRadius: size / 2 }}
+        />
+      ) : (
+        <View style={{ flex: 1, borderRadius: size / 2, overflow: 'hidden' }}>
+          <PersonSilhouette size={size + ring * 2 - 2 - (focused ? (ring - 0.5) * 2 : 0)} />
+        </View>
+      )}
     </View>
   );
 }

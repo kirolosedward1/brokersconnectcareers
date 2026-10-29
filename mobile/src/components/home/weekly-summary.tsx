@@ -15,6 +15,7 @@ import { useDistricts } from '~/features/taxonomy';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, motion, space } from '~/theme/tokens';
+import { markupTags } from '~/i18n/rich';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -71,7 +72,7 @@ export function WeeklySummary({
             {t('title')}
           </Text>
           <Text variant="caption" tone="mutedForeground">
-            {t('lede')}
+            {t.markup('lede', markupTags)}
           </Text>
         </View>
         <Line
@@ -81,7 +82,7 @@ export function WeeklySummary({
           onPress={() => router.navigate({ pathname: '/jobs', params: filtersToParams(filters) })}
         />
         <Line icon={MailCheck} count={opened} label={t('opened')} onPress={() => router.navigate('/dashboard/applications')} />
-        <Line icon={Eye} count={profileViews} label={t('views')} onPress={() => router.navigate('/account/profile')} />
+        <Line icon={Eye} count={profileViews} label={t.markup('views', markupTags)} onPress={() => router.navigate('/account/profile')} />
       </View>
     </Appear>
   );

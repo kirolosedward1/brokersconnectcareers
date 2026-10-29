@@ -955,7 +955,6 @@ describe('choosing listings to compare', () => {
     for (const label of [
       ar.filters.district,
       ar.app.saved.compare.salary,
-      ar.compensation.commission,
       ar.compensation.leadsSource,
       ar.filters.track,
       ar.jobForm.experienceBand,
@@ -964,6 +963,8 @@ describe('choosing listings to compare', () => {
     ]) {
       expect(await screen.findByText(label)).toBeTruthy();
     }
+    // No commission row: the commission is said on the listing, with its terms (v1.1).
+    expect(screen.queryByText(ar.compensation.commission)).toBeNull();
     expect(screen.getAllByText(/^استشاري [أبجد]$/).map((node) => node.props.children)).toEqual([b.title_ar, a.title_ar, c.title_ar]);
     expect(screen.getAllByText(ar.leadsSource.self_generated)).toHaveLength(1);
 

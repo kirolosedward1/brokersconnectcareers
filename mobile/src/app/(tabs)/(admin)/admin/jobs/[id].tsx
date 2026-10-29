@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { formatDate, formatEgp, formatNumber } from '@/lib/format';
+import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import type { JobStatus } from '@/lib/supabase/database.types';
@@ -23,6 +23,7 @@ import { markupTags } from '~/i18n/rich';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
+import { useMoney } from '~/features/money';
 
 const STATUS_VARIANT: Record<JobStatus, 'default' | 'outline' | 'success' | 'warning' | 'destructive'> = {
   draft: 'outline',
@@ -60,6 +61,7 @@ export default function AdminListingScreen() {
 
 function Review({ id }: { id: string | undefined }) {
   const t = useTranslations();
+  const money = useMoney();
   const locale = useLocale();
   const { colors } = useTheme();
   const listing = useListingFile(id);
@@ -86,12 +88,7 @@ function Review({ id }: { id: string | undefined }) {
   const totalApplications = APPLICATION_STAGES.reduce((sum, stage) => sum + job.stages[stage], 0);
   const openReports = job.reports.filter((report) => report.status === 'open' || report.status === 'investigating').length;
 
-  const salary =
-    job.basic_salary_min != null || job.basic_salary_max != null
-      ? `${job.basic_salary_min != null ? formatEgp(job.basic_salary_min, locale) : '…'} – ${
-          job.basic_salary_max != null ? formatEgp(job.basic_salary_max, locale) : '…'
-        } ${t('common.egp')}`
-      : t('compensation.noBasicSalary');
+  const salary = money.pay(job.basic_salary_min, job.basic_salary_max) ?? t('compensation.noBasicSalary');
   const commission =
     job.commission_type === 'percentage' && job.commission_value != null
       ? t.markup('compensation.commissionPercent', { value: String(job.commission_value), ...markupTags })

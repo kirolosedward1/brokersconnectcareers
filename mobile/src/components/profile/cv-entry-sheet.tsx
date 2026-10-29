@@ -28,6 +28,7 @@ import { toast } from '~/components/feedback/toast';
 import { useGatedModal } from '~/lib/sheet-gate';
 import { useSheetFence } from '~/components/ui/sheet-fence';
 import { appDirection } from '~/lib/direction';
+import { markupTags } from '~/i18n/rich';
 
 /** This month, as the form shows a date ("2026-10"): no later month has come yet. */
 function thisMonth(): string {
@@ -214,7 +215,7 @@ function EntryForm({
     if (entry.section === 'education') {
       const year = wholeNumber(graduated);
       if (!institution.trim()) local.institution = required;
-      if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) local.graduated = t('app.profile.yearInvalid');
+      if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) local.graduated = t.markup('app.profile.yearInvalid', markupTags);
       if (Object.keys(local).length) return refuse(local);
       setErrors({});
       return save.mutate(

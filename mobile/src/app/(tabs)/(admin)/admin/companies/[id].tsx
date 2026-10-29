@@ -111,7 +111,7 @@ function File({ id }: { id: string | undefined }) {
       contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[5] }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
-        <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="lg" />
+        <CompanyLogo name={name} logoUrl={company.logo_url} size="lg" />
         <View style={{ flex: 1, gap: space[1] }}>
           <Text variant="title" weight="semibold" accessibilityRole="header">
             {name}

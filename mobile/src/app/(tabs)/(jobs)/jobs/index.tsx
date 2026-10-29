@@ -442,7 +442,6 @@ function BoardHeader({
           <CompanyLogo
             name={localized(locale, company.name_ar, company.name_en)}
             logoUrl={company.logo_url}
-            seed={company.slug}
             size="sm"
           />
           <View style={{ flex: 1 }}>

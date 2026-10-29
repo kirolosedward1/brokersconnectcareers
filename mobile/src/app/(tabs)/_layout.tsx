@@ -5,6 +5,7 @@ import { useTranslations } from 'use-intl';
 import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar';
 import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, ShieldCheck, Users } from '~/components/ui/lucide';
 import { summaryWaiting, useAdminSummary } from '~/features/admin/queries';
+import { useApplicationsMovedBadge } from '~/features/applications/moved';
 import { useConsultantAlerts } from '~/features/directory/alerts';
 import { useNewJobsBadge } from '~/features/jobs/new-since';
 import { markupTags } from '~/i18n/rich';
@@ -78,6 +79,8 @@ export default function TabsLayout() {
   const has = (tab: TabName) => tabs.includes(tab);
   // Listings published since the board was last looked at (features/jobs/new-since.ts).
   const newJobs = useNewJobsBadge();
+  // Applications whose stage moved since the candidate last looked (features/applications/moved.ts).
+  const moved = useApplicationsMovedBadge();
   // What waits on a moderator, in the website rail's own sense (admin_summary:
   // the queue, companies pending, reported targets, open appeals, accounts
   // awaiting approval — summaryWaiting in features/admin/queries.ts says why
@@ -127,6 +130,10 @@ export default function TabsLayout() {
           options={{
             title: t('dashboard.applications'),
             tabBarIcon: tabIcon({ default: 'doc.text', selected: 'doc.text.fill' }, FileText),
+            tabBarBadge: moved || undefined,
+            tabBarAccessibilityLabel: moved
+              ? t.markup('app.tabs.applicationsMoved', { name: t('dashboard.applications'), count: moved, ...markupTags })
+              : undefined,
           }}
         />
       </Tabs.Protected>

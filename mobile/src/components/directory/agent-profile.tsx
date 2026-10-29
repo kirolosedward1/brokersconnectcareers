@@ -131,7 +131,7 @@ export function AgentProfile({ handle }: { handle: string }) {
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[4] }}>
           {card.is_unlocked ? (
-            <Avatar name={card.full_name ?? ''} src={card.avatar_url} seed={card.slug} size="lg" />
+            <Avatar name={card.full_name ?? ''} src={card.avatar_url} size="lg" />
           ) : (
             <View
               accessible={false}

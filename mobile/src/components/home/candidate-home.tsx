@@ -333,7 +333,7 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
  * panel — their first letter on its colour until they add one (on Account).
  */
 function HeroPhoto({ profile, completeness }: { profile: ProfileRow; completeness: number | null }) {
-  const photo = <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" shape="rounded" />;
+  const photo = <Avatar name={profile.full_name} src={profile.avatar_url} size="lg" shape="rounded" />;
   // How complete the profile is, round the photo; a tap opens it at what is missing.
   if (completeness !== null) {
     return (

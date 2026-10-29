@@ -16,6 +16,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { UserRound } from '~/components/ui/lucide';
 import { toast } from '~/components/feedback/toast';
+import { markupTags } from '~/i18n/rich';
 
 /**
  * Pushes on this phone: on or off for the person signed in, without going to
@@ -199,7 +200,7 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
     employer
       ? { key: 'push_account', label: t('accountEmployer'), hint: t('accountEmployerHint') }
       : { key: 'push_account', label: t('accountCandidate'), hint: t('accountCandidateHint') },
-    { key: 'push_quiet_hours', label: t('quiet'), hint: t('quietHint') },
+    { key: 'push_quiet_hours', label: t('quiet'), hint: t.markup('quietHint', markupTags) },
   ];
 
   const flip = (key: keyof PushPreferences) => {
