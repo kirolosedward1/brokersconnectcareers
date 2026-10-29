@@ -209,6 +209,8 @@ export const type = {
   small: { fontSize: 14, lineHeight: 22 },
   caption: { fontSize: 12, lineHeight: 18 },
   label: { fontSize: 11, lineHeight: 16 },
+  /** What a listing pays, on its card: the largest figure on it, in tabular figures. */
+  pay: { fontSize: 26, lineHeight: 30 },
 } as const;
 
 /**

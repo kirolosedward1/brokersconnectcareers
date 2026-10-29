@@ -185,7 +185,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                 {
                   "alignItems": "center",
                   "flexDirection": "row",
-                  "gap": 12,
+                  "gap": 10,
                 }
               }
             >
@@ -194,10 +194,12 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                 importantForAccessibility="no-hide-descendants"
                 style={
                   {
+                    "alignItems": "center",
+                    "backgroundColor": "#ECEEF4",
                     "borderCurve": "continuous",
                     "borderRadius": 12,
                     "height": 44,
-                    "overflow": "hidden",
+                    "justifyContent": "center",
                     "width": 44,
                   }
                 }
@@ -205,10 +207,10 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                 <RNSVGSvgView
                   accessible={false}
                   align="xMidYMid"
-                  bbHeight={44}
-                  bbWidth={44}
+                  bbHeight={23}
+                  bbWidth={23}
                   focusable={false}
-                  height={44}
+                  height={23}
                   meetOrSlice={0}
                   minX={0}
                   minY={0}
@@ -220,15 +222,15 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                       },
                       {
                         "flex": 0,
-                        "height": 44,
-                        "width": 44,
+                        "height": 23,
+                        "width": 23,
                       },
                     ]
                   }
                   testID="building-silhouette"
-                  vbHeight={100}
-                  vbWidth={100}
-                  width={44}
+                  vbHeight={24}
+                  vbWidth={24}
+                  width={23}
                 >
                   <RNSVGGroup
                     fill={
@@ -238,190 +240,27 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                       }
                     }
                   >
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={100}
+                    <RNSVGPath
+                      d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"
+                      fill={null}
                       propList={
                         [
                           "fill",
+                          "stroke",
+                          "strokeWidth",
+                          "strokeLinecap",
+                          "strokeLinejoin",
                         ]
                       }
-                      width={100}
-                      x={0}
-                      y={0}
-                    />
-                    <RNSVGRect
-                      fill={
+                      stroke={
                         {
-                          "payload": 4284244592,
+                          "payload": 4279642458,
                           "type": 0,
                         }
                       }
-                      fillOpacity={0.45}
-                      height={56}
-                      propList={
-                        [
-                          "fill",
-                          "fillOpacity",
-                        ]
-                      }
-                      rx={3}
-                      width={34}
-                      x={30}
-                      y={24}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      fillOpacity={0.3}
-                      height={34}
-                      propList={
-                        [
-                          "fill",
-                          "fillOpacity",
-                        ]
-                      }
-                      rx={2}
-                      width={16}
-                      x={64}
-                      y={46}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={38}
-                      y={36}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={52}
-                      y={36}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={38}
-                      y={50}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={52}
-                      y={50}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={38}
-                      y={64}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={52}
-                      y={64}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      fillOpacity={0.45}
-                      height={3}
-                      propList={
-                        [
-                          "fill",
-                          "fillOpacity",
-                        ]
-                      }
-                      rx={1.5}
-                      width={60}
-                      x={20}
-                      y={80}
+                      strokeLinecap={1}
+                      strokeLinejoin={1}
+                      strokeWidth={1.8}
                     />
                   </RNSVGGroup>
                 </RNSVGSvgView>
@@ -438,7 +277,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                     {
                       "alignItems": "center",
                       "flexDirection": "row",
-                      "gap": 4,
+                      "gap": 6,
                     }
                   }
                 >
@@ -488,7 +327,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                     accessible={true}
                     collapsable={false}
                     focusable={true}
-                    hitSlop={14.5}
+                    hitSlop={15}
                     onBlur={[Function]}
                     onClick={[Function]}
                     onFocus={[Function]}
@@ -503,12 +342,12 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                     <RNSVGSvgView
                       align="xMidYMid"
                       aria-hidden="true"
-                      bbHeight={15}
-                      bbWidth={15}
+                      bbHeight={14}
+                      bbWidth={14}
                       className="lucide lucide-badge-check lucide-verified"
                       fill="none"
                       focusable={false}
-                      height={15}
+                      height={14}
                       meetOrSlice={0}
                       minX={0}
                       minY={0}
@@ -524,14 +363,14 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                           },
                           {
                             "flex": 0,
-                            "height": 15,
-                            "width": 15,
+                            "height": 14,
+                            "width": 14,
                           },
                         ]
                       }
                       vbHeight={24}
                       vbWidth={24}
-                      width={15}
+                      width={14}
                       xmlns="http://www.w3.org/2000/svg"
                     >
                       <RNSVGGroup
@@ -623,6 +462,46 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                   القاهرة الجديدة · اليوم
                 </Text>
               </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#ECEEF4",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#16295A",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  قدّمت
+                </Text>
+              </View>
             </View>
             <Text
               numberOfLines={2}
@@ -654,8 +533,8 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                     "textAlign": "right",
                   },
                   {
-                    "fontSize": 20,
-                    "lineHeight": 29,
+                    "fontSize": 26,
+                    "lineHeight": 30,
                   },
                   [
                     {
@@ -664,7 +543,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                       ],
                     },
                     {
-                      "marginTop": 4,
+                      "marginTop": 12,
                     },
                   ],
                 ]
@@ -674,13 +553,13 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                 style={
                   [
                     {
-                      "color": "#121620",
-                      "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                      "color": "#16295A",
+                      "fontFamily": "IBMPlexSansArabic_700Bold",
                       "textAlign": "right",
                     },
                     {
-                      "fontSize": 20,
-                      "lineHeight": 29,
+                      "fontSize": 26,
+                      "lineHeight": 30,
                     },
                     undefined,
                   ]
@@ -704,7 +583,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                   ]
                 }
               >
-                 ج.م / شهر
+                  ج.م / شهر
               </Text>
             </Text>
             <View
@@ -712,7 +591,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                 {
                   "flexDirection": "row",
                   "flexWrap": "wrap",
-                  "gap": 4,
+                  "gap": 6,
                   "marginTop": 12,
                 }
               }
@@ -722,7 +601,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                   {
                     "alignItems": "center",
                     "alignSelf": "flex-start",
-                    "backgroundColor": "#ECEEF4",
+                    "backgroundColor": "#F4EAD7",
                     "borderColor": "transparent",
                     "borderCurve": "continuous",
                     "borderRadius": 999,
@@ -731,153 +610,24 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                     "gap": 4,
                     "maxWidth": "100%",
                     "paddingHorizontal": 10,
-                    "paddingVertical": 3,
+                    "paddingVertical": 5,
                   }
                 }
               >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-target"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#16295A"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4279642458,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGCircle
-                      cx="12"
-                      cy="12"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="10"
-                      stroke={
-                        {
-                          "payload": 4279642458,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGCircle
-                      cx="12"
-                      cy="12"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="6"
-                      stroke={
-                        {
-                          "payload": 4279642458,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGCircle
-                      cx="12"
-                      cy="12"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="2"
-                      stroke={
-                        {
-                          "payload": 4279642458,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
                 <Text
                   style={
                     [
                       {
                         "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
                         "textAlign": "right",
                       },
                       {
-                        "fontSize": 11,
-                        "lineHeight": 16,
+                        "fontSize": 12,
+                        "lineHeight": 18,
                       },
                       {
-                        "color": "#16295A",
+                        "color": "#6B4E1A",
                         "flexShrink": 1,
                       },
                     ]
@@ -900,170 +650,21 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                     "gap": 4,
                     "maxWidth": "100%",
                     "paddingHorizontal": 10,
-                    "paddingVertical": 3,
+                    "paddingVertical": 5,
                   }
                 }
               >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-briefcase-business"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#5C6270"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4284244592,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGPath
-                      d="M12 12h.01"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M22 13a18.15 18.15 0 0 1-20 0"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGRect
-                      fill={null}
-                      height="14"
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      rx="2"
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                      width="20"
-                      x="2"
-                      y="6"
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
                 <Text
                   style={
                     [
                       {
                         "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
                         "textAlign": "right",
                       },
                       {
-                        "fontSize": 11,
-                        "lineHeight": 16,
+                        "fontSize": 12,
+                        "lineHeight": 18,
                       },
                       {
                         "color": "#5C6270",
@@ -1089,168 +690,21 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                     "gap": 4,
                     "maxWidth": "100%",
                     "paddingHorizontal": 10,
-                    "paddingVertical": 3,
+                    "paddingVertical": 5,
                   }
                 }
               >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-users"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#5C6270"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4284244592,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGPath
-                      d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M16 3.128a4 4 0 0 1 0 7.744"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M22 21v-2a4 4 0 0 0-3-3.87"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGCircle
-                      cx="9"
-                      cy="7"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="4"
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
                 <Text
                   style={
                     [
                       {
                         "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
                         "textAlign": "right",
                       },
                       {
-                        "fontSize": 11,
-                        "lineHeight": 16,
+                        "fontSize": 12,
+                        "lineHeight": 18,
                       },
                       {
                         "color": "#5C6270",
@@ -1260,139 +714,6 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                   }
                 >
                   3 وظائف خالية
-                </Text>
-              </View>
-            </View>
-            <View
-              style={
-                {
-                  "borderTopColor": "#E6E1D8",
-                  "borderTopWidth": 1,
-                  "flexDirection": "row",
-                  "flexWrap": "wrap",
-                  "gap": 4,
-                  "marginTop": 12,
-                  "paddingTop": 12,
-                }
-              }
-            >
-              <View
-                style={
-                  {
-                    "alignItems": "center",
-                    "alignSelf": "flex-start",
-                    "backgroundColor": "#E2F2E7",
-                    "borderColor": "transparent",
-                    "borderCurve": "continuous",
-                    "borderRadius": 999,
-                    "borderWidth": 0,
-                    "flexDirection": "row",
-                    "gap": 4,
-                    "maxWidth": "100%",
-                    "paddingHorizontal": 10,
-                    "paddingVertical": 3,
-                  }
-                }
-              >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-check"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#1B7A4B"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4279990859,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGPath
-                      d="M20 6 9 17l-5-5"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4279990859,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
-                <Text
-                  style={
-                    [
-                      {
-                        "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
-                        "textAlign": "right",
-                      },
-                      {
-                        "fontSize": 11,
-                        "lineHeight": 16,
-                      },
-                      {
-                        "color": "#1B7A4B",
-                        "flexShrink": 1,
-                      },
-                    ]
-                  }
-                >
-                  قدّمت
                 </Text>
               </View>
             </View>
@@ -1622,7 +943,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                 {
                   "alignItems": "center",
                   "flexDirection": "row",
-                  "gap": 12,
+                  "gap": 10,
                 }
               }
             >
@@ -1631,10 +952,12 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                 importantForAccessibility="no-hide-descendants"
                 style={
                   {
+                    "alignItems": "center",
+                    "backgroundColor": "#ECEEF4",
                     "borderCurve": "continuous",
                     "borderRadius": 12,
                     "height": 44,
-                    "overflow": "hidden",
+                    "justifyContent": "center",
                     "width": 44,
                   }
                 }
@@ -1642,10 +965,10 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                 <RNSVGSvgView
                   accessible={false}
                   align="xMidYMid"
-                  bbHeight={44}
-                  bbWidth={44}
+                  bbHeight={23}
+                  bbWidth={23}
                   focusable={false}
-                  height={44}
+                  height={23}
                   meetOrSlice={0}
                   minX={0}
                   minY={0}
@@ -1657,15 +980,15 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                       },
                       {
                         "flex": 0,
-                        "height": 44,
-                        "width": 44,
+                        "height": 23,
+                        "width": 23,
                       },
                     ]
                   }
                   testID="building-silhouette"
-                  vbHeight={100}
-                  vbWidth={100}
-                  width={44}
+                  vbHeight={24}
+                  vbWidth={24}
+                  width={23}
                 >
                   <RNSVGGroup
                     fill={
@@ -1675,190 +998,27 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                       }
                     }
                   >
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={100}
+                    <RNSVGPath
+                      d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"
+                      fill={null}
                       propList={
                         [
                           "fill",
+                          "stroke",
+                          "strokeWidth",
+                          "strokeLinecap",
+                          "strokeLinejoin",
                         ]
                       }
-                      width={100}
-                      x={0}
-                      y={0}
-                    />
-                    <RNSVGRect
-                      fill={
+                      stroke={
                         {
-                          "payload": 4284244592,
+                          "payload": 4279642458,
                           "type": 0,
                         }
                       }
-                      fillOpacity={0.45}
-                      height={56}
-                      propList={
-                        [
-                          "fill",
-                          "fillOpacity",
-                        ]
-                      }
-                      rx={3}
-                      width={34}
-                      x={30}
-                      y={24}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      fillOpacity={0.3}
-                      height={34}
-                      propList={
-                        [
-                          "fill",
-                          "fillOpacity",
-                        ]
-                      }
-                      rx={2}
-                      width={16}
-                      x={64}
-                      y={46}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={38}
-                      y={36}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={52}
-                      y={36}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={38}
-                      y={50}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={52}
-                      y={50}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={38}
-                      y={64}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4293979623,
-                          "type": 0,
-                        }
-                      }
-                      height={7}
-                      propList={
-                        [
-                          "fill",
-                        ]
-                      }
-                      rx={1}
-                      width={6}
-                      x={52}
-                      y={64}
-                    />
-                    <RNSVGRect
-                      fill={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      fillOpacity={0.45}
-                      height={3}
-                      propList={
-                        [
-                          "fill",
-                          "fillOpacity",
-                        ]
-                      }
-                      rx={1.5}
-                      width={60}
-                      x={20}
-                      y={80}
+                      strokeLinecap={1}
+                      strokeLinejoin={1}
+                      strokeWidth={1.8}
                     />
                   </RNSVGGroup>
                 </RNSVGSvgView>
@@ -1875,7 +1035,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                     {
                       "alignItems": "center",
                       "flexDirection": "row",
-                      "gap": 4,
+                      "gap": 6,
                     }
                   }
                 >
@@ -1925,7 +1085,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                     accessible={true}
                     collapsable={false}
                     focusable={true}
-                    hitSlop={14.5}
+                    hitSlop={15}
                     onBlur={[Function]}
                     onClick={[Function]}
                     onFocus={[Function]}
@@ -1940,12 +1100,12 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                     <RNSVGSvgView
                       align="xMidYMid"
                       aria-hidden="true"
-                      bbHeight={15}
-                      bbWidth={15}
+                      bbHeight={14}
+                      bbWidth={14}
                       className="lucide lucide-badge-check lucide-verified"
                       fill="none"
                       focusable={false}
-                      height={15}
+                      height={14}
                       meetOrSlice={0}
                       minX={0}
                       minY={0}
@@ -1961,14 +1121,14 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                           },
                           {
                             "flex": 0,
-                            "height": 15,
-                            "width": 15,
+                            "height": 14,
+                            "width": 14,
                           },
                         ]
                       }
                       vbHeight={24}
                       vbWidth={24}
-                      width={15}
+                      width={14}
                       xmlns="http://www.w3.org/2000/svg"
                     >
                       <RNSVGGroup
@@ -2059,6 +1219,46 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                   القاهرة الجديدة · اليوم
                 </Text>
               </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#ECEEF4",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#16295A",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  قدّمت
+                </Text>
+              </View>
             </View>
             <Text
               style={
@@ -2089,8 +1289,8 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                     "textAlign": "right",
                   },
                   {
-                    "fontSize": 20,
-                    "lineHeight": 29,
+                    "fontSize": 26,
+                    "lineHeight": 30,
                   },
                   [
                     {
@@ -2099,7 +1299,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                       ],
                     },
                     {
-                      "marginTop": 4,
+                      "marginTop": 12,
                     },
                   ],
                 ]
@@ -2109,13 +1309,13 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                 style={
                   [
                     {
-                      "color": "#121620",
-                      "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                      "color": "#16295A",
+                      "fontFamily": "IBMPlexSansArabic_700Bold",
                       "textAlign": "right",
                     },
                     {
-                      "fontSize": 20,
-                      "lineHeight": 29,
+                      "fontSize": 26,
+                      "lineHeight": 30,
                     },
                     undefined,
                   ]
@@ -2139,7 +1339,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                   ]
                 }
               >
-                 ج.م / شهر
+                  ج.م / شهر
               </Text>
             </Text>
             <View
@@ -2147,7 +1347,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                 {
                   "flexDirection": "row",
                   "flexWrap": "wrap",
-                  "gap": 4,
+                  "gap": 6,
                   "marginTop": 12,
                 }
               }
@@ -2157,7 +1357,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                   {
                     "alignItems": "center",
                     "alignSelf": "flex-start",
-                    "backgroundColor": "#ECEEF4",
+                    "backgroundColor": "#F4EAD7",
                     "borderColor": "transparent",
                     "borderCurve": "continuous",
                     "borderRadius": 999,
@@ -2166,153 +1366,24 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                     "gap": 4,
                     "maxWidth": "100%",
                     "paddingHorizontal": 10,
-                    "paddingVertical": 3,
+                    "paddingVertical": 5,
                   }
                 }
               >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-target"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#16295A"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4279642458,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGCircle
-                      cx="12"
-                      cy="12"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="10"
-                      stroke={
-                        {
-                          "payload": 4279642458,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGCircle
-                      cx="12"
-                      cy="12"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="6"
-                      stroke={
-                        {
-                          "payload": 4279642458,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGCircle
-                      cx="12"
-                      cy="12"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="2"
-                      stroke={
-                        {
-                          "payload": 4279642458,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
                 <Text
                   style={
                     [
                       {
                         "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
                         "textAlign": "right",
                       },
                       {
-                        "fontSize": 11,
-                        "lineHeight": 16,
+                        "fontSize": 12,
+                        "lineHeight": 18,
                       },
                       {
-                        "color": "#16295A",
+                        "color": "#6B4E1A",
                         "flexShrink": 1,
                       },
                     ]
@@ -2335,170 +1406,21 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                     "gap": 4,
                     "maxWidth": "100%",
                     "paddingHorizontal": 10,
-                    "paddingVertical": 3,
+                    "paddingVertical": 5,
                   }
                 }
               >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-briefcase-business"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#5C6270"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4284244592,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGPath
-                      d="M12 12h.01"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M22 13a18.15 18.15 0 0 1-20 0"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGRect
-                      fill={null}
-                      height="14"
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      rx="2"
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                      width="20"
-                      x="2"
-                      y="6"
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
                 <Text
                   style={
                     [
                       {
                         "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
                         "textAlign": "right",
                       },
                       {
-                        "fontSize": 11,
-                        "lineHeight": 16,
+                        "fontSize": 12,
+                        "lineHeight": 18,
                       },
                       {
                         "color": "#5C6270",
@@ -2524,168 +1446,21 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                     "gap": 4,
                     "maxWidth": "100%",
                     "paddingHorizontal": 10,
-                    "paddingVertical": 3,
+                    "paddingVertical": 5,
                   }
                 }
               >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-users"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#5C6270"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4284244592,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGPath
-                      d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M16 3.128a4 4 0 0 1 0 7.744"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGPath
-                      d="M22 21v-2a4 4 0 0 0-3-3.87"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                    <RNSVGCircle
-                      cx="9"
-                      cy="7"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      r="4"
-                      stroke={
-                        {
-                          "payload": 4284244592,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
                 <Text
                   style={
                     [
                       {
                         "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
                         "textAlign": "right",
                       },
                       {
-                        "fontSize": 11,
-                        "lineHeight": 16,
+                        "fontSize": 12,
+                        "lineHeight": 18,
                       },
                       {
                         "color": "#5C6270",
@@ -2695,139 +1470,6 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                   }
                 >
                   3 وظائف خالية
-                </Text>
-              </View>
-            </View>
-            <View
-              style={
-                {
-                  "borderTopColor": "#E6E1D8",
-                  "borderTopWidth": 1,
-                  "flexDirection": "row",
-                  "flexWrap": "wrap",
-                  "gap": 4,
-                  "marginTop": 12,
-                  "paddingTop": 12,
-                }
-              }
-            >
-              <View
-                style={
-                  {
-                    "alignItems": "center",
-                    "alignSelf": "flex-start",
-                    "backgroundColor": "#E2F2E7",
-                    "borderColor": "transparent",
-                    "borderCurve": "continuous",
-                    "borderRadius": 999,
-                    "borderWidth": 0,
-                    "flexDirection": "row",
-                    "gap": 4,
-                    "maxWidth": "100%",
-                    "paddingHorizontal": 10,
-                    "paddingVertical": 3,
-                  }
-                }
-              >
-                <RNSVGSvgView
-                  align="xMidYMid"
-                  aria-hidden="true"
-                  bbHeight={12}
-                  bbWidth={12}
-                  className="lucide lucide-check"
-                  fill="none"
-                  focusable={false}
-                  height={12}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
-                  stroke="#1B7A4B"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  style={
-                    [
-                      {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
-                      },
-                      {
-                        "flex": 0,
-                        "height": 12,
-                        "width": 12,
-                      },
-                    ]
-                  }
-                  vbHeight={24}
-                  vbWidth={24}
-                  width={12}
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <RNSVGGroup
-                    fill={null}
-                    propList={
-                      [
-                        "fill",
-                        "stroke",
-                        "strokeWidth",
-                        "strokeLinecap",
-                        "strokeLinejoin",
-                      ]
-                    }
-                    stroke={
-                      {
-                        "payload": 4279990859,
-                        "type": 0,
-                      }
-                    }
-                    strokeLinecap={1}
-                    strokeLinejoin={1}
-                    strokeWidth={2}
-                  >
-                    <RNSVGPath
-                      d="M20 6 9 17l-5-5"
-                      fill={null}
-                      propList={
-                        [
-                          "fill",
-                          "stroke",
-                          "strokeWidth",
-                          "strokeLinecap",
-                          "strokeLinejoin",
-                        ]
-                      }
-                      stroke={
-                        {
-                          "payload": 4279990859,
-                          "type": 0,
-                        }
-                      }
-                      strokeLinecap={1}
-                      strokeLinejoin={1}
-                      strokeWidth={2}
-                    />
-                  </RNSVGGroup>
-                </RNSVGSvgView>
-                <Text
-                  style={
-                    [
-                      {
-                        "color": "#121620",
-                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
-                        "textAlign": "right",
-                      },
-                      {
-                        "fontSize": 11,
-                        "lineHeight": 16,
-                      },
-                      {
-                        "color": "#1B7A4B",
-                        "flexShrink": 1,
-                      },
-                    ]
-                  }
-                >
-                  قدّمت
                 </Text>
               </View>
             </View>

@@ -1,39 +1,33 @@
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { useTheme } from '~/theme/provider';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 /**
  * The generic figures drawn where there is no picture: a person without a
- * photo, a company without a logo. The same quiet grey for everyone — never
- * a letter or a colour of its own, which read as somebody's initials or as a
- * status beside them. Drawn to fill the frame it is put in (a circle, a
- * tile), which clips it; hidden from VoiceOver, as the name beside it says
- * who it is.
+ * photo, a company without a logo — the same for everyone, never a letter or
+ * a colour of its own (v1.1). The glyphs are the design's; the tile behind
+ * them, and its colour, are the caller's. Hidden from VoiceOver, as the name
+ * beside it says who it is.
  */
-export function PersonSilhouette({ size }: { size: number }) {
-  const { colors } = useTheme();
+export function PersonGlyph({ size, color }: { size: number; color: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100" accessible={false} testID="person-silhouette">
-      <Rect width={100} height={100} fill={colors.muted} />
-      <Circle cx={50} cy={39} r={18} fill={colors.mutedForeground} fillOpacity={0.45} />
-      <Path d="M13 100c0-22 17-36 37-36s37 14 37 36z" fill={colors.mutedForeground} fillOpacity={0.45} />
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false} testID="person-silhouette">
+      <Circle cx={12} cy={8.5} r={4} fill={color} />
+      <Path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z" fill={color} />
     </Svg>
   );
 }
 
-/** A building: a tower with its windows, and a lower wing beside it. */
-export function BuildingSilhouette({ size }: { size: number }) {
-  const { colors } = useTheme();
-  const ink = colors.mutedForeground;
-  const windows = [36, 50, 64].flatMap((y) => [38, 52].map((x) => ({ x, y })));
+/** A building, drawn in outline: its door and a row of windows. */
+export function BuildingGlyph({ size, color }: { size: number; color: string }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100" accessible={false} testID="building-silhouette">
-      <Rect width={100} height={100} fill={colors.muted} />
-      <Rect x={30} y={24} width={34} height={56} rx={3} fill={ink} fillOpacity={0.45} />
-      <Rect x={64} y={46} width={16} height={34} rx={2} fill={ink} fillOpacity={0.3} />
-      {windows.map(({ x, y }) => (
-        <Rect key={`${x}:${y}`} x={x} y={y} width={6} height={7} rx={1} fill={colors.muted} />
-      ))}
-      <Rect x={20} y={80} width={60} height={3} rx={1.5} fill={ink} fillOpacity={0.45} />
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false} testID="building-silhouette">
+      <Path
+        d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"
+        fill="none"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }

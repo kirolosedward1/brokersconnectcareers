@@ -1,23 +1,8 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
-import {
-  Ban,
-  Bookmark,
-  BookmarkCheck,
-  BriefcaseBusiness,
-  Check,
-  CircleSlash,
-  EyeOff,
-  FileText,
-  GraduationCap,
-  Share2,
-  Sparkles,
-  Star,
-  Target,
-  Users,
-} from '~/components/ui/lucide';
+import { Ban, Bookmark, BookmarkCheck, CircleSlash, EyeOff, FileText, Share2, Sparkles } from '~/components/ui/lucide';
 import type { JobListItem } from '@/lib/job-list';
 import { formatList, formatNumber, formatRelativeDay } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
@@ -33,7 +18,7 @@ import { useJobMatch } from '~/features/jobs/match';
 import { markupTags } from '~/i18n/rich';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
-import { iconSize, space } from '~/theme/tokens';
+import { iconSize, radius, space } from '~/theme/tokens';
 import { toast } from '~/components/feedback/toast';
 import { ActionMenu, type MenuItem } from '~/components/ui/action-menu';
 import { shareJobLink } from '~/features/jobs/share';
@@ -52,12 +37,14 @@ import { ZoomLink } from './zoom-link';
  * their logo or the generic building, their name cut short with an ellipsis
  * rather than wrapped, where and how fresh — then the role, then what it pays:
  * the basic salary, the largest thing on the card, with its currency and
- * «/ شهر». Under it the facts as chips: who brings the clients, the track,
- * and the open seats when there is more than one (the experience asked
- * otherwise); then what is true of it — sponsored, closed, «قدّمت», how well
- * it fits. Never the commission: the listing states it, with its terms. A
- * candidate can bookmark it from here without opening it (the website's card
- * toggle).
+ * «/ شهر», in the primary ink. Under it the facts as chips: who brings the
+ * clients (in champagne when it is the company), the track, and the open
+ * seats when there is more than one (the experience asked otherwise), then
+ * closed and how well it fits. A sponsored listing has a champagne edge and
+ * its name on a tab at the top. Never the commission: the listing states it,
+ * with its terms. A candidate can bookmark it from here without opening it
+ * (the website's card toggle); once they have applied, «قدّمت» stands there
+ * instead. The design's card (Components, Jobs boards).
  *
  * Held, it offers what can be done with it without opening it: save, share,
  * hide it or everything from its company. On the board (`swipeable`) it is
@@ -87,15 +74,13 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const age = job.published_at ? formatRelativeDay(job.published_at, locale) : null;
   // More than one seat is worth a chip of its own; one seat says nothing, and the experience asked does.
   const seatsOrExperience =
-    job.seats > 1
-      ? { icon: Users, label: `${formatNumber(job.seats, locale)} ${t('jobs.seatsLabel', { count: job.seats })}` }
-      : { icon: GraduationCap, label: t(`experienceBand.${job.experience_band}`) };
+    job.seats > 1 ? `${formatNumber(job.seats, locale)} ${t('jobs.seatsLabel', { count: job.seats })}` : t(`experienceBand.${job.experience_band}`);
+  // The company bringing the clients is the fact a broker looks for first: in champagne, the rest muted.
   const chips = [
-    { key: 'leads', icon: Target, label: t(`leadsSource.${job.leads_source}_short`), variant: companyLeads ? ('primary' as const) : ('default' as const) },
-    { key: 'track', icon: BriefcaseBusiness, label: t(`track.${job.track}`), variant: 'default' as const },
-    { key: 'fit', ...seatsOrExperience, variant: 'default' as const },
+    { key: 'leads', label: t(`leadsSource.${job.leads_source}_short`), variant: companyLeads ? ('accent' as const) : ('default' as const) },
+    { key: 'track', label: t(`track.${job.track}`), variant: 'default' as const },
+    { key: 'fit', label: seatsOrExperience, variant: 'default' as const },
   ];
-  const flags = job.is_featured || closed || applied || match;
 
   // One element to VoiceOver, so it says everything the card shows, in the
   // order it shows it: who and where, what it pays and who brings the
@@ -149,6 +134,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const drawn = (onPress?: () => void) => (
     <Card
       onPress={onPress}
+      style={job.is_featured ? { borderColor: colors.champagne, borderWidth: 1 } : undefined}
       onLongPress={() => {
         haptic.tap();
         menu.show();
@@ -166,20 +152,45 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
         if (action === 'hide') hideThis();
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+      {/* Sponsored: a champagne edge and its name on a tab at the card's top end, as the design draws it. */}
+      {job.is_featured ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: -1,
+            end: space[4],
+            paddingHorizontal: space[2.5],
+            paddingVertical: space[0.5],
+            borderBottomStartRadius: radius.md,
+            borderBottomEndRadius: radius.md,
+            backgroundColor: colors.champagne,
+          }}
+        >
+          <Text variant="label" weight="semibold" style={{ color: colors.champagneForeground }}>
+            {t('jobs.featured')}
+          </Text>
+        </View>
+      ) : null}
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2.5] }}>
         <CompanyLogo name={company} logoUrl={job.company.logo_url} size="sm" />
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1.5] }}>
             <Text variant="small" weight="medium" numberOfLines={large ? 2 : 1} ellipsizeMode="tail" style={{ flexShrink: 1 }}>
               {company}
             </Text>
-            {job.company.verification_status === 'verified' ? <VerifiedMark size={15} /> : null}
+            {job.company.verification_status === 'verified' ? <VerifiedMark size={14} /> : null}
           </View>
           <Text variant="caption" tone="mutedForeground" numberOfLines={large ? undefined : 1}>
             {age ? `${district} · ${age}` : district}
           </Text>
         </View>
-        {save.savable ? <SaveJobIcon save={save} /> : null}
+        {/* Applied to: «قدّمت» where the bookmark was — saving it is still in the menu and the swipe. */}
+        {applied ? (
+          <Badge size="md" weight="semibold" variant="primary" label={t('app.jobs.appliedChip')} />
+        ) : save.savable ? (
+          <SaveJobIcon save={save} />
+        ) : null}
       </View>
 
       <Text
@@ -193,59 +204,43 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
       </Text>
 
       {/* The basic salary, on a line of its own and the largest thing on the
-          card — what a broker weighs a listing by — with its currency and the
-          month beside it. In ink, not the brand colour: the brand colour is
-          for what can be pressed. */}
-      <Text variant="title" style={[TABULAR, { marginTop: space[1] }]}>
-        <Text variant="title" weight="semibold" tone={salary.unit ? 'foreground' : 'mutedForeground'}>
+          card — what a broker weighs a listing by — in the primary ink, with
+          its currency and the month beside it. Words where there is no basic
+          ("commission only") are set smaller, muted. */}
+      {salary.unit ? (
+        <Text variant="pay" style={[TABULAR, { marginTop: space[3] }]}>
+          <Text variant="pay" weight="bold" tone="primary">
+            {salary.figures}
+          </Text>
+          <Text variant="caption" weight="regular" tone="mutedForeground">{`  ${salary.unit}`}</Text>
+        </Text>
+      ) : (
+        <Text variant="headline" weight="semibold" tone="mutedForeground" style={{ marginTop: space[3] }}>
           {salary.figures}
         </Text>
-        {salary.unit ? (
-          <Text variant="caption" weight="regular" tone="mutedForeground">{` ${salary.unit}`}</Text>
-        ) : null}
-      </Text>
+      )}
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1], marginTop: space[3] }}>
-        {chips.map(({ key, icon: Icon, label, variant }) => (
-          <Badge
-            key={key}
-            variant={variant}
-            label={label}
-            icon={<Icon size={iconSize.label} color={variant === 'primary' ? colors.primary : colors.mutedForeground} />}
-          />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1.5], marginTop: space[3] }}>
+        {chips.map(({ key, label, variant }) => (
+          <Badge key={key} size="md" variant={variant} label={label} />
         ))}
+        {closed ? (
+          <Badge
+            size="md"
+            label={t('jobs.closedShort')}
+            icon={<CircleSlash size={iconSize.label} color={colors.mutedForeground} />}
+          />
+        ) : null}
+        {match ? (
+          <Badge
+            size="md"
+            weight="semibold"
+            variant="success"
+            label={t.markup('app.jobs.match', { percent: match.percent, ...markupTags })}
+            icon={<Sparkles size={iconSize.label} color={colors.success} />}
+          />
+        ) : null}
       </View>
-
-      {flags ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: space[1],
-            marginTop: space[3],
-            paddingTop: space[3],
-            borderTopWidth: StyleSheet.hairlineWidth * 2,
-            borderTopColor: colors.border,
-          }}
-        >
-          {applied ? (
-            <Badge variant="success" label={t('app.jobs.appliedChip')} icon={<Check size={iconSize.label} color={colors.success} />} />
-          ) : null}
-          {job.is_featured ? (
-            <Badge variant="primary" label={t('jobs.featured')} icon={<Star size={iconSize.label} color={colors.primary} />} />
-          ) : null}
-          {closed ? (
-            <Badge label={t('jobs.closedShort')} icon={<CircleSlash size={iconSize.label} color={colors.mutedForeground} />} />
-          ) : null}
-          {match ? (
-            <Badge
-              variant="primary"
-              label={t.markup('app.jobs.match', { percent: match.percent, ...markupTags })}
-              icon={<Sparkles size={iconSize.label} color={colors.primary} />}
-            />
-          ) : null}
-        </View>
-      ) : null}
     </Card>
   );
   const card = (

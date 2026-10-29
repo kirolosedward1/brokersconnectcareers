@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { trustedLogoUrl } from '@/lib/avatar-url';
 import { env } from '~/lib/env';
 import { useTheme } from '~/theme/provider';
-import { BuildingSilhouette } from '~/components/ui/silhouette';
+import { BuildingGlyph } from '~/components/ui/silhouette';
 
 const SIZES = { sm: 44, md: 52, lg: 72 } as const;
 /** Each size's corner, continuous. */
@@ -69,9 +69,9 @@ export function CompanyLogo({
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={{ width: px, height: px, ...corner, overflow: 'hidden' }}
+      style={{ width: px, height: px, ...corner, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center' }}
     >
-      <BuildingSilhouette size={px} />
+      <BuildingGlyph size={Math.round(px * 0.52)} color={colors.primary} />
     </View>
   );
 }

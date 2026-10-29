@@ -300,6 +300,17 @@ describe('the listing card', () => {
     expect(name.props.ellipsizeMode).toBe('tail');
   });
 
+  it('puts «قدّمت» where the bookmark was, and marks a sponsored listing with its tab', async () => {
+    const app = cardApp(true);
+    app.index = () => <JobCard job={{ ...listing, is_featured: true, published_at: '2026-10-29T08:00:00Z' }} applied />;
+    await renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.app.jobs.appliedChip)).toBeTruthy();
+    expect(screen.getByText(ar.jobs.featured)).toBeTruthy();
+    // The figures in the pay size and the primary ink.
+    const figures = screen.getByText(`${LRI}10,000 – 15,000${PDI}`);
+    expect(StyleSheet.flatten(figures.props.style)).toEqual(expect.objectContaining({ fontSize: 26, lineHeight: 30 }));
+  });
+
   it('shows the experience asked when there is a single seat', async () => {
     const app = cardApp(false);
     app.index = () => <JobCard job={{ ...listing, seats: 1, published_at: '2026-10-29T08:00:00Z' }} />;

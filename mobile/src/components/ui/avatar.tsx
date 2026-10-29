@@ -3,7 +3,8 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { trustedAvatarUrl } from '@/lib/avatar-url';
 import { env } from '~/lib/env';
-import { PersonSilhouette } from './silhouette';
+import { useTheme } from '~/theme/provider';
+import { PersonGlyph } from './silhouette';
 
 const SIZES = { sm: 36, md: 44, lg: 64 } as const;
 
@@ -25,6 +26,7 @@ export function Avatar({
   size?: keyof typeof SIZES;
   shape?: 'circle' | 'rounded';
 }) {
+  const { colors } = useTheme();
   const px = SIZES[size];
   const photo = trustedAvatarUrl(src, env.supabaseUrl);
   // Which photo failed, not whether one did: a list reuses this component for
@@ -54,8 +56,12 @@ export function Avatar({
   }
 
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={frame}>
-      <PersonSilhouette size={px} />
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ ...frame, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.muted }}
+    >
+      <PersonGlyph size={Math.round(px * 0.58)} color={colors.mutedForeground} />
     </View>
   );
 }
