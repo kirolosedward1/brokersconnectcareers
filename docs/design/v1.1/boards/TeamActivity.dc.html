@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>نشاط الفريق</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06)}
+h2{margin:0;font-size:15px;font-weight:600}
+.hint{font-size:12px;line-height:17px;color:#5C6270}
+.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.row:last-child{border-bottom:0}
+.row strong{display:block;font-size:14px;font-weight:600}
+.row .h{display:block;font-size:12px;line-height:17px;color:#5C6270}
+.sw{width:46px;height:28px;border-radius:999px;background:#D9D4CA;position:relative;flex-shrink:0}
+.sw i{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw.on{background:#16295A}.sw.on i{right:auto;left:3px}
+.av{width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.role{height:24px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;white-space:nowrap}
+.r-owner{background:#F4EAD7;color:#7A5A1F}.r-admin{background:#ECEEF4;color:#16295A}.r-rec{background:#E2F2E7;color:#1B7A4B}.r-view{background:#F0EDE7;color:#5C6270}
+.chip{display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;background:#F0EDE7;font-size:12px;font-weight:500;color:#5C6270}
+.chip.on{background:#16295A;color:#fff}
+.in{height:46px;border-radius:12px;border:1px solid #E6E1D8;background:#fff;display:flex;align-items:center;padding:0 14px;font-size:14px;gap:10px}
+.in.ph{color:#8B8578}
+.lbl{font-size:12px;font-weight:600;color:#5C6270}
+.rad{width:22px;height:22px;border-radius:999px;border:1.5px solid #8B8578;flex-shrink:0}
+.rad.on{border:7px solid #16295A}
+.btn{height:48px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600}
+.pri{background:#16295A;color:#fff}.sec{background:#fff;border:1px solid #E6E1D8;color:#16295A}
+.chev{flex-shrink:0}
+.log{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.log:last-child{border-bottom:0}
+.log .t{width:44px;font-size:11px;color:#8B8578;flex-shrink:0;padding-top:2px}
+.log p{margin:0;font-size:13px;line-height:19px}
+.log small{display:block;font-size:11px;color:#5C6270;margin-top:2px}
+.warn{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;background:#FBF8F1;border:1px solid #F0E6D0;font-size:12px;line-height:18px;color:#4A3F2A}
+
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1500px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="CompanySettings.dc.html" aria-label="رجوع" style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column"><h1 style="margin:0;font-size:18px;line-height:24px;font-weight:700">نشاط الفريق</h1><span class="hint">كل ما فعله الفريق باسم الشركة</span></div>
+    
+  </div>
+  <div style="padding:16px 20px 30px;display:flex;flex-direction:column;gap:14px">
+
+    <div style="display:flex;gap:8px;overflow:hidden;margin:0 -20px;padding:0 20px"><span class="chip on">الكل</span><span class="chip">كشف تواصل</span><span class="chip">المتقدمون</span><span class="chip">الإعلانات</span><span class="chip">الرصيد</span><span class="chip">الفريق</span></div>
+    <div style="display:flex;gap:8px"><span class="chip" style="background:#fff;border:1px solid #E6E1D8;color:#16295A">كل الأعضاء ▾</span><span class="chip" style="background:#fff;border:1px solid #E6E1D8;color:#16295A">آخر <span class="num">30</span> يومًا ▾</span><a href="#" class="chip" style="margin-inline-start:auto;background:#fff;border:1px solid #E6E1D8;color:#16295A">تصدير CSV</a></div>
+
+    <h2>اليوم</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="log"><span class="t"><span class="num">10:40</span></span><div style="flex:1"><p><b>سارة</b> كشفت تواصل <b>أحمد سامي</b>.</p><small>استشاري مبيعات · التجمع · الرصيد بعدها <span class="num">8</span></small></div></div>
+      <div class="log"><span class="t"><span class="num">10:12</span></span><div style="flex:1"><p><b>محمد</b> وافق على نشر «مدير فريق مبيعات».</p><small>طلبته سارة أمس · نُشر فورًا</small></div></div>
+      <div class="log"><span class="t"><span class="num">09:05</span></span><div style="flex:1"><p><b>أنت</b> اشتريت باقة موسّعة.</p><small><span class="num">3,000</span> ج.م · بطاقة <span class="num">••4421</span> · <a href="Orders.dc.html" style="font-weight:600">الفاتورة</a></small></div></div>
+    </div>
+
+    <h2>أمس</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="log"><span class="t"><span class="num">17:20</span></span><div style="flex:1"><p><b>سارة</b> نقلت <span class="num">5</span> متقدمين إلى القائمة المختصرة وأرسلت الرد الجاهز «سنتواصل خلال <span class="num">3</span> أيام».</p></div></div>
+      <div class="log"><span class="t"><span class="num">16:02</span></span><div style="flex:1"><p><b>سارة</b> طلبت نشر «مدير فريق مبيعات».</p><small>بانتظار موافقة مدير</small></div></div>
+      <div class="log"><span class="t"><span class="num">11:30</span></span><div style="flex:1"><p><b>محمد</b> دعا <b>هبة سمير</b> بدور مشاهد.</p></div></div>
+      <div class="log" style="background:#FBF8F1"><span class="t"><span class="num">09:48</span></span><div style="flex:1"><p><b>محمد</b> حاول كشف تواصل بعد نفاد حده الشهري.</p><small>رُفض تلقائيًا · <a href="MemberDetail.dc.html" style="font-weight:600">ارفع حده</a></small></div></div>
+    </div>
+
+    <h2>الأحد <span class="num">26</span> أكتوبر</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="log"><span class="t"><span class="num">15:10</span></span><div style="flex:1"><p><b>أنت</b> غيّرت دور <b>محمد رأفت</b> من مسؤول توظيف إلى مدير.</p></div></div>
+      <div class="log"><span class="t"><span class="num">12:00</span></span><div style="flex:1"><p><b>سارة</b> اعتذرت لـ<span class="num">3</span> متقدمين مع سبب.</p><small>«خبرة أقل من المطلوب» · وصل للمتقدمين</small></div></div>
+      <div class="log"><span class="t"><span class="num">08:30</span></span><div style="flex:1"><p>أعاد النظام نشر «استشاري مبيعات» تلقائيًا.</p><small>تجديد تلقائي مفعّل · رصيد واحد</small></div></div>
+    </div>
+
+    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:10px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><div style="flex:1;display:flex;flex-direction:column"><strong style="font-size:13px;font-weight:600">أبلغني بنشاط حسّاس</strong><span class="hint">كشف بعد الحد، تغيير دور، إنفاق، إزالة عضو.</span></div><span class="sw on"><i></i></span></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

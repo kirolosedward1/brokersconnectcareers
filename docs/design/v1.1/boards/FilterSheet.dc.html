@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>فلاتر الوظائف</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}a:hover{color:#0E1D44}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+h2{margin:0;font-size:14px;font-weight:600}
+.opt{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;color:#16295A;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer;font-family:inherit}
+.opt.on{background:#16295A;border-color:#16295A;color:#fff}
+.sec{display:flex;flex-direction:column;gap:10px}
+.wrap{display:flex;gap:8px;flex-wrap:wrap}
+.field{display:flex;align-items:center;height:48px;padding:0 14px;border:1px solid #E6E1D8;border-radius:14px;background:#fff;box-sizing:border-box;gap:8px;flex:1}
+.field input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:16px;font-weight:600;direction:ltr;text-align:left}
+.field span{font-size:12px;color:#5C6270;white-space:nowrap}
+.sw{width:44px;height:26px;border-radius:999px;background:#16295A;position:relative;flex-shrink:0;border:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:999px;background:#fff}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:rgba(5,10,25,.45);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end">
+
+  <div style="background:#F6F4F0;border-radius:28px 28px 0 0;display:flex;flex-direction:column;height:760px;box-shadow:0 -16px 40px rgba(0,0,0,.2)">
+    <div style="display:flex;justify-content:center;padding:10px 0 2px"><span style="width:36px;height:5px;border-radius:999px;background:#D9D4CA"></span></div>
+    <div style="padding:8px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E6E1D8">
+      <button type="button" style="border:0;background:transparent;font:inherit;font-size:14px;font-weight:500;color:#B5372C;cursor:pointer;padding:0;height:44px">مسح الكل</button>
+      <h1 style="margin:0;font-size:17px;font-weight:700">الفلاتر</h1>
+      <button type="button" aria-label="إغلاق" style="width:44px;height:44px;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-inline-end:-10px"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+
+    <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:20px;flex:1;overflow:hidden">
+      <div class="sec"><h2>المسار</h2><div class="wrap"><button type="button" class="opt on">بيع أوف بلان</button><button type="button" class="opt">ريسيل</button><button type="button" class="opt">إيجارات</button><button type="button" class="opt">تجاري وإداري</button><button type="button" class="opt">إدارة أملاك</button><button type="button" class="opt">وظائف أدمن</button></div></div>
+
+      <div class="sec"><h2>المنطقة</h2><div class="wrap"><button type="button" class="opt on">التجمع الخامس</button><button type="button" class="opt on">الشيخ زايد</button><button type="button" class="opt">أكتوبر</button><button type="button" class="opt">المعادي</button><button type="button" class="opt">مصر الجديدة</button><button type="button" class="opt"><span class="num">+12</span> أخرى</button></div></div>
+
+      <div class="sec"><h2>الراتب الأساسي الشهري</h2><div style="display:flex;gap:8px;align-items:center"><label class="field" for="min"><span>من</span><input id="min" type="text" inputmode="numeric" value="8,000" class="num"></label><label class="field" for="max"><span>إلى</span><input id="max" type="text" inputmode="numeric" placeholder="بلا حد" class="num"></label></div></div>
+
+      <div class="sec"><h2>من يوفّر العملاء</h2><div class="wrap"><button type="button" class="opt on">الشركة</button><button type="button" class="opt">الاستشاري</button><button type="button" class="opt">مشترك</button></div></div>
+
+      <div class="sec"><h2>الخبرة</h2><div class="wrap"><button type="button" class="opt">خريج جديد</button><button type="button" class="opt on"><span class="num">1</span>&nbsp;إلى&nbsp;<span class="num">3</span></button><button type="button" class="opt"><span class="num">3</span>&nbsp;إلى&nbsp;<span class="num">5</span></button><button type="button" class="opt">أكثر من <span class="num">5</span></button></div></div>
+
+      <div class="sec" style="gap:0;background:#fff;border-radius:16px;border:1px solid #E6E1D8">
+        <div style="display:flex;align-items:center;gap:12px;height:50px;padding:0 14px;border-bottom:1px solid #F0EDE7;font-size:14px"><span style="flex:1">شركات موثّقة فقط</span><button type="button" class="sw" role="switch" aria-checked="true" aria-label="شركات موثّقة فقط"></button></div>
+        <div style="display:flex;align-items:center;gap:12px;height:50px;padding:0 14px;font-size:14px"><span style="flex:1">أخفِ ما قدّمت عليه</span><button type="button" class="sw" role="switch" aria-checked="true" aria-label="أخفِ ما قدّمت عليه"></button></div>
+      </div>
+    </div>
+
+    <div style="padding:12px 20px 34px;background:#fff;border-top:1px solid #E6E1D8;display:flex;gap:10px">
+      <button type="button" style="height:52px;padding:0 16px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;font:inherit;font-size:14px;font-weight:600;color:#16295A;cursor:pointer;display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>احفظ البحث</button>
+      <a href="Jobs.dc.html" style="flex:1;height:52px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600">عرض <span class="num" style="margin:0 4px">23</span> وظيفة</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

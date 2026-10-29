@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>حسابي</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#121620;text-decoration:none}a:hover{color:#0E1D44}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.group{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06);overflow:hidden;display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:12px;height:52px;padding:0 14px;border-bottom:1px solid #F0EDE7;font-size:15px}
+.row:last-child{border-bottom:0}
+.ic{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ic svg{width:18px;height:18px}
+.row span.t{flex:1;min-width:0}
+.row .v{font-size:13px;color:#5C6270}
+.row .chev{width:16px;height:16px;color:#8B8578;flex-shrink:0}
+.sw{width:44px;height:26px;border-radius:999px;background:#16295A;position:relative;flex-shrink:0;border:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:999px;background:#fff}
+h2{margin:0 4px;font-size:12px;font-weight:600;color:#5C6270;letter-spacing:0}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;height:50px;justify-content:center;border-radius:999px;color:#5C6270;font-size:11px;font-weight:500;text-decoration:none}
+.tab.on{background:rgba(22,41,90,.08);color:#16295A;font-weight:600}
+.tab svg{width:22px;height:22px}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+  <div style="padding:58px 20px 0;display:flex;flex-direction:column;gap:16px;flex:1;overflow:hidden">
+
+    <a href="Profile.dc.html" class="group" style="padding:16px;flex-direction:row;align-items:center;gap:14px">
+      <div style="position:relative;width:64px;height:64px;flex-shrink:0">
+        <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="29" fill="none" stroke="#E6E1D8" stroke-width="3"/><circle cx="32" cy="32" r="29" fill="none" stroke="#A27A3B" stroke-width="3" stroke-linecap="round" stroke-dasharray="131 182" transform="rotate(-90 32 32)"/></svg>
+        <div style="position:absolute;inset:7px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px"><svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></div>
+      </div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+        <strong style="font-size:18px;line-height:26px;font-weight:700">كيرلس إدوارد</strong>
+        <span style="font-size:13px;color:#5C6270">ريسيل · القاهرة الجديدة</span>
+        <span style="font-size:12px;font-weight:600;color:#7A5A1F">الملف مكتمل <span class="num">72%</span> · ظاهر في الدليل</span>
+      </div>
+      <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8B8578" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+    </a>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>الملف والدليل</h2>
+      <div class="group">
+        <a href="Profile.dc.html" class="row"><span class="ic" style="background:#ECEEF4"><svg viewBox="0 0 24 24" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="t">ملفي وسيرتي الذاتية</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+        <a href="#" class="row"><span class="ic" style="background:#F4EAD7"><svg viewBox="0 0 24 24" fill="none" stroke="#6B4E1A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="t">معاينة ملفي كما تراه الشركات</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+        <a href="#" class="row"><span class="ic" style="background:#E2F2E7"><svg viewBox="0 0 24 24" fill="none" stroke="#1B7A4B" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span><span class="t">التنبيهات والبحوث المحفوظة</span><span class="v"><span class="num">3</span> مفعّلة</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+        <a href="#" class="row"><span class="ic" style="background:#F0EDE7"><svg viewBox="0 0 24 24" fill="none" stroke="#5C6270" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M17.9 17.9A10 10 0 0 1 2.3 10M9.9 4.2A10 10 0 0 1 21.7 14M3 3l18 18"/></svg></span><span class="t">وظائف وشركات أخفيتها</span><span class="v num">2</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>الحساب</h2>
+      <div class="group">
+        <a href="#" class="row"><span class="ic" style="background:#ECEEF4"><svg viewBox="0 0 24 24" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><span class="t">البريد الإلكتروني</span><span class="v" style="direction:ltr">kirolos@…</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+        <a href="#" class="row"><span class="ic" style="background:#ECEEF4"><svg viewBox="0 0 24 24" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span class="t">الأمان والتحقق بخطوتين</span><span class="v" style="color:#1B7A4B;font-weight:600">مفعّل</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+        <div class="row"><span class="ic" style="background:#ECEEF4"><svg viewBox="0 0 24 24" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg></span><span class="t">قفل التطبيق بالوجه</span><button type="button" class="sw" role="switch" aria-checked="true" aria-label="قفل التطبيق"></button></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>التطبيق</h2>
+      <div class="group">
+        <a href="#" class="row"><span class="ic" style="background:#F0EDE7"><svg viewBox="0 0 24 24" fill="none" stroke="#5C6270" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-1-.3-2-.8-3A5 5 0 0 1 12 3z"/></svg></span><span class="t">المظهر</span><span class="v">حسب الجهاز</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+        <a href="#" class="row"><span class="ic" style="background:#F0EDE7"><svg viewBox="0 0 24 24" fill="none" stroke="#5C6270" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span class="t">اللغة</span><span class="v">العربية</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+        <a href="#" class="row"><span class="ic" style="background:#F0EDE7"><svg viewBox="0 0 24 24" fill="none" stroke="#5C6270" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span><span class="t">الشروط، الخصوصية والتراخيص</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+      </div>
+    </div>
+
+    <div class="group">
+      <a href="#" class="row" style="color:#16295A;font-weight:500"><span class="t">تسجيل الخروج</span></a>
+      <a href="#" class="row" style="color:#B5372C;font-weight:500"><span class="t">حذف الحساب</span></a>
+    </div>
+  </div>
+
+  <nav aria-label="التبويبات" style="position:absolute;left:16px;right:16px;bottom:22px;height:56px;padding:3px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid #E6E1D8;box-shadow:0 2px 6px rgba(18,22,32,.06),0 16px 40px rgba(18,22,32,.10);display:flex;box-sizing:border-box;backdrop-filter:blur(12px)">
+    <a href="Main.dc.html" class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>الرئيسية</a>
+    <a href="Jobs.dc.html" class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>الوظائف</a>
+    <a href="Applications.dc.html" class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>طلباتي</a>
+    <a href="Saved.dc.html" class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>محفوظة</a>
+    <a href="Account.dc.html" class="tab on"><span style="width:22px;height:22px;border-radius:999px;background:#16295A;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;line-height:1"><svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></span>حسابي</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

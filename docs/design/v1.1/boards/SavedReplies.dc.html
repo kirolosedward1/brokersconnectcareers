@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الردود الجاهزة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06)}
+h2{margin:0;font-size:15px;font-weight:600}
+.hint{font-size:12px;line-height:17px;color:#5C6270}
+.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.row:last-child{border-bottom:0}
+.row strong{display:block;font-size:14px;font-weight:600}
+.row .h{display:block;font-size:12px;line-height:17px;color:#5C6270}
+.sw{width:46px;height:28px;border-radius:999px;background:#D9D4CA;position:relative;flex-shrink:0}
+.sw i{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw.on{background:#16295A}.sw.on i{right:auto;left:3px}
+.av{width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+.role{height:24px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;white-space:nowrap}
+.r-owner{background:#F4EAD7;color:#7A5A1F}.r-admin{background:#ECEEF4;color:#16295A}.r-rec{background:#E2F2E7;color:#1B7A4B}.r-view{background:#F0EDE7;color:#5C6270}
+.chip{display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;background:#F0EDE7;font-size:12px;font-weight:500;color:#5C6270}
+.chip.on{background:#16295A;color:#fff}
+.in{height:46px;border-radius:12px;border:1px solid #E6E1D8;background:#fff;display:flex;align-items:center;padding:0 14px;font-size:14px;gap:10px}
+.in.ph{color:#8B8578}
+.lbl{font-size:12px;font-weight:600;color:#5C6270}
+.rad{width:22px;height:22px;border-radius:999px;border:1.5px solid #8B8578;flex-shrink:0}
+.rad.on{border:7px solid #16295A}
+.btn{height:48px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600}
+.pri{background:#16295A;color:#fff}.sec{background:#fff;border:1px solid #E6E1D8;color:#16295A}
+.chev{flex-shrink:0}
+.log{display:flex;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.log:last-child{border-bottom:0}
+.log .t{width:44px;font-size:11px;color:#8B8578;flex-shrink:0;padding-top:2px}
+.log p{margin:0;font-size:13px;line-height:19px}
+.log small{display:block;font-size:11px;color:#5C6270;margin-top:2px}
+.warn{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;background:#FBF8F1;border:1px solid #F0E6D0;font-size:12px;line-height:18px;color:#4A3F2A}
+
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1500px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="CompanySettings.dc.html" aria-label="رجوع" style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column"><h1 style="margin:0;font-size:18px;line-height:24px;font-weight:700">الردود الجاهزة</h1><span class="hint">تظهر لكل الفريق عند الرد على المتقدمين</span></div>
+    
+  </div>
+  <div style="padding:16px 20px 30px;display:flex;flex-direction:column;gap:14px">
+
+    <div class="card" style="overflow:hidden">
+      <div class="row"><div style="flex:1"><strong>استلام الطلب</strong><span class="h">يُرسل تلقائيًا عند التقديم</span><p style="margin:6px 0 0;font-size:13px;line-height:19px;color:#2B303B">شكرًا على طلبك على وظيفة {الوظيفة}. سنراجعه ونردّ خلال {مدة الرد}.</p></div><span class="sw on"><i></i></span></div>
+      <div class="row"><div style="flex:1"><strong>قائمة مختصرة</strong><span class="h">افتراضي عند النقل إلى المرحلة</span><p style="margin:6px 0 0;font-size:13px;line-height:19px;color:#2B303B">أهلًا {الاسم}، أُعجبنا بملفك وسنتواصل معك لتحديد موعد مقابلة.</p></div><svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="row"><div style="flex:1"><strong>دعوة لمقابلة</strong><p style="margin:6px 0 0;font-size:13px;line-height:19px;color:#2B303B">نودّ مقابلتك يوم {التاريخ} الساعة {الوقت} في {الفرع}. أكّد من فضلك أو اقترح وقتًا آخر.</p></div><svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="row"><div style="flex:1"><strong>اعتذار</strong><span class="h">يُرسل مع سبب القرار إن كُتب</span><p style="margin:6px 0 0;font-size:13px;line-height:19px;color:#2B303B">شكرًا لاهتمامك بـ{الشركة}. اخترنا مرشحًا آخر لهذه الوظيفة، ونحتفظ بملفك للفرص القادمة.</p></div><svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="row"><div style="flex:1"><strong>طلب مستندات</strong><span class="h">مخصص · أضافته سارة</span><p style="margin:6px 0 0;font-size:13px;line-height:19px;color:#2B303B">أرسل من فضلك صورة البطاقة ورخصة القيادة قبل المقابلة.</p></div><svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+    </div>
+    <a href="#" class="btn sec"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>ردّ جديد</a>
+
+    <h2>تعديل: دعوة لمقابلة</h2>
+    <div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div class="in" style="height:auto;padding:12px 14px;line-height:22px;display:block">نودّ مقابلتك يوم <span class="chip on" style="height:24px;padding:0 8px;font-size:11px">التاريخ</span> الساعة <span class="chip on" style="height:24px;padding:0 8px;font-size:11px">الوقت</span> في <span class="chip on" style="height:24px;padding:0 8px;font-size:11px">الفرع</span>. أكّد من فضلك أو اقترح وقتًا آخر.</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="hint" style="align-self:center">أدرج:</span><span class="chip">الاسم</span><span class="chip">الوظيفة</span><span class="chip">الشركة</span><span class="chip">الفرع</span><span class="chip">التاريخ</span><span class="chip">الوقت</span><span class="chip">مدة الرد</span></div>
+      <div class="row" style="padding:10px 0 0;border:0;border-top:1px solid #F0EDE7"><div style="flex:1"><strong>القناة</strong></div><div style="display:flex;gap:6px"><span class="chip on">داخل التطبيق</span><span class="chip on">واتساب</span><span class="chip">بريد</span></div></div>
+      <div class="row" style="padding:0;border:0"><div style="flex:1"><strong>يستخدمه</strong><span class="h">كل الفريق أو أنا فقط</span></div><div style="display:flex;gap:6px"><span class="chip on">الفريق</span><span class="chip">أنا</span></div></div>
+      <div style="display:flex;gap:8px"><a href="#" class="btn pri" style="flex:1;height:44px">حفظ</a><a href="#" class="btn sec" style="height:44px;padding:0 16px">معاينة</a></div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

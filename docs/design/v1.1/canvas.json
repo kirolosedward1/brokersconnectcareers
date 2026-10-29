@@ -1,0 +1,1134 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Account.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Account",
+      "w": 390,
+      "x": 2820,
+      "y": 0
+    },
+    "Admin.dc.html": {
+      "h": 1700,
+      "radius": 44,
+      "title": "Admin console",
+      "w": 390,
+      "x": 0,
+      "y": 10560
+    },
+    "AdminAgent.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Admin · consultant",
+      "w": 390,
+      "x": 470,
+      "y": 12700
+    },
+    "AdminAgents.dc.html": {
+      "h": 1000,
+      "radius": 44,
+      "title": "Admin · consultants",
+      "w": 390,
+      "x": 0,
+      "y": 12700
+    },
+    "AdminAppeals.dc.html": {
+      "h": 1300,
+      "radius": 44,
+      "title": "Admin · appeals",
+      "w": 390,
+      "x": 1410,
+      "y": 12700
+    },
+    "AdminApplication.dc.html": {
+      "h": 1400,
+      "radius": 44,
+      "title": "Admin · application",
+      "w": 390,
+      "x": 3760,
+      "y": 10560
+    },
+    "AdminApplications.dc.html": {
+      "h": 1000,
+      "radius": 44,
+      "title": "Admin · applications",
+      "w": 390,
+      "x": 3290,
+      "y": 10560
+    },
+    "AdminAudit.dc.html": {
+      "h": 1200,
+      "radius": 44,
+      "title": "Admin · audit log",
+      "w": 390,
+      "x": 1880,
+      "y": 12700
+    },
+    "AdminCompanies.dc.html": {
+      "h": 1000,
+      "radius": 44,
+      "title": "Admin · companies",
+      "w": 390,
+      "x": 1410,
+      "y": 10560
+    },
+    "AdminCompany.dc.html": {
+      "h": 2000,
+      "radius": 44,
+      "title": "Admin · company",
+      "w": 390,
+      "x": 1880,
+      "y": 10560
+    },
+    "AdminDecision.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Admin · decision sheet",
+      "w": 390,
+      "x": 4700,
+      "y": 12700
+    },
+    "AdminDoor.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Admin · door states",
+      "w": 390,
+      "x": 5170,
+      "y": 12700
+    },
+    "AdminEmail.dc.html": {
+      "h": 1300,
+      "radius": 44,
+      "title": "Admin · email",
+      "w": 390,
+      "x": 2350,
+      "y": 12700
+    },
+    "AdminJobs.dc.html": {
+      "h": 1200,
+      "radius": 44,
+      "title": "Admin · listings",
+      "w": 390,
+      "x": 470,
+      "y": 10560
+    },
+    "AdminOperations.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Admin · operations",
+      "w": 390,
+      "x": 2820,
+      "y": 12700
+    },
+    "AdminReports.dc.html": {
+      "h": 1600,
+      "radius": 44,
+      "title": "Admin · reports",
+      "w": 390,
+      "x": 940,
+      "y": 12700
+    },
+    "AdminReview.dc.html": {
+      "h": 1900,
+      "radius": 44,
+      "title": "Admin · listing review",
+      "w": 390,
+      "x": 940,
+      "y": 10560
+    },
+    "AdminSearch.dc.html": {
+      "h": 1000,
+      "radius": 44,
+      "title": "Admin · search",
+      "w": 390,
+      "x": 4230,
+      "y": 12700
+    },
+    "AdminSecurity.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Admin · security",
+      "w": 390,
+      "x": 3290,
+      "y": 12700
+    },
+    "AdminTaxonomy.dc.html": {
+      "h": 1200,
+      "radius": 44,
+      "title": "Admin · taxonomy",
+      "w": 390,
+      "x": 3760,
+      "y": 12700
+    },
+    "AdminUser.dc.html": {
+      "h": 1300,
+      "radius": 44,
+      "title": "Admin · user",
+      "w": 390,
+      "x": 2820,
+      "y": 10560
+    },
+    "AdminUsers.dc.html": {
+      "h": 1000,
+      "radius": 44,
+      "title": "Admin · users",
+      "w": 390,
+      "x": 2350,
+      "y": 10560
+    },
+    "Agent.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Consultant profile",
+      "w": 390,
+      "x": 3290,
+      "y": 2640
+    },
+    "Agents.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Consultant directory",
+      "w": 390,
+      "x": 2820,
+      "y": 2640
+    },
+    "Alerts.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Saved searches & follows",
+      "w": 390,
+      "x": 1880,
+      "y": 1320
+    },
+    "AppLock.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "App lock",
+      "w": 390,
+      "x": 3290,
+      "y": 6600
+    },
+    "Appearance.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Account · appearance & language",
+      "w": 390,
+      "x": 1880,
+      "y": 20500
+    },
+    "ApplicantReview.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · applicant review",
+      "w": 390,
+      "x": 1880,
+      "y": 3960
+    },
+    "Applicants.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · applicant pipeline",
+      "w": 390,
+      "x": 1410,
+      "y": 3960
+    },
+    "ApplicationDetail.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Application timeline & withdraw",
+      "w": 390,
+      "x": 940,
+      "y": 1320
+    },
+    "Applications.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "My applications",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "Apply.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Apply with CV",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "ApplyGuest.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Apply · sign up inside the sheet",
+      "w": 390,
+      "x": 0,
+      "y": 22400
+    },
+    "ApprovalsLimits.dc.html": {
+      "h": 1700,
+      "radius": 44,
+      "title": "Employer · approvals, spending limits, enforced 2FA",
+      "w": 390,
+      "x": 1410,
+      "y": 24200
+    },
+    "Availability.dc.html": {
+      "h": 1300,
+      "radius": 44,
+      "title": "Account · job-seeking status",
+      "w": 390,
+      "x": 1410,
+      "y": 20500
+    },
+    "Billing.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · billing (read-only)",
+      "w": 390,
+      "x": 2820,
+      "y": 3960
+    },
+    "CandidateHistory.dc.html": {
+      "h": 1300,
+      "radius": 44,
+      "title": "Employer · shared candidate history & notes",
+      "w": 390,
+      "x": 1410,
+      "y": 17000
+    },
+    "Checkout.dc.html": {
+      "h": 1400,
+      "radius": 44,
+      "title": "Employer · checkout (Paymob)",
+      "w": 390,
+      "x": 1410,
+      "y": 18600
+    },
+    "Companies.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Companies directory",
+      "w": 390,
+      "x": 1880,
+      "y": 2640
+    },
+    "Company.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Company page",
+      "w": 390,
+      "x": 2350,
+      "y": 2640
+    },
+    "CompanyAccount.dc.html": {
+      "h": 1800,
+      "radius": 44,
+      "title": "Employer · company account & ownership",
+      "w": 390,
+      "x": 2350,
+      "y": 24200
+    },
+    "CompanySettings.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · company, verification, team",
+      "w": 390,
+      "x": 2350,
+      "y": 3960
+    },
+    "Compare.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Compare saved listings",
+      "w": 390,
+      "x": 1410,
+      "y": 1320
+    },
+    "Components.dc.html": {
+      "h": 844,
+      "radius": 24,
+      "title": "Components & tokens",
+      "w": 1330,
+      "x": 0,
+      "y": 14600
+    },
+    "Confirm.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Email confirm",
+      "w": 390,
+      "x": 940,
+      "y": 6600
+    },
+    "DeleteAccount.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Delete account",
+      "w": 390,
+      "x": 2350,
+      "y": 7920
+    },
+    "EditListing.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · edit listing",
+      "w": 390,
+      "x": 0,
+      "y": 9240
+    },
+    "Emails.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Email settings",
+      "w": 390,
+      "x": 470,
+      "y": 7920
+    },
+    "EmployerHome.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · overview",
+      "w": 390,
+      "x": 0,
+      "y": 3960
+    },
+    "EmployerListings.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · listings",
+      "w": 390,
+      "x": 470,
+      "y": 3960
+    },
+    "EmployerNotifPrefs.dc.html": {
+      "h": 1600,
+      "radius": 44,
+      "title": "Employer · notification preferences",
+      "w": 390,
+      "x": 470,
+      "y": 20500
+    },
+    "EmptyStates.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Empty & loading states",
+      "w": 390,
+      "x": 1410,
+      "y": 9240
+    },
+    "FilterSheet.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Filters sheet",
+      "w": 390,
+      "x": 2350,
+      "y": 1320
+    },
+    "Forgot.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Forgot password",
+      "w": 390,
+      "x": 0,
+      "y": 6600
+    },
+    "Hidden.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Hidden jobs & companies",
+      "w": 390,
+      "x": 1410,
+      "y": 7920
+    },
+    "HomeDark.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Home · dark",
+      "w": 390,
+      "x": 2820,
+      "y": 1320
+    },
+    "JobDetail.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Listing",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "JobDetailDark.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Listing · dark",
+      "w": 390,
+      "x": 3290,
+      "y": 1320
+    },
+    "Jobs.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Jobs board",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Landing.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Track-in-district landing",
+      "w": 390,
+      "x": 940,
+      "y": 9240
+    },
+    "Licenses.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Legal & licences",
+      "w": 390,
+      "x": 1880,
+      "y": 7920
+    },
+    "ListingStats.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Employer · listing performance & repost",
+      "w": 390,
+      "x": 470,
+      "y": 17000
+    },
+    "ListingWizard.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · listing wizard",
+      "w": 390,
+      "x": 940,
+      "y": 3960
+    },
+    "MFA.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Two-factor code",
+      "w": 390,
+      "x": 1410,
+      "y": 2640
+    },
+    "Main.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Home · candidate",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "MemberDetail.dc.html": {
+      "h": 1600,
+      "radius": 44,
+      "title": "Employer · member detail, limits, security",
+      "w": 390,
+      "x": 470,
+      "y": 24200
+    },
+    "MfaEnrol.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "2FA enrolment",
+      "w": 390,
+      "x": 1410,
+      "y": 6600
+    },
+    "Network.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Offline, queued apply, skeleton, error",
+      "w": 390,
+      "x": 1410,
+      "y": 22400
+    },
+    "NewPassword.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "New password",
+      "w": 390,
+      "x": 470,
+      "y": 6600
+    },
+    "NotFound.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Not found",
+      "w": 390,
+      "x": 3760,
+      "y": 6600
+    },
+    "NotificationPrefs.dc.html": {
+      "h": 1700,
+      "radius": 44,
+      "title": "Account · notification preferences",
+      "w": 390,
+      "x": 0,
+      "y": 20500
+    },
+    "Notifications.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Notifications",
+      "w": 390,
+      "x": 470,
+      "y": 1320
+    },
+    "OnbCandidate2.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Onboarding · candidate 2 of 3",
+      "w": 390,
+      "x": 470,
+      "y": 15700
+    },
+    "OnbCandidate3.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Onboarding · candidate 3 of 3",
+      "w": 390,
+      "x": 940,
+      "y": 15700
+    },
+    "OnbCompany1.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Onboarding · company 1 of 3",
+      "w": 390,
+      "x": 1410,
+      "y": 15700
+    },
+    "OnbCompany2.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Onboarding · company 2 of 3",
+      "w": 390,
+      "x": 1880,
+      "y": 15700
+    },
+    "OnbCompany3.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Onboarding · company 3 of 3",
+      "w": 390,
+      "x": 2350,
+      "y": 15700
+    },
+    "Onboarding.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Onboarding · candidate 1 of 3",
+      "w": 390,
+      "x": 0,
+      "y": 15700
+    },
+    "Orders.dc.html": {
+      "h": 1300,
+      "radius": 44,
+      "title": "Employer · orders, invoices, success",
+      "w": 390,
+      "x": 1880,
+      "y": 18600
+    },
+    "Overlays.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Action sheet & toast",
+      "w": 390,
+      "x": 2820,
+      "y": 7920
+    },
+    "PipelineBulk.dc.html": {
+      "h": 1100,
+      "radius": 44,
+      "title": "Employer · bulk actions in pipeline",
+      "w": 390,
+      "x": 0,
+      "y": 17000
+    },
+    "Plans.dc.html": {
+      "h": 1600,
+      "radius": 44,
+      "title": "Employer · packs & balance",
+      "w": 390,
+      "x": 0,
+      "y": 18600
+    },
+    "Privacy.dc.html": {
+      "h": 1700,
+      "radius": 44,
+      "title": "Account · privacy, visibility, data",
+      "w": 390,
+      "x": 940,
+      "y": 20500
+    },
+    "Profile.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Directory profile & CV",
+      "w": 390,
+      "x": 0,
+      "y": 1320
+    },
+    "ProfilePreview.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Profile preview (as companies see it)",
+      "w": 390,
+      "x": 0,
+      "y": 7920
+    },
+    "PromoteListing.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Employer · promote a listing",
+      "w": 390,
+      "x": 940,
+      "y": 18600
+    },
+    "Prompts.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Push prompt, share card, crash notice",
+      "w": 390,
+      "x": 3760,
+      "y": 7920
+    },
+    "RevealConfirm.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · reveal confirmation",
+      "w": 390,
+      "x": 940,
+      "y": 22400
+    },
+    "Saved.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Saved · notes, reminders, compare",
+      "w": 390,
+      "x": 2350,
+      "y": 0
+    },
+    "SavedReplies.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Employer · saved replies",
+      "w": 390,
+      "x": 1880,
+      "y": 24200
+    },
+    "Search.dc.html": {
+      "h": 1700,
+      "radius": 44,
+      "title": "Search · recent, suggestions, no results",
+      "w": 390,
+      "x": 470,
+      "y": 22400
+    },
+    "Security.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Security",
+      "w": 390,
+      "x": 940,
+      "y": 7920
+    },
+    "Sheets.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Note, sort, CV entry sheets",
+      "w": 390,
+      "x": 3290,
+      "y": 7920
+    },
+    "SignIn.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Sign in",
+      "w": 390,
+      "x": 470,
+      "y": 2640
+    },
+    "SignUp.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Sign up · role",
+      "w": 390,
+      "x": 940,
+      "y": 2640
+    },
+    "SignedOut.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Signed-out gate",
+      "w": 390,
+      "x": 2350,
+      "y": 6600
+    },
+    "Subscription.dc.html": {
+      "h": 1600,
+      "radius": 44,
+      "title": "Employer · monthly subscription (proposed)",
+      "w": 390,
+      "x": 470,
+      "y": 18600
+    },
+    "Support.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Account · help & support",
+      "w": 390,
+      "x": 2350,
+      "y": 20500
+    },
+    "Talent.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Employer · shortlist",
+      "w": 390,
+      "x": 470,
+      "y": 9240
+    },
+    "TeamActivity.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Employer · team activity log",
+      "w": 390,
+      "x": 940,
+      "y": 24200
+    },
+    "TeamInvite.dc.html": {
+      "h": 1500,
+      "radius": 44,
+      "title": "Employer · invite a member",
+      "w": 390,
+      "x": 0,
+      "y": 24200
+    },
+    "TeamRoles.dc.html": {
+      "h": 1200,
+      "radius": 44,
+      "title": "Employer · team roles & permissions",
+      "w": 390,
+      "x": 940,
+      "y": 17000
+    },
+    "UpdateGate.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Update gate",
+      "w": 390,
+      "x": 2820,
+      "y": 6600
+    },
+    "Welcome.dc.html": {
+      "h": 844,
+      "radius": 44,
+      "title": "Welcome",
+      "w": 390,
+      "x": 0,
+      "y": 2640
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-25T00:20:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "row1",
+    "row2",
+    "row3",
+    "row4",
+    "row5",
+    "s1",
+    "s2",
+    "row6",
+    "row7",
+    "row8",
+    "row9",
+    "row10",
+    "row11",
+    "row12",
+    "row13",
+    "row14",
+    "row15",
+    "row16",
+    "s3",
+    "row17"
+  ],
+  "notes": {
+    "row1": {
+      "kind": "title1",
+      "maxW": 3210,
+      "text": "Candidate · browse, apply, track, save",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row10": {
+      "kind": "title1",
+      "maxW": 5560,
+      "text": "Admin · moderation, operations, levers",
+      "w": 240,
+      "x": 0,
+      "y": 12460
+    },
+    "row11": {
+      "kind": "title1",
+      "maxW": 2740,
+      "text": "Onboarding · candidates and companies",
+      "w": 240,
+      "x": 0,
+      "y": 15400
+    },
+    "row12": {
+      "kind": "title1",
+      "maxW": 1330,
+      "text": "Design system",
+      "w": 240,
+      "x": 0,
+      "y": 14300
+    },
+    "row13": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "Employer · proposed features (7–10)",
+      "w": 240,
+      "x": 0,
+      "y": 16700
+    },
+    "row14": {
+      "kind": "title1",
+      "maxW": 2270,
+      "text": "Employer · plans, subscription, promoted listings, checkout",
+      "w": 240,
+      "x": 0,
+      "y": 18300
+    },
+    "row15": {
+      "kind": "title1",
+      "maxW": 2740,
+      "text": "Account · controls and preferences",
+      "w": 240,
+      "x": 0,
+      "y": 20200
+    },
+    "row16": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "UX pass · apply without friction, search, trust, resilience",
+      "w": 240,
+      "x": 0,
+      "y": 22100
+    },
+    "row17": {
+      "kind": "title1",
+      "maxW": 2740,
+      "text": "Employer · team and account control",
+      "w": 240,
+      "x": 0,
+      "y": 23900
+    },
+    "row2": {
+      "kind": "title1",
+      "maxW": 3680,
+      "text": "Candidate · profile, timeline, compare, alerts, filters · dark",
+      "w": 240,
+      "x": 0,
+      "y": 1020
+    },
+    "row3": {
+      "kind": "title1",
+      "maxW": 3680,
+      "text": "Entry · public directories",
+      "w": 240,
+      "x": 0,
+      "y": 2340
+    },
+    "row4": {
+      "kind": "title1",
+      "maxW": 3210,
+      "text": "Employer",
+      "w": 240,
+      "x": 0,
+      "y": 3660
+    },
+    "row5": {
+      "kind": "title1",
+      "maxW": 4150,
+      "text": "Admin · overview and records (full web console parity)",
+      "w": 240,
+      "x": 0,
+      "y": 10260
+    },
+    "row6": {
+      "kind": "title1",
+      "maxW": 4150,
+      "text": "Auth recovery · gates · system states",
+      "w": 240,
+      "x": 0,
+      "y": 6300
+    },
+    "row7": {
+      "kind": "title1",
+      "maxW": 4150,
+      "text": "Account sub-pages · overlays and sheets",
+      "w": 240,
+      "x": 0,
+      "y": 7620
+    },
+    "row8": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "Employer extras · landings · empty states",
+      "w": 240,
+      "x": 0,
+      "y": 8940
+    },
+    "row9": {
+      "kind": "title1",
+      "maxW": 4150,
+      "text": "Admin · records",
+      "w": 240,
+      "x": 0,
+      "y": 10260
+    },
+    "s1": {
+      "fill": "blue",
+      "text": "Scope\n\nEvery shipped feature is kept. Presentation changed: pay first on every card, one next action on Home, pinned Apply bar, one card and chip language across roles.",
+      "w": 320,
+      "x": 3300,
+      "y": 0
+    },
+    "s2": {
+      "fill": "green",
+      "text": "RTL\n\nRoot dir=rtl lang=ar on every board. Numbers in .num: ltr, isolated, tabular, right aligned when on their own line. Charts dir=ltr. Onward chevron points left, back points right.",
+      "w": 320,
+      "x": 3300,
+      "y": 300
+    },
+    "s3": {
+      "text": "Measure before judging\n\nlink → listing → apply\nsign up → profile 60%\nemployer post → first applicant opened\nreveal → WhatsApp tap",
+      "w": 300,
+      "x": 1900,
+      "y": 22400
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Jobs.dc.html",
+    "JobDetail.dc.html",
+    "Apply.dc.html",
+    "Applications.dc.html",
+    "Saved.dc.html",
+    "Account.dc.html",
+    "Profile.dc.html",
+    "Notifications.dc.html",
+    "ApplicationDetail.dc.html",
+    "Compare.dc.html",
+    "Alerts.dc.html",
+    "FilterSheet.dc.html",
+    "HomeDark.dc.html",
+    "JobDetailDark.dc.html",
+    "Welcome.dc.html",
+    "SignIn.dc.html",
+    "SignUp.dc.html",
+    "MFA.dc.html",
+    "Companies.dc.html",
+    "Company.dc.html",
+    "Agents.dc.html",
+    "Agent.dc.html",
+    "EmployerHome.dc.html",
+    "EmployerListings.dc.html",
+    "ListingWizard.dc.html",
+    "Applicants.dc.html",
+    "ApplicantReview.dc.html",
+    "CompanySettings.dc.html",
+    "Billing.dc.html",
+    "Admin.dc.html",
+    "AdminReview.dc.html",
+    "Components.dc.html",
+    "Forgot.dc.html",
+    "NewPassword.dc.html",
+    "Confirm.dc.html",
+    "MfaEnrol.dc.html",
+    "Onboarding.dc.html",
+    "SignedOut.dc.html",
+    "UpdateGate.dc.html",
+    "AppLock.dc.html",
+    "NotFound.dc.html",
+    "ProfilePreview.dc.html",
+    "Emails.dc.html",
+    "Security.dc.html",
+    "Hidden.dc.html",
+    "Licenses.dc.html",
+    "DeleteAccount.dc.html",
+    "Overlays.dc.html",
+    "Sheets.dc.html",
+    "Prompts.dc.html",
+    "EditListing.dc.html",
+    "Talent.dc.html",
+    "Landing.dc.html",
+    "EmptyStates.dc.html",
+    "AdminJobs.dc.html",
+    "AdminCompanies.dc.html",
+    "AdminCompany.dc.html",
+    "AdminUsers.dc.html",
+    "AdminUser.dc.html",
+    "AdminApplications.dc.html",
+    "AdminApplication.dc.html",
+    "AdminAgents.dc.html",
+    "AdminAgent.dc.html",
+    "AdminReports.dc.html",
+    "AdminAppeals.dc.html",
+    "AdminAudit.dc.html",
+    "AdminEmail.dc.html",
+    "AdminOperations.dc.html",
+    "AdminSecurity.dc.html",
+    "AdminTaxonomy.dc.html",
+    "AdminSearch.dc.html",
+    "OnbCandidate2.dc.html",
+    "OnbCandidate3.dc.html",
+    "OnbCompany1.dc.html",
+    "OnbCompany2.dc.html",
+    "OnbCompany3.dc.html",
+    "AdminDecision.dc.html",
+    "AdminDoor.dc.html",
+    "PipelineBulk.dc.html",
+    "ListingStats.dc.html",
+    "TeamRoles.dc.html",
+    "CandidateHistory.dc.html",
+    "Plans.dc.html",
+    "Subscription.dc.html",
+    "PromoteListing.dc.html",
+    "Checkout.dc.html",
+    "Orders.dc.html",
+    "NotificationPrefs.dc.html",
+    "EmployerNotifPrefs.dc.html",
+    "Privacy.dc.html",
+    "Availability.dc.html",
+    "Appearance.dc.html",
+    "Support.dc.html",
+    "ApplyGuest.dc.html",
+    "Search.dc.html",
+    "RevealConfirm.dc.html",
+    "Network.dc.html",
+    "TeamInvite.dc.html",
+    "MemberDetail.dc.html",
+    "TeamActivity.dc.html",
+    "ApprovalsLimits.dc.html",
+    "SavedReplies.dc.html",
+    "CompanyAccount.dc.html"
+  ],
+  "pages": [],
+  "title": "Brokers Connect iOS Redesign"
+}

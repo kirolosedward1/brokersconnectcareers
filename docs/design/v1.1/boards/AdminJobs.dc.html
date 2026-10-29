@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الإدارة · الإعلانات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#121620;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06);overflow:hidden}
+.ib{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center}
+.qf{display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;color:#16295A;font-size:12px;font-weight:500;white-space:nowrap;font-family:inherit;cursor:pointer}
+.qf.on{background:#16295A;border-color:#16295A;color:#fff}
+.qf .c{min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ECEEF4;color:#16295A;font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
+.qf.on .c{background:rgba(255,255,255,.2);color:#fff}
+.r{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:1px solid #F0EDE7}
+.r:last-child{border-bottom:0}
+.r strong{display:block;font-size:14px;line-height:20px;font-weight:600}
+.r span.m{display:block;font-size:11px;line-height:16px;color:#5C6270}
+.pill{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:10px;font-weight:600;white-space:nowrap}
+.flag{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:#8F5B0E;font-weight:500}
+.flag::before{content:"";width:6px;height:6px;border-radius:999px;background:#8F5B0E}
+.col{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;height:50px;justify-content:center;border-radius:999px;color:#5C6270;font-size:11px;font-weight:500;text-decoration:none}
+.tab.on{background:rgba(22,41,90,.08);color:#16295A;font-weight:600}
+.tab svg{width:22px;height:22px}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1200px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px"><a href="Admin.dc.html" class="ib" aria-label="رجوع"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a><div style="flex:1;display:flex;flex-direction:column"><h1 style="margin:0;font-size:18px;line-height:26px;font-weight:700">الإعلانات</h1><span style="font-size:12px;color:#5C6270">كل الإعلانات · <span class="num">25</span> لكل صفحة</span></div></div>
+    <label for="q" style="display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;background:#fff;border:1px solid #E6E1D8;border-radius:14px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="عنوان، slug، أو معرّف UUID" style="flex:1;border:0;outline:0;background:transparent;font:inherit;font-size:14px;min-width:0"></label>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button type="button" class="qf on">المراجعة <span class="c num">7</span></button><button type="button" class="qf">إشارات <span class="c num">3</span></button><button type="button" class="qf">منشور <span class="c num">148</span></button><button type="button" class="qf">تنتهي قريبًا <span class="c num">11</span></button><button type="button" class="qf">هادئة <span class="c num">19</span></button><button type="button" class="qf">مُبلَّغ عنها <span class="c num">2</span></button><button type="button" class="qf">منتهية</button><button type="button" class="qf">مغلقة</button><button type="button" class="qf">مرفوضة</button><button type="button" class="qf">مسودات</button><button type="button" class="qf">الكل</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;background:#ECEEF4;color:#16295A;font-size:12px;font-weight:600">الشركة: ماونتن فيو <button type="button" aria-label="أزل الفلتر" style="border:0;background:transparent;padding:0;display:flex;cursor:pointer"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></span><span style="font-size:11px;color:#5C6270">الأقدم في الانتظار أولًا</span></div>
+  </div>
+  <div style="padding:12px 20px 0;flex:1;display:flex;flex-direction:column;gap:10px">
+    <div class="card">
+      <a href="AdminReview.dc.html" class="r"><div style="flex:1;min-width:0"><strong>تيم ليدر أوف بلان <svg viewBox="0 0 24 24" width="12" height="12" fill="#A27A3B" aria-label="ممول" role="img" style="vertical-align:-1px"><path d="m12 3 2.5 6 6.5.5-5 4.2 1.6 6.3L12 16.5 6.4 20l1.6-6.3-5-4.2L9.5 9z"/></svg></strong><span class="m">ماونتن فيو · <span class="num">22,000</span> ج.م <span class="num">+1.5%</span> · <span class="num">0</span> طلبات</span><div style="display:flex;gap:8px;margin-top:4px"><span class="flag">رقم هاتف في الوصف</span><span class="flag">يشبه إعلانًا مغلقًا <span class="num">88%</span></span></div></div><div class="col"><span class="pill" style="background:#FAE8E4;color:#B5372C">ينتظر <span class="num">1.1</span> يوم</span><span style="font-size:10px;color:#8B8578">مراجعة</span></div></a>
+      <a href="AdminReview.dc.html" class="r"><div style="flex:1;min-width:0"><strong>تيلي سيلز</strong><span class="m">ماونتن فيو · <span class="num">7,000</span> ج.م <span class="num">+0.5%</span> · <span class="num">41</span> طلبًا · تعديل على منشور</span><div style="display:flex;gap:8px;margin-top:4px"><span class="flag">تغيّر الراتب <span class="num">-12%</span></span></div></div><div class="col"><span class="pill" style="background:#FAEED6;color:#8F5B0E">ينتظر <span class="num">6</span> س</span><span style="font-size:10px;color:#8B8578">تعديل</span></div></a>
+      <a href="AdminReview.dc.html" class="r"><div style="flex:1;min-width:0"><strong>استشاري تجاري وإداري</strong><span class="m">ماونتن فيو · <span class="num">14,000</span> ج.م <span class="num">+1%</span> · <span class="num">0</span> طلبات</span></div><div class="col"><span class="pill" style="background:#FAEED6;color:#8F5B0E">ينتظر <span class="num">2</span> س</span><span style="font-size:10px;color:#8B8578">مراجعة</span></div></a>
+    </div>
+    <h2 style="margin:0 4px;font-size:12px;font-weight:600;color:#5C6270">منشورة لهذه الشركة · <span class="num">4</span></h2>
+    <div class="card">
+      <a href="AdminReview.dc.html" class="r"><div style="flex:1;min-width:0"><strong>استشاري مبيعات عقارية <svg viewBox="0 0 24 24" width="12" height="12" fill="#A27A3B" aria-label="ممول" role="img" style="vertical-align:-1px"><path d="m12 3 2.5 6 6.5.5-5 4.2 1.6 6.3L12 16.5 6.4 20l1.6-6.3-5-4.2L9.5 9z"/></svg></strong><span class="m"><span class="num">12,000</span> ج.م <span class="num">+3%</span> · <span class="num">23</span> طلبًا · يُغلق بعد <span class="num">4</span> أيام</span></div><div class="col"><span class="pill" style="background:#E2F2E7;color:#1B7A4B">منشور</span><span style="font-size:10px;color:#8F5B0E">ينتهي قريبًا</span></div></a>
+      <a href="AdminReview.dc.html" class="r"><div style="flex:1;min-width:0"><strong>سكرتارية مبيعات</strong><span class="m"><span class="num">6,500</span> ج.م · <span class="num">0</span> طلبات · نُشر من <span class="num">9</span> أيام</span></div><div class="col"><span class="pill" style="background:#E2F2E7;color:#1B7A4B">منشور</span><span style="font-size:10px;color:#8B8578">هادئة</span></div></a>
+      <a href="AdminReview.dc.html" class="r"><div style="flex:1;min-width:0"><strong>مسوّق عقاري ميداني</strong><span class="m"><span class="num">9,000</span> ج.م <span class="num">+2%</span> · <span class="num">12</span> طلبًا · بلاغ مفتوح</span></div><div class="col"><span class="pill" style="background:#E2F2E7;color:#1B7A4B">منشور</span><span style="font-size:10px;color:#B5372C">مُبلَّغ</span></div></a>
+      <a href="AdminReview.dc.html" class="r" style="opacity:.65"><div style="flex:1;min-width:0"><strong>استشاري إيجارات</strong><span class="m"><span class="num">6,000</span> ج.م <span class="num">+5%</span> · <span class="num">8</span> طلبات · انتهى من <span class="num">3</span> أيام</span></div><div class="col"><span class="pill" style="background:#F0EDE7;color:#5C6270">منتهٍ</span></div></a>
+    </div>
+    <div style="display:flex;justify-content:center;padding:4px 0"><span style="font-size:12px;color:#5C6270">عرض <span class="num">7</span> من <span class="num">7</span></span></div>
+    <div style="height:90px"></div>
+  </div>
+  <nav aria-label="التبويبات" style="position:absolute;left:16px;right:16px;bottom:22px;height:56px;padding:3px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid #E6E1D8;box-shadow:0 2px 6px rgba(18,22,32,.06),0 16px 40px rgba(18,22,32,.10);display:flex;box-sizing:border-box">
+    <a href="Admin.dc.html" class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>الإدارة</a>
+    <a href="Account.dc.html" class="tab"><span style="width:22px;height:22px;border-radius:999px;background:#16295A;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;line-height:1"><svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></span>حسابي</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1200}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

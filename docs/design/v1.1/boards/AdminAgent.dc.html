@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الإدارة · ملف استشاري</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06);overflow:hidden}
+.ib{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;border-bottom:1px solid #F0EDE7;font-size:13px}
+.kv:last-child{border-bottom:0}
+.kv span{color:#5C6270}.kv b{font-weight:600;text-align:left}
+.sig{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid #F0EDE7;font-size:12px;line-height:18px}
+.sig:last-child{border-bottom:0}
+.sig .d{width:10px;height:10px;border-radius:999px;flex-shrink:0;margin-top:4px}
+.r{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #F0EDE7;font-size:13px}
+.r:last-child{border-bottom:0}
+.r .m{display:block;font-size:11px;color:#5C6270}
+h2{margin:0 4px;font-size:12px;font-weight:600;color:#5C6270}
+.pill{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:10px;font-weight:600;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:999px;background:#F0EDE7;color:#5C6270;font-size:11px;font-weight:500}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1500px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="AdminAgents.dc.html" class="ib" aria-label="رجوع"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <div style="width:44px;height:44px;border-radius:999px;background:#F0EDE7;color:#5C6270;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px"><svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></div>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column"><h1 style="margin:0;font-size:18px;line-height:26px;font-weight:700">هبة سعيد</h1><div style="display:flex;gap:4px"><span class="pill" style="background:#FAE8E4;color:#B5372C">مقيّد</span><span class="pill" style="background:#F0EDE7;color:#5C6270">مخفي (إجباري)</span></div></div>
+  </div>
+  <div style="padding:14px 20px 0;display:flex;flex-direction:column;gap:14px;flex:1">
+    <div style="padding:12px 14px;border-radius:16px;background:#FAE8E4;color:#7A2219;font-size:12px;line-height:18px"><strong style="font-weight:600">مقيّد منذ أمس <span class="num">18:20</span> · ريم</strong><br>«صورة الملف شعار شركة وليست صورة شخصية.» · أُبلغت الاستشارية. رفع التقييد لا يُظهر الملف تلقائيًا.</div>
+    <div class="card">
+      <a href="AdminUser.dc.html" class="kv"><span>الحساب</span><b>هبة سعيد · معتمدة · نشطة</b></a>
+      <div class="kv"><span>slug</span><b class="num">heba-saeed</b></div>
+      <div class="kv"><span>الخبرة · الإتاحة</span><b><span class="num">3</span> سنوات · متاحة فورًا</b></div>
+      <div class="kv"><span>الظهور</span><b>عام (قبل التقييد)</b></div>
+      <div class="kv"><span>السيرة الذاتية</span><b>مرفوعة · <span style="color:#8B8578;font-weight:400">لا تُفتح من هنا</span></b></div>
+      <div class="kv"><span>أُنشئ</span><b><span class="num">6</span> يونيو <span class="num">2026</span></b></div>
+    </div>
+    <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:#5C6270">المسارات</span><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip" style="background:#ECEEF4;color:#16295A">ريسيل</span><span class="chip" style="background:#ECEEF4;color:#16295A">إيجارات</span></div></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:#5C6270">المناطق</span><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip">المعادي</span><span class="chip">مصر الجديدة</span><span class="chip">التجمع الخامس</span></div></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;color:#5C6270">المطوّرون · اللغات</span><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip">بالم هيلز</span><span class="chip">سوديك</span><span class="chip">عربي · إنجليزي</span></div></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;color:#5C6270">العنوان</span><span style="font-size:13px">استشارية ريسيل وإيجارات، شرق القاهرة</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>البلاغات على الملف · <span class="num">2</span></h2>
+      <div class="card">
+        <div class="r"><span style="flex:1;display:flex;flex-direction:column"><span style="font-weight:600">صورة مضلّلة</span><span class="m"><a href="AdminUser.dc.html">منى خليل</a> (ماونتن فيو) · من <span class="num">5</span> ساعات</span></span><span class="pill" style="background:#FAEED6;color:#8F5B0E">مفتوح</span></div>
+        <div class="r"><span style="flex:1;display:flex;flex-direction:column"><span style="font-weight:600">صورة مضلّلة</span><span class="m"><a href="AdminUser.dc.html">نادر عبد الله</a> (هوم فايندر، موقوفة) · من <span class="num">6</span> ساعات</span></span><span class="pill" style="background:#FAEED6;color:#8F5B0E">مفتوح</span></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>إشارات</h2>
+      <div class="card">
+        <div class="sig"><span class="d" style="background:#8F5B0E"></span><span style="flex:1">الصورة تطابق شعار «نيو هوم العقارية» بنسبة <span class="num">96%</span></span></div>
+        <div class="sig"><span class="d" style="background:#1B7A4B"></span><span style="flex:1"><span class="num">4</span> كشوف تواصل من شركات موثّقة · لا شكاوى من الكاشفين</span></div>
+        <div class="sig"><span class="d" style="background:#5C6270"></span><span style="flex:1">أحد المبلّغين من شركة موقوفة اليوم</span></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between"><h2>الملاحظات وسجل التدقيق</h2><button type="button" style="border:0;background:transparent;font:inherit;font-size:12px;font-weight:600;color:#16295A;cursor:pointer;padding:0;margin-inline-end:4px">+ ملاحظة</button></div>
+      <div class="card">
+        <div class="sig"><span class="d" style="background:#B5372C"></span><span style="flex:1"><b style="font-weight:600">قُيّد الملف</b> · ريم · أمس · «صورة شعار شركة»</span></div>
+        <div class="sig"><span class="d" style="background:#5C6270"></span><span style="flex:1"><b style="font-weight:600">ملاحظة</b> · ريم: «ردّت على البريد، ستغيّر الصورة.»</span></div>
+      </div>
+    </div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 20px 34px;background:rgba(255,255,255,.94);border-top:1px solid #E6E1D8;display:flex;gap:8px">
+    <button type="button" style="flex:1;height:52px;border-radius:999px;background:#1B7A4B;color:#fff;border:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer">ارفع التقييد (بسبب)</button>
+    <a href="Agent.dc.html" style="height:52px;padding:0 16px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;display:flex;align-items:center;font-size:13px;font-weight:600;color:#8B8578" aria-disabled="true">الصفحة العامة</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

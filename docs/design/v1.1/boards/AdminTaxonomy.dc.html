@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الإدارة · التصنيفات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#121620;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06);overflow:hidden}
+.ib{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center}
+.seg{flex:1;height:36px;border-radius:999px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:#5C6270;cursor:pointer}
+.seg.on{background:#fff;color:#16295A;font-weight:600;box-shadow:0 1px 2px rgba(18,22,32,.08)}
+.r{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #F0EDE7;font-size:13px}
+.r:last-child{border-bottom:0}
+.r .m{display:block;font-size:11px;color:#5C6270}
+.en{font-size:11px;color:#8B8578;direction:ltr;unicode-bidi:isolate}
+.pill{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:10px;font-weight:600;white-space:nowrap}
+.act{height:30px;padding:0 10px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;font:inherit;font-size:11px;font-weight:600;color:#16295A;cursor:pointer;white-space:nowrap}
+h2{margin:0 4px;font-size:12px;font-weight:600;color:#5C6270}
+.field{height:44px;padding:0 12px;border:1px solid #E6E1D8;border-radius:12px;background:#fff;font:inherit;font-size:13px;box-sizing:border-box;width:100%}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;height:50px;justify-content:center;border-radius:999px;color:#5C6270;font-size:11px;font-weight:500;text-decoration:none}
+.tab.on{background:rgba(22,41,90,.08);color:#16295A;font-weight:600}
+.tab svg{width:22px;height:22px}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1200px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;gap:12px"><a href="Admin.dc.html" class="ib" aria-label="رجوع"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a><div style="flex:1;display:flex;flex-direction:column"><h1 style="margin:0;font-size:18px;line-height:26px;font-weight:700">التصنيفات</h1><span style="font-size:12px;color:#5C6270">مشتركة مع الموقع · slug دائم بعد الإنشاء</span></div></div>
+    <div style="display:flex;padding:3px;border-radius:999px;background:#ECEAE3"><button type="button" class="seg on">مناطق <span class="num" style="opacity:.7">18</span></button><button type="button" class="seg">محافظات <span class="num" style="opacity:.7">4</span></button><button type="button" class="seg">مطوّرون <span class="num" style="opacity:.7">31</span></button><button type="button" class="seg">ثوابت</button></div>
+  </div>
+  <div style="padding:12px 20px 0;display:flex;flex-direction:column;gap:10px;flex:1">
+    <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;border:1.5px solid #16295A">
+      <strong style="font-size:13px;font-weight:600">إضافة منطقة</strong>
+      <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px"><input class="field" type="text" placeholder="الاسم بالعربي" aria-label="الاسم بالعربي"><input class="field" type="text" placeholder="Name in English" aria-label="Name in English" style="direction:ltr;text-align:left"><input class="field" type="text" placeholder="slug (اختياري، يُولَّد)" aria-label="slug" style="direction:ltr;text-align:left"><select class="field" aria-label="المحافظة"><option>القاهرة</option><option>الجيزة</option><option>الإسكندرية</option><option>مطروح</option></select></div>
+      <span style="font-size:10px;color:#5C6270">أخطاء الموقع تظهر كما هي: slug مستخدم، اسم غير صالح، محافظة غير موجودة.</span>
+      <button type="button" style="height:40px;border-radius:999px;background:#16295A;color:#fff;border:0;font:inherit;font-size:13px;font-weight:600;cursor:pointer;align-self:flex-start;padding:0 18px">أضف</button>
+    </div>
+    <h2>القاهرة</h2>
+    <div class="card">
+      <div class="r"><div style="flex:1;min-width:0"><span style="font-weight:600">التجمع الخامس</span><span class="m"><span class="en">new-cairo-5th</span> · New Cairo 5th Settlement</span></div><span class="pill" style="background:#ECEEF4;color:#16295A">مستخدم <span class="num">41</span></span><button type="button" class="act">تعديل</button></div>
+      <div class="r"><div style="flex:1;min-width:0"><span style="font-weight:600">المستقبل سيتي</span><span class="m"><span class="en">mostakbal-city</span> · Mostakbal City · أُضيفت أمس</span></div><span class="pill" style="background:#ECEEF4;color:#16295A">مستخدم <span class="num">4</span></span><button type="button" class="act">تعديل</button></div>
+      <div class="r"><div style="flex:1;min-width:0"><span style="font-weight:600">المعادي</span><span class="m"><span class="en">maadi</span> · Maadi</span></div><span class="pill" style="background:#ECEEF4;color:#16295A">مستخدم <span class="num">7</span></span><button type="button" class="act">تعديل</button></div>
+      <div class="r"><div style="flex:1;min-width:0"><span style="font-weight:600">العاصمة الإدارية</span><span class="m"><span class="en">new-capital</span> · New Capital</span></div><span class="pill" style="background:#F0EDE7;color:#5C6270">غير مستخدم</span><button type="button" class="act">تعديل</button><button type="button" class="act" style="color:#B5372C">حذف</button></div>
+    </div>
+    <h2>الجيزة</h2>
+    <div class="card">
+      <div class="r"><div style="flex:1;min-width:0"><span style="font-weight:600">الشيخ زايد</span><span class="m"><span class="en">sheikh-zayed</span> · Sheikh Zayed</span></div><span class="pill" style="background:#ECEEF4;color:#16295A">مستخدم <span class="num">29</span></span><button type="button" class="act">تعديل</button></div>
+      <div class="r"><div style="flex:1;min-width:0"><span style="font-weight:600">أكتوبر</span><span class="m"><span class="en">6th-october</span> · 6th of October</span></div><span class="pill" style="background:#ECEEF4;color:#16295A">مستخدم <span class="num">18</span></span><button type="button" class="act">تعديل</button></div>
+    </div>
+    <h2>مطروح</h2>
+    <div class="card"><div class="r"><div style="flex:1;min-width:0"><span style="font-weight:600">الساحل الشمالي</span><span class="m"><span class="en">north-coast</span> · North Coast</span></div><span class="pill" style="background:#ECEEF4;color:#16295A">مستخدم <span class="num">11</span></span><button type="button" class="act">تعديل</button></div></div>
+    <span style="font-size:11px;line-height:16px;color:#5C6270;padding:0 4px">«حذف» يظهر فقط حين الاستخدام صفر، وبتأكيد. تبويب «ثوابت» يعرض المسارات ونطاقات الخبرة ومصادر العملاء من الكود، للقراءة.</span>
+    <div style="height:90px"></div>
+  </div>
+  <nav aria-label="التبويبات" style="position:absolute;left:16px;right:16px;bottom:22px;height:56px;padding:3px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid #E6E1D8;box-shadow:0 2px 6px rgba(18,22,32,.06),0 16px 40px rgba(18,22,32,.10);display:flex;box-sizing:border-box">
+    <a href="Admin.dc.html" class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>الإدارة</a>
+    <a href="Account.dc.html" class="tab"><span style="width:22px;height:22px;border-radius:999px;background:#16295A;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;line-height:1"><svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></span>حسابي</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1200}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

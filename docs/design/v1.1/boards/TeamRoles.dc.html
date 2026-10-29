@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الفريق والصلاحيات</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06)}
+h2{margin:0;font-size:15px;font-weight:600}
+.av{width:44px;height:44px;border-radius:999px;background:#ECEEF4;color:#16295A;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.av svg{width:58%;height:58%}
+.mem{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.mem:last-child{border-bottom:0}
+.role{height:26px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;white-space:nowrap}
+.r-owner{background:#F4EAD7;color:#7A5A1F}
+.r-admin{background:#ECEEF4;color:#16295A}
+.r-rec{background:#E2F2E7;color:#1B7A4B}
+.r-view{background:#F0EDE7;color:#5C6270}
+.perm{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.perm:last-child{border-bottom:0}
+.perm strong{display:block;font-size:14px;font-weight:600}
+.perm span{display:block;font-size:12px;line-height:17px;color:#5C6270}
+.sw{width:46px;height:28px;border-radius:999px;background:#D9D4CA;position:relative;flex-shrink:0}
+.sw i{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw.on{background:#16295A}
+.sw.on i{right:auto;left:3px}
+.sw.lock{opacity:.45}
+.preset{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;border:1.5px solid #E6E1D8;background:#fff;flex:1;min-width:0}
+.preset.on{border-color:#16295A;background:#ECEEF4}
+.preset b{font-size:13px;font-weight:600}
+.preset span{font-size:11px;color:#5C6270}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1200px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="#" aria-label="رجوع" style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column"><h1 style="margin:0;font-size:18px;line-height:24px;font-weight:700">الفريق والصلاحيات</h1><span style="font-size:12px;color:#5C6270">كولدويل بانكر مصر · <span class="num">4</span> أعضاء</span></div>
+    <a href="TeamInvite.dc.html" style="height:36px;padding:0 12px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>دعوة</a>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:14px">
+    <div class="card" style="overflow:hidden">
+      <div class="mem"><div class="av" style="background:#16295A;color:#fff"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><strong style="font-size:14px;font-weight:600">كيرلس إدوارد <span style="font-size:11px;color:#5C6270;font-weight:400">(أنت)</span></strong><span style="font-size:12px;color:#5C6270">يملك الحساب والفوترة</span></div><span class="role r-owner">مالك</span></div>
+      <div class="mem" style="background:#FBF8F1"><div class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><strong style="font-size:14px;font-weight:600">سارة عبد الله</strong><span style="font-size:12px;color:#5C6270">كشفت <span class="num">12</span> جهة تواصل هذا الشهر</span></div><span class="role r-rec">مسؤول توظيف</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="mem"><div class="av" style="background:#F4EAD7;color:#6B4E1A"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><strong style="font-size:14px;font-weight:600">محمد رأفت</strong><span style="font-size:12px;color:#5C6270">ينشر الإعلانات ويدير الفريق</span></div><span class="role r-admin">مدير</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="mem"><div class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><strong style="font-size:14px;font-weight:600">هبة سمير</strong><span style="font-size:12px;color:#8F5B0E">دعوة معلّقة · أُرسلت أمس</span></div><span class="role r-view">مشاهد</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+    </div>
+
+    <!-- editing one member -->
+    <div style="display:flex;align-items:center;gap:10px"><h2 style="flex:1">صلاحيات سارة عبد الله</h2><a href="#" style="font-size:13px;font-weight:500;color:#B5372C">إزالة من الفريق</a></div>
+
+    <div style="display:flex;gap:8px">
+      <div class="preset"><b>مدير</b><span>كل شيء عدا الفوترة</span></div>
+      <div class="preset on"><b>مسؤول توظيف</b><span>يراجع ويتواصل</span></div>
+      <div class="preset"><b>مشاهد</b><span>قراءة فقط</span></div>
+    </div>
+
+    <div class="card" style="overflow:hidden">
+      <div class="perm"><div style="flex:1"><strong>كشف تواصل المرشحين</strong><span>يستهلك رصيد الكشف · حدّ شهري <span class="num">20</span></span></div><span class="sw on"><i></i></span></div>
+      <div class="perm"><div style="flex:1"><strong>إنفاق الرصيد</strong><span>شراء باقات، ترقية إعلان، إعادة نشر</span></div><span class="sw"><i></i></span></div>
+      <div class="perm"><div style="flex:1"><strong>نشر الإعلانات وتعديلها</strong><span>يتطلّب موافقة المدير قبل النشر</span></div><span class="sw on"><i></i></span></div>
+      <div class="perm"><div style="flex:1"><strong>الردّ على المتقدمين</strong><span>الرسائل والردود الجاهزة وتغيير المرحلة</span></div><span class="sw on"><i></i></span></div>
+      <div class="perm"><div style="flex:1"><strong>دليل المواهب</strong><span>البحث في الاستشاريين وحفظهم</span></div><span class="sw on"><i></i></span></div>
+      <div class="perm"><div style="flex:1"><strong>إدارة الفريق</strong><span>دعوة أعضاء وتغيير أدوارهم</span></div><span class="sw"><i></i></span></div>
+      <div class="perm"><div style="flex:1"><strong>الفوترة والفواتير</strong><span>للمالك فقط</span></div><span class="sw lock"><i></i></span></div>
+    </div>
+
+    <div class="card" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between"><strong style="font-size:13px;font-weight:600">حدّ الكشف الشهري لسارة</strong><strong class="num" style="color:#16295A">12 / 20</strong></div>
+      <div style="height:8px;border-radius:999px;background:#F0EDE7;overflow:hidden" dir="ltr"><div style="width:60%;height:100%;background:#16295A;border-radius:999px"></div></div>
+      <span style="font-size:11px;color:#5C6270">يُصفَّر أول كل شهر. كل كشف يُسجَّل باسم من قام به في سجل الحساب.</span>
+    </div>
+
+    <a href="#" style="height:52px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;margin-bottom:30px">حفظ الصلاحيات</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1200}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

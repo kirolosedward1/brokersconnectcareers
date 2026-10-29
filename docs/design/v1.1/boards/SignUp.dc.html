@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>إنشاء حساب</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}a:hover{color:#0E1D44}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+label.l{font-size:13px;font-weight:600}
+.field{display:flex;align-items:center;gap:10px;height:52px;padding:0 14px;border:1px solid #E6E1D8;border-radius:14px;background:#fff;box-sizing:border-box}
+.field input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:16px;color:#121620}
+.role{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid #E6E1D8;border-radius:16px;background:#fff;cursor:pointer}
+.role.on{border:1.5px solid #16295A;box-shadow:0 6px 20px rgba(18,22,32,.06)}
+.role input{accent-color:#16295A;width:20px;height:20px;margin:0}
+.role .i{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.role .i svg{width:22px;height:22px}
+.role strong{display:block;font-size:15px;font-weight:600}
+.role span.s{display:block;font-size:12px;line-height:17px;color:#5C6270}
+.hint{font-size:12px;line-height:17px;color:#5C6270}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="Welcome.dc.html" aria-label="رجوع" style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <h1 style="margin:0;flex:1;font-size:18px;line-height:26px;font-weight:700">إنشاء حساب</h1>
+  </div>
+
+  <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:20px;flex:1;overflow:hidden">
+
+    <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
+      <legend style="padding:0;margin-bottom:10px;font-size:13px;font-weight:600">أنت هنا كـ</legend>
+      <label class="role on" for="r1"><input id="r1" type="radio" name="role" checked><span class="i" style="background:#ECEEF4"><svg viewBox="0 0 24 24" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span style="flex:1"><strong>استشاري أو بروكر</strong><span class="s">أبحث عن وظيفة وأظهر في دليل الاستشاريين. مجاني دائمًا.</span></span></label>
+      <label class="role" for="r2"><input id="r2" type="radio" name="role"><span class="i" style="background:#F4EAD7"><svg viewBox="0 0 24 24" fill="none" stroke="#6B4E1A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5"/></svg></span><span style="flex:1"><strong>شركة أو مطوّر</strong><span class="s">أنشر إعلانات وأراجع المتقدمين. التوثيق بعد مراجعة المستندات.</span></span></label>
+    </fieldset>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="l" for="nm">الاسم بالكامل</label>
+      <div class="field"><input id="nm" type="text" placeholder="كما يظهر للشركات"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="l" for="em">البريد الإلكتروني</label>
+      <div class="field"><input id="em" type="email" placeholder="name@example.com" style="direction:ltr;text-align:left"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="l" for="pw">كلمة السر</label>
+      <div class="field"><input id="pw" type="password" placeholder="8 أحرف على الأقل" style="direction:ltr;text-align:left"></div>
+      <div style="display:flex;gap:4px" aria-hidden="true"><span style="flex:1;height:4px;border-radius:999px;background:#1B7A4B"></span><span style="flex:1;height:4px;border-radius:999px;background:#1B7A4B"></span><span style="flex:1;height:4px;border-radius:999px;background:#E6E1D8"></span><span style="flex:1;height:4px;border-radius:999px;background:#E6E1D8"></span></div>
+      <span class="hint">أضف رقمًا أو علامة لتصبح أقوى.</span>
+    </div>
+
+    <label for="tos" style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
+      <input id="tos" type="checkbox" style="accent-color:#16295A;width:20px;height:20px;margin:2px 0 0">
+      <span style="font-size:13px;line-height:20px;color:#2B303B">أوافق على <a href="#" style="font-weight:600">الشروط</a> و<a href="#" style="font-weight:600">سياسة الخصوصية</a>.</span>
+    </label>
+  </div>
+
+  <div style="padding:12px 20px 44px;display:flex;flex-direction:column;gap:14px;background:rgba(255,255,255,.94);border-top:1px solid #E6E1D8">
+    <a href="Main.dc.html" style="height:52px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600">إنشاء الحساب</a>
+    <p style="margin:0;text-align:center;font-size:13px;color:#5C6270">لديك حساب؟ <a href="SignIn.dc.html" style="font-weight:600">سجّل دخولك</a></p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
