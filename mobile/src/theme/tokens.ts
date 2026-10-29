@@ -203,6 +203,8 @@ export const font = {
 
 export const type = {
   display: { fontSize: 30, lineHeight: 43 },
+  /** A screen's own title, at its top (v1.1: the onboarding steps, the board's heading). */
+  screen: { fontSize: 26, lineHeight: 34 },
   title: { fontSize: 20, lineHeight: 29 },
   headline: { fontSize: 17, lineHeight: 26 },
   body: { fontSize: 16, lineHeight: 28 },

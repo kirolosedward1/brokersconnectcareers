@@ -43,10 +43,18 @@ export class ApplyRefused extends Error {
   }
 }
 
+/** The CV a candidate last applied with, and the listing it went to. */
+export type LastCv = { path: string; jobTitleAr: string; jobTitleEn: string | null; sentAt: string };
+
 /**
- * Whether this candidate has already applied, and the CV on their profile.
- * The first is read, never guessed: a failed read is an error, not "no" — a
+ * Whether this candidate has already applied, the CV on their profile, and
+ * the CV they last applied with (v1.1: the form offers that one first). The
+ * first is read, never guessed: a failed read is an error, not "no" — a
  * second form after a first application only meets the unique index.
+ *
+ * The last CV is taken from a standing application only: a withdrawal clears
+ * its path and may remove the file (the website's withdrawApplication), while
+ * a standing application keeps it — so the path offered is one that exists.
  */
 export function useApplyContext(jobId: string | null) {
   const candidateId = useSession().session?.user.id ?? null;
@@ -54,7 +62,7 @@ export function useApplyContext(jobId: string | null) {
     queryKey: ['apply', 'context', jobId, candidateId],
     enabled: Boolean(jobId && candidateId),
     queryFn: async () => {
-      const [existing, agent] = await Promise.all([
+      const [existing, agent, last] = await Promise.all([
         // Not maybeSingle: withdrawing keeps the row, and applying again adds
         // another. A withdrawn row is not an application in progress. Status
         // is filtered here so the label is not sent before the database has it.
@@ -64,6 +72,14 @@ export function useApplyContext(jobId: string | null) {
           .eq('job_id', jobId as string)
           .eq('candidate_id', candidateId as string),
         supabase.from('agent_profiles').select('cv_path').eq('user_id', candidateId as string).maybeSingle(),
+        supabase
+          .from('applications')
+          .select('cv_path, status, created_at, job:jobs (title_ar, title_en)')
+          .eq('candidate_id', candidateId as string)
+          .not('cv_path', 'is', null)
+          .neq('status', 'withdrawn')
+          .order('created_at', { ascending: false })
+          .limit(1),
       ]);
       if (existing.error) throw existing.error;
       const rows = (Array.isArray(existing.data) ? existing.data : existing.data ? [existing.data] : []) as {
@@ -72,10 +88,26 @@ export function useApplyContext(jobId: string | null) {
         created_at: string;
       }[];
       const standing = rows.find((row) => row.status !== 'withdrawn') ?? null;
+      const lastRow = last.error
+        ? null
+        : ((Array.isArray(last.data) ? last.data[0] : last.data) as unknown as
+            | { cv_path: string | null; created_at: string; job: { title_ar: string; title_en: string | null } | null }
+            | null
+            | undefined);
+      const lastCv: LastCv | null =
+        lastRow?.cv_path && lastRow.cv_path.startsWith(`${candidateId}/`)
+          ? {
+              path: lastRow.cv_path,
+              jobTitleAr: lastRow.job?.title_ar ?? '',
+              jobTitleEn: lastRow.job?.title_en ?? null,
+              sentAt: lastRow.created_at,
+            }
+          : null;
       return {
         existing: standing ? { id: standing.id, created_at: standing.created_at } : null,
         // Optional: without it the form simply offers a file.
         profileCv: (agent.error ? null : agent.data?.cv_path) ?? null,
+        lastCv,
       };
     },
   });

@@ -4,10 +4,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import type { AuthError } from '@supabase/supabase-js';
 import { useTranslations } from 'use-intl';
-import { MailCheck, RefreshCw } from '~/components/ui/lucide';
+import { Briefcase, MailCheck, RefreshCw, Search } from '~/components/ui/lucide';
 import { AuthHeading, AuthScroll, AuthSwitch } from '~/components/auth/auth-scroll';
 import { CaptchaStatus, captchaBlocks } from '~/components/auth/captcha-status';
+import { PasswordStrength } from '~/components/auth/password-strength';
 import { SocialSignIn } from '~/components/auth/social-sign-in';
+import { ChoiceCard } from '~/components/ui/choice-card';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
 import { Notice } from '~/components/ui/notice';
@@ -17,9 +19,10 @@ import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { useCaptcha } from '~/features/auth/captcha';
 import { useAuthErrorText } from '~/features/auth/errors';
-import { confirmationPath, intentFromParams, intentParams } from '~/features/auth/intent';
+import { confirmationPath, intentFromParams, intentParams, type Role } from '~/features/auth/intent';
 import { useLand } from '~/features/auth/land';
 import type { ProviderOutcome } from '~/features/auth/providers';
+import { track } from '~/lib/analytics';
 import { callAction } from '~/lib/api';
 import { withAppMarker } from '~/lib/app-marker';
 import { env } from '~/lib/env';
@@ -45,13 +48,19 @@ import { livePasswordChecks, PASSWORD_MIN, PASSWORD_RULES } from '~/lib/password
 export default function SignUpScreen() {
   const t = useTranslations();
   const { colors } = useTheme();
-  const params = useLocalSearchParams<{ next?: string; role?: string }>();
-  const intent = intentFromParams(params);
+  const params = useLocalSearchParams<{ next?: string; role?: string; email?: string }>();
+  const given = intentFromParams(params);
+  // The kind of account, asked here when the door did not say (v1.1, the
+  // SignUp board) and carried on as the door's would be; onboarding asks it
+  // otherwise.
+  const [role, setRole] = useState<Role | null>(given.role);
+  const intent = { ...given, role: role ?? given.role };
   const land = useLand();
   const errorText = useAuthErrorText();
   const captcha = useCaptcha('sign-up');
 
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState(typeof params.email === 'string' ? params.email : '');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +94,10 @@ export default function SignUpScreen() {
         password,
         options: {
           emailRedirectTo: `${env.siteUrl}${confirmationPath(intent)}`,
-          ...(intent.role ? { data: { role: intent.role } } : {}),
+          // What onboarding starts from: the kind of account and the name, as a provider's would be.
+          ...(intent.role || fullName.trim()
+            ? { data: { ...(intent.role ? { role: intent.role } : {}), ...(fullName.trim() ? { full_name: fullName.trim() } : {}) } }
+            : {}),
           ...(captcha.token ? { captchaToken: captcha.token } : {}),
         },
       })
@@ -98,6 +110,10 @@ export default function SignUpScreen() {
       setError(errorText(signUpError));
       void callAction('reportAuthOutcome', { kind: 'sign_up_failed', email: address }).catch(() => null);
       return;
+    }
+    // A new account, not an address that already had one (Auth answers those with no identities).
+    if (data.user && data.user.identities?.length !== 0) {
+      track(intent.role === 'candidate' ? 'candidate_signed_up' : intent.role === 'employer' ? 'employer_signed_up' : 'account_signed_up', {});
     }
     if (!data.session) {
       setPending(false);
@@ -200,6 +216,43 @@ export default function SignUpScreen() {
       <SocialSignIn mode="sign-up" disabled={pending} onBusy={setPending} onOutcome={afterProvider} />
 
       <View style={{ gap: space[4] }}>
+        {/* The door said nothing: the kind of account, asked here and not again. */}
+        {given.role ? null : (
+          <View style={{ gap: space[2] }}>
+            <Text variant="small" weight="semibold">
+              {t('onboarding.roleQuestion')}
+            </Text>
+            <View accessibilityRole="radiogroup" accessibilityLabel={t('onboarding.roleQuestion')} style={{ gap: space[2] }}>
+              <ChoiceCard
+                selected={role === 'candidate'}
+                onPress={() => setRole('candidate')}
+                icon={Search}
+                title={t('onboarding.roleCandidate')}
+                hint={t('onboarding.roleCandidateHint')}
+              />
+              <ChoiceCard
+                selected={role === 'employer'}
+                onPress={() => setRole('employer')}
+                icon={Briefcase}
+                title={t('onboarding.roleEmployer')}
+                hint={t('onboarding.roleEmployerHint')}
+              />
+            </View>
+          </View>
+        )}
+
+        <Field label={t('onboarding.fullName')} hint={t('common.optional')}>
+          <TextField
+            value={fullName}
+            onChangeText={setFullName}
+            accessibilityLabel={t('onboarding.fullName')}
+            placeholder={t('app.auth.fullNamePlaceholder')}
+            autoComplete="name"
+            textContentType="name"
+            maxLength={120}
+          />
+        </Field>
+
         <Field label={t('auth.email')}>
           <TextField
             value={email}
@@ -230,6 +283,7 @@ export default function SignUpScreen() {
             submitBehavior="submit"
             onSubmitEditing={() => confirmField.current?.focus()}
           />
+          <PasswordStrength password={password} />
         </Field>
 
         <Field label={t('auth.passwordConfirm')} error={live.mismatch ? t('validation.passwordMismatch') : undefined}>
