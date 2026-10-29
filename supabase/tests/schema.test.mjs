@@ -424,6 +424,10 @@ report.section('who may call a definer function, on purpose');
     // Whether a company is suspended, so the public page can hide one without
     // the column being readable (migration 367). A boolean; no owner, no balance.
     'company_suspended',
+    // How a company answers applications, on its public listing (migration
+    // 370): three aggregates over the last 180 days, none under five
+    // applications, never a row — what a script can learn is what the listing says.
+    'company_response_stats',
     // my_company_id is not here: no policy calls it, and migration 350 closed
     // it to the signed-out side, where it only ever answered null.
     'owns_company',

@@ -1558,6 +1558,15 @@ export type Database = {
       /** Whether that company is suspended. A boolean the public page may ask (migration 367). */
       company_suspended: { Args: { p_id: string }; Returns: boolean };
       /**
+       * How a company answers applications, last 180 days (migration 370):
+       * how many, the share it opened (0–1), the median days to a first
+       * answer. No row under five applications; no median under three answered.
+       */
+      company_response_stats: {
+        Args: { p_company_id: string };
+        Returns: { sample: number; open_rate: number | string; median_days: number | string | null }[];
+      };
+      /**
        * Service-role only, and called with the admin client: the answer is
        * whether an address has an account, which is not for every signed-in
        * user to ask. Used to find the colleague an employer is inviting.
