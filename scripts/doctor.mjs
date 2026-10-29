@@ -27,17 +27,18 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// A loopback URL is valid for the local Supabase stack; test reachability below.
 const placeholder = (v) =>
-  !v || v.startsWith('placeholder') || v === 'PASTE-HERE' || v.includes('127.0.0.1');
+  !v || v.startsWith('placeholder') || v.startsWith('REPLACE_ME') || v === 'PASTE-HERE';
 
 if (placeholder(url)) bad('NEXT_PUBLIC_SUPABASE_URL', 'Project Settings → API → Project URL');
 else ok('NEXT_PUBLIC_SUPABASE_URL', url);
 
 if (placeholder(anon)) bad('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'Project Settings → API → anon public');
-else ok('NEXT_PUBLIC_SUPABASE_ANON_KEY', `${anon.slice(0, 12)}…`);
+else ok('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 
 if (placeholder(service)) bad('SUPABASE_SERVICE_ROLE_KEY', 'Project Settings → API → service_role');
-else ok('SUPABASE_SERVICE_ROLE_KEY', `${service.slice(0, 12)}…`);
+else ok('SUPABASE_SERVICE_ROLE_KEY');
 
 if (failed) {
   console.log('\nFill these into .env.local first.');

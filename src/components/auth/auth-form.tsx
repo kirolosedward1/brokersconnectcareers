@@ -147,12 +147,12 @@ export function AuthForm({
     emailRef.current?.focus();
   }, [emailOpen]);
 
-  function toggleEmail() {
-    setEmailOpen((open) => {
-      const nextOpen = !open;
-      if (nextOpen) focusEmail.current = true;
-      return nextOpen;
-    });
+  function openEmail() {
+    // This button promises email sign-in. Repeated clicks (or an autofill
+    // opening the panel just before a click) must not hide an entered form.
+    focusEmail.current = true;
+    setEmailOpen(true);
+    if (emailOpen) emailRef.current?.focus();
   }
 
   // Onboarding is where a new account chooses its role; if the door already
@@ -542,7 +542,7 @@ export function AuthForm({
           aria-expanded={emailOpen}
           aria-controls={emailPanelId}
           disabled={pending}
-          onClick={toggleEmail}
+          onClick={openEmail}
         >
           <Mail aria-hidden />
           <span className="min-w-0">{t('signInWithEmail')}</span>

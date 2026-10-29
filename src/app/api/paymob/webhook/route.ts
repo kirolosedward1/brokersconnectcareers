@@ -1,3 +1,4 @@
+import { readRequestText } from '@/lib/security/request-body';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyHmac } from '@/lib/paymob/hmac';
@@ -23,9 +24,20 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   const secret = process.env.PAYMOB_HMAC_SECRET;
 
+  if (!secret) {
+    // Refusing is the only safe answer: with no secret there is no way to tell
+    // a real callback from a forged one, and accepting would mean minting
+    // credits for anyone who found the URL.
+    console.warn('[paymob] callback rejected: PAYMOB_HMAC_SECRET is not configured');
+    return NextResponse.json({ error: 'not_configured' }, { status: 503 });
+  }
+
+  const input = await readRequestText(request, 256 * 1024);
+  if ('refused' in input) return input.refused;
+
   let body: { obj?: Record<string, unknown> };
   try {
-    body = await request.json();
+    body = JSON.parse(input.text);
   } catch {
     return NextResponse.json({ error: 'malformed' }, { status: 400 });
   }
@@ -37,14 +49,6 @@ export async function POST(request: NextRequest) {
 
   // Paymob puts the digest on the query string of the callback URL.
   const received = request.nextUrl.searchParams.get('hmac');
-
-  if (!secret) {
-    // Refusing is the only safe answer: with no secret there is no way to tell
-    // a real callback from a forged one, and accepting would mean minting
-    // credits for anyone who found the URL.
-    console.warn('[paymob] callback rejected: PAYMOB_HMAC_SECRET is not configured');
-    return NextResponse.json({ error: 'not_configured' }, { status: 503 });
-  }
 
   if (!verifyHmac(transaction, received, secret)) {
     console.warn('[paymob] callback rejected: signature did not verify');

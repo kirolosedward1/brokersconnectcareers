@@ -153,7 +153,8 @@ export function withOptionalBearer<C>(handler: RouteHandler<C>): RouteHandler<C>
     if (bearer.kind === 'none') {
       // The website's cookie session, held to the rule the middleware applies
       // to pages — which never sees these routes (its matcher skips /api).
-      if (await cookieSecondFactorDue()) return secondFactorRequired();
+      const gate = await cookieAuthRefusal();
+      if (gate) return gate;
       return handler(request, context);
     }
     if (bearer.kind === 'malformed') return unauthorized('invalid_token');
@@ -165,19 +166,20 @@ export function withOptionalBearer<C>(handler: RouteHandler<C>): RouteHandler<C>
   };
 }
 
-/**
- * Whether the request's cookie session is one with an authenticator it has
- * not used. The user is the auth server's answer (getUser), never the cookie's
- * copy; nobody signed in, or an auth server that did not answer, is not due —
- * the handler then finds nobody, as it would have.
- */
-async function cookieSecondFactorDue(): Promise<boolean> {
+/** Refuse private cookie routes when identity or MFA cannot be established. */
+async function cookieAuthRefusal(): Promise<Response | null> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    return data.user ? await sessionOwesSecondFactor(supabase, data.user) : false;
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      if (tokenRefused(error)) return unauthorized('invalid_token');
+      return mobileJson({ error: 'unavailable' }, { status: 503 });
+    }
+    if (!data.user) return unauthorized('unauthenticated');
+    if (await sessionOwesSecondFactor(supabase, data.user)) return secondFactorRequired();
+    return null;
   } catch {
-    return false;
+    return mobileJson({ error: 'unavailable' }, { status: 503 });
   }
 }
 

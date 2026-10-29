@@ -297,6 +297,27 @@ section('a visitor: the public pages, and the empty ones');
 }
 
 // ---------------------------------------------------------------------------
+section('email sign-in stays open after repeated clicks');
+{
+  const { page, context } = await device();
+  await page.goto(`${SITE}/sign-in`);
+  await openEmailSignIn(page);
+  await page.fill('input[name="email"]', 'form-check@example.test');
+  await page.fill('input[name="password"]', 'not-submitted');
+  const toggle = page.getByRole('button', { name: CATALOGUE.auth.signInWithEmail });
+  if (await toggle.count()) {
+    await toggle.first().click();
+    check('an already open email form does not collapse', await toggle.first().getAttribute('aria-expanded') === 'true');
+    await toggle.first().click();
+    check('repeated email sign-in clicks keep the panel open', await toggle.first().getAttribute('aria-expanded') === 'true');
+  }
+  check('the email already entered is preserved', await page.inputValue('input[name="email"]') === 'form-check@example.test');
+  await submit(page).click({ trial: true });
+  check('the sign-in submit button remains reachable', true);
+  await context.close();
+}
+
+// ---------------------------------------------------------------------------
 section('somebody new: sign up, onboarding with a mistake, and the dashboard');
 const email = `e2e-browser-${Date.now()}@example.com`;
 let password = `E2e-${randomUUID()}`;

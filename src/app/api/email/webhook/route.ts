@@ -1,3 +1,4 @@
+import { readRequestText } from '@/lib/security/request-body';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySvix } from '@/lib/email/svix';
@@ -37,14 +38,17 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   const secret = configuredValue(process.env.RESEND_WEBHOOK_SECRET);
 
-  // The raw bytes, because the signature is over what was sent — parsing and
-  // re-serialising changes key order and whitespace.
-  const raw = await request.text();
-
   if (!secret) {
     console.warn('[email] webhook rejected: RESEND_WEBHOOK_SECRET is not configured');
     return NextResponse.json({ error: 'not_configured' }, { status: 503 });
   }
+
+  // The raw bytes, because the signature is over what was sent — parsing and
+  // re-serialising changes key order and whitespace.
+
+  const input = await readRequestText(request, 256 * 1024);
+  if ('refused' in input) return input.refused;
+  const raw = input.text;
 
   const verified = verifySvix({
     secret,

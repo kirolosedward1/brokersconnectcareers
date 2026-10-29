@@ -1,3 +1,4 @@
+import { readRequestText } from '@/lib/security/request-body';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { env } from '@/lib/env';
@@ -51,12 +52,9 @@ function patchFor(kind: Kind) {
 export async function POST(request: NextRequest) {
   const url = new URL(request.url);
 
-  let body: URLSearchParams;
-  try {
-    body = new URLSearchParams(await request.text());
-  } catch {
-    body = new URLSearchParams();
-  }
+  const input = await readRequestText(request, 8 * 1024);
+  if ('refused' in input) return input.refused;
+  const body = new URLSearchParams(input.text);
 
   const token = url.searchParams.get('token') ?? body.get('token');
   const kindParam = url.searchParams.get('kind') ?? body.get('kind');

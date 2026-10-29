@@ -1,3 +1,4 @@
+import { readRequestText } from '@/lib/security/request-body';
 import { NextResponse } from 'next/server';
 import { saveFirstTouch } from '@/lib/actions/attribution';
 import { isSameOriginPost } from '@/lib/auth/confirm-link';
@@ -22,9 +23,11 @@ export async function POST(request: Request) {
   if (!isSameOriginPost(request.headers.get('origin'), request.headers.get('sec-fetch-site'), url.origin)) {
     return NextResponse.json({ ok: false }, { status: 403, headers });
   }
+  const input = await readRequestText(request, 8 * 1024);
+  if ('refused' in input) return input.refused;
   let body: unknown = {};
   try {
-    body = await request.json();
+    body = JSON.parse(input.text);
   } catch {
     body = {};
   }
