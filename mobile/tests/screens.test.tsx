@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { createTranslator } from 'use-intl';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, Modal, RefreshControl, type AlertButton } from 'react-native';
@@ -14,6 +14,7 @@ import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applicati
 import * as JobScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/[slug]';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as BoardScreen from '../src/app/(tabs)/(jobs)/jobs/index';
+import * as SearchScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/jobs/search';
 import * as CompaniesScreen from '../src/app/(tabs)/(home,jobs,companies,applications,saved,account,listings,applicants,consultants,admin)/companies/index';
 import * as HiddenScreen from '../src/app/(tabs)/(account)/account/hidden';
 import * as NotFoundScreen from '../src/app/+not-found';
@@ -88,6 +89,7 @@ const app = {
   _layout: Root,
   '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(home,jobs,companies)/_layout': TabStack,
+  '(tabs)/(home,jobs,companies)/jobs/search': SearchScreen,
   '(tabs)/(home,jobs,companies)/jobs/[slug]': JobScreen,
   '(tabs)/(home,jobs,companies)/companies/[slug]': CompanyScreen,
   '(tabs)/(home)/index': HomeScreen,
@@ -187,6 +189,20 @@ describe('the board', () => {
     expect(screen.getByText(` ${ar.app.money.perMonth}`)).toBeTruthy();
     // Nothing sponsored on the page, so nothing to explain about the order.
     expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
+  });
+
+  it('says the board is the one kept from before, and how old it is, when there is no connection', async () => {
+    await renderRouter(app, { initialUrl: '/(jobs)/jobs' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    server.on('/api/mobile/v1/jobs', () => {
+      throw new TypeError('Network request failed');
+    });
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['jobs', 'board'] });
+    });
+    expect(await screen.findByText('لا يوجد اتصال. تعرض آخر وظائف حُمّلت قبل دقيقة.')).toBeTruthy();
+    // The listings stay.
+    expect(screen.getByText(listing.title_ar)).toBeTruthy();
   });
 
   it('labels a sponsored listing, and says sponsored listings come first whatever the sort', async () => {
@@ -386,12 +402,22 @@ describe('a listing', () => {
     expect(server.asked(`/api/mobile/v1/jobs/${slug}`)).toHaveLength(1);
   });
 
+  it('says since when the company is verified, and how soon it answers, from what it did with its applications', async () => {
+    server.on('POST /rest/v1/rpc/company_response_stats', [{ sample: 20, open_rate: 0.92, median_days: 2.2 }]);
+    await renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
+    expect(await screen.findByText(new RegExp(`موثّقة منذ أغسطس 2026`))).toBeTruthy();
+    expect(await screen.findByText('تردّ هذه الشركة خلال يومين في المتوسط · فتحت \u206692%\u2069 من الطلبات')).toBeTruthy();
+    // No line for a company that has had too few applications to say.
+    server.on('POST /rest/v1/rpc/company_response_stats', []);
+  });
+
   it('reads like the website page and counts the view once', async () => {
     await renderRouter(app, { initialUrl: `/(jobs)/jobs/${listing.slug}` });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('بيع وحدات سكنية في مشروعات القاهرة الجديدة.')).toBeTruthy();
     expect(screen.getByText('بالم هيلز')).toBeTruthy();
-    expect(screen.getByText('نسبة ⁦1.5⁩٪')).toBeTruthy();
+    // The commission, on the listing alone (v1.1): its rate as a figure.
+    expect(screen.getByText('\u20661.5%\u2069')).toBeTruthy();
     // What listings like it pay, with the currency and the sample size.
     expect(screen.getByText(/ج\.م — حسب ⁦6⁩ إعلانات منشورة/)).toBeTruthy();
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordJobView')).toHaveLength(1));
@@ -627,4 +653,28 @@ describe('reporting and hiding', () => {
 
 afterAll(() => {
   act(() => {});
+});
+
+describe('search', () => {
+  it('reads a track and a place in what is typed, and opens the board for both', async () => {
+    // «التجمع» is one of New Cairo's other names (search_aliases, migration 68).
+    server.on('/rest/v1/search_aliases', [{ alias: 'التجمع', district_id: newCairo.id, track: null }]);
+    const result = await renderRouter(app, { initialUrl: '/jobs/search' });
+    fireEvent.changeText(await screen.findByLabelText(ar.app.search.title), 'اوفبلان تجمع');
+    expect(await screen.findByText(ar.app.search.didYouMean)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: `${ar.track.primary} · ${newCairo.name_ar}` }));
+    await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
+    expect(result.getSearchParams()).toMatchObject({ track: 'primary', district: newCairo.slug });
+  });
+
+  it('searches the words as typed, and offers them again next time', async () => {
+    const result = await renderRouter(app, { initialUrl: '/jobs/search' });
+    fireEvent.changeText(await screen.findByLabelText(ar.app.search.title), 'مدير مبيعات');
+    fireEvent(screen.getByLabelText(ar.app.search.title), 'submitEditing');
+    await waitFor(() => expect(result.getPathname()).toBe('/jobs'));
+    expect(result.getSearchParams()).toMatchObject({ q: 'مدير مبيعات' });
+    act(() => router.push('/jobs/search'));
+    expect(await screen.findByText(ar.app.search.recent)).toBeTruthy();
+    expect(screen.getByRole('button', { name: ar.app.jobs.recentSearch.replace('{words}', 'مدير مبيعات') })).toBeTruthy();
+  });
 });

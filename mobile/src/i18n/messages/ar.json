@@ -67,7 +67,9 @@
     "seenDivider": "نُشرت قبل آخر زيارة",
     "amountEgp": "<v>{amount}</v> ج.م",
     "searchLabel": "ابحث في الوظائف",
-    "appliedChip": "قدّمت"
+    "appliedChip": "قدّمت",
+    "widenAnywhere": "وسّع البحث لأي منطقة",
+    "offlineKept": "لا يوجد اتصال. تعرض آخر وظائف حُمّلت قبل {minutes, plural, one {دقيقة} two {دقيقتين} few {<v>#</v> دقائق} many {<v>#</v> دقيقة} other {<v>#</v> دقيقة}}."
   },
   "auth": {
     "forCompanies": "سجّل شركتك",
@@ -218,7 +220,18 @@
   "applications": {
     "activeHeading": "طلبات ما زالت قائمة",
     "decidedHeading": "طلبات حُسمت",
-    "timelineNow": "الآن: {step}"
+    "timelineNow": "الآن: {step}",
+    "segmentsLabel": "اعرض الطلبات",
+    "segmentAll": "الكل <v>{count}</v>",
+    "segmentNews": "فيها جديد <v>{count}</v>",
+    "segmentInterviews": "مقابلات",
+    "segmentEnded": "منتهية",
+    "segmentEmpty": "لا طلبات هنا الآن.",
+    "movedAgo": "تحرّكت {when}",
+    "quietFor": "لم تردّ بعد منذ {days, plural, one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}}",
+    "usuallyIn": "تردّ هذه الشركة عادةً خلال {days, plural, =0 {يوم} one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}}",
+    "queuedTitle": "طلبك محفوظ وسيُرسل تلقائيًا",
+    "queuedCancel": "ألغِ"
   },
   "apply": {
     "pickCv": "اختر ملفًا",
@@ -245,7 +258,12 @@
     "newAccountTitle": "خطوة واحدة قبل الإرسال",
     "newAccountBody": "أكّد اسمك ورقمك، واختر من يرى ملفك، ثم أرسل الطلب.",
     "completeProfile": "أكمل ملفك",
-    "completeProfileBody": "مسارك ومناطقك والراتب الذي تقبله، لنرتّب لك الوظائف المناسبة وننبّهك بها."
+    "completeProfileBody": "مسارك ومناطقك والراتب الذي تقبله، لنرتّب لك الوظائف المناسبة وننبّهك بها.",
+    "queuedTitle": "طلبك محفوظ على الهاتف",
+    "queuedBody": "لا يوجد اتصال الآن. سنرسل طلبك على «{title}» تلقائيًا حين يعود الاتصال، ونخبرك حين يصل.",
+    "queuedSent": "وصل طلبك على «{title}».",
+    "queuedFailed": "لم نستطع إرسال طلبك على «{title}». افتح الإعلان وحاول مرة أخرى.",
+    "serverFailed": "تعذّر إرسال الطلب. المشكلة من جهتنا لا منك، وما كتبته محفوظ. أعد المحاولة بعد قليل."
   },
   "profile": {
     "edit": "عدّل",
@@ -344,7 +362,14 @@
     "failed": "تعذّر فتح التطبيق. أعد المحاولة."
   },
   "search": {
-    "clear": "امسح البحث"
+    "clear": "امسح البحث",
+    "title": "ابحث",
+    "placeholder": "وظيفة، شركة، منطقة",
+    "didYouMean": "هل تقصد",
+    "searchFor": "ابحث عن «{words}»",
+    "nearMe": "قريب مني · {place}",
+    "payFloor": "أساسي <v>{amount}</v> ج.م فأكثر",
+    "recent": "بحثت مؤخرًا"
   },
   "directory": {
     "verifyTitle": "وثّق شركتك لترى الاستشاريين",
@@ -354,13 +379,18 @@
     "call": "اتصال"
   },
   "home": {
-    "recentlyViewed": "شفتها مؤخرًا",
+    "recentlyViewed": "شاهدتها مؤخرًا",
     "recentlyViewedClear": "امسحها",
     "statApplications": "طلباتي",
     "statReplies": "ردود",
     "statProfile": "ملفي",
     "statSaved": "محفوظة",
-    "statAlerts": "تنبيهات"
+    "statAlerts": "تنبيهات",
+    "completeLine": "ملفك مكتمل <v>{percent}%</v>",
+    "lookedLine": "{count, plural, one {شركة واحدة فتحت ملفك} two {شركتان فتحتا ملفك} few {<v>#</v> شركات فتحت ملفك} many {<v>#</v> شركة فتحت ملفك} other {<v>#</v> شركة فتحت ملفك}} خلال <v>30</v> يومًا",
+    "searchPlaceholder": "ابحث عن وظيفة أو شركة أو منطقة",
+    "searchHint": "يفتح البحث مع اقتراحات أثناء الكتابة",
+    "filters": "الفلاتر"
   },
   "share": {
     "hiring": "وظيفة متاحة",
@@ -499,7 +529,8 @@
       "cancelFailed": "تعذّر إلغاء التذكير. أعد المحاولة.",
       "notifyTitle": "{day, select, today {هذا الإعلان يغلق اليوم} other {هذا الإعلان يغلق غدًا}}",
       "notifyBody": "{job} في {company}. قدّم قبل أن يُغلق."
-    }
+    },
+    "offlineKept": "هذه محفوظاتك كما كانت آخر مرة اتصل فيها التطبيق. تتحدّث حين يعود الاتصال."
   },
   "notificationsFeed": {
     "delete": "امسح",
@@ -594,5 +625,11 @@
   "landing": {
     "factSalaryRange": "الراتب الأساسي من <v>{min}</v> إلى <v>{max}</v> ج.م شهريًا",
     "factSalaryFrom": "الراتب الأساسي من <v>{min}</v> ج.م شهريًا"
+  },
+  "listing": {
+    "postedAgo": "نُشر {when}",
+    "verifiedSince": "موثّقة منذ {when}",
+    "respondsIn": "تردّ هذه الشركة خلال {days, plural, =0 {يوم} one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}} في المتوسط",
+    "opened": "فتحت <v>{percent}%</v> من الطلبات"
   }
 }

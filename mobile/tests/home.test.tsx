@@ -220,11 +220,13 @@ describe("a candidate's home", () => {
     await signIn();
     await open();
 
-    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name.split(' ')[0]}`)).toBeTruthy();
     expect(await screen.findByText('رد على طلب')).toBeTruthy();
     // Each figure says what it is, to VoiceOver as well.
     expect(screen.getByLabelText(`${ar.dashboard.statApplications}: 1`)).toBeTruthy();
-    expect(screen.getByLabelText(`${ar.dashboard.statCompleteness}: 80%`)).toBeTruthy();
+    // How complete the profile is, round the photo (v1.1): no fifth figure for it.
+    expect(screen.getByLabelText(ar.app.profile.ringLabel.replace('<v>{percent}%</v>', '\u206680%\u2069'))).toBeTruthy();
+    expect(screen.queryByLabelText(`${ar.dashboard.statCompleteness}: 80%`)).toBeNull();
     expect(screen.getByLabelText(`${ar.dashboard.statAlerts}: 1`)).toBeTruthy();
     // The latest application and where it stands.
     expect(screen.getByLabelText(formatList([applied.title_ar, 'النيل للوساطة', ar.applicationStatus.shortlisted], 'ar'))).toBeTruthy();
@@ -269,8 +271,14 @@ describe("a candidate's home", () => {
     expect(screen.queryByText(ar.dashboard.matchNudge) === null).toBe(true);
   });
 
+  it('opens the profile from the ring of how complete it is', async () => {
+    await signIn();
+    const result = await open();
+    fireEvent.press(await screen.findByTestId('completeness-ring'));
+    await waitFor(() => expect(result.getPathname()).toBe('/account/profile'));
+  });
+
   it.each([
-    [`${ar.dashboard.statCompleteness}: 80%`, '/account/profile'],
     [`${ar.dashboard.statSaved}: 3`, '/dashboard/saved'],
     [`${ar.dashboard.statReplies}: 1`, '/dashboard/applications'],
     [`رد على طلب. ${ar.dashboard.nextRepliesBody}`, '/dashboard/applications'],
@@ -279,6 +287,19 @@ describe("a candidate's home", () => {
     const result = await open();
     fireEvent.press(await screen.findByRole('link', { name }));
     await waitFor(() => expect(result.getPathname()).toBe(path));
+  });
+
+  it('says how well a listing fits only once the profile is 60% complete', async () => {
+    await signIn();
+    const first = await open();
+    expect(await screen.findByText(fitting.title_ar)).toBeTruthy();
+    expect((await screen.findAllByText(/^مناسب لك/)).length).toBeGreaterThan(0);
+    first.unmount();
+
+    server.on('POST /rest/v1/rpc/candidate_summary', summary({ profile_completeness: 40 }));
+    await open();
+    expect(await screen.findByText(fitting.title_ar)).toBeTruthy();
+    expect(screen.queryByText(/^مناسب لك/)).toBeNull();
   });
 
   it("sums up the candidate's week: new listings in their areas, applications opened, profile views", async () => {
@@ -477,7 +498,7 @@ describe('the Terms and the Privacy policy', () => {
     server.on('GET /rest/v1/policy_acceptances', acceptances(() => [{ terms_version: versions.terms, privacy_version: versions.privacy }]));
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name.split(' ')[0]}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
@@ -494,7 +515,7 @@ describe('the Terms and the Privacy policy', () => {
     );
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name.split(' ')[0]}`)).toBeTruthy();
     await answered();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
   });
@@ -502,7 +523,7 @@ describe('the Terms and the Privacy policy', () => {
   it('asks nothing when the website does not say what is current, and does not look', async () => {
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name.split(' ')[0]}`)).toBeTruthy();
     expect(screen.queryByText(ar.legal.updatedTitle)).toBeNull();
     expect(server.asked('/rest/v1/policy_acceptances')).toHaveLength(0);
   });
@@ -524,7 +545,7 @@ describe('a directory card nobody asked about', () => {
     server.on('GET /rest/v1/agent_profiles', [{ ...agent, visibility_chosen_at: '2026-10-01T10:00:00Z' }]);
     await signIn();
     await open();
-    expect(await screen.findByText(`أهلًا ${profile.full_name}`)).toBeTruthy();
+    expect(await screen.findByText(`أهلًا ${profile.full_name.split(' ')[0]}`)).toBeTruthy();
     await waitFor(() => expect(server.asked('/rest/v1/agent_profiles').length).toBeGreaterThan(0));
     expect(screen.queryByText(ar.dashboard.visibilityAskTitle)).toBeNull();
   });

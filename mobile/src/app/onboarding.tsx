@@ -180,7 +180,7 @@ export default function OnboardingScreen() {
           }}
         />
       ) : (
-        <LoadingState />
+        <LoadingState spinner />
       )}
     </>
   );
@@ -942,7 +942,7 @@ function CompanyPapers() {
   const { viewer } = useSession();
   const page = useCompanyPage();
   const company = viewer?.company ?? null;
-  if (!company || page.isPending) return <LoadingState />;
+  if (!company || page.isPending) return <LoadingState spinner />;
   return (
     <View style={{ gap: space[4] }}>
       <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
@@ -961,7 +961,7 @@ function CompanyReady() {
   const { viewer } = useSession();
   const page = useCompanyPage();
   const company = viewer?.company ?? null;
-  if (!company) return <LoadingState />;
+  if (!company) return <LoadingState spinner />;
   const sent = (page.data?.documents ?? []).length > 0;
   const verified = company.verification_status === 'verified';
   const rows = [

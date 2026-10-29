@@ -1,5 +1,6 @@
 import { MAX_MATCH_SCORE, scoreJob, type MatchableJob, type MatchReasons } from '@/lib/match';
-import { useAgentProfile } from '~/features/profile/queries';
+import { completeEnoughToMatch } from '~/features/dashboard/candidate';
+import { useAgentProfile, useCandidateSummary } from '~/features/profile/queries';
 
 export type JobMatch = { percent: number; reasons: MatchReasons };
 
@@ -13,11 +14,14 @@ export function matchPercent(score: number): number {
  * scoring (src/lib/match.ts): their tracks, districts and years against the
  * listing's. Null for anybody else, for a profile that names no track and no
  * district (nothing to match on, so no number pretends to mean something),
- * and for a listing that matches on nothing — a card says a fit, never a misfit.
+ * for a listing that matches on nothing — a card says a fit, never a misfit —
+ * and while the profile is under 60% complete (v1.1): a percentage scored on
+ * a profile that says little would claim more than it knows.
  */
 export function useJobMatch(): (job: MatchableJob) => JobMatch | null {
   const agent = useAgentProfile().data?.agent ?? null;
-  return (job: MatchableJob) => matchFor(job, agent);
+  const complete = completeEnoughToMatch(useCandidateSummary().data?.profile_completeness);
+  return (job: MatchableJob) => (complete ? matchFor(job, agent) : null);
 }
 
 /** The fit itself, for a profile row (or none). */

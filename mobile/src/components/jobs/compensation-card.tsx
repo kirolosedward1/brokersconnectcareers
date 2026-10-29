@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import { Banknote, HandCoins, Scale, Sparkles, Target } from '~/components/ui/lucide';
 import type { JobRow, SalaryReferenceRow } from '@/lib/supabase/database.types';
 import { formatEgp } from '@/lib/format';
-import { TABULAR } from '~/components/ui/num';
+import { Num, TABULAR } from '~/components/ui/num';
 import { Text } from '~/components/ui/text';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { markupTags } from '~/i18n/rich';
@@ -25,9 +25,12 @@ type Comp = Pick<
 
 /**
  * What the role pays, above any prose — the website's CompensationCard, set
- * as a spec sheet: the basic salary large (with what listings like it pay,
- * when the board has five of them to say so), then the commission and its
- * note beside where the clients come from, then the benefits.
+ * as the design's three tiles (JobDetail): the basic salary, the commission
+ * and who brings the clients, side by side (stacked at the accessibility
+ * sizes); then what listings like it pay, when the board has five of them to
+ * say so, the commission's note, and the benefits.
+ *
+ * The listing is the one place a commission is shown (v1.1), with its terms.
  */
 export function CompensationCard({ job, reference }: { job: Comp; reference: SalaryReferenceRow | null }) {
   const locale = useLocale();
@@ -36,12 +39,13 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
   const tBenefit = useTranslations('benefits');
   const tMoney = useTranslations('app.money');
   const { colors, shadow } = useTheme();
-  // Commission beside leads source, unless the text is at the accessibility
-  // sizes: a 150-point column broke their words there.
-  const cell = useLargeText() ? '100%' : 150;
+  const large = useLargeText();
   const pay = useCompensationText();
   const salary = pay.salary(job);
+  const percent = job.commission_type === 'percentage' && job.commission_value != null ? job.commission_value : null;
   const hairline = { borderTopWidth: StyleSheet.hairlineWidth * 2, borderTopColor: colors.border };
+  const tile = { flexGrow: 1, flexBasis: large ? '100%' : 0, gap: space[0.5], padding: space[4] } as const;
+  const between = large ? hairline : { borderStartWidth: StyleSheet.hairlineWidth * 2, borderStartColor: colors.border };
 
   return (
     <View
@@ -53,49 +57,67 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
         boxShadow: shadow.card,
       }}
     >
-      <View style={{ padding: space[5], gap: space[1] }}>
-        <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header">
-          {t('title')}
-        </Text>
-        <Label icon={<Banknote size={14} color={colors.mutedForeground} />}>{t('basicSalary')}</Label>
-        <Text variant="title" accessibilityLabel={salary.unit ? `${salary.figures} ${salary.unit}` : salary.figures}>
-          <Text variant="title" weight="semibold" tone={salary.unit ? 'foreground' : 'mutedForeground'} style={TABULAR}>
-            {salary.figures}
-          </Text>
-          {salary.unit ? <Text variant="small" tone="mutedForeground">{` ${salary.unit}`}</Text> : null}
-        </Text>
-        {reference ? (
-          <View style={{ flexDirection: 'row', gap: space[1], marginTop: space[1] }}>
-            <Scale size={13} color={colors.mutedForeground} style={{ marginTop: 3 }} />
-            <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
-              {tMoney.markup('reference', {
-                low: formatEgp(reference.low, locale),
-                high: formatEgp(reference.high, locale),
-                count: reference.sample,
-                ...markupTags,
-              })}
+      <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingHorizontal: space[4], paddingTop: space[4] }}>
+        {t('title')}
+      </Text>
+      <View style={{ flexDirection: large ? 'column' : 'row' }}>
+        <View style={tile} accessible accessibilityLabel={`${t('basicSalary')}: ${salary.unit ? `${salary.figures} ${salary.unit}` : salary.figures}`}>
+          <Label icon={<Banknote size={14} color={colors.mutedForeground} />}>{t('basicSalary')}</Label>
+          {salary.unit ? (
+            <>
+              <Text variant="title" weight="bold" tone="primary" style={TABULAR}>
+                {salary.figures}
+              </Text>
+              <Text variant="caption" tone="mutedForeground">
+                {salary.unit}
+              </Text>
+            </>
+          ) : (
+            <Text weight="semibold" tone="mutedForeground">
+              {salary.figures}
             </Text>
-          </View>
-        ) : null}
+          )}
+        </View>
+        <View style={[tile, between]} accessible accessibilityLabel={`${t('commission')}: ${pay.commission(job, locale)}`}>
+          <Label icon={<HandCoins size={14} color={colors.mutedForeground} />}>{t('commission')}</Label>
+          {percent !== null ? (
+            <Num value={percent} percent variant="title" weight="bold" tone="goldForeground" />
+          ) : (
+            <Text weight="semibold">{pay.commission(job, locale)}</Text>
+          )}
+        </View>
+        <View style={[tile, between]} accessible accessibilityLabel={`${t('leadsSource')}: ${tLeads(job.leads_source)}`}>
+          <Label icon={<Target size={14} color={colors.mutedForeground} />}>{t('leadsSource')}</Label>
+          <Text variant="small" weight="semibold" tone="primary">
+            {tLeads(job.leads_source)}
+          </Text>
+        </View>
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', ...hairline }}>
-        <View style={{ flexGrow: 1, flexBasis: cell, padding: space[5], gap: space[1] }}>
-          <Label icon={<HandCoins size={14} color={colors.mutedForeground} />}>{t('commission')}</Label>
-          <Text weight="semibold">{pay.commission(job, locale)}</Text>
+      {reference || job.commission_note_ar ? (
+        <View style={{ padding: space[4], gap: space[2], ...hairline }}>
+          {reference ? (
+            <View style={{ flexDirection: 'row', gap: space[1] }}>
+              <Scale size={13} color={colors.mutedForeground} style={{ marginTop: 3 }} />
+              <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
+                {tMoney.markup('reference', {
+                  low: formatEgp(reference.low, locale),
+                  high: formatEgp(reference.high, locale),
+                  count: reference.sample,
+                  ...markupTags,
+                })}
+              </Text>
+            </View>
+          ) : null}
           {job.commission_note_ar ? (
             <Text variant="small" tone="mutedForeground">
               {job.commission_note_ar}
             </Text>
           ) : null}
         </View>
-        <View style={{ flexGrow: 1, flexBasis: cell, padding: space[5], gap: space[1] }}>
-          <Label icon={<Target size={14} color={colors.mutedForeground} />}>{t('leadsSource')}</Label>
-          <Text weight="semibold">{tLeads(job.leads_source)}</Text>
-        </View>
-      </View>
+      ) : null}
 
-      <View style={{ padding: space[5], gap: space[2], ...hairline }}>
+      <View style={{ padding: space[4], gap: space[2], ...hairline }}>
         <Label icon={<Sparkles size={14} color={colors.mutedForeground} />}>{t('benefits')}</Label>
         {job.benefits.length ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>

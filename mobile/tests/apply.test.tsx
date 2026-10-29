@@ -12,6 +12,8 @@ import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-rout
 import type { Actor } from '@/lib/permissions';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { useWithdrawApplication } from '~/features/applications/queries';
+import { useApplyQueueRunner } from '~/features/apply/queue';
+import { shownToast } from '~/components/feedback/toast';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { env } from '~/lib/env';
 import { rememberActor } from '~/lib/last-actor';
@@ -123,6 +125,12 @@ function Withdrawal() {
   return <Pressable accessibilityRole="button" accessibilityLabel="withdraw elsewhere" onPress={() => withdraw.mutate('a-1')} />;
 }
 
+/** The queue of applications written with no connection, as the tabs run it (features/apply/queue.ts). */
+function QueueRunner() {
+  useApplyQueueRunner();
+  return null;
+}
+
 function Root() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   return (
@@ -133,6 +141,7 @@ function Root() {
             <Settled>
               <Stack screenOptions={{ headerShown: false }} />
               <PendingPath />
+              <QueueRunner />
               {withWithdrawal ? <Withdrawal /> : null}
             </Settled>
           </SessionProvider>
@@ -360,7 +369,7 @@ describe('the form', () => {
     expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
   });
 
-  it('keeps the CV when neither the answer nor the database can be reached, and says it did not go through', async () => {
+  it('keeps the application on the phone when neither the answer nor the database can be reached, and says it will go', async () => {
     server.on('GET /rest/v1/agent_profiles', []);
     jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue(picked());
     await signedIn();
@@ -377,10 +386,21 @@ describe('the form', () => {
     });
     fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
 
-    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
-    // The form is still there, with the file, for another try.
-    expect(screen.getByText('cv.pdf')).toBeTruthy();
+    // Kept on the phone, to go when there is a connection (v1.1): said, and the file left where it is.
+    expect(await screen.findByText(ar.app.apply.queuedTitle)).toBeTruthy();
     expect(server.asked('/storage/v1/object/cvs')).toHaveLength(0);
+    const queued = JSON.parse((await AsyncStorage.getItem(`bc.apply-queue.v1:${USER_ID}`)) ?? '[]');
+    expect(queued).toEqual([expect.objectContaining({ jobId: listing.id, attachment: expect.objectContaining({ kind: 'file' }) })]);
+
+    // The connection back: sent on the next try, said, and nothing left waiting.
+    server.on('POST /api/mobile/v1/actions/applyToJob', { ok: true });
+    server.on('GET /rest/v1/applications', []);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(31_000);
+    });
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.apply.queuedSent.replace('{title}', listing.title_ar)));
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(`bc.apply-queue.v1:${USER_ID}`)) ?? '[]')).toEqual([]));
+    expect(uploads().length).toBeGreaterThanOrEqual(2);
   });
 
   it('takes the CV back out when the website turns the request away before the action runs', async () => {

@@ -238,7 +238,7 @@ export default function ConfirmLinkScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <LoadingState />
+      <LoadingState spinner />
     </>
   );
 }

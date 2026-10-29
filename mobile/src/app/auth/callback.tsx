@@ -63,7 +63,7 @@ export default function OAuthCallbackScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <LoadingState />
+      <LoadingState spinner />
     </>
   );
 }

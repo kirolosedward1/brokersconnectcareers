@@ -185,6 +185,22 @@ const bodyOf = (path: string, index = 0) => server.asked(path)[index]?.body as R
 const gone = (text: string) => screen.queryByText(text) === null;
 
 describe('bookmarks', () => {
+  it('shows the saved listings as they were last read when there is no connection, and says so', async () => {
+    savedIds = new Set([listing.id]);
+    await signedIn();
+    const first = await renderRouter(app, { initialUrl: '/dashboard/saved' });
+    expect(await screen.findByText(listing.title_ar)).toBeTruthy();
+    await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(`bc.saved-offline.v1:${USER_ID}`)) ?? '[]')).toHaveLength(1));
+    first.unmount();
+
+    server.on('GET /rest/v1/saved_jobs', () => {
+      throw new TypeError('Network request failed');
+    });
+    await renderRouter(app, { initialUrl: '/dashboard/saved' });
+    expect(await screen.findByText(ar.app.saved.offlineKept)).toBeTruthy();
+    expect(screen.getByText(listing.title_ar)).toBeTruthy();
+  });
+
   it('keeps a listing from the listing page, and says it is kept', async () => {
     await signedIn();
     await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });

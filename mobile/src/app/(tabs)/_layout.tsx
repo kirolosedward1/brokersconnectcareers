@@ -6,6 +6,7 @@ import { accountTabIcon, TabBar, tabIcon } from '~/components/navigation/tab-bar
 import { Bookmark, Briefcase, Building2, CircleUserRound, ClipboardList, FileText, House, Inbox, ShieldCheck, Users } from '~/components/ui/lucide';
 import { summaryWaiting, useAdminSummary } from '~/features/admin/queries';
 import { useApplicationsMovedBadge } from '~/features/applications/moved';
+import { useApplyQueueRunner } from '~/features/apply/queue';
 import { useConsultantAlerts } from '~/features/directory/alerts';
 import { useNewJobsBadge } from '~/features/jobs/new-since';
 import { markupTags } from '~/i18n/rich';
@@ -71,6 +72,8 @@ export default function TabsLayout() {
     if (groupIsOpen(segments[1], tabs)) return;
     router.replace(startPath(actor));
   }, [actor, segments, tabs]);
+  // Applications written with no connection, sent once there is one (features/apply/queue.ts).
+  useApplyQueueRunner();
   // A company's kept consultant searches, asked again as the app opens (features/directory/alerts.ts).
   useConsultantAlerts((label, count) => ({
     title: t('app.agentAlerts.notifyTitle', { count }),

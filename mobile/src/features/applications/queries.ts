@@ -12,13 +12,15 @@ export type CandidateApplication = {
   created_at: string;
   decision_note: string | null;
   employer_viewed_at: string | null;
+  /** How it moved, as the candidate may read it (application_events, migration 42); absent from older reads. */
+  events?: { from_status: ApplicationStatus | null; to_status: ApplicationStatus; created_at: string }[] | null;
   job: {
     slug: string;
     status: JobStatus;
     expires_at: string | null;
     title_ar: string;
     title_en: string | null;
-    company: { name_ar: string; name_en: string | null; slug: string };
+    company: { id?: string; name_ar: string; name_en: string | null; slug: string };
     district: { name_ar: string; name_en: string };
   } | null;
 };
@@ -43,9 +45,10 @@ export function useMyApplications() {
         .select(
           `
           id, job_id, status, created_at, decision_note, employer_viewed_at,
+          events:application_events (from_status, to_status, created_at),
           job:jobs (
             slug, status, expires_at, title_ar, title_en,
-            company:companies (name_ar, name_en, slug),
+            company:companies (id, name_ar, name_en, slug),
             district:districts (name_ar, name_en)
           )
         `,
@@ -84,4 +87,26 @@ export function useWithdrawApplication() {
       queryClient.invalidateQueries({ queryKey: ['apply'] });
     },
   });
+}
+
+/** When the application last moved from one stage to another; null while it has not. */
+export function lastMovedAt(application: Pick<CandidateApplication, 'events'>): string | null {
+  let last: string | null = null;
+  for (const event of application.events ?? []) {
+    if (!event.from_status) continue;
+    if (!last || new Date(event.created_at).getTime() > new Date(last).getTime()) last = event.created_at;
+  }
+  return last;
+}
+
+/** Days without an answer after which the list offers to withdraw (v1.1). */
+export const QUIET_DAYS = 7;
+
+/**
+ * Whole days an application has waited at «new» without a move — null once
+ * it has moved, or when it is not waiting at all.
+ */
+export function daysWithoutAnswer(application: Pick<CandidateApplication, 'status' | 'created_at' | 'events'>, now = Date.now()): number | null {
+  if (application.status !== 'new' || lastMovedAt(application)) return null;
+  return Math.floor((now - new Date(application.created_at).getTime()) / (24 * 60 * 60 * 1000));
 }

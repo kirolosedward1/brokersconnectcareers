@@ -299,7 +299,7 @@ const SUGGESTION_ICONS: Record<SearchSuggestion['kind'], ComponentType<LucidePro
  * it at once, as a recent search is. A tap while the keyboard is up is taken
  * (the sheet's scroll view keeps taps that are handled).
  */
-function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggestion: SearchSuggestion) => void }) {
+export function SearchSuggestions({ typed, onPick }: { typed: string; onPick: (suggestion: SearchSuggestion) => void }) {
   const large = useLargeText();
   const t = useTranslations('app.jobs');
   const { colors } = useTheme();

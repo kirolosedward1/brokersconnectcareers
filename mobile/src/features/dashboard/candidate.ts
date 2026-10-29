@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import type { JobListItem } from '@/lib/job-list';
 import { rankJobs, type MatchReasons } from '@/lib/match';
@@ -11,6 +12,7 @@ import { useListOwner } from '~/features/jobs/recent';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
 import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-jobs';
 import { useAgentProfile } from '~/features/profile/queries';
+import { track } from '~/lib/analytics';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 
@@ -22,6 +24,40 @@ import { supabase } from '~/lib/supabase';
 
 /** Where the completeness figure starts to warn, and the profile becomes the next action. */
 export const COMPLETENESS_WARN = 60;
+
+/**
+ * Whether the profile is complete enough for a listing's fit to mean
+ * something: until then a percentage would be scored on a profile that says
+ * little, and it is not shown (v1.1).
+ */
+export function completeEnoughToMatch(completeness: number | null | undefined): boolean {
+  return typeof completeness === 'number' && completeness >= COMPLETENESS_WARN;
+}
+
+const REACHED_KEY = 'bc.profile-reached.v1';
+
+/**
+ * The end of sign up → profile 60%: recorded the first time this phone sees
+ * the profile at 60%, and again at 100%, for each account.
+ */
+export function useCompletenessReached(completeness: number | null) {
+  const userId = useSession().session?.user.id ?? null;
+  useEffect(() => {
+    if (!userId || completeness === null) return;
+    const step = completeness >= 100 ? '100' : completeness >= COMPLETENESS_WARN ? '60' : null;
+    if (!step) return;
+    const key = `${REACHED_KEY}:${userId}`;
+    void AsyncStorage.getItem(key)
+      .then(async (stored) => {
+        const seen = new Set((stored ?? '').split(',').filter(Boolean));
+        const due = (['60', '100'] as const).filter((value) => Number(value) <= Number(step) && !seen.has(value));
+        if (!due.length) return;
+        due.forEach((percent) => track('profile_completeness_reached', { percent }));
+        await AsyncStorage.setItem(key, [...seen, ...due].join(','));
+      })
+      .catch(() => {});
+  }, [userId, completeness]);
+}
 
 export type CandidateNextAction = {
   kind: Extract<NextActionKind, 'replies' | 'profile'>;

@@ -67,7 +67,9 @@
     "seenDivider": "Posted before you last looked",
     "amountEgp": "<v>{amount}</v> EGP",
     "searchLabel": "Search jobs",
-    "appliedChip": "Applied"
+    "appliedChip": "Applied",
+    "widenAnywhere": "Search in any area",
+    "offlineKept": "No connection. Showing the jobs loaded {minutes, plural, one {a minute} other {<v>#</v> minutes}} ago."
   },
   "auth": {
     "forCompanies": "Register your company",
@@ -218,7 +220,18 @@
   "applications": {
     "activeHeading": "Still in progress",
     "decidedHeading": "Decided",
-    "timelineNow": "Now: {step}"
+    "timelineNow": "Now: {step}",
+    "segmentsLabel": "Show applications",
+    "segmentAll": "All <v>{count}</v>",
+    "segmentNews": "News <v>{count}</v>",
+    "segmentInterviews": "Interviews",
+    "segmentEnded": "Ended",
+    "segmentEmpty": "No applications here right now.",
+    "movedAgo": "Moved {when}",
+    "quietFor": "No answer for {days, plural, one {a day} other {<v>#</v> days}}",
+    "usuallyIn": "this company usually answers within {days, plural, =0 {a day} one {a day} other {<v>#</v> days}}",
+    "queuedTitle": "Saved, and sent automatically",
+    "queuedCancel": "Cancel"
   },
   "apply": {
     "pickCv": "Choose a file",
@@ -245,7 +258,12 @@
     "newAccountTitle": "One step before sending",
     "newAccountBody": "Confirm your name and number, choose who sees your profile, then send.",
     "completeProfile": "Finish your profile",
-    "completeProfileBody": "Your tracks, areas and the pay you would take, so we can order jobs for you and alert you to them."
+    "completeProfileBody": "Your tracks, areas and the pay you would take, so we can order jobs for you and alert you to them.",
+    "queuedTitle": "Your application is saved on this phone",
+    "queuedBody": "There is no connection right now. We will send your application for “{title}” as soon as there is, and tell you when it arrives.",
+    "queuedSent": "Your application for “{title}” has arrived.",
+    "queuedFailed": "We could not send your application for “{title}”. Open the listing and try again.",
+    "serverFailed": "The application could not be sent. The problem is on our side, not yours, and what you wrote is kept. Try again in a moment."
   },
   "profile": {
     "edit": "Edit",
@@ -344,7 +362,14 @@
     "failed": "That did not unlock the app. Try again."
   },
   "search": {
-    "clear": "Clear search"
+    "clear": "Clear search",
+    "title": "Search",
+    "placeholder": "Job, company, area",
+    "didYouMean": "Did you mean",
+    "searchFor": "Search for “{words}”",
+    "nearMe": "Near me · {place}",
+    "payFloor": "Basic <v>{amount}</v> EGP or more",
+    "recent": "Recent searches"
   },
   "directory": {
     "verifyTitle": "Verify your company to see the consultants",
@@ -360,7 +385,12 @@
     "statReplies": "Replies",
     "statProfile": "Profile",
     "statSaved": "Saved",
-    "statAlerts": "Alerts"
+    "statAlerts": "Alerts",
+    "completeLine": "Profile <v>{percent}%</v> complete",
+    "lookedLine": "{count, plural, one {<v>#</v> company opened your profile} other {<v>#</v> companies opened your profile}} in <v>30</v> days",
+    "searchPlaceholder": "Search for a job, company or area",
+    "searchHint": "Opens search, with suggestions as you type",
+    "filters": "Filters"
   },
   "share": {
     "hiring": "Now hiring",
@@ -499,7 +529,8 @@
       "cancelFailed": "The reminder wasn't cancelled. Try again.",
       "notifyTitle": "{day, select, today {This listing closes today} other {This listing closes tomorrow}}",
       "notifyBody": "{job} at {company}. Apply before it closes."
-    }
+    },
+    "offlineKept": "These are your saved jobs as of the last time the app was online. They update when you are back."
   },
   "notificationsFeed": {
     "delete": "Delete",
@@ -594,5 +625,11 @@
   "landing": {
     "factSalaryRange": "Basic salary from <v>{min}</v> to <v>{max}</v> EGP a month",
     "factSalaryFrom": "Basic salary from <v>{min}</v> EGP a month"
+  },
+  "listing": {
+    "postedAgo": "Posted {when}",
+    "verifiedSince": "Verified since {when}",
+    "respondsIn": "This company answers within {days, plural, =0 {a day} one {a day} other {<v>#</v> days}} on average",
+    "opened": "Opened <v>{percent}%</v> of applications"
   }
 }

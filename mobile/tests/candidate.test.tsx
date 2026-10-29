@@ -4,6 +4,7 @@ import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { createTranslator } from 'use-intl';
 import type { NotificationRow } from '@/lib/supabase/database.types';
 import { shownToast, STAY_WITH_ACTION_MS } from '~/components/feedback/toast';
 import { PendingPath } from '~/components/navigation/pending-path';
@@ -462,6 +463,71 @@ describe('paging the feed', () => {
 });
 
 describe('the applications', () => {
+  const tAr = createTranslator({ locale: 'ar', messages: catalogues.ar });
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it('says a week and more without an answer, how soon the company usually answers, and offers to withdraw there', async () => {
+    applications = [
+      application({
+        created_at: new Date(Date.now() - 9 * DAY).toISOString(),
+        job: { ...JOB, company: { ...JOB.company, id: 'c0000000-0000-4000-8000-000000000001' } },
+      }),
+    ];
+    server.on('POST /rest/v1/rpc/company_response_stats', [{ sample: 12, open_rate: 0.9, median_days: 3.6 }]);
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+
+    const strip = `${tAr.markup('app.applications.quietFor', { days: 9, v: (chunks) => `\u2066${chunks}\u2069` })} · ${tAr.markup(
+      'app.applications.usuallyIn',
+      { days: 4, v: (chunks) => `\u2066${chunks}\u2069` },
+    )}`;
+    expect(await screen.findByText(strip)).toBeTruthy();
+    // The way out once, there: not again under the row.
+    expect(screen.getAllByRole('button', { name: ar.dashboard.withdraw })).toHaveLength(1);
+    expect(server.asked('/rest/v1/rpc/company_response_stats')[0].body).toEqual({ p_company_id: 'c0000000-0000-4000-8000-000000000001' });
+  });
+
+  it('says nothing of waiting under a week, or once the company has moved it', async () => {
+    applications = [
+      application({ created_at: new Date(Date.now() - 3 * DAY).toISOString() }),
+      application({
+        id: 'a0000000-0000-4000-8000-000000000002',
+        status: 'shortlisted',
+        created_at: new Date(Date.now() - 20 * DAY).toISOString(),
+        events: [{ from_status: 'new', to_status: 'shortlisted', created_at: new Date(Date.now() - 1 * DAY).toISOString() }],
+      }),
+    ];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect((await screen.findAllByRole('button', { name: ar.dashboard.withdraw })).length).toBe(2);
+    expect(screen.queryByText(/لم تردّ بعد/)).toBeNull();
+    // Moved: when, beside when it was sent.
+    expect(screen.getByText(new RegExp(`^${ar.app.applications.movedAgo.replace('{when}', '.+')} · `))).toBeTruthy();
+  });
+
+  it('shows all, those with news this week, the interviews or the ended, as the segments choose', async () => {
+    applications = [
+      application({ id: 'a0000000-0000-4000-8000-000000000011', job: { ...JOB, title_ar: 'وظيفة جديدة' } }),
+      application({
+        id: 'a0000000-0000-4000-8000-000000000012',
+        status: 'interview',
+        job: { ...JOB, title_ar: 'وظيفة مقابلة' },
+        events: [{ from_status: 'shortlisted', to_status: 'interview', created_at: new Date(Date.now() - DAY).toISOString() }],
+      }),
+      application({ id: 'a0000000-0000-4000-8000-000000000013', status: 'rejected', job: { ...JOB, title_ar: 'وظيفة منتهية' } }),
+    ];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByText('وظيفة منتهية')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('radio', { name: tAr.markup('app.applications.segmentNews', { count: 1, v: (chunks) => `\u2066${chunks}\u2069` }) }));
+    expect(screen.getByText('وظيفة مقابلة')).toBeTruthy();
+    expect(screen.queryByText('وظيفة منتهية')).toBeNull();
+    fireEvent.press(screen.getByRole('radio', { name: ar.app.applications.segmentEnded }));
+    expect(screen.getByText('وظيفة منتهية')).toBeTruthy();
+    expect(screen.queryByText('وظيفة مقابلة')).toBeNull();
+  });
+
   it('shows each one with where it stands, what the company said, and what became of the listing', async () => {
     applications = [
       application({ employer_viewed_at: '2026-09-21T10:00:00Z' }),

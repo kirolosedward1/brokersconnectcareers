@@ -126,51 +126,68 @@ async function applied(jobId: string, candidateId: string): Promise<boolean> {
   return rows.some((row) => (row as { status?: string }).status !== 'withdrawn');
 }
 
+/**
+ * Sends one application: the CV picked uploaded first (into the candidate's
+ * own folder), then the website's applyToJob. Every refusal takes an uploaded
+ * file back out; a call that got no answer leaves it and asks the database
+ * whether the application went in. Shared by the form and the queue of
+ * applications written with no connection (queue.ts).
+ */
+export async function submitApplication(
+  userId: string,
+  { input, attachment }: { input: Omit<ApplyInput, 'cvPath'>; attachment: Attachment },
+): Promise<void> {
+  const uploaded =
+    attachment?.kind === 'file'
+      ? await uploadCv(userId, attachment.file).catch((error: unknown) => {
+          throw error instanceof CvUploadFailed ? new ApplyRefused(error.reason, undefined, error.detail) : error;
+        })
+      : null;
+  const cvPath = uploaded ?? (attachment?.kind === 'profile' ? attachment.path : null);
+
+  let result: Awaited<ReturnType<typeof callAction<'applyToJob'>>>;
+  try {
+    result = await callAction('applyToJob', { ...input, cvPath });
+  } catch (error) {
+    if (refusedAtTheDoor(error)) {
+      if (uploaded) await removeCv(uploaded);
+      throw error;
+    }
+    // No answer: the application may have gone in and only the answer been
+    // lost. What the database holds decides, and the file stays either way —
+    // it may be the one the application points at, and the storage clean-up
+    // takes one that nothing points at after a day.
+    if (await applied(input.jobId, userId)) return;
+    throw error;
+  }
+  if (!result.ok) {
+    if (uploaded) await removeCv(uploaded);
+    throw new ApplyRefused(result.error, result.fieldErrors);
+  }
+}
+
+/** What applying changes on other screens: read again once one is in. */
+export function invalidateAfterApplying(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['apply'] });
+  queryClient.invalidateQueries({ queryKey: ['applications'] });
+  queryClient.invalidateQueries({ queryKey: ['jobs', 'applied'] });
+  queryClient.invalidateQueries({ queryKey: ['candidate'] });
+  // The website's action keeps the name and number typed here on the account
+  // too; the profile form starts from the account's, and would put the old
+  // ones back on its next save.
+  queryClient.invalidateQueries({ queryKey: ['viewer'] });
+}
+
 export function useApplyToJob() {
   const queryClient = useQueryClient();
   const userId = useSession().session?.user.id ?? null;
 
   return useMutation({
-    mutationFn: async ({ input, attachment }: { input: Omit<ApplyInput, 'cvPath'>; attachment: Attachment }) => {
+    mutationFn: async (application: { input: Omit<ApplyInput, 'cvPath'>; attachment: Attachment }) => {
       if (!userId) throw new ApplyRefused('unauthenticated');
-      const uploaded =
-        attachment?.kind === 'file'
-          ? await uploadCv(userId, attachment.file).catch((error: unknown) => {
-              throw error instanceof CvUploadFailed ? new ApplyRefused(error.reason, undefined, error.detail) : error;
-            })
-          : null;
-      const cvPath = uploaded ?? (attachment?.kind === 'profile' ? attachment.path : null);
-
-      let result: Awaited<ReturnType<typeof callAction<'applyToJob'>>>;
-      try {
-        result = await callAction('applyToJob', { ...input, cvPath });
-      } catch (error) {
-        if (refusedAtTheDoor(error)) {
-          if (uploaded) await removeCv(uploaded);
-          throw error;
-        }
-        // No answer: the application may have gone in and only the answer been
-        // lost. What the database holds decides, and the file stays either way —
-        // it may be the one the application points at, and the storage clean-up
-        // takes one that nothing points at after a day.
-        if (await applied(input.jobId, userId)) return;
-        throw error;
-      }
-      if (!result.ok) {
-        if (uploaded) await removeCv(uploaded);
-        throw new ApplyRefused(result.error, result.fieldErrors);
-      }
+      await submitApplication(userId, application);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['apply'] });
-      queryClient.invalidateQueries({ queryKey: ['applications'] });
-      queryClient.invalidateQueries({ queryKey: ['jobs', 'applied'] });
-      queryClient.invalidateQueries({ queryKey: ['candidate'] });
-      // The website's action keeps the name and number typed here on the account
-      // too; the profile form starts from the account's, and would put the old
-      // ones back on its next save.
-      queryClient.invalidateQueries({ queryKey: ['viewer'] });
-    },
+    onSuccess: () => invalidateAfterApplying(queryClient),
   });
 }
 

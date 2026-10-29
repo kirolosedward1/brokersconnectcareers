@@ -47,6 +47,7 @@ import { EmptyState, ErrorState, LoadingState, NotFoundState } from '~/component
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { ApplyRefused, useApplyContext, useApplyToJob, useNextRoles, type Attachment, type LastCv } from '~/features/apply/apply';
+import { applyQueue, offlineFailure } from '~/features/apply/queue';
 import { useAuthErrorText } from '~/features/auth/errors';
 import type { ProviderOutcome } from '~/features/auth/providers';
 import { pickCv, type PickedCv } from '~/features/cv/files';
@@ -153,7 +154,7 @@ function Apply({ job }: { job: JobDetail }) {
   const navigation = useNavigation();
   // This screen is making the account (guest apply): the gate waits for it.
   const held = useOnboardingHeld();
-  const [sent, setSent] = useState<{ newAccount: boolean } | null>(null);
+  const [sent, setSent] = useState<{ newAccount: boolean; queued: boolean } | null>(null);
 
   // The buttons that name the listing lead to it: back, when this page was
   // opened from it; otherwise (a link, a sign-in that came back here) the
@@ -168,6 +169,7 @@ function Apply({ job }: { job: JobDetail }) {
 
   const title = localized(locale, job.title_ar, job.title_en);
 
+  if (sent?.queued) return <Queued job={job} />;
   if (sent) return <Sent job={job} newAccount={sent.newAccount} />;
 
   if (!jobIsLive(job)) {
@@ -242,9 +244,9 @@ function Apply({ job }: { job: JobDetail }) {
       defaultPhone={viewer?.profile?.whatsapp_phone ?? ''}
       profileCv={mode === 'member' ? (context.data?.profileCv ?? null) : null}
       lastCv={mode === 'member' ? (context.data?.lastCv ?? null) : null}
-      onSent={(newAccount) => {
+      onSent={(newAccount, queued) => {
         haptic.success();
-        setSent({ newAccount });
+        setSent({ newAccount, queued });
       }}
     />
   );
@@ -277,7 +279,8 @@ function ApplyForm({
   defaultPhone: string;
   profileCv: string | null;
   lastCv: LastCv | null;
-  onSent: (newAccount: boolean) => void;
+  /** Sent — or, with no connection, kept to be sent when there is one (`queued`). */
+  onSent: (newAccount: boolean, queued: boolean) => void;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -471,13 +474,30 @@ function ApplyForm({
           release.current?.();
           release.current = null;
           track('application_completed', {});
-          onSent(newAccount);
+          onSent(newAccount, false);
         },
         onError: (failure) => {
           // The account was made; the application was not. From here it is any candidate's form.
           if (newAccount) {
             release.current?.();
             release.current = null;
+          }
+          // No connection at all: kept on the phone and sent when there is one (v1.1, queue.ts).
+          if (userId && offlineFailure(failure)) {
+            applyQueue.add(userId, {
+              jobId: job.id,
+              slug: job.slug,
+              titleAr: job.title_ar,
+              titleEn: job.title_en,
+              input: { jobId: job.id, fullName: fullName.trim(), whatsapp, experienceBand: band as ExperienceBand, note: note.trim() || null },
+              attachment,
+              queuedAt: new Date().toISOString(),
+            });
+            kept.clear();
+            release.current?.();
+            release.current = null;
+            onSent(newAccount, true);
+            return;
           }
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
           // Nothing this form holds can be sent to this listing now, so nothing is kept of it.
@@ -503,7 +523,8 @@ function ApplyForm({
           }
           // What went wrong underneath goes to the crash report, not on the screen.
           if (!(failure instanceof ApiError)) noteFailure('apply', failure);
-          showErrors({ form: t('common.errorBody') });
+          // The website failing is said as its own, with what was typed still here (v1.1).
+          showErrors({ form: failure instanceof ApiError && failure.status >= 500 ? t('app.apply.serverFailed') : t('common.errorBody') });
         },
       },
     );
@@ -896,6 +917,28 @@ function WhoSees() {
         </View>
       ) : null}
     </View>
+  );
+}
+
+/** Written with no connection: kept on this phone, and sent as soon as there is one (queue.ts). */
+function Queued({ job }: { job: JobDetail }) {
+  const t = useTranslations();
+  const locale = useLocale();
+  const toBoard = useToBoard();
+  const { colors } = useTheme();
+  useAnnounce(t('app.apply.queuedTitle'));
+  return (
+    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}>
+      <View style={{ alignItems: 'center', gap: space[2], padding: space[6], ...corner('xl'), backgroundColor: colors.warningMuted }}>
+        <Text variant="title" weight="semibold" accessibilityRole="header" style={{ textAlign: 'center' }}>
+          {t('app.apply.queuedTitle')}
+        </Text>
+        <Text variant="small" tone="mutedForeground" style={{ textAlign: 'center' }}>
+          {t('app.apply.queuedBody', { title: localized(locale, job.title_ar, job.title_en) })}
+        </Text>
+      </View>
+      <Button label={t('nav.browseJobs')} variant="outline" onPress={toBoard} />
+    </ScrollView>
   );
 }
 

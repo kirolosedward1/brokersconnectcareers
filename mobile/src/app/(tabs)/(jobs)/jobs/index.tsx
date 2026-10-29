@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View, type TextInputInstance } from 'react-nati
 import { router, Stack, useIsFocused, useLocalSearchParams } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { SearchX, SlidersHorizontal } from '~/components/ui/lucide';
+import { SearchX, SlidersHorizontal, WifiOff } from '~/components/ui/lucide';
 import {
   activeFilterList,
   countActiveFilters,
@@ -52,6 +52,8 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useNextPage } from '~/lib/use-next-page';
+import { markupTags } from '~/i18n/rich';
+import { noAnswer } from '~/lib/api';
 
 const SORTS: JobSort[] = ['newest', 'salary', 'seats'];
 
@@ -90,7 +92,8 @@ export default function BoardScreen() {
   const nextPage = useNextPage(board);
   // The spinner is the reader's pull, not a re-read on coming back to the app.
   const pull = usePullRefresh(() => board.refetch());
-  const [sheetOpen, setSheetOpen] = useState(false);
+  // Opened from Home's filters button (v1.1): the sheet up at once.
+  const [sheetOpen, setSheetOpen] = useState(raw.sheet === 'filters');
   // The order's card, kept here rather than in the header, which is drawn afresh as the first listings arrive.
   const sortSheet = useSheet();
   const sortOptions = useSortOptions();
@@ -257,17 +260,21 @@ export default function BoardScreen() {
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
-          <BoardHeader
-            filters={filters}
-            first={first}
-            total={rolled}
-            apply={apply}
-            searchRef={searchField}
-            onFilters={openFilters}
-            onSort={sortSheet.show}
-            hasResults={jobs.length > 0}
-            sponsoredShown={jobs.some((job) => job.is_featured)}
-          />
+          <>
+            {/* No connection, and the listings kept from before: said, with how old they are (v1.1). */}
+            {board.isError && noAnswer(board.error) ? <OfflineBanner since={board.dataUpdatedAt} /> : null}
+            <BoardHeader
+              filters={filters}
+              first={first}
+              total={rolled}
+              apply={apply}
+              searchRef={searchField}
+              onFilters={openFilters}
+              onSort={sortSheet.show}
+              hasResults={jobs.length > 0}
+              sponsoredShown={jobs.some((job) => job.is_featured)}
+            />
+          </>
         }
         ListEmptyComponent={<EmptyBoard filters={filters} first={first} apply={apply} />}
         ListFooterComponent={
@@ -283,6 +290,23 @@ export default function BoardScreen() {
         onRefresh={pull.onRefresh}
       />
     </>
+  );
+}
+
+/** «لا يوجد اتصال. تعرض آخر وظائف حُمّلت قبل N دقيقة.» — over a board kept from before. */
+function OfflineBanner({ since }: { since: number }) {
+  const t = useTranslations('app.jobs');
+  const { colors } = useTheme();
+  // When it was first said: the banner reads the clock once, not on every drawing.
+  const [now] = useState(() => Date.now());
+  const minutes = Math.max(1, Math.round((now - since) / 60_000));
+  return (
+    <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], padding: space[3], marginBottom: space[3], ...corner('lg'), backgroundColor: colors.warningMuted }}>
+      <WifiOff size={16} color={colors.warning} />
+      <Text variant="caption" style={{ flex: 1, color: colors.warning }}>
+        {t.markup('offlineKept', { minutes, ...markupTags })}
+      </Text>
+    </View>
   );
 }
 
@@ -524,6 +548,7 @@ function EmptyBoard({
   apply: (next: JobFilters) => void;
 }) {
   const t = useTranslations('jobs');
+  const tApp = useTranslations();
   const labelFor = useFilterLabel();
   const searchLabel = useSearchLabel(filters, first);
   const active = activeFilterList(filters);
@@ -557,6 +582,10 @@ function EmptyBoard({
                 ))}
               </View>
             </View>
+          ) : null}
+          {/* Nothing in this place: the same search anywhere (v1.1). */}
+          {filters.districtSlugs.length || filters.governorateSlug ? (
+            <Button label={tApp('app.jobs.widenAnywhere')} onPress={() => apply({ ...filters, districtSlugs: [], governorateSlug: null })} />
           ) : null}
           {countActiveFilters(filters) > 0 ? (
             <Button label={t('clearFilters')} variant="outline" onPress={() => apply(EMPTY_FILTERS)} />

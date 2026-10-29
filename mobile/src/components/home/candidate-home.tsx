@@ -2,16 +2,16 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-n
 import { router, type Href } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
-import { BellRing, Bookmark, Building2, MessageSquareReply, Send, UserRoundCheck } from '~/components/ui/lucide';
+import { Building2, Search, SlidersHorizontal } from '~/components/ui/lucide';
 import { formatDate, formatList, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { ProfileRow } from '@/lib/supabase/database.types';
-import { Hero } from '~/components/home/hero';
 import { NextAction } from '~/components/dashboard/next-action';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { PolicyNotice } from '~/components/legal/policy-notice';
 import { PushPrompt } from '~/components/push/push-prompt';
-import { StatRow, StatRowPlaceholder } from '~/components/dashboard/stat-row';
+import { StatRowPlaceholder } from '~/components/dashboard/stat-row';
+import { CounterTiles } from '~/components/dashboard/counter-tiles';
 import { WeeklySummary } from '~/components/home/weekly-summary';
 import { JobBrowse } from '~/components/home/job-browse';
 import { RecentlyViewed } from './recently-viewed';
@@ -26,16 +26,12 @@ import { Text } from '~/components/ui/text';
 import { STAGE_TONE } from '@/lib/application-stages';
 import { useMyApplications, type CandidateApplication } from '~/features/applications/queries';
 import { useBrowseCounts } from '~/features/browse/queries';
-import {
-  candidateNextAction,
-  COMPLETENESS_WARN,
-  useSuggestions,
-  type Suggestion,
-} from '~/features/dashboard/candidate';
+import { candidateNextAction, useCompletenessReached, useSuggestions, type Suggestion } from '~/features/dashboard/candidate';
 import { useUnchosenVisibility } from '~/features/policies';
 import { useAgentProfile, useCandidateSummary } from '~/features/profile/queries';
 import { useDistricts } from '~/features/taxonomy';
 import { useTabList } from '~/features/tab-bar';
+import { markupTags } from '~/i18n/rich';
 import { inOwnTab } from '~/lib/links';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
@@ -72,7 +68,6 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const districts = useDistricts();
 
   const s = summary.data ?? null;
-  const n = (value: number) => formatNumber(value, locale);
   const next = candidateNextAction(s);
   const recent = (applications.data ?? []).filter((application) => application.job).slice(0, 3);
   const figuresPending = summary.isPending || applications.isPending;
@@ -98,6 +93,59 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
   const pull = usePullRefresh(refresh);
   const list = useTabList();
 
+  // The completeness the product promises something at, once per step on this phone: the end of sign up → profile 60%.
+  useCompletenessReached(s?.profile_completeness ?? null);
+
+  // The roles that fit, right under the figures (v1.1): the reason Home is opened.
+  const matching = suggestions.length ? (
+        <View style={{ gap: space[3] }}>
+          <SectionHeader
+            title={personalised ? t('dashboard.matchedRoles') : t('dashboard.openRoles')}
+            onSeeAll={() => router.navigate('/jobs')}
+          />
+
+          {/* Newest-first dressed up as a recommendation would be a lie; say what is missing instead. */}
+          {!personalised && profileKnown ? (
+            <View
+              style={{
+                gap: space[1],
+                paddingHorizontal: space[4],
+                paddingVertical: space[3],
+                ...corner('xl'),
+                borderWidth: StyleSheet.hairlineWidth * 2,
+                borderStyle: 'dashed',
+                borderColor: colors.border,
+              }}
+            >
+              <Text variant="small" tone="mutedForeground">
+                {t('dashboard.matchNudge')}
+              </Text>
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => router.navigate('/account/profile')}
+                style={{ minHeight: hitTarget, flexDirection: 'row', alignItems: 'center', gap: space[1] }}
+              >
+                <Text variant="small" weight="medium" tone="primary" style={{ flexShrink: 1 }}>
+                  {t('dashboard.matchNudgeCta')}
+                </Text>
+                <ForwardChevron size={16} color={colors.primary} />
+              </Pressable>
+            </View>
+          ) : null}
+
+          {suggestions.map((suggestion) => (
+            <SuggestedRole
+              key={suggestion.job.id}
+              suggestion={suggestion}
+              districtName={(id) => {
+                const district = districts.data?.find((row) => row.id === id);
+                return district ? localized(locale, district.name_ar, district.name_en) : null;
+              }}
+            />
+          ))}
+        </View>
+      ) : null;
+
   return (
     <ScrollView
       {...list}
@@ -110,12 +158,10 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
       contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
     >
       {/* The profile is read again on every start; offline, the page is the same without the name. */}
-      <Hero
-        compact
-        title={profile ? t('dashboard.candidateGreeting', { name: profile.full_name }) : t('dashboard.overview')}
-        subtitle={t('dashboard.candidateLede')}
-        aside={profile ? <HeroPhoto profile={profile} completeness={s?.profile_completeness ?? null} /> : undefined}
-      />
+      <Greeting profile={profile} completeness={s?.profile_completeness ?? null} companiesLooked={s?.profile_views_30d ?? 0} />
+
+      {/* Search, a tap from Home (v1.1): its own screen, and the board's filters beside it. */}
+      <SearchRow />
 
       {profile ? <StandingNotice profile={profile} /> : null}
 
@@ -189,49 +235,18 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
           ) : null}
 
           {s ? (
-            <StatRow
+            <CounterTiles
               label={t('dashboard.overview')}
-              cells={[
-                {
-                  label: t('dashboard.statApplications'),
-                  short: t('app.home.statApplications'),
-                  value: n(s.applications_total),
-                  icon: Send,
-                  onPress: () => router.navigate('/dashboard/applications'),
-                },
-                {
-                  label: t('dashboard.statReplies'),
-                  short: t('app.home.statReplies'),
-                  value: n(s.replies),
-                  icon: MessageSquareReply,
-                  tone: s.replies > 0 ? 'good' : 'default',
-                  onPress: () => router.navigate('/dashboard/applications'),
-                },
-                {
-                  label: t('dashboard.statCompleteness'),
-                  short: t('app.home.statProfile'),
-                  value: `${n(s.profile_completeness)}%`,
-                  icon: UserRoundCheck,
-                  tone: s.profile_completeness < COMPLETENESS_WARN ? 'warn' : 'default',
-                  onPress: () => router.navigate('/account/profile'),
-                },
-                {
-                  label: t('dashboard.statSaved'),
-                  short: t('app.home.statSaved'),
-                  value: n(s.saved_jobs),
-                  icon: Bookmark,
-                  onPress: () => router.navigate('/dashboard/saved'),
-                },
-                {
-                  label: t('dashboard.statAlerts'),
-                  short: t('app.home.statAlerts'),
-                  value: n(s.alerts_on),
-                  icon: BellRing,
-                  onPress: () => router.navigate('/dashboard/saved'),
-                },
+              tiles={[
+                { label: t('dashboard.statApplications'), short: t('app.home.statApplications'), value: s.applications_total, onPress: () => router.navigate('/dashboard/applications') },
+                { label: t('dashboard.statReplies'), short: t('app.home.statReplies'), value: s.replies, good: s.replies > 0, onPress: () => router.navigate('/dashboard/applications') },
+                { label: t('dashboard.statSaved'), short: t('app.home.statSaved'), value: s.saved_jobs, onPress: () => router.navigate('/dashboard/saved') },
+                { label: t('dashboard.statAlerts'), short: t('app.home.statAlerts'), value: s.alerts_on, onPress: () => router.navigate('/dashboard/saved') },
               ]}
             />
           ) : null}
+
+          {matching}
 
           {s ? (
             <WeeklySummary
@@ -266,55 +281,6 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
 
       <RecentlyViewed />
 
-      {suggestions.length ? (
-        <View style={{ gap: space[3] }}>
-          <SectionHeader
-            title={personalised ? t('dashboard.matchedRoles') : t('dashboard.openRoles')}
-            onSeeAll={() => router.navigate('/jobs')}
-          />
-
-          {/* Newest-first dressed up as a recommendation would be a lie; say what is missing instead. */}
-          {!personalised && profileKnown ? (
-            <View
-              style={{
-                gap: space[1],
-                paddingHorizontal: space[4],
-                paddingVertical: space[3],
-                ...corner('xl'),
-                borderWidth: StyleSheet.hairlineWidth * 2,
-                borderStyle: 'dashed',
-                borderColor: colors.border,
-              }}
-            >
-              <Text variant="small" tone="mutedForeground">
-                {t('dashboard.matchNudge')}
-              </Text>
-              <Pressable
-                accessibilityRole="link"
-                onPress={() => router.navigate('/account/profile')}
-                style={{ minHeight: hitTarget, flexDirection: 'row', alignItems: 'center', gap: space[1] }}
-              >
-                <Text variant="small" weight="medium" tone="primary" style={{ flexShrink: 1 }}>
-                  {t('dashboard.matchNudgeCta')}
-                </Text>
-                <ForwardChevron size={16} color={colors.primary} />
-              </Pressable>
-            </View>
-          ) : null}
-
-          {suggestions.map((suggestion) => (
-            <SuggestedRole
-              key={suggestion.job.id}
-              suggestion={suggestion}
-              districtName={(id) => {
-                const district = districts.data?.find((row) => row.id === id);
-                return district ? localized(locale, district.name_ar, district.name_en) : null;
-              }}
-            />
-          ))}
-        </View>
-      ) : null}
-
       <JobBrowse counts={counts.data} districts={districts.data} />
 
       {/* The directory, which a candidate's tab bar has no tab for. */}
@@ -329,20 +295,90 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
 }
 
 /**
- * The reader's photo beside the greeting, in a rounded frame of light on the
- * panel — their first letter on its colour until they add one (on Account).
+ * The greeting, as the design draws it (Main): the reader's photo — the
+ * generic figure until they add one — ringed by how complete the profile is
+ * (a tap opens it at what is missing), "أهلًا" and their name, and one line:
+ * how complete, and how many companies opened the profile lately when any did.
  */
-function HeroPhoto({ profile, completeness }: { profile: ProfileRow; completeness: number | null }) {
-  const photo = <Avatar name={profile.full_name} src={profile.avatar_url} size="lg" shape="rounded" />;
-  // How complete the profile is, round the photo; a tap opens it at what is missing.
-  if (completeness !== null) {
-    return (
-      <CompletenessRing percent={completeness} size={64} radius={18} onHero onPress={() => router.navigate('/account/profile')}>
-        {photo}
-      </CompletenessRing>
-    );
-  }
-  return <View style={styles.photoFrame}>{photo}</View>;
+function Greeting({ profile, completeness, companiesLooked }: { profile: ProfileRow | null; completeness: number | null; companiesLooked: number }) {
+  const t = useTranslations();
+  const locale = useLocale();
+  const parts = [
+    completeness !== null ? t.markup('app.home.completeLine', { percent: formatNumber(completeness, locale), ...markupTags }) : null,
+    companiesLooked > 0 ? t.markup('app.home.lookedLine', { count: companiesLooked, ...markupTags }) : null,
+  ].filter(Boolean);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+      {profile ? (
+        <CompletenessRing percent={completeness} size={52} radius={26} onPress={() => router.navigate('/account/profile')}>
+          <Avatar name={profile.full_name} src={profile.avatar_url} size="md" />
+        </CompletenessRing>
+      ) : null}
+      <View style={{ flex: 1, gap: space[0.5] }}>
+        <Text variant="title" weight="bold" accessibilityRole="header">
+          {profile ? t('dashboard.candidateGreeting', { name: profile.full_name.trim().split(/\s+/)[0] ?? profile.full_name }) : t('dashboard.overview')}
+        </Text>
+        {parts.length ? (
+          <Text variant="caption" tone="mutedForeground">
+            {parts.join(' · ')}
+          </Text>
+        ) : (
+          <Text variant="caption" tone="mutedForeground">
+            {t('dashboard.candidateLede')}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+/** A search field that opens the Search screen, and the board's filters beside it (v1.1, Main). */
+function SearchRow() {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const large = useLargeText();
+  return (
+    <View style={{ flexDirection: 'row', gap: space[2.5] }}>
+      <Pressable
+        accessibilityRole="search"
+        accessibilityLabel={t('app.search.title')}
+        accessibilityHint={t('app.home.searchHint')}
+        onPress={() => router.push('/jobs/search')}
+        style={({ pressed }) => ({
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space[2.5],
+          minHeight: 50,
+          paddingHorizontal: space[3.5],
+          ...corner('lg'),
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: colors.border,
+          backgroundColor: pressed ? colors.muted : colors.card,
+        })}
+      >
+        <Search size={20} color={colors.mutedForeground} />
+        <Text tone="mutedForeground" numberOfLines={large ? undefined : 1} style={{ flex: 1 }}>
+          {t('app.home.searchPlaceholder')}
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('app.home.filters')}
+        onPress={() => router.navigate({ pathname: '/jobs', params: { sheet: 'filters' } })}
+        style={({ pressed }) => ({
+          width: 50,
+          height: 50,
+          ...corner('lg'),
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: pressed ? colors.primaryPressed : colors.primary,
+        })}
+      >
+        <SlidersHorizontal size={20} color={colors.primaryForeground} />
+      </Pressable>
+    </View>
+  );
 }
 
 function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll: () => void }) {
@@ -466,15 +502,3 @@ function VisibilityAsk() {
     </Notice>
   );
 }
-
-const styles = StyleSheet.create({
-  // A hairline of light around the photo, a little off it, on the deep panel.
-  photoFrame: {
-    padding: 3,
-    borderRadius: 22,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-  },
-});
