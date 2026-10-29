@@ -23,6 +23,7 @@ export const LOCK_AFTER_MS = 60_000;
 
 let users: ReadonlySet<string> = new Set();
 let loaded = false;
+let loadFailed = false;
 /** Who has given the phone's check (or signed in) since the app last locked; nobody at launch. */
 let provenFor: string | null = null;
 let loading: Promise<void> | null = null;
@@ -35,12 +36,14 @@ function emit() {
 export function loadAppLock(): Promise<void> {
   loading ??= AsyncStorage.getItem(KEY)
     .then((stored) => {
-      const parsed = stored ? (JSON.parse(stored) as unknown) : [];
-      if (Array.isArray(parsed)) {
-        users = new Set([...users, ...parsed.filter((id): id is string => typeof id === 'string')]);
+      const parsed = stored === null ? [] : (JSON.parse(stored) as unknown);
+      if (Array.isArray(parsed) && parsed.every((id) => typeof id === 'string')) {
+        users = new Set([...users, ...parsed]);
+      } else {
+        throw new Error('Invalid app lock settings');
       }
     })
-    .catch(() => {})
+    .catch(() => { loadFailed = true; })
     .finally(() => {
       loaded = true;
       emit();
@@ -52,9 +55,9 @@ export async function setAppLock(userId: string, on: boolean): Promise<void> {
   const next = new Set(users);
   if (on) next.add(userId);
   else next.delete(userId);
+  await AsyncStorage.setItem(KEY, JSON.stringify([...next]));
   users = next;
   emit();
-  await AsyncStorage.setItem(KEY, JSON.stringify([...next]));
 }
 
 function subscribe(listener: () => void) {
@@ -77,7 +80,7 @@ export function useAppLockOn(userId: string | null): boolean | undefined {
   const known = useAppLockLoaded();
   const set = useSyncExternalStore(subscribe, () => users);
   if (!userId) return false;
-  return known ? set.has(userId) : undefined;
+  return known ? loadFailed || set.has(userId) : undefined;
 }
 
 /** This person just proved who they are: the check passed, they signed in, or they turned the lock on. */
@@ -110,8 +113,8 @@ export type Proof = 'ok' | 'cancelled' | 'failed' | 'impossible';
 
 /**
  * The phone's own check — Face ID, falling back to the passcode, as iOS offers
- * it. 'impossible': the phone can no longer ask (the passcode was turned off
- * since — which itself took the passcode), so the lock cannot be kept.
+ * it. 'impossible' means the phone cannot ask right now, not that ownership
+ * has been proved. The caller keeps the lock and offers retry or sign-out.
  */
 export async function proveOwner(promptMessage: string, cancelLabel: string): Promise<Proof> {
   try {
@@ -130,5 +133,6 @@ export function resetAppLockForTests() {
   users = new Set();
   provenFor = null;
   loaded = false;
+  loadFailed = false;
   loading = null;
 }

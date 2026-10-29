@@ -20,7 +20,8 @@ import { utf8Decode, utf8Encode } from './utf8';
  * The web has no Keychain. SecureStore's web build calls a native method that
  * is not there (`getValueWithKeyAsync is not a function`), which crashed
  * "Continue with Google" the moment a session was written. On the web the key
- * lives in the same app storage as the sealed session.
+ * lives in the same app storage as the sealed session. Native builds never
+ * fall back to this when SecureStore is unavailable.
  *
  * What was read or written is kept in memory too. supabase-js reads the
  * session before every request, and each read was a storage read, an AES
@@ -33,14 +34,16 @@ let keyPromise: Promise<AESEncryptionKey> | null = null;
 /** The Keychain on a phone. The web's SecureStore module has no native methods. */
 async function keychainAvailable(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
-  try {
-    return await SecureStore.isAvailableAsync();
-  } catch {
-    return false;
+  if (!(await SecureStore.isAvailableAsync())) {
+    throw new Error('Secure session storage is unavailable');
   }
+  return true;
 }
 
 async function readKey(): Promise<string | null> {
+  // Remove keys older native builds may have placed beside the ciphertext.
+  // Such a session must be renewed, never reopened with an unprotected key.
+  if (Platform.OS !== 'web') await AsyncStorage.removeItem(KEY_NAME);
   if (!(await keychainAvailable())) return AsyncStorage.getItem(KEY_NAME);
   return SecureStore.getItemAsync(KEY_NAME);
 }
@@ -72,6 +75,18 @@ function sessionKey(): Promise<AESEncryptionKey> {
 }
 
 const memory = new Map<string, string | null>();
+const pending = new Map<string, Promise<unknown>>();
+
+/** Keep a late write or decrypt from restoring a session after sign-out. */
+function serialized<T>(name: string, operation: () => Promise<T>): Promise<T> {
+  const result = (pending.get(name) ?? Promise.resolve()).catch(() => {}).then(operation);
+  pending.set(name, result);
+  const settled = () => {
+    if (pending.get(name) === result) pending.delete(name);
+  };
+  void result.then(settled, settled);
+  return result;
+}
 
 async function readSealed(name: string): Promise<string | null> {
   const sealed = await AsyncStorage.getItem(name);
@@ -92,29 +107,34 @@ async function readSealed(name: string): Promise<string | null> {
 
 /** The storage adapter supabase-js is given; its three methods are all it asks for. */
 export const encryptedSessionStorage = {
-  async getItem(name: string): Promise<string | null> {
-    if (memory.has(name)) return memory.get(name) ?? null;
-    let value: string | null;
-    try {
-      value = await readSealed(name);
-    } catch {
-      // Storage or the Keychain failed to answer: nothing to go on this time,
-      // and nothing remembered or thrown away — supabase-js rethrows a
-      // storage error, which left the app waiting for an answer forever.
-      return null;
-    }
-    memory.set(name, value);
-    return value;
+  getItem(name: string): Promise<string | null> {
+    return serialized(name, async () => {
+      if (memory.has(name)) return memory.get(name) ?? null;
+      let value: string | null;
+      try {
+        value = await readSealed(name);
+      } catch {
+        // Temporary storage failures preserve the sealed session for a retry.
+        return null;
+      }
+      memory.set(name, value);
+      return value;
+    });
   },
 
-  async setItem(name: string, value: string): Promise<void> {
-    memory.set(name, value);
-    const sealed = await aesEncryptAsync(utf8Encode(value), await sessionKey());
-    await AsyncStorage.setItem(name, await sealed.combined('base64'));
+  setItem(name: string, value: string): Promise<void> {
+    return serialized(name, async () => {
+      const sealed = await aesEncryptAsync(utf8Encode(value), await sessionKey());
+      await AsyncStorage.setItem(name, await sealed.combined('base64'));
+      // Failed encryption or persistence must not expose an uncommitted session.
+      memory.set(name, value);
+    });
   },
 
-  async removeItem(name: string): Promise<void> {
-    memory.set(name, null);
-    await AsyncStorage.removeItem(name);
+  removeItem(name: string): Promise<void> {
+    return serialized(name, async () => {
+      memory.set(name, null);
+      await AsyncStorage.removeItem(name);
+    });
   },
 };

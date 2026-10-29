@@ -9,6 +9,7 @@ import { clearPersonalCache } from '~/lib/personal-cache';
 const mockDeleted: string[] = [];
 const mockFolders = new Set(['file:///cache/DocumentPicker', 'file:///cache/ImageManipulator']);
 let mockBroken = false;
+let mockRefuseDelete = '';
 
 jest.mock('expo-file-system', () => {
   class MockFile {
@@ -20,6 +21,7 @@ jest.mock('expo-file-system', () => {
       return this.uri.split('/').at(-1) ?? '';
     }
     delete() {
+      if (this.uri === mockRefuseDelete) throw new Error('file in use');
       mockDeleted.push(this.uri);
     }
   }
@@ -33,6 +35,7 @@ jest.mock('expo-file-system', () => {
       return mockFolders.has(this.uri);
     }
     delete() {
+      if (this.uri === mockRefuseDelete) throw new Error('file in use');
       mockDeleted.push(this.uri);
     }
     list() {
@@ -49,6 +52,7 @@ jest.mock('expo-file-system', () => {
 beforeEach(() => {
   mockDeleted.length = 0;
   mockBroken = false;
+  mockRefuseDelete = '';
 });
 
 it("takes the pickers' copies and the data export, and leaves the rest of the cache", () => {
@@ -63,4 +67,13 @@ it("takes the pickers' copies and the data export, and leaves the rest of the ca
 it('never throws', () => {
   mockBroken = true;
   expect(() => clearPersonalCache()).not.toThrow();
+});
+
+it('continues clearing other personal files when one folder is locked', () => {
+  mockRefuseDelete = 'file:///cache/DocumentPicker';
+  clearPersonalCache();
+  expect(mockDeleted).toEqual([
+    'file:///cache/ImageManipulator',
+    'file:///cache/brokers-connect-data-0b5f7c3e.json',
+  ]);
 });

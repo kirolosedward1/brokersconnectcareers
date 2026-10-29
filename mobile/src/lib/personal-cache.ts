@@ -11,15 +11,23 @@ const EXPORT = /^brokers-connect-data-.*\.json$/;
 
 /** What the person leaving left in the cache goes with them. Never throws: a sign-out is not held up by a file. */
 export function clearPersonalCache(): void {
-  try {
-    for (const name of FOLDERS) {
+  for (const name of FOLDERS) {
+    try {
       const folder = new Directory(Paths.cache, name);
       if (folder.exists) folder.delete();
+    } catch {
+      // A locked picker folder must not prevent clearing the other files.
     }
+  }
+  try {
     for (const item of new Directory(Paths.cache).list()) {
-      if (item instanceof File && EXPORT.test(item.name)) item.delete();
+      try {
+        if (item instanceof File && EXPORT.test(item.name)) item.delete();
+      } catch {
+        // Continue with the remaining exports even when one file is in use.
+      }
     }
   } catch {
-    // A folder already gone, or a file in use: the cache is the system's to empty in the end.
+    // Cache enumeration can fail too; sign-out must still finish.
   }
 }

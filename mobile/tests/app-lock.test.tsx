@@ -188,17 +188,60 @@ describe('the lock', () => {
     expect(screen.queryByTestId('app-lock')).toBeNull();
   });
 
-  it('lets its owner in, and turns itself off, once the phone can no longer ask', async () => {
+  it.each(['passcode_not_set', 'not_available', 'not_enrolled'] as const)('keeps the lock when authentication reports %s', async (error) => {
     await signIn();
     await setAppLock(USER_ID, true);
-    authenticate.mockResolvedValueOnce({ success: false, error: 'passcode_not_set' });
+    authenticate.mockResolvedValueOnce({ success: false, error });
     render(app());
-    await waitFor(() => expect(screen.queryByTestId('app-lock')).toBeNull());
-    expect(JSON.parse((await AsyncStorage.getItem('bc.app-lock.v1')) ?? '[]')).toEqual([]);
+    await waitFor(() => expect(authenticate).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('app-lock')).toBeTruthy();
+    expect(JSON.parse((await AsyncStorage.getItem('bc.app-lock.v1')) ?? '[]')).toEqual([USER_ID]);
+  });
+
+  it('does not reveal signed-in screens when lock settings cannot be read', async () => {
+    await signIn();
+    jest.mocked(AsyncStorage.getItem).mockRejectedValueOnce(new Error('storage unavailable'));
+    authenticate.mockResolvedValue({ success: false, error: 'user_cancel' });
+    render(app());
+    await waitFor(() => expect(authenticate).toHaveBeenCalled());
+    expect(screen.getByTestId('app-lock')).toBeTruthy();
+  });
+
+  it.each(['', 'broken-json', '{}', '[123]'])('keeps signed-in screens locked for corrupt settings: %s', async (stored) => {
+    await signIn();
+    // AsyncStorage's Jest mock turns empty strings into null; native storage
+    // preserves them, so return the exact corrupt value for this read.
+    jest.mocked(AsyncStorage.getItem).mockResolvedValueOnce(stored);
+    authenticate.mockResolvedValue({ success: false, error: 'user_cancel' });
+    render(app());
+    await waitFor(() => expect(authenticate).toHaveBeenCalled());
+    expect(screen.getByTestId('app-lock')).toBeTruthy();
+  });
+
+  it('does not disable a lock in memory when saving the setting fails', async () => {
+    await signIn();
+    await setAppLock(USER_ID, true);
+    jest.mocked(AsyncStorage.setItem).mockRejectedValueOnce(new Error('storage unavailable'));
+    await expect(setAppLock(USER_ID, false)).rejects.toThrow('storage unavailable');
+    authenticate.mockResolvedValue({ success: false, error: 'user_cancel' });
+    render(app());
+    await waitFor(() => expect(authenticate).toHaveBeenCalled());
+    expect(screen.getByTestId('app-lock')).toBeTruthy();
   });
 });
 
 describe('the switch in Sign-in and security', () => {
+  it('does not turn off the lock when device authentication is unavailable', async () => {
+    await signIn();
+    await setAppLock(USER_ID, true);
+    authenticate.mockResolvedValue({ success: false, error: 'not_available' });
+    render(app(<AppLockSettings />));
+    const toggle = await screen.findByTestId('app-lock-switch');
+    await act(async () => fireEvent(toggle, 'valueChange', false));
+    expect(screen.getByTestId('app-lock-switch').props.value).toBe(true);
+    expect(JSON.parse((await AsyncStorage.getItem('bc.app-lock.v1')) ?? '[]')).toEqual([USER_ID]);
+  });
+
   it('turns the lock on only after the phone’s own check', async () => {
     await signIn();
     render(app(<AppLockSettings />));

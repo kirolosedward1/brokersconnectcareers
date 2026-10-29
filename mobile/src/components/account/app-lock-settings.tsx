@@ -42,7 +42,7 @@ export function AppLockSettings() {
     setFailed(false);
     setPending(true);
     const proof = await proveOwner(t('prompt'), t('cancel'));
-    if (proof === 'ok' || (proof === 'impossible' && !next)) {
+    if (proof === 'ok') {
       // Turned on just now, with the check just passed: not asked again at once.
       if (next) markProven(userId);
       await setAppLock(userId, next).catch(() => setFailed(true));

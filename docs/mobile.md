@@ -114,7 +114,11 @@ this, and every server call went on being refused with the old key).
 - **Session.** Supabase Auth, as on the website. The session is stored
   encrypted: an AES-256 key generated on the device and kept in the Keychain
   (`expo-secure-store`, this device only, after first unlock), the sealed
-  session in app storage. `src/lib/session.tsx` mirrors the website's
+  session in app storage. Native builds refuse to save a session if secure
+  storage is unavailable; they never put its key beside the ciphertext.
+  Legacy plaintext native keys are removed, requiring affected users to sign
+  in again. Storage operations run in order so an earlier write or decrypt
+  cannot restore a session after sign-out. `src/lib/session.tsx` mirrors the website's
   `getViewer()` — the profile row, and for employers the company — and every
   show-or-hide decision comes from `src/lib/permissions.ts`, the website's own.
   A refresh is given up on after ten seconds without an answer and tried
@@ -499,8 +503,9 @@ they are in, instead of the round trip through the sign-in page.
   "Lock the app", under Sign-in and security, asks Face ID (or the passcode)
   at launch and after a minute in the background — for the person who turned
   it on, on that phone only; turning it on or off asks first. Signing out is
-  the way past it; a phone that can no longer ask (its passcode turned off)
-  drops the lock rather than shut its owner out. Over the tab screens only:
+  the way past it. Unavailable device authentication keeps the screens locked
+  with retry and sign-out available. Unreadable or corrupt saved lock settings
+  also require authentication before revealing signed-in screens. Over the tab screens only:
   the root stack's sheets (sign-in, onboarding, the code) sit above it.
   Built on `expo-local-authentication`, already in the native build, so it
   ships over the air.

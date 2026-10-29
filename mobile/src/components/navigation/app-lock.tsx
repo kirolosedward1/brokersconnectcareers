@@ -4,7 +4,7 @@ import { useTranslations } from 'use-intl';
 import { BrandLogo } from '~/components/brand/brand-logo';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
-import { lockOnReturn, markProven, proveOwner, setAppLock, useAppLockOn, useProvenFor } from '~/features/app-lock/lock';
+import { lockOnReturn, markProven, proveOwner, useAppLockOn, useProvenFor } from '~/features/app-lock/lock';
 import { signOutHere } from '~/features/push/device';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
@@ -78,12 +78,9 @@ export function AppLock() {
     const proof = await proveOwner(t('prompt'), t('cancel'));
     setChecking(false);
     if (proof === 'ok') markProven(userId);
-    else if (proof === 'impossible') {
-      // The phone can no longer ask — its passcode was turned off, which took
-      // the passcode. A lock nothing can open would only shut its owner out.
-      await setAppLock(userId, false).catch(() => {});
-      markProven(userId);
-    } else if (proof === 'failed') setFailed(true);
+    // Missing/unavailable biometrics are not proof of ownership. Keep the
+    // lock and offer retry or sign-out rather than silently disabling it.
+    else if (proof === 'impossible' || proof === 'failed') setFailed(true);
   }, [t, userId]);
 
   // Asked at once each time it locks, once; cancelled, the button asks again.

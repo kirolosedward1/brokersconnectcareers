@@ -35,5 +35,7 @@ minimumReleaseAge: 1440
 # event-loop denial of service, GHSA-68fv-2mgg-jv7q, fixed in 1.2.2). Each is
 # a minor or patch release inside the range its dependents ask for.
 overrides:
+  # AJV's URI parser: fixes scheme and host confusion advisories.
+  fast-uri: '^3.1.9'
   shell-quote: '^1.11.0'
   source-map-js: '^1.2.2'
