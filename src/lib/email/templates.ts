@@ -35,6 +35,8 @@ export const TEMPLATES = {
   company_verified: 'transactional',
   company_verification_needed: 'transactional',
   company_verification_revoked: 'transactional',
+  // Who owns the company changed (Phase B 07c): both people are told, whatever their switches.
+  company_ownership_transferred: 'transactional',
 
   new_application: 'preference',
   applicant_digest: 'preference',

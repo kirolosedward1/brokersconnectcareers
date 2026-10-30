@@ -701,6 +701,63 @@ export async function notifyCandidateOfApplication(applicationId: string): Promi
 }
 
 /**
+ * Both people when ownership of a company moves (Phase B 07c): the new owner
+ * is told what they now hold, the former owner that it was done (and to say
+ * so if it was not them). Transactional: whatever their switches. Once per
+ * hand-over, keyed by the pair and the minute it reached here.
+ */
+export async function notifyOwnershipTransferred(companyId: string, fromId: string, toId: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const { data: company, error } = await admin.from('companies').select('name_ar, name_en, slug, owner_id').eq('id', companyId).maybeSingle();
+    if (error) readFailed('company', error);
+    // Handed back since: the news is stale.
+    if (!company || company.owner_id !== toId) return 'skipped';
+    const { data: people } = await admin.from('profiles').select('id, full_name').in('id', [fromId, toId]);
+    const nameOf = (id: string) => (people ?? []).find((person) => person.id === id)?.full_name ?? '';
+    const round = new Date().toISOString().slice(0, 16);
+
+    const outcomes: SendOutcome[] = [];
+    for (const [userId, other, side] of [
+      [toId, fromId, 'new'],
+      [fromId, toId, 'old'],
+    ] as const) {
+      const to = await recipient(admin, userId, null);
+      if (!to) {
+        outcomes.push('skipped');
+        continue;
+      }
+      const t = copyFor(to.locale).companyOwnershipTransferred;
+      const name = localized(to.locale, company.name_ar, company.name_en);
+      outcomes.push(
+        await deliver({
+          template: 'company_ownership_transferred',
+          to: to.email,
+          userId,
+          dedupeKey: `company_ownership:${companyId}:${fromId}:${toId}:${round}:${side}`,
+          entity: { type: 'company', id: companyId },
+          envelope: buildEnvelope({
+            audience: audienceOf(to, null),
+            subject: t.subject(name),
+            preheader: t.preheader,
+            heading: t.heading,
+            blocks: [
+              { kind: 'text', value: side === 'new' ? t.bodyNew(name, nameOf(other)) : t.bodyOld(name, nameOf(other)) },
+              { kind: 'facts', rows: [[t.labelCompany, name]] },
+              { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
+            ],
+          }),
+        }),
+      );
+    }
+    return outcomes.includes('failed') ? 'failed' : outcomes.includes('sent') ? 'sent' : 'skipped';
+  } catch (error) {
+    console.warn('[email] ownership transfer failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
  * Candidate: a message their company wrote to them about the application
  * (Phase B 01, "one reply to many", by email only — decided). Under the same
  * switch as their status mail. Keyed by the company's send, so a retried

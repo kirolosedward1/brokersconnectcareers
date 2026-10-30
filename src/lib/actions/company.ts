@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -16,6 +17,7 @@ import { recordSecurityEvent } from '@/lib/security/events';
 import { clean, cleanText, safeHttpUrl } from '@/lib/security/sanitize';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { refused } from '@/lib/observe';
+import { publish } from '@/lib/notifications/events';
 import { isValidPhone, normalisePhone } from '@/lib/phone';
 
 const schema = z.object({
@@ -537,9 +539,18 @@ export async function transferCompanyOwnership(input: unknown): Promise<ActionRe
   const parsed = z.object({ userId: z.string().uuid() }).safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+  const { data: companyId } = await supabase.rpc('my_company_id');
   const { data, error } = await supabase.rpc('transfer_company_ownership', { p_to: parsed.data.userId });
   if (error) return refused('team', error, { to: parsed.data.userId });
   if (data !== 'ok') return { ok: false, error: data ?? 'failed' };
+  // Both people are told by email (Phase B 07c).
+  if (companyId) {
+    after(() => publish({ type: 'COMPANY_OWNERSHIP_TRANSFERRED', companyId, fromId: user.id, toId: parsed.data.userId }));
+  }
   revalidatePath('/employer/company');
   return { ok: true };
 }

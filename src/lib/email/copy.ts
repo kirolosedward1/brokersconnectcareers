@@ -328,6 +328,18 @@ export const emailCopy = {
       body: 'أوقفنا الحساب مؤقتًا إلى حين مراجعة البيانات مرة أخرى.',
     },
 
+    companyOwnershipTransferred: {
+      subject: (company: string) => `انتقلت ملكية ${company}`,
+      preheader: 'تغيّر مالك الشركة على Brokers Connect.',
+      heading: 'انتقلت ملكية الشركة',
+      bodyNew: (company: string, from: string) =>
+        `نقل ${from} إليك ملكية «${company}». أصبحت المالك: تستطيع وحدك نقلها أو حذفها، ولك كل صلاحيات المسؤول.`,
+      bodyOld: (company: string, to: string) =>
+        `نقلت ملكية «${company}» إلى ${to}. بقيت مسؤولًا في الفريق. إن لم تكن أنت من فعل ذلك، فتواصل معنا فورًا.`,
+      cta: 'صفحة الشركة',
+      labelCompany: 'الشركة',
+    },
+
     companyVerified: {
       subject: 'تم توثيق شركتك',
       preheader: 'ظهرت علامة التوثيق على صفحتك.',
@@ -669,6 +681,18 @@ export const emailCopy = {
       preheader: 'We need to review your account details again.',
       heading: 'Your account is on hold',
       body: 'We have paused the account until we can review the details again.',
+    },
+
+    companyOwnershipTransferred: {
+      subject: (company: string) => `Ownership of ${company} has changed`,
+      preheader: "The company's owner on Brokers Connect has changed.",
+      heading: 'Company ownership changed',
+      bodyNew: (company: string, from: string) =>
+        `${from} handed ownership of "${company}" to you. You are now the owner: only you can hand it on or delete it, and you have every admin permission.`,
+      bodyOld: (company: string, to: string) =>
+        `You handed ownership of "${company}" to ${to}. You stay on the team as an admin. If this wasn't you, contact us at once.`,
+      cta: 'Company page',
+      labelCompany: 'Company',
     },
 
     companyVerified: {

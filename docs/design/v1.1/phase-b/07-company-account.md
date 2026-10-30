@@ -135,7 +135,10 @@ records the closure decision.
   - `guard_company_update()` refuses any other way of moving `owner_id`.
   - Recorded in the activity log.
   - The doc's emailed confirmation code was not built. The owner confirms in
-    a dialog. Emails to both people come with the website's settings page.
+    a dialog.
+  - Both people are emailed (`company_ownership_transferred`, transactional).
+    The new owner is told what they now hold. The former owner is told it
+    was done, and to contact us if it was not them.
 - **Deletion, 14 days (decided):**
   - `request_company_deletion()` is for the owner alone. It runs at once:
     - `company_suspended()` answers true, so the public page hides it.

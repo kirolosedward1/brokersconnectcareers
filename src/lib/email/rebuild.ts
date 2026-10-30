@@ -87,6 +87,8 @@ export const NOT_RETRYABLE = [
   'application_withdrawn',
   // The company's words are not kept anywhere but the outbox row: there is nothing to rebuild from.
   'company_message',
+  // Keyed by the minute of the hand-over: a retry an hour later would read who owns it now, not then.
+  'company_ownership_transferred',
   'profile_ready',
   'visibility_changed',
   'account_approved',

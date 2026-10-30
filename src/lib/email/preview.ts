@@ -467,6 +467,21 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
+  company_ownership_transferred: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).companyOwnershipTransferred;
+    return {
+      subject: t.subject(w.company),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.bodyNew(w.company, w.name) },
+        { kind: 'facts', rows: [[t.labelCompany, w.company]] },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
+      ],
+    };
+  },
+
   company_verified: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).companyVerified;

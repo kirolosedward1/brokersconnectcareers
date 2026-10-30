@@ -8,6 +8,7 @@ import {
   notifyBrokerOfWithdrawal,
   notifyCandidateOfApplication,
   notifyCandidateOfCompanyMessage,
+  notifyOwnershipTransferred,
   notifyCandidateOfStatus,
   notifyCompanyVerification,
   notifyCompanyVerificationRevoked,
@@ -75,6 +76,7 @@ export type BusinessEvent =
   | { type: 'APPLICATION_STATUS_CHANGED'; applicationId: string }
   /** A company wrote to an applicant (by email only); `key` is the send, so a retry is the same message. */
   | { type: 'COMPANY_MESSAGE_SENT'; applicationId: string; message: string; key: string }
+  | { type: 'COMPANY_OWNERSHIP_TRANSFERRED'; companyId: string; fromId: string; toId: string }
   /** Taken as data: the mail is the announcement of that moment, built from the titles the action already read. */
   | {
       type: 'APPLICATION_WITHDRAWN';
@@ -128,6 +130,11 @@ export const ROUTES: Routes = {
     // Email only, decided: the company's words, sent from its inbox screen.
     inApp: 'none',
     email: [(e) => notifyCandidateOfCompanyMessage(e.applicationId, e.message, e.key)],
+  },
+  COMPANY_OWNERSHIP_TRANSFERRED: {
+    // Both people, by email (Phase B 07c); the team's log records it (migration 379).
+    inApp: 'none',
+    email: [(e) => notifyOwnershipTransferred(e.companyId, e.fromId, e.toId)],
   },
   APPLICATION_WITHDRAWN: {
     // The company hears in the bell via on_application_withdrawn when the
