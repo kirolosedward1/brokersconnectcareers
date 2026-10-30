@@ -17,6 +17,28 @@ marked **built** below are built. Everything else is still a proposal.
    with a tick. Built for the single move. Bulk moves (01) will use the same
    tick (01).
 
+## Decisions taken (second round, 2026-10-30)
+
+Every open question is answered. Each doc's "Decisions" section has its
+answers. In short:
+
+- **Reveal allowance depends on the company's plan.** It waits for plan
+  definitions, and the hourly and daily limits stay meanwhile.
+- **Decline-reason tick on the website: yes, later.** It is noted here and
+  not built yet. The website card still always shares the reason.
+- Bulk decline reasons approved, with one bulk reply by email only.
+- Shared notes are company-wide, and the export does not mention them.
+- Team permissions are switches.
+- The activity log keeps 6 months, and recruiters see only their own.
+- No auto sign-out.
+- Email saved replies: yes.
+- Company deletion: 14 days. Candidates keep a record of purged
+  applications. Ownership transfers only to a team member.
+- Subscriptions: later.
+- Interviews: no calendar export for now, and Cairo time.
+- **Build order:** 09 interview invites, 01 bulk actions, 06 saved replies,
+  02 shared notes, then the rest.
+
 Each doc follows the same shape: the boards it serves, what the platform
 already has, the proposed schema (migration sketch with rollback and safety
 lines, as `supabase/migrations` writes them), row-level security, the website

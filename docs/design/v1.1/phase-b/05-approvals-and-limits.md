@@ -75,7 +75,7 @@ them. Requests are readable by the requester and by the owner and admins.
 an `approvalRequests` read for the owner's queue. The employer Home queue
 (already built in A5) gets one more row: «طلبات بانتظار موافقتك».
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. ~~Company-internal publish approval?~~ Decided: no.
-2. Drop `session_days`?
+1. Company-internal publish approval: **no**.
+2. Automatic sign-out after N days: **dropped**. There is no auto sign-out.

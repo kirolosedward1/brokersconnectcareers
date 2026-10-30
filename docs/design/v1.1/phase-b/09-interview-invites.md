@@ -62,7 +62,7 @@ update policy.
 `interview_invited {}`, `interview_answered { answer }`. These are new
 events in the vocabulary, written in a separate commit.
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. Calendar export (a native module and a new build): now or later?
-2. Times in Cairo only? Recommended: yes, as everywhere else.
+1. Calendar export: **later** (no new native build for now).
+2. Times are **Cairo time**.

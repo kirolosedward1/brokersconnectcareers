@@ -40,8 +40,7 @@ does with the account export.
 
 rollback: drop the function and the route. safety: read-only.
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. How far back may a company see? Recommended: 12 months.
-2. Should recruiters see their own activity? Recommended: yes, filtered to
-   themselves.
+1. A company sees **6 months** of activity.
+2. Recruiters see **their own activity only**.

@@ -93,7 +93,8 @@ WhatsApp cannot be sent from a server without the WhatsApp Business API. So
 `applicants_bulk_moved { to: stage, count_band: '2-5'|'6-20'|'21-50' }`, a
 new event in the website vocabulary, written in its own commit.
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. Is the reasons list above right? (Visibility is decided: the tick.)
-2. Is the saved-reply bulk send email-only, as recommended?
+1. Reasons list: `experience`, `area`, `track`, `filled`, `other`. Approved.
+   The candidate sees the reason only when the employer ticks it.
+2. One reply to many goes **by email only**.

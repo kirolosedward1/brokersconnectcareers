@@ -68,7 +68,7 @@ change and needs its own review.
 The brief says monthly tiers are **a product decision, not yet approved**.
 Nothing is proposed until they are.
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. ~~Which option?~~ Decided: option 1, no in-app purchases.
-2. Whether subscriptions are wanted at all (on the website).
+1. No in-app purchases (decided earlier).
+2. Subscriptions: **later**.

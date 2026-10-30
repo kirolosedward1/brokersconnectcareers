@@ -48,6 +48,6 @@ offered for upload once, on first open after the update («انقل ردودك
 platform's stage email (the bulk case in 01). A WhatsApp Business API send
 is out of scope (see 01).
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. Email as a reply channel: yes or no?
+1. Email is a reply channel: **yes**.

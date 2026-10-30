@@ -77,8 +77,7 @@ that such notes exist.
 
 None new. These are working notes, not a funnel.
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. Should shared notes stay **company-wide**, or follow listing scopes once
-   03 (team scopes) exists?
-2. What does the export say about notes written by others?
+1. Shared notes are readable by the **whole company**.
+2. The data export **does not mention** notes others wrote.

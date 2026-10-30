@@ -85,10 +85,12 @@ TeamRoles (a matrix of the permissions above), TeamInvite (the same choices
 at invite time) and MemberDetail (a member's permissions and their activity
 from 04).
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. Columns as permissions, or named roles (`viewer`, `recruiter`, `manager`)?
-   Recommended: columns.
-2. ~~Reveal caps per member, or a paid balance?~~ Decided: neither. The
-   team is capped at five instead, and reveals keep their hourly and daily
-   limits.
+1. Permissions are **switches per member** (can post, can reveal, can spend),
+   not named roles.
+2. A team is at most five people (built, migration 371).
+3. **How many contacts a company may reveal depends on its plan.** The
+   allowance belongs to the company's plan, not to each member. This waits
+   for the plan definitions (08, subscriptions later). Until then, reveals
+   keep their hourly and daily limits.

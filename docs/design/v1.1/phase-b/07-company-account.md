@@ -86,8 +86,8 @@ alter table companies add column deletion_requested_at timestamptz;
 Out of this doc. They need a questions model on listings and answers on
 applications, and deserve a design doc of their own.
 
-## Decisions needed
+## Decisions (2026-10-30)
 
-1. Grace period for deletion (14 days?).
-2. Purging applications: do candidates keep their record?
-3. Ownership transfer only to an existing member?
+1. Deletion grace period: **14 days**.
+2. Candidates **keep a record** of applications a company purged.
+3. Ownership transfer only **to an existing team member**.
