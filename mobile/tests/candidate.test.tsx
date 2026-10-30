@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { createTranslator } from 'use-intl';
-import type { NotificationRow } from '@/lib/supabase/database.types';
+import type { InterviewInviteRow, NotificationRow } from '@/lib/supabase/database.types';
 import { shownToast, STAY_WITH_ACTION_MS } from '~/components/feedback/toast';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
@@ -92,6 +92,7 @@ function notification(overrides: Partial<NotificationRow> = {}): NotificationRow
 }
 
 let applications: CandidateApplication[] = [];
+let interviews: InterviewInviteRow[] = [];
 let feed: NotificationRow[] = [];
 
 beforeAll(() => {
@@ -100,6 +101,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   applications = [application()];
+  interviews = [];
   feed = [
     notification(),
     notification({
@@ -117,6 +119,8 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [profile]);
   server.on('GET /rest/v1/applications', () => applications);
+  server.on('GET /rest/v1/interview_invites', () => interviews);
+  server.on('POST /api/mobile/v1/actions/answerInterview', { ok: true });
   server.on('GET /rest/v1/notifications', () => feed);
   server.on('HEAD /rest/v1/notifications', () => ({
     body: null,
@@ -629,5 +633,58 @@ describe('signing in on the way somewhere', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
+  });
+});
+
+describe('an interview invitation', () => {
+  const invite = (overrides: Partial<InterviewInviteRow> = {}): InterviewInviteRow => ({
+    id: 'b0000000-0000-4000-8000-000000000009',
+    application_id: applications[0]?.id as string,
+    starts_at: '2099-11-02T09:00:00Z',
+    minutes: 30,
+    mode: 'video',
+    place: 'https://meet.example.com/abc',
+    note: 'أحضر نسخة من سيرتك.',
+    status: 'proposed',
+    counter_starts_at: null,
+    created_by: null,
+    created_at: '2026-10-29T10:00:00Z',
+    updated_at: '2026-10-29T10:00:00Z',
+    ...overrides,
+  });
+
+  it('shows when, how and where, and sends the answer', async () => {
+    applications = [application({ status: 'interview' })];
+    interviews = [invite()];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByTestId('interview-candidate')).toBeTruthy();
+    expect(screen.getByText('«أحضر نسخة من سيرتك.»')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.interview.accept }));
+    await waitFor(() =>
+      expect(server.asked('/api/mobile/v1/actions/answerInterview')[0]?.body).toMatchObject({ input: { id: interviews[0]?.id, answer: 'accepted' } }),
+    );
+  });
+
+  it('proposes another time, in Cairo time', async () => {
+    applications = [application({ status: 'interview' })];
+    interviews = [invite()];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.interview.proposeOther }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.interview.counterSend }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/answerInterview')).toHaveLength(1));
+    const body = server.asked('/api/mobile/v1/actions/answerInterview')[0]?.body as { input: { answer: string; counterStartsAt: string } };
+    expect(body.input.answer).toBe('counter');
+    expect(body.input.counterStartsAt).toMatch(/T11:00:00\+0[23]:00$/);
+  });
+
+  it('says what they answered once they have', async () => {
+    applications = [application({ status: 'interview' })];
+    interviews = [invite({ status: 'counter', counter_starts_at: '2099-11-03T10:00:00Z' })];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByTestId('interview-candidate')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.interview.accept })).toBeNull();
   });
 });

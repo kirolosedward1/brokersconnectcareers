@@ -1,3 +1,5 @@
+import { CandidateInterview } from '~/components/interviews/interview-panels';
+import { useMyInterviews } from '~/features/interviews/interviews';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useIsFocused } from 'expo-router';
@@ -197,6 +199,9 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const { colors } = useTheme();
   const withdraw = useWithdrawApplication();
   const [failed, setFailed] = useState<'unavailable' | 'failed' | null>(null);
+  // One read for the whole list (the query is shared): this application's invitation, if any.
+  const invite = useMyInterviews().data?.get(application.id) ?? null;
+  const [openedAt] = useState(() => Date.now());
 
   const job = application.job;
   if (!job) return null;
@@ -267,6 +272,9 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
 
       {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
       <ApplicationTimeline application={application} />
+
+      {/* An interview the company invited them to, and their answer (migration 373). */}
+      {invite && application.status !== 'withdrawn' ? <CandidateInterview invite={invite} now={openedAt} /> : null}
 
       {/* That a person at the company has had it on screen — only while the
           outcome is open; once the status moves, the status is the news. */}

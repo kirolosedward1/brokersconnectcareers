@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
-import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
+import type { ApplicationNoteRow, ApplicationStatus, InterviewInviteRow } from '@/lib/supabase/database.types';
 import { toast } from '~/components/feedback/toast';
 import { Appear } from '~/components/motion/appear';
 import { ProgressBar } from '~/components/motion/progress-bar';
@@ -25,6 +25,8 @@ type CardProps = {
   companyName: string;
   districtNamesOf: (applicant: Applicant) => string[];
   notesOf: (applicant: Applicant) => ApplicationNoteRow[] | undefined;
+  /** The standing interview invitation: null for none, undefined until read. */
+  interviewOf?: (applicant: Applicant) => InterviewInviteRow | null | undefined;
   authors: Record<string, string>;
   viewerId: string | null;
 };
@@ -185,6 +187,7 @@ export function ApplicantReview({
                 companyName={card.companyName}
                 districtNames={card.districtNamesOf(applicant)}
                 notes={card.notesOf(applicant)}
+                interview={card.interviewOf?.(applicant)}
                 authors={card.authors}
                 viewerId={card.viewerId}
                 leaveTo={(go) => onClose(go)}

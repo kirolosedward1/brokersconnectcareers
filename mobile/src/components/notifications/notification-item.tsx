@@ -7,6 +7,7 @@ import {
   Ban,
   Bell,
   Briefcase,
+  CalendarCheck,
   CalendarClock,
   CalendarX2,
   CirclePause,
@@ -65,6 +66,8 @@ const ICONS: Record<NotificationKind, ComponentType<LucideProps>> = {
   appeal_decided: Scale,
   new_jobs: Briefcase,
   company_verification_revoked: BadgeX,
+  interview_invited: CalendarClock,
+  interview_answered: CalendarCheck,
 };
 
 type Tone = 'success' | 'primary' | 'muted' | 'destructive' | 'warning';
@@ -95,6 +98,8 @@ const TONES: Record<NotificationKind, Tone> = {
   appeal_decided: 'primary',
   new_jobs: 'primary',
   company_verification_revoked: 'destructive',
+  interview_invited: 'primary',
+  interview_answered: 'primary',
 };
 
 function toneColors(tone: Tone, colors: Colors): { background: string; foreground: string } {

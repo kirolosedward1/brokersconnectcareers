@@ -232,6 +232,21 @@ describe("an employer's home", () => {
     await waitFor(() => expect(result.getPathname()).toBe('/employer/billing'));
   });
 
+  it("lists today's interviews by name and Cairo time", async () => {
+    server.on('GET /rest/v1/interview_invites', [
+      {
+        id: 'b0000000-0000-4000-8000-000000000001',
+        starts_at: new Date(Date.now() + 60_000).toISOString(),
+        status: 'accepted',
+        application: { job_id: listing().id, candidate: { full_name: 'مريم عادل' } },
+      },
+    ]);
+    await signIn();
+    await renderRouter(app, { initialUrl: '/' });
+    expect(await screen.findByText(ar.app.interview.todayTitle)).toBeTruthy();
+    expect(screen.getByText(/^مريم عادل /)).toBeTruthy();
+  });
+
   it('says the listing that ends soonest, and opens the unseen applicants from the queue', async () => {
     listings = [listing({ expires_at: new Date(Date.now() + 2 * 86_400_000).toISOString() })];
     server.on('POST /rest/v1/rpc/employer_summary', () => summary({ expiring_soon: 1 }));

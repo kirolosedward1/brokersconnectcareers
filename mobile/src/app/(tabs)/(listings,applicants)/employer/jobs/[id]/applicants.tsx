@@ -1,3 +1,4 @@
+import { useInterviewsFor } from '~/features/interviews/interviews';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
@@ -48,6 +49,8 @@ export default function ListingApplicantsScreen() {
   const pipeline = useListingApplicants(id);
   const applicants = pipeline.data?.applicants;
   const notes = useApplicantNotes((applicants ?? []).map((row) => row.id));
+  const interviews = useInterviewsFor((applicants ?? []).map((row) => row.id));
+  const interviewOf = (id: string) => (interviews.data ? (interviews.data.get(id) ?? null) : undefined);
   const context = useApplicantContext();
   // Nobody is told a suspended company opened their application: its
   // applicants are hidden from it (migration 349), whatever a read returns.
@@ -154,6 +157,7 @@ export default function ListingApplicantsScreen() {
                 companyName={context.companyName}
                 districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
                 notes={notesOf(notes.data, row.id)}
+                    interview={interviewOf(row.id)}
                 authors={notes.data?.authors ?? {}}
                 viewerId={context.viewerId}
               />

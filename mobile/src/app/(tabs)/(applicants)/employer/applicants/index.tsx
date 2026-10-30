@@ -1,3 +1,4 @@
+import { useInterviewsFor } from '~/features/interviews/interviews';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
@@ -61,6 +62,8 @@ export default function InboxScreen() {
   const choices = listings.data;
   const rows = inbox.data?.rows;
   const notes = useApplicantNotes((rows ?? []).map((row) => row.id));
+  const interviews = useInterviewsFor((rows ?? []).map((row) => row.id));
+  const interviewOf = (id: string) => (interviews.data ? (interviews.data.get(id) ?? null) : undefined);
   const context = useApplicantContext();
   // Nobody is told a suspended company opened their application: its
   // applicants are hidden from it (migration 349), whatever a read returns.
@@ -267,6 +270,7 @@ export default function InboxScreen() {
                     companyName={context.companyName}
                     districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
                     notes={notesOf(notes.data, row.id)}
+                    interview={interviewOf(row.id)}
                     authors={notes.data?.authors ?? {}}
                     viewerId={context.viewerId}
                   />
@@ -297,6 +301,7 @@ export default function InboxScreen() {
         companyName={context.companyName}
         districtNamesOf={(row) => context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
         notesOf={(row) => notesOf(notes.data, row.id)}
+        interviewOf={(row) => interviewOf(row.id)}
         authors={notes.data?.authors ?? {}}
         viewerId={context.viewerId}
       />

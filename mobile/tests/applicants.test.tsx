@@ -6,7 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTranslator } from 'use-intl';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
-import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
+import type { ApplicationNoteRow, InterviewInviteRow, ProfileRow } from '@/lib/supabase/database.types';
 import { shownToast } from '~/components/feedback/toast';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
@@ -116,6 +116,7 @@ const notes: ApplicationNoteRow[] = [
 ];
 
 let rows: Applicant[];
+let interviews: InterviewInviteRow[] = [];
 let client: QueryClient;
 
 beforeAll(() => {
@@ -123,6 +124,7 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+  interviews = [];
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   rows = [sara, omar];
   jest.mocked(WebBrowser.openBrowserAsync).mockClear();
@@ -147,6 +149,10 @@ beforeEach(async () => {
     return { body: null, headers: { 'content-range': `*/${standing.length}` } };
   });
   server.on('GET /rest/v1/application_notes', notes);
+  server.on('GET /rest/v1/interview_invites', () => interviews);
+  server.on('POST /api/mobile/v1/actions/inviteToInterview', { ok: true, data: { id: 'iv-1' } });
+  server.on('POST /api/mobile/v1/actions/acceptProposedTime', { ok: true });
+  server.on('POST /api/mobile/v1/actions/cancelInterview', { ok: true });
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
   server.on('POST /api/mobile/v1/actions/markApplicantsSeen', { ok: true });
   server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true });
@@ -1051,5 +1057,53 @@ describe('a suspended company', () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
     await notStamped();
+  });
+});
+
+describe('interviews', () => {
+  const invite = (overrides: Partial<InterviewInviteRow> = {}): InterviewInviteRow => ({
+    id: 'b0000000-0000-4000-8000-000000000001',
+    application_id: omar.id,
+    starts_at: '2099-11-02T09:00:00Z',
+    minutes: 30,
+    mode: 'office',
+    place: 'التجمع الخامس، مبنى ٣',
+    note: null,
+    status: 'proposed',
+    counter_starts_at: null,
+    created_by: USER_ID,
+    created_at: '2026-10-29T10:00:00Z',
+    updated_at: '2026-10-29T10:00:00Z',
+    ...overrides,
+  });
+
+  it('invites from the card, at a Cairo time, the stage said to move', async () => {
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.interview.invite}: عمر حسن` }));
+    expect(await screen.findByText(ar.app.interview.stageHint)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.interview.send }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/inviteToInterview')).toBeDefined());
+    const sent = input('/api/mobile/v1/actions/inviteToInterview') as { applicationId: string; startsAt: string; minutes: number; mode: string };
+    expect(sent).toMatchObject({ applicationId: omar.id, minutes: 30, mode: 'office' });
+    // Tomorrow at eleven, Cairo's wall clock, with Cairo's offset.
+    expect(sent.startsAt).toMatch(/^\d{4}-\d{2}-\d{2}T11:00:00\+0[23]:00$/);
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.interview.sent));
+  });
+
+  it("draws the standing invitation, and accepts the candidate's other time", async () => {
+    interviews = [invite({ status: 'counter', counter_starts_at: '2099-11-03T10:00:00Z' })];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByTestId('interview-line')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.interview.acceptCounter }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/acceptProposedTime')).toEqual({ id: interviews[0]?.id }));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.interview.agreed));
+  });
+
+  it('says a refused time in words', async () => {
+    server.on('POST /api/mobile/v1/actions/inviteToInterview', { ok: false, error: 'time_not_allowed' });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.interview.invite}: عمر حسن` }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.interview.send }));
+    expect(await screen.findByText(ar.app.interview.timeNotAllowed)).toBeTruthy();
   });
 });

@@ -8,7 +8,8 @@ import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { PIPELINE_STAGES, STAGE_TONE, WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
-import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
+import type { ApplicationNoteRow, ApplicationStatus, InterviewInviteRow } from '@/lib/supabase/database.types';
+import { CompanyInterview } from '~/components/interviews/interview-panels';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { toast } from '~/components/feedback/toast';
 import { ContactButtons } from '~/components/ui/contact-buttons';
@@ -55,6 +56,7 @@ export function ApplicantCard({
   companyName,
   districtNames,
   notes,
+  interview,
   authors,
   viewerId,
   leaveTo = (go) => go(),
@@ -65,6 +67,8 @@ export function ApplicantCard({
   districtNames: string[];
   /** Undefined until the company's notes have been read. */
   notes: ApplicationNoteRow[] | undefined;
+  /** The standing interview invitation (migration 373): null for none, undefined until read. */
+  interview?: InterviewInviteRow | null;
   authors: Record<string, string>;
   viewerId: string | null;
   /**
@@ -75,6 +79,8 @@ export function ApplicantCard({
   leaveTo?: (go: () => void) => void;
 }) {
   const t = useTranslations();
+  // When the card was drawn: what an invitation's "today" is counted from.
+  const [openedAt] = useState(() => Date.now());
   const money = useMoney();
   const locale = useLocale();
   const { colors, scheme } = useTheme();
@@ -469,6 +475,16 @@ export function ApplicantCard({
       ) : null}
       </>
       )}
+
+      {interview !== undefined ? (
+        <CompanyInterview
+          applicationId={applicant.id}
+          name={name}
+          invite={interview}
+          closed={withdrawn || status === 'rejected' || status === 'hired'}
+          now={openedAt}
+        />
+      ) : null}
 
       <ApplicantNotes
         applicationId={applicant.id}

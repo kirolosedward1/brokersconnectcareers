@@ -27,6 +27,7 @@ import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { flattenListings, useMyListings, type ConsoleListing } from '~/features/employer/listings';
 import { useEmployerSummary, useEmployerTrend } from '~/features/employer/overview';
+import { useTodaysInterviews } from '~/features/interviews/interviews';
 import { markupTags } from '~/i18n/rich';
 import { useTabList } from '~/features/tab-bar';
 import { noAnswer } from '~/lib/api';
@@ -72,6 +73,8 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
   const [figuresOpen, setFiguresOpen] = useState(false);
   // When Home was opened: what "today" and "within the week" are measured from.
   const [now] = useState(() => Date.now());
+  const today = useTodaysInterviews(Boolean(s?.has_company), now);
+  const clock = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' });
 
   // The spinner is the pull's alone: a push about a new applicant reads the
   // overview again too, and a spinner that starts by itself pushes the page
@@ -164,6 +167,17 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
     const queue: QueueEntry[] = [
       ...(s.applicants_unseen > 0
         ? [{ key: 'unseen', count: s.applicants_unseen, title: t('app.employerHome.unseen'), body: t('app.employerHome.unseenBody'), cta: t('app.employerHome.review'), strong: true, href: '/employer/applicants?stage=new' }]
+        : []),
+      // Today's interviews, by name and Cairo time (migration 373); the board's «مقابلتان اليوم».
+      ...(today.data?.length
+        ? [{
+            key: 'interviews',
+            count: today.data.length,
+            title: t('app.interview.todayTitle'),
+            body: today.data.map((row) => `${row.name} ${clock.format(new Date(row.starts_at))}`).join(' · '),
+            cta: null,
+            href: `/employer/jobs/${today.data[0]?.jobId}/applicants`,
+          }]
         : []),
       ...(soon
         ? [{

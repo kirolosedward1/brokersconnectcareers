@@ -26,6 +26,7 @@ export { default as Briefcase } from 'lucide-react-native/icons/briefcase';
 export { default as BriefcaseBusiness } from 'lucide-react-native/icons/briefcase-business';
 export { default as Building2 } from 'lucide-react-native/icons/building-complex';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
+export { default as CalendarCheck } from 'lucide-react-native/icons/calendar-check';
 export { default as CalendarClock } from 'lucide-react-native/icons/calendar-clock';
 export { default as CalendarX2 } from 'lucide-react-native/icons/calendar-x-2';
 export { default as ChartColumn } from 'lucide-react-native/icons/chart-column';
