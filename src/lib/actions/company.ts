@@ -426,6 +426,8 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
     // email is a consultant's" would tell a company that somebody who chose
     // to stay hidden from it is on the platform.
     if (error.message.includes('company_member_role')) return { ok: false, error: 'no_account' };
+    // Five people at most, the owner included (migration 371).
+    if (error.message.includes('team_full')) return { ok: false, error: 'team_full' };
     // One company per account (migration 307): somebody already on another
     // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };

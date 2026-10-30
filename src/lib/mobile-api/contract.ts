@@ -320,8 +320,11 @@ export type MobileActions = {
       decisionNote?: Nullable<string>;
       /** The status the card showed, so a colleague's move is not overwritten. */
       from?: ApplicationStatus;
+      /** Whether the candidate may read the reason; absent is yes. Unticked, it is kept as the company's own note. */
+      shareReason?: boolean;
     };
-    output: ActionResult;
+    /** reasonKept: false when an unshared reason could not be kept as a note (the move itself stands). */
+    output: ActionResult<{ reasonKept: boolean }>;
   };
   addApplicationNote: {
     /** idempotencyKey: made once per composer, so a retry finds the note rather than writing it twice. */

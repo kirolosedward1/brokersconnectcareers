@@ -76,6 +76,8 @@ export function TeamSettings({
               ? t('teamAlreadyMember')
               : result.error === 'elsewhere'
                 ? t('teamElsewhere')
+                : result.error === 'team_full'
+                  ? t('teamFull')
                 : // Both limits are "too many, wait": the hourly additions and the
                   // daily address look-ups, which was answered as a generic error.
                   result.error === 'rate_limited' || result.error === 'rate_limit'

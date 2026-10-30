@@ -704,7 +704,8 @@
     "postRateLimited": "This company has created a lot of listings today. Try again tomorrow.",
     "standingBlocked": "Your account is restricted or suspended, so nothing can be sent for review right now. The notice on your dashboard says why and how to ask for a review.",
     "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review.",
-    "listingMovedKept": "This listing changed somewhere else while you were editing. Reload the page: your changes are kept, and you can restore them over the new version."
+    "listingMovedKept": "This listing changed somewhere else while you were editing. Reload the page: your changes are kept, and you can restore them over the new version.",
+    "teamFull": "The team is full: five people at most, the owner included. Remove a member to add someone else."
   },
   "jobForm": {
     "basics": "Basics",

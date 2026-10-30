@@ -347,14 +347,24 @@ const statusSchema = z.object({
    * candidate was emailed twice about two different outcomes.
    */
   from: z.enum(PIPELINE_STAGES).optional(),
+  /**
+   * Whether the candidate may read the reason (v1.1 Phase B, decided: the
+   * employer ticks it). Absent means yes, as every form before the tick sent.
+   * Unticked, the reason is not written to `decision_note` — which the
+   * candidate's own select policy returns with the row — but kept as one of
+   * the company's notes on the application (migration 58), which they never see.
+   */
+  shareReason: z.boolean().optional(),
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */
-export async function setApplicationStatus(input: unknown): Promise<ActionResult> {
+export async function setApplicationStatus(input: unknown): Promise<ActionResult<{ reasonKept: boolean }>> {
   const parsed = statusSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const reason = clean(parsed.data.decisionNote, true) || null;
+  const shared = parsed.data.shareReason !== false;
 
   // Compare and swap, in one statement: matching the status the card rendered
   // makes "somebody moved this first" a refusal rather than an overwrite, and
@@ -364,7 +374,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     .update({
       status: parsed.data.status as ApplicationStatus,
       employer_viewed_at: new Date().toISOString(),
-      decision_note: clean(parsed.data.decisionNote, true) || null,
+      decision_note: shared ? reason : null,
     })
     .eq('id', parsed.data.applicationId);
 
@@ -399,12 +409,29 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     return { ok: false, error: current ? 'moved_already' : 'forbidden' };
   }
 
+  // Kept from the candidate: the reason becomes the company's own note on the
+  // application. Written after the move, which is the decision; a note that
+  // fails is said (reasonKept: false) rather than taking the move back.
+  let reasonKept = true;
+  if (!shared && reason) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { error: noteError } = user
+      ? await supabase.from('application_notes').insert({ application_id: parsed.data.applicationId, author_id: user.id, body: reason })
+      : { error: new Error('unauthenticated') };
+    if (noteError) {
+      reasonKept = false;
+      logFailure('pipeline', 'private reason not kept', { application: parsed.data.applicationId });
+    }
+  }
+
   after(() => publish({ type: 'APPLICATION_STATUS_CHANGED', applicationId: parsed.data.applicationId }));
 
   revalidatePath('/employer/jobs');
   revalidatePath('/dashboard/applications');
   revalidatePath('/admin', 'layout');
-  return { ok: true };
+  return { ok: true, data: { reasonKept } };
 }
 
 
