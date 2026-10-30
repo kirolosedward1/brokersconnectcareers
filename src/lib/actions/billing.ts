@@ -1,5 +1,6 @@
 'use server';
 
+import { cairoDayStart } from '@/lib/admin/params';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -67,6 +68,25 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
   const pack = PACKS_ON_SALE.find((item) => item.key === parsed.data.packKey);
   if (!pack) return { ok: false, error: 'not_available' };
 
+  // The company's own ceiling for a Cairo month (migration 380), counted over
+  // what it has paid this month. A read that fails refuses rather than
+  // letting a purchase past a limit nobody could check.
+  const { data: rules, error: rulesError } = await supabase.rpc('company_rules');
+  const ceiling = !rulesError ? (Array.isArray(rules) ? rules[0] : rules)?.spend_ceiling_month_egp : null;
+  if (rulesError && rulesError.code !== 'PGRST202' && rulesError.code !== '42883') return { ok: false, error: 'failed' };
+  if (typeof ceiling === 'number') {
+    const monthStart = cairoMonthStart();
+    const { data: paid, error: paidError } = await supabase
+      .from('orders')
+      .select('amount_egp')
+      .eq('company_id', company.id)
+      .eq('status', 'paid')
+      .gte('created_at', monthStart);
+    if (paidError) return { ok: false, error: 'failed' };
+    const spent = (paid ?? []).reduce((sum, order) => sum + (order.amount_egp ?? 0), 0);
+    if (spent + pack.priceEgp > ceiling) return { ok: false, error: 'spend_ceiling' };
+  }
+
   // Every call opens a pending order and three provider round trips. A
   // handful an hour is a company buying credits; more is a loop.
   const checkouts = await rateLimit(
@@ -131,4 +151,13 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
     );
     return { ok: false, error: 'checkout_failed' };
   }
+}
+
+/** The first instant of this month in Cairo, as an ISO string. */
+function cairoMonthStart(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit' }).formatToParts(now);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  // Midnight on the first, at that day's own offset (Egypt keeps summer time).
+  return cairoDayStart(`${year}-${month}-01`);
 }

@@ -220,6 +220,32 @@ export type CompanyMemberRow = Timestamped & {
   can_spend?: boolean;
 };
 
+/** Migration 380: the rules a company sets for its own team. */
+export type CompanyPolicyRow = {
+  company_id: string;
+  approve_decline: boolean;
+  approve_pay_change: boolean;
+  spend_ceiling_month_egp: number | null;
+  require_mfa: boolean;
+  cv_admins_only: boolean;
+  updated_at: string;
+};
+
+/** Migration 380: a decline or a pay change waiting for one of the company's admins. */
+export type ApprovalRequestRow = {
+  id: string;
+  company_id: string;
+  kind: 'decline' | 'pay_change';
+  subject_id: string;
+  payload: Record<string, unknown>;
+  requested_by: string | null;
+  status: 'pending' | 'approved' | 'refused' | 'expired';
+  decided_by: string | null;
+  decided_at: string | null;
+  note: string | null;
+  created_at: string;
+};
+
 /** Migration 379: what a candidate keeps of an application a company cleared or took with it. */
 export type ApplicationRecordRow = {
   id: number;
@@ -1490,6 +1516,8 @@ export type Database = {
       >;
       saved_replies: Table<SavedReplyRow, Insertable<SavedReplyRow, 'company_id' | 'body'>>;
       application_records: Table<ApplicationRecordRow, never>;
+      company_policies: Table<CompanyPolicyRow, Insertable<CompanyPolicyRow, 'company_id'>>;
+      company_approval_requests: Table<ApprovalRequestRow, Insertable<ApprovalRequestRow, 'company_id' | 'kind' | 'subject_id'>>;
       interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
       /**
        * No Insertable worth naming: nothing in the app writes one. Every row
@@ -1716,6 +1744,20 @@ export type Database = {
           created_at: string;
         }[];
       };
+      /** Migration 380: the rules the caller's company sets, and whether a required second factor is met. */
+      company_rules: {
+        Args: Record<string, never>;
+        Returns: {
+          company_id: string;
+          approve_decline: boolean;
+          approve_pay_change: boolean;
+          spend_ceiling_month_egp: number | null;
+          require_mfa: boolean;
+          cv_admins_only: boolean;
+          mfa_satisfied: boolean;
+        }[];
+      };
+      may_read_application_cv: { Args: { p_application: string }; Returns: boolean };
       /** Migration 379: the owner hands the company to a member, asks for it to go, or changes their mind. */
       transfer_company_ownership: { Args: { p_to: string }; Returns: 'ok' | 'not_owner' | 'not_member' | 'not_eligible' | 'closing' };
       request_company_deletion: { Args: Record<string, never>; Returns: 'ok' | 'not_owner' };

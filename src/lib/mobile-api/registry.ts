@@ -51,6 +51,7 @@ import {
   withdrawApplication,
 } from '@/lib/actions/applications';
 import { requestPasswordReset, resendConfirmation } from '@/lib/actions/auth-email';
+import { decideApprovalRequest, saveCompanyRules } from '@/lib/actions/approvals';
 import {
   addCompanyMember,
   updateMemberPermissions,
@@ -241,6 +242,8 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   saveReply: { run: (input) => saveReply(input) },
   updateMemberPermissions: { run: (input) => updateMemberPermissions(input) },
   saveCompanyHiring: { run: (input) => saveCompanyHiring(input) },
+  saveCompanyRules: { run: (input) => saveCompanyRules(input) },
+  decideApprovalRequest: { run: (input) => decideApprovalRequest(input) },
   transferCompanyOwnership: { run: (input) => transferCompanyOwnership(input) },
   requestCompanyDeletion: { run: (input) => requestCompanyDeletion(input) },
   cancelCompanyDeletion: { run: () => cancelCompanyDeletion() },

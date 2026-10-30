@@ -24,6 +24,7 @@ import { insertOnce } from '@/lib/actions/idempotency';
 import { jobIsLive } from '@/lib/job-state';
 import { refused } from '@/lib/observe';
 import { allow } from '@/lib/rate-limit';
+import { askForApproval } from '@/lib/actions/approval-requests';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -361,7 +362,9 @@ const statusSchema = z.object({
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */
-export async function setApplicationStatus(input: unknown): Promise<ActionResult<{ reasonKept: boolean }>> {
+export async function setApplicationStatus(
+  input: unknown,
+): Promise<ActionResult<{ reasonKept: boolean; pendingApproval?: boolean }>> {
   const parsed = statusSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -391,6 +394,15 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     // moved. A false notification is worse than a failed one.
     .select('id');
 
+  // The company asks an admin to approve a decline (migration 380): the move
+  // is not made; the request is, and an admin's decision makes it.
+  if (error && error.message.includes('decline_needs_approval')) {
+    return askForApproval(supabase, 'decline', parsed.data.applicationId, {
+      from: parsed.data.from ?? null,
+      decisionNote: reason,
+      shareReason: shared,
+    });
+  }
   if (error) return refused('application', error, { application: parsed.data.applicationId });
 
   if (!moved?.length) {
@@ -438,6 +450,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
 }
 
 
+
 const bulkSchema = z.object({
   items: z
     .array(z.object({ applicationId: z.string().uuid(), from: z.enum(PIPELINE_STAGES) }))
@@ -457,7 +470,7 @@ const bulkSchema = z.object({
  */
 export async function setApplicationStatuses(
   input: unknown,
-): Promise<ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number }>> {
+): Promise<ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number; pendingApproval: number }>> {
   const parsed = bulkSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
@@ -468,7 +481,7 @@ export async function setApplicationStatuses(
   if (!user) return { ok: false, error: 'unauthenticated' };
   if (!(await allow(`applications_bulk:${user.id}`, 30, 3600))) return { ok: false, error: 'rate_limited' };
 
-  const counts = { moved: 0, movedAlready: 0, failed: 0, reasonsNotKept: 0 };
+  const counts = { moved: 0, movedAlready: 0, failed: 0, reasonsNotKept: 0, pendingApproval: 0 };
   for (const item of parsed.data.items) {
     const result = await setApplicationStatus({
       applicationId: item.applicationId,
@@ -477,7 +490,8 @@ export async function setApplicationStatuses(
       from: item.from,
       ...(parsed.data.shareReason === false ? { shareReason: false } : {}),
     });
-    if (result.ok) {
+    if (result.ok && result.data?.pendingApproval) counts.pendingApproval += 1;
+    else if (result.ok) {
       counts.moved += 1;
       if (result.data && !result.data.reasonKept) counts.reasonsNotKept += 1;
     } else if (result.error === 'moved_already') counts.movedAlready += 1;

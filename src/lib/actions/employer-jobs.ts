@@ -1,5 +1,6 @@
 'use server';
 
+import { askForApproval } from '@/lib/actions/approval-requests';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
@@ -73,7 +74,7 @@ const jobSchema = z
  * review; publishing is a moderation action and is refused at the database
  * level for anyone who is not an admin.
  */
-export async function saveJob(input: unknown): Promise<ActionResult<{ id: string }>> {
+export async function saveJob(input: unknown): Promise<ActionResult<{ id: string; pendingApproval?: boolean }>> {
   const parsed = jobSchema.safeParse(input);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -175,6 +176,8 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   } as const;
 
   let jobId = value.id;
+  // A pay change the company's admin must approve first (migration 380).
+  let payWaits = false;
 
   if (jobId) {
     // .select() so a listing the caller does not belong to is a refusal rather
@@ -204,9 +207,31 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
       // is `is_admin()`, and this console is a company's, not the platform's.
       .eq('company_id', company.id);
 
-    const { data: saved, error } = await (
+    let { data: saved, error } = await (
       value.version ? query.eq('version', value.version) : query
     ).select('id');
+
+    // The company has an admin approve a live listing's pay (migration 380):
+    // the rest of the edit is saved as it stood, and the pay waits for them.
+    if (error && error.message.includes('pay_change_needs_approval')) {
+      const pay = {
+        basic_salary_min: payload.basic_salary_min,
+        basic_salary_max: payload.basic_salary_max,
+        commission_type: payload.commission_type,
+        commission_value: payload.commission_value,
+        commission_note_ar: payload.commission_note_ar,
+      };
+      // The edit as it was sent, its pay as the listing has it now.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { basic_salary_min, basic_salary_max, commission_type, commission_value, commission_note_ar, ...rest } = payload;
+      const again = supabase.from('jobs').update(live ? rest : { ...rest, status }).eq('id', jobId).eq('company_id', company.id);
+      ({ data: saved, error } = await (value.version ? again.eq('version', value.version) : again).select('id'));
+      if (!error && saved?.length) {
+        const asked = await askForApproval(supabase, 'pay_change', jobId, pay);
+        if (!asked.ok) return asked;
+        payWaits = true;
+      }
+    }
 
     if (error) {
       logFailure('listing', 'save refused', { job: jobId, company: company.id, code: error.code });
@@ -343,7 +368,7 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   }
 
   revalidatePath('/employer/jobs');
-  return { ok: true, data: { id: jobId! } };
+  return { ok: true, data: { id: jobId!, ...(payWaits ? { pendingApproval: true } : {}) } };
 }
 
 const transitionSchema = z.object({

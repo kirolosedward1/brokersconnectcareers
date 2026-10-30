@@ -303,7 +303,8 @@ export type MobileActions = {
   unfollowCompany: { input: { slug: string }; output: ActionResult };
 
   // Employer: listings
-  saveJob: { input: JobInput; output: ActionResult<{ id: string }> };
+  /** pendingApproval: saved, but the live listing's new pay waits for an admin (migration 380). */
+  saveJob: { input: JobInput; output: ActionResult<{ id: string; pendingApproval?: boolean }> };
   transitionJob: { input: { jobId: string; status: 'draft' | 'pending_review' | 'closed' }; output: ActionResult };
   findSimilarListing: {
     input: { titleAr: string; districtId: number; excludeId?: Nullable<string> };
@@ -325,8 +326,11 @@ export type MobileActions = {
       /** Whether the candidate may read the reason; absent is yes. Unticked, it is kept as the company's own note. */
       shareReason?: boolean;
     };
-    /** reasonKept: false when an unshared reason could not be kept as a note (the move itself stands). */
-    output: ActionResult<{ reasonKept: boolean }>;
+    /**
+     * reasonKept: false when an unshared reason could not be kept as a note (the move itself stands).
+     * pendingApproval: the company has an admin approve declines (migration 380); the move waits.
+     */
+    output: ActionResult<{ reasonKept: boolean; pendingApproval?: boolean }>;
   };
   /** Up to fifty moves at once, each as a single move (Phase B 01). */
   setApplicationStatuses: {
@@ -336,7 +340,7 @@ export type MobileActions = {
       decisionNote?: Nullable<string>;
       shareReason?: boolean;
     };
-    output: ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number }>;
+    output: ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number; pendingApproval?: number }>;
   };
   /** One message to up to fifty applicants, by email; key made once per composer. */
   messageApplicants: {
@@ -344,6 +348,14 @@ export type MobileActions = {
     output: ActionResult<{ sent: number; skipped: number }>;
   };
   /** Migration 376: a member's switches; admins only, never the owner. */
+  saveCompanyRules: {
+    input: { approveDecline: boolean; approvePayChange: boolean; spendCeilingMonthEgp: number | null; requireMfa: boolean; cvAdminsOnly: boolean };
+    output: ActionResult;
+  };
+  decideApprovalRequest: {
+    input: { id: string; approve: boolean; note?: string | null };
+    output: ActionResult<{ outcome: 'approved' | 'refused' | 'expired' }>;
+  };
   transferCompanyOwnership: { input: { userId: string }; output: ActionResult };
   requestCompanyDeletion: { input: { confirmName: string }; output: ActionResult };
   cancelCompanyDeletion: { input: Record<string, never>; output: ActionResult };
