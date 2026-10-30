@@ -200,6 +200,38 @@ export type CompanyMemberRow = Timestamped & {
   can_spend?: boolean;
 };
 
+/** Migration 377: one thing the team did. Names are read as the log is read; a row stores only ids. */
+export type CompanyActivityKind =
+  | 'application_moved'
+  | 'note_added'
+  | 'interview_invited'
+  | 'contact_revealed'
+  | 'job_created'
+  | 'job_status'
+  | 'member_added'
+  | 'member_removed'
+  | 'member_changed'
+  | 'order_paid';
+
+export type CompanyActivityRow = {
+  id: number;
+  at: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  kind: CompanyActivityKind;
+  job_id: string | null;
+  job_title_ar: string | null;
+  job_title_en: string | null;
+  application_id: string | null;
+  candidate_name: string | null;
+  subject_user_id: string | null;
+  subject_name: string | null;
+  agent_id: string | null;
+  agent_name: string | null;
+  /** from/to (a status), role, can_* (a member's switches), pack and credits (an order). */
+  detail: Record<string, string | number | boolean | null>;
+};
+
 export type JobRow = Timestamped & {
   id: string;
   company_id: string;
@@ -1645,6 +1677,15 @@ export type Database = {
           status: ApplicationStatus;
           created_at: string;
         }[];
+      };
+      /**
+       * Migration 377: what the team did, newest first, a page at a time. An
+       * admin reads everyone's (and may narrow it to one member); anybody else
+       * on the team reads their own. Six months.
+       */
+      company_activity_page: {
+        Args: { p_before?: string | null; p_before_id?: number | null; p_member?: string | null; p_limit?: number };
+        Returns: CompanyActivityRow[];
       };
       /** The candidate's answer to an invitation still waiting on them (migration 373). */
       answer_interview: {
