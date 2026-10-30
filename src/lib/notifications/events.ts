@@ -7,6 +7,7 @@ import {
   notifyBrokerOfJobApproval,
   notifyBrokerOfWithdrawal,
   notifyCandidateOfApplication,
+  notifyCandidateOfCompanyMessage,
   notifyCandidateOfStatus,
   notifyCompanyVerification,
   notifyCompanyVerificationRevoked,
@@ -72,6 +73,8 @@ export type BusinessEvent =
   /** A candidate applied. Also NEW_APPLICANT, from the company's side. */
   | { type: 'APPLICATION_CREATED'; applicationId: string }
   | { type: 'APPLICATION_STATUS_CHANGED'; applicationId: string }
+  /** A company wrote to an applicant (by email only); `key` is the send, so a retry is the same message. */
+  | { type: 'COMPANY_MESSAGE_SENT'; applicationId: string; message: string; key: string }
   /** Taken as data: the mail is the announcement of that moment, built from the titles the action already read. */
   | {
       type: 'APPLICATION_WITHDRAWN';
@@ -120,6 +123,11 @@ export const ROUTES: Routes = {
   APPLICATION_STATUS_CHANGED: {
     inApp: 'trigger:on_application_moved',
     email: [(e) => notifyCandidateOfStatus(e.applicationId)],
+  },
+  COMPANY_MESSAGE_SENT: {
+    // Email only, decided: the company's words, sent from its inbox screen.
+    inApp: 'none',
+    email: [(e) => notifyCandidateOfCompanyMessage(e.applicationId, e.message, e.key)],
   },
   APPLICATION_WITHDRAWN: {
     // The company hears in the bell via on_application_withdrawn when the

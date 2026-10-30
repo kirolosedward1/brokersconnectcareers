@@ -327,6 +327,21 @@ export type MobileActions = {
     /** reasonKept: false when an unshared reason could not be kept as a note (the move itself stands). */
     output: ActionResult<{ reasonKept: boolean }>;
   };
+  /** Up to fifty moves at once, each as a single move (Phase B 01). */
+  setApplicationStatuses: {
+    input: {
+      items: { applicationId: string; from: ApplicationStatus }[];
+      status: ApplicationStatus;
+      decisionNote?: Nullable<string>;
+      shareReason?: boolean;
+    };
+    output: ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number }>;
+  };
+  /** One message to up to fifty applicants, by email; key made once per composer. */
+  messageApplicants: {
+    input: { applicationIds: string[]; message: string; key: string };
+    output: ActionResult<{ sent: number; skipped: number }>;
+  };
   /** Migration 373. Times are ISO instants with an offset; shown in Cairo time. One invitation stands per application. */
   inviteToInterview: {
     input: {

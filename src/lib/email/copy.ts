@@ -163,6 +163,16 @@ export const emailCopy = {
       labelStatus: 'الحالة الجديدة',
     },
 
+    companyMessage: {
+      subject: (company: string) => `رسالة من ${company} عن طلبك`,
+      preheader: 'رسالة من الشركة عن طلبك.',
+      heading: 'رسالة من الشركة',
+      body: (job: string, company: string) => `كتبت لك شركة ${company} عن طلبك على وظيفة «${job}»:`,
+      cta: 'عرض طلباتي',
+      labelJob: 'الوظيفة',
+      labelCompany: 'الشركة',
+    },
+
     applicationRejected: {
       subject: (job: string) => `تحديث على طلبك على وظيفة ${job}`,
       preheader: 'هناك تحديث على طلبك.',
@@ -509,6 +519,16 @@ export const emailCopy = {
       labelJob: 'Role',
       labelCompany: 'Company',
       labelStatus: 'New status',
+    },
+
+    companyMessage: {
+      subject: (company: string) => `A message from ${company} about your application`,
+      preheader: 'A message from the company about your application.',
+      heading: 'A message from the company',
+      body: (job: string, company: string) => `${company} wrote to you about your application for "${job}":`,
+      cta: 'My applications',
+      labelJob: 'Role',
+      labelCompany: 'Company',
     },
 
     applicationRejected: {

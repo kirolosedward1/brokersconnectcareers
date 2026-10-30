@@ -700,6 +700,52 @@ export async function notifyCandidateOfApplication(applicationId: string): Promi
 }
 
 /**
+ * Candidate: a message their company wrote to them about the application
+ * (Phase B 01, "one reply to many", by email only — decided). Under the same
+ * switch as their status mail. Keyed by the company's send, so a retried
+ * request sends it once. The words are the company's, cleaned before they
+ * reach here; not retryable, since they are kept nowhere else.
+ */
+export async function notifyCandidateOfCompanyMessage(applicationId: string, message: string, key: string): Promise<SendOutcome> {
+  try {
+    const admin = createAdminClient();
+    const application = await candidateApplication(admin, applicationId);
+    const job = application?.job;
+    if (!application || !job || application.status === 'withdrawn') return 'skipped';
+
+    const to = await recipient(admin, application.candidate_id, 'notify_status');
+    if (!to) return 'skipped';
+
+    const t = copyFor(to.locale).companyMessage;
+    const title = localized(to.locale, job.title_ar, job.title_en);
+    const company = job.company ? localized(to.locale, job.company.name_ar, job.company.name_en) : '';
+
+    return deliver({
+      template: 'company_message',
+      to: to.email,
+      userId: application.candidate_id,
+      dedupeKey: `company_message:${applicationId}:${key}`,
+      entity: { type: 'application', id: applicationId },
+      envelope: buildEnvelope({
+        audience: audienceOf(to, 'notify_status'),
+        subject: t.subject(company),
+        preheader: t.preheader,
+        heading: t.heading,
+        blocks: [
+          { kind: 'text', value: t.body(title, company) },
+          { kind: 'text', value: message },
+          { kind: 'facts', rows: [[t.labelJob, title], [t.labelCompany, company]] },
+          { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/applications` },
+        ],
+      }),
+    });
+  } catch (error) {
+    console.warn('[email] company message failed:', asMessage(error));
+    return 'failed';
+  }
+}
+
+/**
  * Candidate: the employer moved them along, or didn't.
  *
  * `rejected` gets its own template rather than the generic status card. The

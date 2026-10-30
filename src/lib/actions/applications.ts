@@ -23,6 +23,7 @@ import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { insertOnce } from '@/lib/actions/idempotency';
 import { jobIsLive } from '@/lib/job-state';
 import { refused } from '@/lib/observe';
+import { allow } from '@/lib/rate-limit';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -434,6 +435,95 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
   return { ok: true, data: { reasonKept } };
 }
 
+
+const bulkSchema = z.object({
+  items: z
+    .array(z.object({ applicationId: z.string().uuid(), from: z.enum(PIPELINE_STAGES) }))
+    .min(1)
+    .max(50),
+  status: z.enum(PIPELINE_STAGES),
+  decisionNote: z.string().trim().max(500).optional().nullable(),
+  shareReason: z.boolean().optional(),
+});
+
+/**
+ * Several applicants moved at once (Phase B 01): each exactly as a single
+ * move — compared and swapped on the stage its card showed, its reason shared
+ * or kept by the same tick, its candidate told as a single move tells them —
+ * so a batch is fifty ordinary moves, not a second set of rules. Fifty at
+ * most; the counts say what happened to each.
+ */
+export async function setApplicationStatuses(
+  input: unknown,
+): Promise<ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number }>> {
+  const parsed = bulkSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+  if (!(await allow(`applications_bulk:${user.id}`, 30, 3600))) return { ok: false, error: 'rate_limited' };
+
+  const counts = { moved: 0, movedAlready: 0, failed: 0, reasonsNotKept: 0 };
+  for (const item of parsed.data.items) {
+    const result = await setApplicationStatus({
+      applicationId: item.applicationId,
+      status: parsed.data.status,
+      decisionNote: parsed.data.decisionNote ?? null,
+      from: item.from,
+      ...(parsed.data.shareReason === false ? { shareReason: false } : {}),
+    });
+    if (result.ok) {
+      counts.moved += 1;
+      if (result.data && !result.data.reasonKept) counts.reasonsNotKept += 1;
+    } else if (result.error === 'moved_already') counts.movedAlready += 1;
+    else counts.failed += 1;
+  }
+  return { ok: true, data: counts };
+}
+
+const messageSchema = z.object({
+  applicationIds: z.array(z.string().uuid()).min(1).max(50),
+  message: z.string().trim().min(2).max(1000),
+  /** Made once when the composer opens, so a retried send is the same message. */
+  key: z.string().uuid(),
+});
+
+/**
+ * One message to several applicants, by email (Phase B 01: email only,
+ * decided). Only to the company's own applicants — the read is under RLS, so
+ * an id that is not theirs simply is not found — and never to one who has
+ * withdrawn. Sent from the event bus like every other email.
+ */
+export async function messageApplicants(input: unknown): Promise<ActionResult<{ sent: number; skipped: number }>> {
+  const parsed = messageSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+  if (!(await allow(`applicant_messages:${user.id}`, 300, 86400))) return { ok: false, error: 'rate_limited' };
+
+  const { data, error } = await supabase
+    .from('applications')
+    .select('id, status')
+    .in('id', parsed.data.applicationIds);
+  if (error) return refused('pipeline', error, { count: parsed.data.applicationIds.length });
+
+  const message = clean(parsed.data.message, true);
+  if (!message) return { ok: false, error: 'invalid' };
+  const reachable = (data ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.id as string);
+  after(async () => {
+    for (const applicationId of reachable) {
+      await publish({ type: 'COMPANY_MESSAGE_SENT', applicationId, message, key: parsed.data.key });
+    }
+  });
+  return { ok: true, data: { sent: reachable.length, skipped: parsed.data.applicationIds.length - reachable.length } };
+}
 
 const noteSchema = z.object({
   applicationId: z.string().uuid(),

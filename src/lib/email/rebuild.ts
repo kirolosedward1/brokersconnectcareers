@@ -85,6 +85,8 @@ export const NOT_RETRYABLE = [
   'company_follow_digest',
   'applicant_digest',
   'application_withdrawn',
+  // The company's words are not kept anywhere but the outbox row: there is nothing to rebuild from.
+  'company_message',
   'profile_ready',
   'visibility_changed',
   'account_approved',

@@ -43,6 +43,8 @@ import {
   applyToJob,
   deleteApplicationNote,
   setApplicationStatus,
+  setApplicationStatuses,
+  messageApplicants,
   withdrawApplication,
 } from '@/lib/actions/applications';
 import { requestPasswordReset, resendConfirmation } from '@/lib/actions/auth-email';
@@ -225,6 +227,8 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
 
   // Employer: applicants
   setApplicationStatus: { run: (input) => setApplicationStatus(input) },
+  setApplicationStatuses: { run: (input) => setApplicationStatuses(input) },
+  messageApplicants: { run: (input) => messageApplicants(input) },
   inviteToInterview: { run: (input) => inviteToInterview(input) },
   cancelInterview: { run: (input) => cancelInterview(input) },
   acceptProposedTime: { run: (input) => acceptProposedTime(input) },

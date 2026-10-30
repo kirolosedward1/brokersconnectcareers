@@ -40,6 +40,8 @@ export const TEMPLATES = {
   applicant_digest: 'preference',
   application_status: 'preference',
   application_rejected: 'preference',
+  // A message a company wrote to its applicants (Phase B 01): under the same switch as their status mail.
+  company_message: 'preference',
   job_approved: 'preference',
   job_rejected: 'preference',
   job_expiring: 'preference',
