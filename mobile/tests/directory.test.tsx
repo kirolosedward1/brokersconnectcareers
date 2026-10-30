@@ -21,6 +21,7 @@ import { toast } from '~/components/feedback/toast';
 import { unhideAgent } from '~/features/moderation/hidden-agents';
 import { useSaveRecord } from '~/features/profile/queries';
 import { catalogues, I18nProvider } from '~/i18n/provider';
+import { setAnalyticsSink } from '~/lib/analytics';
 import { rememberActor } from '~/lib/last-actor';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -474,16 +475,31 @@ describe("a consultant's page", () => {
     expect(screen.getByRole('button', { name: ar.agents.report })).toBeTruthy();
   });
 
-  it('asks for the number on a press, then offers WhatsApp and the CV', async () => {
+  it('asks for the number once the reveal is confirmed, then offers WhatsApp, a call and the CV', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
+    const events: [string, unknown][] = [];
+    setAnalyticsSink((event, props) => events.push([event, props]));
     await renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.agents.revealContact }));
+    // Said first, and nothing asked until it is confirmed.
+    expect(await screen.findByTestId('reveal-confirm')).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/revealAgentContact')).toHaveLength(0);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.reveal.confirm }));
     await waitFor(() => expect(input('/api/mobile/v1/actions/revealAgentContact')).toEqual({ handle: 'mona-ali', locale: 'ar' }));
     expect(await screen.findByText('+201001112223')).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: ar.agents.contact }));
+    fireEvent.press(screen.getByRole('button', { name: /واتساب/ }));
     expect(openURL).toHaveBeenCalledWith('https://wa.me/201001112223?text=hi');
+    fireEvent.press(screen.getByRole('button', { name: /^الاتصال/ }));
+    expect(openURL).toHaveBeenCalledWith('tel:+201001112223');
+    // The reveal → WhatsApp funnel, and never the number in it.
+    expect(events).toEqual([
+      ['agent_contact_revealed', {}],
+      ['agent_contact_clicked', { method: 'whatsapp' }],
+      ['agent_contact_clicked', { method: 'call' }],
+    ]);
+    setAnalyticsSink(null);
 
     fireEvent.press(screen.getByRole('button', { name: ar.agents.downloadCv }));
     await waitFor(() => expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith('https://storage.example/cv.pdf?token=1'));
@@ -495,11 +511,13 @@ describe("a consultant's page", () => {
     await renderRouter(app, { initialUrl: '/agents/mona-ali' });
 
     fireEvent.press(await screen.findByRole('button', { name: ar.agents.revealContact }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.reveal.confirm }));
     expect(await screen.findByText(/30/)).toBeTruthy();
 
     server.on('POST /api/mobile/v1/actions/revealAgentContact', { ok: false, error: 'locked' });
     await waitFor(() => expect(screen.getByRole('button', { name: ar.agents.revealContact }).props.accessibilityState?.busy).toBe(false));
     fireEvent.press(screen.getByRole('button', { name: ar.agents.revealContact }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.reveal.confirm }));
     expect(await screen.findByText(ar.agents.revealLocked)).toBeTruthy();
   });
 

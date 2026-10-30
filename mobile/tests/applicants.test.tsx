@@ -524,7 +524,7 @@ describe("a listing's applicants", () => {
     expect(server.asked(`/api/cv/${sara.id}`)).toHaveLength(1);
     expect(screen.getByText(ar.employer.noCv)).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.whatsappCandidate}: سارة عادل` }));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.contact.whatsappTo.replace('{name}', 'سارة عادل') }));
     expect(openURL.mock.calls[0]?.[0]).toMatch(/^https:\/\/wa\.me\/201001234567\?text=.+/);
     expect(decodeURIComponent(String(openURL.mock.calls[0]?.[0]).split('text=')[1])).toContain('سارة عادل');
     openURL.mockRestore();
@@ -620,7 +620,7 @@ describe("a listing's applicants", () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     const header = await screen.findByRole('header', { name: 'نورا سليم' });
     expect(screen.getAllByText(ar.applicationStatus.withdrawn).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: `${ar.employer.whatsappCandidate}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.app.contact.whatsappTo.replace('{name}', 'نورا سليم') })).toBeNull();
     expect(screen.queryByRole('button', { name: `${ar.app.replies.open}: نورا سليم` })).toBeNull();
     expect(screen.queryByRole('button', { name: `${ar.employer.downloadCv}: نورا سليم` })).toBeNull();
     expect(screen.queryByText(ar.employer.noCv)).toBeNull();

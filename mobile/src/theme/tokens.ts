@@ -37,6 +37,9 @@ export const palette = {
     success: '#1B7A4B',
     successForeground: '#FFFFFF',
     successMuted: '#E2F2E7',
+    /** WhatsApp's own green, for the one button that opens it (rule 8), with an ink that reads on it (8:1; white is 2:1). */
+    whatsapp: '#25D366',
+    whatsappForeground: '#052E16',
     warning: '#8F5B0E',
     warningMuted: '#FAEED6',
     destructive: '#B5372C',
@@ -77,6 +80,8 @@ export const palette = {
     success: '#55B582',
     successForeground: '#06120B',
     successMuted: '#11281B',
+    whatsapp: '#25D366',
+    whatsappForeground: '#052E16',
     warning: '#E2B05A',
     warningMuted: '#33270E',
     destructive: '#F27468',

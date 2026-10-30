@@ -28,6 +28,7 @@ export { default as Building2 } from 'lucide-react-native/icons/building-complex
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as CalendarClock } from 'lucide-react-native/icons/calendar-clock';
 export { default as CalendarX2 } from 'lucide-react-native/icons/calendar-x-2';
+export { default as ChartColumn } from 'lucide-react-native/icons/chart-column';
 export { default as Check } from 'lucide-react-native/icons/check';
 export { default as CheckCheck } from 'lucide-react-native/icons/check-check';
 export { default as CheckCircle2 } from 'lucide-react-native/icons/circle-check';

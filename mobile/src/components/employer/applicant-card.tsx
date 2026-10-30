@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, Eye, FileX2, MessageCircle, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
+import { Download, Eye, FileX2, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
 import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
@@ -10,6 +10,7 @@ import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { PIPELINE_STAGES, STAGE_TONE, WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
+import { ContactButtons } from '~/components/ui/contact-buttons';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
 import { SavedRepliesSheet } from '~/components/employer/saved-replies';
 import { Avatar } from '~/components/ui/avatar';
@@ -303,17 +304,17 @@ export function ApplicantCard({
       {!withdrawn ? (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
         {candidate ? (
-          <Button
-            label={t('employer.whatsappCandidate')}
-            accessibilityLabel={`${t('employer.whatsappCandidate')}: ${name}`}
-            size="sm"
-            icon={<MessageCircle size={16} color={colors.primaryForeground} />}
-            onPress={() =>
-              Linking.openURL(
-                whatsappLink(candidate.whatsapp_phone, employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' })),
-              ).catch(() => {})
-            }
-          />
+          <View style={{ flexBasis: '100%' }}>
+            <ContactButtons
+              size="sm"
+              name={name}
+              phone={candidate.whatsapp_phone}
+              whatsappUrl={whatsappLink(
+                candidate.whatsapp_phone,
+                employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' }),
+              )}
+            />
+          </View>
         ) : null}
         {/* The company's own replies, kept on this phone (saved-replies.tsx). */}
         {candidate ? (

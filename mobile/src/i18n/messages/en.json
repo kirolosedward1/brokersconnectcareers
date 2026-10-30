@@ -578,8 +578,6 @@
     "tabWaiting": "{name}, {count, plural, one {# waiting on a decision} other {# waiting on a decision}}",
     "adminConsole": "Admin console",
     "reportCount": "{count, plural, one {<v>#</v> report} other {<v>#</v> reports}}",
-    "openWhatsApp": "Open WhatsApp",
-    "call": "Call",
     "addNote": "Add a note",
     "noteLabel": "Note (optional, admins only)",
     "accountsLede": "Find any account; its file has the facts, what it has done, and every lever.",
@@ -715,5 +713,59 @@
     "statusUnknown": "Could not check the service status right now",
     "checking": "Checking the service status…",
     "version": "Version"
+  },
+  "contact": {
+    "whatsappTo": "Message {name} on WhatsApp",
+    "callTo": "Call {name}"
+  },
+  "reveal": {
+    "title": "Reveal {name}'s contact",
+    "body": "You will see their number and a WhatsApp button with a first message ready.",
+    "recordedAs": "Recorded under",
+    "ledger": "Every reveal is kept in a record the profile's owner may see.",
+    "again": "Opening it again today does not count as a new reveal.",
+    "confirm": "Reveal contact"
+  },
+  "listingStats": {
+    "open": "Performance",
+    "title": "Listing performance",
+    "ended": "This listing has ended",
+    "endedOn": "Ended on {date}",
+    "expiresOn": "Ends on {date}",
+    "editFirst": "Edit first",
+    "views": "Views",
+    "applications": "Applications",
+    "rate": "Apply rate",
+    "rateHint": "Applications per hundred views.",
+    "chart": "Applications day by day",
+    "chartEmpty": "No applications in this period.",
+    "range7": "<v>7</v> days",
+    "range14": "<v>14</v> days",
+    "range30": "<v>30</v> days"
+  },
+  "employerHome": {
+    "today": "Needs you today",
+    "unseen": "Applicants whose applications you have not opened",
+    "unseenBody": "Applicants can see when the company opened their application.",
+    "review": "Review",
+    "expiring": "“{title}” ends on {date}",
+    "expiringBody": "Applicants so far: <v>{count}</v>",
+    "expiringMore": "Listings ending within a week",
+    "openListing": "Open",
+    "ended": "Listings that have ended",
+    "endedBody": "Repost them to send them back through review and show them again.",
+    "repost": "Repost",
+    "pending": "Listings in review",
+    "pendingBody": "Our team reviews them before they are published.",
+    "credits": "Posting credit",
+    "creditsBody": "How many listings you can publish.",
+    "billing": "Credit",
+    "nothing": "Nothing is waiting for you right now.",
+    "figures": "Figures",
+    "myListings": "My listings",
+    "addListing": "Add a job",
+    "allListings": "All listings",
+    "listingLine": "Seats: <v>{seats}</v> · Applicants: <v>{applicants}</v>",
+    "live": "Published listings: <v>{count}</v>"
   }
 }

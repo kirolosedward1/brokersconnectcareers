@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { listingNotes, noteFor } from '@/lib/listing-notes';
 import { canAccessEmployerArea } from '@/lib/permissions';
 import type { JobRow } from '@/lib/supabase/database.types';
+import { track } from '~/lib/analytics';
 import { callAction } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -119,6 +120,7 @@ export function useTransitionJob() {
       if (!result.ok) {
         throw new TransitionRefused((NAMED as readonly string[]).includes(result.error) ? (result.error as TransitionRefusal) : 'failed');
       }
+      if (input.status === 'pending_review') track('job_submitted', {});
     },
     // The listings are read again before the move counts as settled, so the
     // row shows its stored status; the overview's counts follow without holding the button.

@@ -15,6 +15,7 @@ import type {
 import { westernDigits } from '@/lib/search/arabic';
 import { clean } from '@/lib/security/sanitize';
 import { wholeNumber } from '~/components/profile/fields';
+import { track } from '~/lib/analytics';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -324,7 +325,9 @@ export function useSaveJob() {
     // employer screen was read again first, the edited listing came back at its
     // new version and the wizard it keyed was drawn anew — at step 1 — instead
     // of closing. The listing's public page is read again too.
-    onSuccess: () => {
+    onSuccess: (_id, input) => {
+      // The start of employer post → first applicant opened: a listing sent for review.
+      if (input.submit) track('job_submitted', {});
       void queryClient.invalidateQueries({ queryKey: ['employer'] });
       void queryClient.invalidateQueries({ queryKey: ['jobs', 'detail'] });
     },

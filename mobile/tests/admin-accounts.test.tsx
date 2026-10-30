@@ -354,9 +354,9 @@ describe("an account's file", () => {
     expect(screen.queryByRole('button', { name: ar.admin.revealContact })).toBeNull();
     expect(server.asked('/rest/v1/rpc/admin_view_contacts').at(-1)?.body).toEqual({ p_users: [OTHER_USER] });
 
-    fireEvent.press(screen.getByRole('button', { name: ar.app.admin.call }));
+    fireEvent.press(screen.getByRole('button', { name: /^الاتصال/ }));
     expect(openURL).toHaveBeenCalledWith('tel:+201001234567');
-    fireEvent.press(screen.getByRole('button', { name: ar.app.admin.openWhatsApp }));
+    fireEvent.press(screen.getByRole('button', { name: /على واتساب$/ }));
     expect(openURL).toHaveBeenCalledWith('https://wa.me/201001234567');
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.userTabs.security }));

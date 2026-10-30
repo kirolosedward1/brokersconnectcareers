@@ -22,6 +22,7 @@ import {
 } from '@/lib/application-stages';
 import { EXPERIENCE_BANDS, JOB_TRACKS } from '@/lib/taxonomy';
 import { looseArabicNeedle } from '@/lib/search/needle';
+import { track } from '~/lib/analytics';
 import { callAction, getJson, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -362,7 +363,23 @@ export function useMarkSeen(applicants: Applicant[] | undefined) {
       .slice(0, APPLICANTS_CAP);
     if (!ids.length) return;
     for (const id of ids) sent.current.add(id);
-    void callAction('markApplicantsSeen', { ids }).catch(() => {});
+    void callAction('markApplicantsSeen', { ids })
+      .then((result) => {
+        if (!result.ok) return;
+        // The employer post → first applicant opened funnel: `first` for the
+        // first applicant opened on a listing none of whose applicants had
+        // been opened before.
+        const rows = applicants ?? [];
+        const openedBefore = new Set(rows.filter((row) => row.employer_viewed_at).map((row) => row.job?.id ?? ''));
+        const counted = new Set<string>();
+        for (const id of ids) {
+          const job = rows.find((row) => row.id === id)?.job?.id ?? '';
+          const first = Boolean(job) && !openedBefore.has(job) && !counted.has(job);
+          if (job) counted.add(job);
+          track('applicant_opened', { first });
+        }
+      })
+      .catch(() => {});
   }, [applicants, onScreen]);
 }
 

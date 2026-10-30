@@ -168,7 +168,14 @@ export function AgentProfile({ handle }: { handle: string }) {
         {card.is_unlocked ? (
           canReveal || (isOwner && card.has_cv) || canShortlist ? (
             <View style={{ gap: space[3] }}>
-              {canReveal ? <ContactReveal handle={card.slug} hasCv={card.has_cv} /> : null}
+              {canReveal ? (
+                <ContactReveal
+                  handle={card.slug}
+                  hasCv={card.has_cv}
+                  name={name}
+                  detail={[headline, ...areas.slice(0, 2).map((area) => localized(locale, area.name_ar, area.name_en))].filter(Boolean).join(' · ')}
+                />
+              ) : null}
               {isOwner && card.has_cv ? <CvButton handle={card.slug} /> : null}
               {canShortlist ? (
                 <View style={{ alignItems: 'flex-start' }}>

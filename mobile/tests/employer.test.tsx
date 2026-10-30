@@ -13,6 +13,8 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as HomeScreen from '../src/app/(tabs)/(home)/index';
 import * as ListingsScreen from '../src/app/(tabs)/(listings)/employer/jobs/index';
+import * as ListingStatsScreen from '../src/app/(tabs)/(listings)/employer/jobs/[id]/stats';
+import { cairoDayOf, dailyApplications } from '~/features/employer/listing-stats';
 import { DeclaredTabs } from './declared-tabs';
 import { authSession, authUser, memberPrivate, mobileConfig, ownedCompany, profile, USER_ID } from './auth-fixtures';
 import { newCairo } from './fixtures';
@@ -190,18 +192,34 @@ const app = {
   '(tabs)/(home)/index': HomeScreen,
   '(tabs)/(listings)/employer/jobs/index': ListingsScreen,
   '(tabs)/(listings)/employer/jobs/new': stand('the wizard'),
+  '(tabs)/(listings)/employer/jobs/[id]/stats': ListingStatsScreen,
+  '(tabs)/(listings)/employer/jobs/[id]/edit': stand('the editor'),
   '(tabs)/(applicants)/employer/applicants/index': stand('the inbox'),
   '(tabs)/(account)/employer/company': stand('the company'),
   '(tabs)/(account)/employer/billing': stand('billing'),
 };
 
 describe("an employer's home", () => {
-  it('opens on the overview: the applicants waiting first, then the work and the company in figures', async () => {
+  it('opens on the company and what needs it today, the listings, and the figures folded under one heading', async () => {
     await signIn();
     const result = await renderRouter(app, { initialUrl: '/' });
 
-    expect(await screen.findByText(ar.dashboard.overview)).toBeTruthy();
-    expect(await screen.findByText('3 متقدمين بانتظارك')).toBeTruthy();
+    // The company and what it has live.
+    expect(await screen.findByText(myCompany.name_ar)).toBeTruthy();
+    // What needs the employer today: the two applicants nobody has opened, the listing in review, the credit.
+    expect(await screen.findByText(ar.app.employerHome.today)).toBeTruthy();
+    expect(screen.getByText(ar.app.employerHome.unseen)).toBeTruthy();
+    expect(screen.getByText(ar.app.employerHome.pending)).toBeTruthy();
+    expect(screen.getByText(ar.app.employerHome.credits)).toBeTruthy();
+    // The listings, each a way to how it is doing.
+    expect(await screen.findByText(ar.app.employerHome.myListings)).toBeTruthy();
+    expect(screen.getByText('مستشار مبيعات')).toBeTruthy();
+    // With listings up, the checklist has stood down.
+    expect(screen.queryByText(ar.employer.setupTitle) === null).toBe(true);
+
+    // The figures, folded until asked for.
+    expect(screen.queryByLabelText(`${ar.dashboard.statApplicantsNew}: 3`)).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.employerHome.figures }));
     expect(screen.getByLabelText(`${ar.dashboard.statApplicantsNew}: 3`)).toBeTruthy();
     // Six this week against four the week before: up by half.
     expect(screen.getByLabelText(`${ar.dashboard.statApplicants7d}: 6، ${ar.app.dashboard.trendUp.replace('{value}', '50%')} ${ar.dashboard.vsLastWeek}`)).toBeTruthy();
@@ -209,11 +227,20 @@ describe("an employer's home", () => {
     // The month, and how each listing converts.
     expect(await screen.findByText(ar.dashboard.trendApplicationsTitle)).toBeTruthy();
     expect(screen.getByLabelText(/^مستشار مبيعات: 4%/)).toBeTruthy();
-    // With listings up, the checklist has stood down.
-    expect(screen.queryByText(ar.employer.setupTitle) === null).toBe(true);
 
     fireEvent.press(screen.getByRole('link', { name: `${ar.dashboard.statCredits}: 1` }));
     await waitFor(() => expect(result.getPathname()).toBe('/employer/billing'));
+  });
+
+  it('says the listing that ends soonest, and opens the unseen applicants from the queue', async () => {
+    listings = [listing({ expires_at: new Date(Date.now() + 2 * 86_400_000).toISOString() })];
+    server.on('POST /rest/v1/rpc/employer_summary', () => summary({ expiring_soon: 1 }));
+    await signIn();
+    const result = await renderRouter(app, { initialUrl: '/' });
+
+    expect(await screen.findByText(/^«مستشار مبيعات» ينتهي في/)).toBeTruthy();
+    fireEvent.press(screen.getByText(ar.app.employerHome.unseen));
+    await waitFor(() => expect(result.getPathname()).toBe('/employer/applicants'));
   });
 
   it('says what is left before the first listing, instead of a page of zeros', async () => {
@@ -239,7 +266,7 @@ describe("an employer's home", () => {
     expect(screen.queryByText(ar.dashboard.emptyEmployerTitle)).toBeNull();
     server.on('POST /rest/v1/rpc/employer_summary', () => summary());
     fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
-    expect(await screen.findByText(ar.dashboard.trendApplicationsTitle)).toBeTruthy();
+    expect(await screen.findByText(ar.app.employerHome.today)).toBeTruthy();
   });
 
   it('asks for the company first when there is none', async () => {
@@ -345,5 +372,34 @@ describe("an employer's listings", () => {
     await renderRouter(app, { initialUrl: '/employer/jobs' });
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     expect(screen.queryByText(ar.employer.noJobs) === null).toBe(true);
+  });
+});
+
+describe("a listing's performance", () => {
+  it('counts applications by Cairo day, the last day being today', () => {
+    const now = new Date('2026-10-29T21:30:00Z'); // 23:30 or 00:30 in Cairo, either way the 29th or 30th
+    const days = dailyApplications(['2026-10-28T10:00:00Z', '2026-10-28T11:00:00Z', '2026-10-20T10:00:00Z'], now, 14);
+    expect(days).toHaveLength(14);
+    expect(days.at(-1)?.d).toBe(cairoDayOf(now));
+    expect(days.find((day) => day.d === '2026-10-28')?.applications).toBe(2);
+    expect(days.reduce((sum, day) => sum + day.applications, 0)).toBe(3);
+  });
+
+  it('draws its views, applications and the rate between them, and offers a repost once it has ended', async () => {
+    const ended = listing({ status: 'expired', expires_at: '2026-09-30T10:00:00Z', view_count: 200, applications: [{ count: 8 }] });
+    listings = [ended];
+    server.on('GET /rest/v1/applications', [{ created_at: new Date().toISOString() }]);
+    server.on('POST /api/mobile/v1/actions/transitionJob', { ok: true });
+    await signIn();
+    await renderRouter(app, { initialUrl: `/employer/jobs/${ended.id}/stats` });
+
+    expect(await screen.findByText(ar.app.listingStats.ended)).toBeTruthy();
+    const figures = screen.getAllByTestId('figure-tile');
+    expect(figures).toHaveLength(3);
+    expect(screen.getByText(ar.app.listingStats.rateHint)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.reopenJob}: مستشار مبيعات` }));
+    await waitFor(() =>
+      expect(server.asked('/api/mobile/v1/actions/transitionJob')[0]?.body).toMatchObject({ input: { jobId: ended.id, status: 'pending_review' } }),
+    );
   });
 });
