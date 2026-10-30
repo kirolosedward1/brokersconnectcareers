@@ -3570,6 +3570,1769 @@ exports[`HiringSettings draws right to left 1`] = `
 </RNCSafeAreaProvider>
 `;
 
+exports[`OwnershipSettings draws at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 20,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        accessibilityRole="header"
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            undefined,
+          ]
+        }
+      >
+        حساب الشركة
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        مدة حفظ طلبات الإعلانات المنتهية، ونقل الملكية، وحذف الشركة.
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        حفظ الطلبات بعد انتهاء الإعلان
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        تُحذف الطلبات بعد هذه المدة من انتهاء الإعلان، ويحتفظ كل متقدم بسجل لطلبه.
+      </Text>
+      <RCTScrollView
+        accessibilityLabel="حفظ الطلبات بعد انتهاء الإعلان"
+        accessibilityRole="radiogroup"
+        contentContainerStyle={
+          {
+            "gap": 8,
+          }
+        }
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+      >
+        <View>
+          <View
+            accessibilityLabel="سنة من التقديم (الافتراضي)"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": false,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 1,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              سنة من التقديم (الافتراضي)
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="ستة أشهر"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": false,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 1,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              ستة أشهر
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="ثلاثة أشهر"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": true,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#16295A",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 0,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              ثلاثة أشهر
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="شهر"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": false,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 1,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              شهر
+            </Text>
+          </View>
+        </View>
+      </RCTScrollView>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        نقل الملكية
+      </Text>
+      <View
+        style={
+          {
+            "gap": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_500Medium",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              undefined,
+            ]
+          }
+        >
+          المالك الجديد
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                undefined,
+              ]
+            }
+          >
+             · لا تنتقل الملكية إلا إلى عضو في الفريق. تبقى أنت مسؤولًا في الشركة.
+          </Text>
+        </Text>
+        <View
+          accessibilityLabel="المالك الجديد: اختر عضوًا من الفريق"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": false,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#8B8578",
+              "borderCurve": "continuous",
+              "borderRadius": 14,
+              "borderWidth": 1,
+              "flexDirection": "row",
+              "gap": 8,
+              "justifyContent": "space-between",
+              "minHeight": 50,
+              "paddingHorizontal": 14,
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 16,
+                  "lineHeight": 28,
+                },
+                {
+                  "flexShrink": 1,
+                },
+              ]
+            }
+          >
+            اختر عضوًا من الفريق
+          </Text>
+          <RNSVGSvgView
+            align="xMidYMid"
+            aria-hidden="true"
+            bbHeight={18}
+            bbWidth={18}
+            className="lucide lucide-chevron-down"
+            fill="none"
+            focusable={false}
+            height={18}
+            meetOrSlice={0}
+            minX={0}
+            minY={0}
+            stroke="#5C6270"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            style={
+              [
+                {
+                  "backgroundColor": "transparent",
+                  "borderWidth": 0,
+                },
+                {
+                  "flex": 0,
+                  "height": 18,
+                  "width": 18,
+                },
+              ]
+            }
+            vbHeight={24}
+            vbWidth={24}
+            width={18}
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <RNSVGGroup
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            >
+              <RNSVGPath
+                d="m6 9 6 6 6-6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4284244592,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+            </RNSVGGroup>
+          </RNSVGSvgView>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": true,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={0}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E6E1D8",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 1,
+              "justifyContent": "center",
+              "minHeight": 48,
+              "opacity": 0.45,
+              "paddingHorizontal": 20,
+              "transform": [
+                {
+                  "scale": 1,
+                },
+              ],
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+                "maxWidth": "100%",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 16,
+                    "lineHeight": 28,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              نقل الملكية
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        حذف الشركة
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        تختفي الشركة فورًا، وتُحذف بعد أربعة عشر يومًا ما لم تلغِ الحذف.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={0}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#B5372C",
+              "borderColor": "transparent",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 0,
+              "justifyContent": "center",
+              "minHeight": 48,
+              "opacity": 1,
+              "paddingHorizontal": 20,
+              "transform": [
+                {
+                  "scale": 1,
+                },
+              ],
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+                "maxWidth": "100%",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 16,
+                    "lineHeight": 28,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                    "flexShrink": 1,
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              حذف الشركة
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`OwnershipSettings draws right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 20,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        accessibilityRole="header"
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            undefined,
+          ]
+        }
+      >
+        حساب الشركة
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        مدة حفظ طلبات الإعلانات المنتهية، ونقل الملكية، وحذف الشركة.
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        حفظ الطلبات بعد انتهاء الإعلان
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        تُحذف الطلبات بعد هذه المدة من انتهاء الإعلان، ويحتفظ كل متقدم بسجل لطلبه.
+      </Text>
+      <RCTScrollView
+        accessibilityLabel="حفظ الطلبات بعد انتهاء الإعلان"
+        accessibilityRole="radiogroup"
+        contentContainerStyle={
+          {
+            "gap": 8,
+          }
+        }
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+      >
+        <View>
+          <View
+            accessibilityLabel="سنة من التقديم (الافتراضي)"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": false,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 1,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              سنة من التقديم (الافتراضي)
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="ستة أشهر"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": false,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 1,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              ستة أشهر
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="ثلاثة أشهر"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": true,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#16295A",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 0,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              ثلاثة أشهر
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="شهر"
+            accessibilityRole="radio"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": false,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            hitSlop={4}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 18,
+                "borderWidth": 1,
+                "flexDirection": "row",
+                "gap": 6,
+                "maxWidth": "100%",
+                "minHeight": 36,
+                "opacity": 1,
+                "paddingHorizontal": 14,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                  },
+                ]
+              }
+            >
+              شهر
+            </Text>
+          </View>
+        </View>
+      </RCTScrollView>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        نقل الملكية
+      </Text>
+      <View
+        style={
+          {
+            "gap": 4,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_500Medium",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              undefined,
+            ]
+          }
+        >
+          المالك الجديد
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                undefined,
+              ]
+            }
+          >
+             · لا تنتقل الملكية إلا إلى عضو في الفريق. تبقى أنت مسؤولًا في الشركة.
+          </Text>
+        </Text>
+        <View
+          accessibilityLabel="المالك الجديد: اختر عضوًا من الفريق"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": false,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#8B8578",
+              "borderCurve": "continuous",
+              "borderRadius": 14,
+              "borderWidth": 1,
+              "flexDirection": "row",
+              "gap": 8,
+              "justifyContent": "space-between",
+              "minHeight": 50,
+              "paddingHorizontal": 14,
+            }
+          }
+        >
+          <Text
+            numberOfLines={1}
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 16,
+                  "lineHeight": 28,
+                },
+                {
+                  "flexShrink": 1,
+                },
+              ]
+            }
+          >
+            اختر عضوًا من الفريق
+          </Text>
+          <RNSVGSvgView
+            align="xMidYMid"
+            aria-hidden="true"
+            bbHeight={18}
+            bbWidth={18}
+            className="lucide lucide-chevron-down"
+            fill="none"
+            focusable={false}
+            height={18}
+            meetOrSlice={0}
+            minX={0}
+            minY={0}
+            stroke="#5C6270"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            style={
+              [
+                {
+                  "backgroundColor": "transparent",
+                  "borderWidth": 0,
+                },
+                {
+                  "flex": 0,
+                  "height": 18,
+                  "width": 18,
+                },
+              ]
+            }
+            vbHeight={24}
+            vbWidth={24}
+            width={18}
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <RNSVGGroup
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            >
+              <RNSVGPath
+                d="m6 9 6 6 6-6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4284244592,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+            </RNSVGGroup>
+          </RNSVGSvgView>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": true,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={0}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E6E1D8",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 1,
+              "justifyContent": "center",
+              "minHeight": 48,
+              "opacity": 0.45,
+              "paddingHorizontal": 20,
+              "transform": [
+                {
+                  "scale": 1,
+                },
+              ],
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+                "maxWidth": "100%",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 16,
+                    "lineHeight": 28,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              نقل الملكية
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        حذف الشركة
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        تختفي الشركة فورًا، وتُحذف بعد أربعة عشر يومًا ما لم تلغِ الحذف.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={0}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#B5372C",
+              "borderColor": "transparent",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 0,
+              "justifyContent": "center",
+              "minHeight": 48,
+              "opacity": 1,
+              "paddingHorizontal": 20,
+              "transform": [
+                {
+                  "scale": 1,
+                },
+              ],
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+                "maxWidth": "100%",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 16,
+                    "lineHeight": 28,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                    "flexShrink": 1,
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              حذف الشركة
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
 exports[`PausedNotice and CompanyContact draws at the largest text size 1`] = `
 <RNCSafeAreaProvider
   onInsetsChange={[Function]}
@@ -4602,6 +6365,166 @@ exports[`PausedNotice and CompanyContact draws right to left 1`] = `
         </Text>
       </View>
     </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`RecordRow draws at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "borderTopColor": "#E6E1D8",
+        "borderTopWidth": 0,
+        "gap": 4,
+        "padding": 16,
+      }
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#121620",
+            "fontFamily": "IBMPlexSansArabic_500Medium",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 16,
+            "lineHeight": 28,
+          },
+          undefined,
+        ]
+      }
+    >
+      مستشار عقاري
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 14,
+            "lineHeight": 22,
+          },
+          undefined,
+        ]
+      }
+    >
+      شركة أُغلقت · قائمة مختصرة
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      قدّمت يوم 1 أغسطس 2026 · حذفت الشركة طلبات الإعلانات المنتهية
+    </Text>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`RecordRow draws right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "borderTopColor": "#E6E1D8",
+        "borderTopWidth": 0,
+        "gap": 4,
+        "padding": 16,
+      }
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#121620",
+            "fontFamily": "IBMPlexSansArabic_500Medium",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 16,
+            "lineHeight": 28,
+          },
+          undefined,
+        ]
+      }
+    >
+      مستشار عقاري
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 14,
+            "lineHeight": 22,
+          },
+          undefined,
+        ]
+      }
+    >
+      شركة أُغلقت · قائمة مختصرة
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      قدّمت يوم 1 أغسطس 2026 · حذفت الشركة طلبات الإعلانات المنتهية
+    </Text>
   </View>
 </RNCSafeAreaProvider>
 `;

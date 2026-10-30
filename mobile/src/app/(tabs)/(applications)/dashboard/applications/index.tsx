@@ -15,6 +15,7 @@ import { ApplicationTimeline } from '~/components/applications/timeline';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Illustration } from '~/components/ui/illustration';
+import { ClearedApplications } from '~/components/applications/cleared-applications';
 import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
@@ -170,6 +171,9 @@ export default function ApplicationsScreen() {
             )}
           </View>
         )}
+
+        {/* What a company cleared or took with it when it closed (Phase B 07c). */}
+        {view === 'all' || view === 'ended' ? <ClearedApplications /> : null}
       </ScrollView>
     );
   }

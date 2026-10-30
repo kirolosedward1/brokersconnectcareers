@@ -93,7 +93,15 @@ const PASSWORD = 'correct-horse';
 const user = authUser();
 const RECRUITER = 'c0000000-0000-4000-8000-000000000002';
 const employer: ProfileRow = { ...profile, role: 'employer', full_name: 'أحمد سمير' };
-const baseCompany: CompanyRow = { ...ownedCompany, verification_status: 'unverified', version: 3 };
+const baseCompany: CompanyRow = {
+  ...ownedCompany,
+  verification_status: 'unverified',
+  version: 3,
+  // Migration 379's columns, as a server that has them answers.
+  deletion_requested_at: null,
+  closed_at: null,
+  purge_closed_after_days: null,
+};
 
 let company: CompanyRow | null;
 /** The chooser's answer for a paper: 0 camera, 1 photo library, 2 a file, 3 cancel. */
@@ -224,8 +232,8 @@ const app = {
   '(tabs)/(account)/employer/activity': ActivityScreen,
 };
 
-// The company's profile read, not its hiring settings (read on their own, migration 378).
-const profileReads = () => server.asked('/rest/v1/companies').filter((request) => !request.url.searchParams.get('select')?.includes('hiring_status'));
+// The company's profile read, not the hiring or closure columns read on their own (migrations 378, 379).
+const profileReads = () => server.asked('/rest/v1/companies').filter((request) => request.url.searchParams.get('select')?.startsWith('id,'));
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: Record<string, unknown> } | undefined)?.input;
 
 function answerAlert(alert: jest.SpyInstance, label: string) {
@@ -520,6 +528,43 @@ describe("the company's page, for a company admin", () => {
     expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
   });
 
+  it("keeps an ended listing's applications as long as the admin chooses", async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationPurge', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('radio', { name: ar.app.closure.purgeThreeMonths }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/setApplicationPurge')).toEqual({ days: 90 }));
+  });
+
+  it('hands ownership to a member only after asking', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    server.on('POST /api/mobile/v1/actions/transferCompanyOwnership', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    // The colleague has no readable name: the roster's dash.
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.closure.transferTo}: ${ar.app.closure.transferPick}` }));
+    fireEvent.press(await screen.findByRole('radio', { name: '—' }));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.closure.transfer }));
+    expect(server.asked('/api/mobile/v1/actions/transferCompanyOwnership')).toHaveLength(0);
+    answerAlert(alert, ar.app.closure.transfer);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/transferCompanyOwnership')).toEqual({ userId: RECRUITER }));
+  });
+
+  it("deletes the company only with its name typed back, and offers to cancel while it goes", async () => {
+    server.on('POST /api/mobile/v1/actions/requestCompanyDeletion', () => {
+      company = { ...company!, deletion_requested_at: '2026-10-30T10:00:00Z' };
+      return { ok: true };
+    });
+    server.on('POST /api/mobile/v1/actions/cancelCompanyDeletion', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.closure.delete }));
+    const confirm = await screen.findByRole('button', { name: ar.app.closure.deleteConfirm });
+    expect(confirm.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.changeText(screen.getByLabelText(ar.app.closure.deleteConfirmLabel.replace('{name}', company!.name_ar)), company!.name_ar);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.closure.deleteConfirm }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/requestCompanyDeletion')).toEqual({ confirmName: company!.name_ar }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.closure.cancel }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/cancelCompanyDeletion')).toHaveLength(1));
+  });
+
   it('says the team is full when the website refuses a sixth', async () => {
     server.on('POST /api/mobile/v1/actions/addCompanyMember', { ok: false, error: 'team_full' });
     await renderRouter(app, { initialUrl: '/employer/company' });
@@ -735,7 +780,7 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
 
     expect(await screen.findByText('2')).toBeTruthy();
-    const selects = profileReads().map((request) => request.url.searchParams.get('select') ?? '');
+    const selects = server.asked('/rest/v1/companies').map((request) => request.url.searchParams.get('select') ?? '');
     expect(selects.some((select) => select.includes('post_credits'))).toBe(true);
   });
 
@@ -748,7 +793,7 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
 
     expect(await screen.findByText('2')).toBeTruthy();
-    const selects = profileReads().map((request) => request.url.searchParams.get('select') ?? '');
+    const selects = server.asked('/rest/v1/companies').map((request) => request.url.searchParams.get('select') ?? '');
     expect(selects.some((select) => select.includes('post_credits'))).toBe(true);
   });
 

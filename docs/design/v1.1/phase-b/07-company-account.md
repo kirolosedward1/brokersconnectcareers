@@ -121,3 +121,63 @@ applications, and deserve a design doc of their own.
     pause until turned back on, or for a week, two weeks or a month.
   - The app reads these columns directly. A failed read means open.
 
+## Built (2026-10-30): 7c, ownership, deletion with grace, purging
+
+Migration 379, `who_owns_the_company_and_when_it_goes`. Test:
+`supabase/tests/company-closure.test.mjs`. `docs/data-lifecycle.md`
+records the closure decision.
+
+- **Ownership:**
+  - `transfer_company_ownership()` hands the company only to a member in
+    good standing (decided).
+  - The new owner becomes an admin with every switch on. The former owner
+    stays an admin.
+  - `guard_company_update()` refuses any other way of moving `owner_id`.
+  - Recorded in the activity log.
+  - The doc's emailed confirmation code was not built. The owner confirms in
+    a dialog. Emails to both people come with the website's settings page.
+- **Deletion, 14 days (decided):**
+  - `request_company_deletion()` is for the owner alone. It runs at once:
+    - `company_suspended()` answers true, so the public page hides it.
+    - Hiring pauses.
+    - Live listings close, and listings in review go back to draft.
+    - Nothing can be submitted (`company_closing`).
+  - `cancel_company_deletion()` brings it back. Listings stay closed and
+    hiring stays paused until reopened on purpose.
+  - `close_due_companies()` runs nightly, from pg_cron and the lifecycle
+    route. After 14 days it:
+    1. Writes each applicant's record.
+    2. Deletes the applications (no withdrawal notices).
+    3. Deletes the company. Its logo, papers and CVs are queued by the
+       existing release triggers.
+  - A company with orders is **closed** instead of deleted, because a
+    payment is the platform's record (migration 353). Its team (all but the
+    owner, whom the membership guard keeps) and its listings go, its
+    profile is emptied, and the row stays.
+- **Purging (decided: candidates keep a record):**
+  - `companies.purge_closed_after_days` is 30, 90, 180 or 365. The app
+    offers a year from applying (the default), six months, three months or
+    a month.
+  - Applications to listings ended longer than that are cleared nightly.
+  - `jobs.ended_at` is new, stamped by a trigger, because nothing recorded
+    when a listing ended.
+- **The candidate's record:** `application_records`, which only they read.
+  It holds the listing's title, the company's name, when they applied and
+  the last status. It is kept a year from applying, as the application
+  would have been. «طلبات لم تعد عند الشركة» is shown under All and Ended in
+  the applications tab.
+- **Website:**
+  - Actions `transferCompanyOwnership`, `requestCompanyDeletion` (the
+    company's name typed back), `cancelCompanyDeletion` and
+    `setApplicationPurge`.
+  - `company_closing` is mapped for listings.
+  - The website's settings page for all of this comes later.
+- **App:** «حساب الشركة» on the company page.
+  - Any admin sets the purge period.
+  - The owner hands over, deletes (a sheet that says what happens and asks
+    for the name), or cancels while it goes.
+  - A closed company says so.
+
+Not built from 07: 7b (branches) and default screening questions, which
+need their own design doc.
+

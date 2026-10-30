@@ -69,6 +69,12 @@ export function useActivityWords() {
           return t('app.activity.memberChanged');
         case 'order_paid':
           return t('app.activity.orderPaid');
+        case 'owner_changed':
+          return t('app.activity.ownerChanged');
+        case 'deletion_requested':
+          return t('app.activity.deletionRequested');
+        case 'deletion_cancelled':
+          return t('app.activity.deletionCancelled');
       }
     },
     /** Who did it: their name, a former member's dash, or "automatically" when nobody signed in did (a payment confirmed). */

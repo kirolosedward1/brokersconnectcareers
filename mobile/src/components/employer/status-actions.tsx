@@ -40,6 +40,8 @@ export function StatusActions({ jobId, status, title }: { jobId: string; status:
           const reason = failure instanceof TransitionRefused ? failure.reason : 'failed';
           // The company keeps this member from posting (migration 376).
           if (reason === 'not_permitted') return setError(t('app.team.notPermittedPost'));
+          // The owner asked for the company to be deleted (migration 379).
+          if (reason === 'company_closing') return setError(t('app.closure.closingBlocked'));
           setError(reason === 'failed' ? t('common.errorBody') : t(`employer.${REFUSAL_COPY[reason]}`));
         },
       },

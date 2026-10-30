@@ -532,6 +532,31 @@ describe('the applications', () => {
     expect(screen.queryByText('وظيفة مقابلة')).toBeNull();
   });
 
+  it('keeps a record of an application a company deleted with its account, under its own heading', async () => {
+    server.on('GET /rest/v1/application_records', [
+      {
+        id: 1,
+        candidate_id: 'x',
+        job_title_ar: 'مستشار عقاري',
+        job_title_en: null,
+        company_name_ar: 'شركة أُغلقت',
+        company_name_en: null,
+        applied_at: '2026-08-01T10:00:00Z',
+        last_status: 'shortlisted',
+        ended_at: '2026-10-01T10:00:00Z',
+        reason: 'company_deleted',
+      },
+    ]);
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByText(ar.app.closure.recordsHeading)).toBeTruthy();
+    expect(screen.getByText('مستشار عقاري')).toBeTruthy();
+    expect(screen.getByText(`شركة أُغلقت · ${ar.applicationStatus.shortlisted}`)).toBeTruthy();
+    // Not under "with news": it is history.
+    fireEvent.press(screen.getByRole('radio', { name: ar.app.applications.segmentInterviews }));
+    expect(screen.queryByText(ar.app.closure.recordsHeading)).toBeNull();
+  });
+
   it('shows each one with where it stands, what the company said, and what became of the listing', async () => {
     applications = [
       application({ employer_viewed_at: '2026-09-21T10:00:00Z' }),

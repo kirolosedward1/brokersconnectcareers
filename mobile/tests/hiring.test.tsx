@@ -3,16 +3,21 @@ import { render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CompanyContact, PausedNotice } from '~/components/companies/hiring-notice';
+import { RecordRow } from '~/components/applications/cleared-applications';
 import { HiringSettings } from '~/components/employer/hiring-settings';
+import { OwnershipSettings } from '~/components/employer/ownership-settings';
 import { dayRuns, isHiringNow, type CompanyHiring } from '~/features/companies/hiring';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { LRI, PDI } from '~/i18n/rich';
 import { ThemeProvider } from '~/theme/provider';
 
+jest.mock('~/lib/session', () => ({ useSession: () => ({ viewer: null, actor: null, session: null }) }));
+
 /*
   A company says when it hires (Phase B 07a): the notice on a paused
   company's listing and page, its contact and reply hours, and the admin's
-  settings — right to left and at the largest text size.
+  settings; and its own account (07c): the owner's card, and the record a
+  candidate keeps — right to left and at the largest text size.
 */
 
 const mockWindow = { width: 375, height: 667, scale: 2, fontScale: 1 };
@@ -116,5 +121,73 @@ describe('HiringSettings', () => {
   it('draws at the largest text size', () => {
     mockWindow.fontScale = 3.571;
     expect(render(settings).toJSON()).toMatchSnapshot();
+  });
+});
+
+describe('OwnershipSettings', () => {
+  const team = [
+    { userId: 'o', name: 'أحمد', role: 'admin' as const, isOwner: true, canPost: true, canReveal: true, canSpend: true },
+    { userId: 'm', name: 'منى', role: 'recruiter' as const, isOwner: false, canPost: true, canReveal: true, canSpend: false },
+  ];
+  const owner = (closure: { deletionRequestedAt: string | null; closedAt: string | null; purgeAfterDays: 30 | 90 | 180 | 365 | null }) => (
+    <Providers>
+      <OwnershipSettings companyName="شركة النيل" team={team} isOwner closure={closure} />
+    </Providers>
+  );
+  const open = owner({ deletionRequestedAt: null, closedAt: null, purgeAfterDays: 90 });
+
+  it('offers the owner the purge period, handing over and deleting', () => {
+    render(open);
+    expect(screen.getByRole('radio', { name: ar.app.closure.purgeThreeMonths }).props.accessibilityState?.checked).toBe(true);
+    expect(screen.getByRole('button', { name: ar.app.closure.transfer })).toBeTruthy();
+    expect(screen.getByRole('button', { name: ar.app.closure.delete })).toBeTruthy();
+  });
+
+  it('says when a closing company goes, and offers to cancel instead of deleting again', () => {
+    render(owner({ deletionRequestedAt: '2026-10-30T10:00:00Z', closedAt: null, purgeAfterDays: null }));
+    expect(screen.getByText(ar.app.closure.closingTitle)).toBeTruthy();
+    expect(screen.getByRole('button', { name: ar.app.closure.cancel })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.closure.delete })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.app.closure.transfer })).toBeNull();
+  });
+
+  it('draws right to left', () => {
+    expect(render(open).toJSON()).toMatchSnapshot();
+  });
+
+  it('draws at the largest text size', () => {
+    mockWindow.fontScale = 3.571;
+    expect(render(open).toJSON()).toMatchSnapshot();
+  });
+});
+
+describe('RecordRow', () => {
+  const row = (
+    <Providers>
+      <RecordRow
+        first
+        record={{
+          id: 1,
+          candidate_id: 'c',
+          job_title_ar: 'مستشار عقاري',
+          job_title_en: null,
+          company_name_ar: 'شركة أُغلقت',
+          company_name_en: null,
+          applied_at: '2026-08-01T10:00:00Z',
+          last_status: 'shortlisted',
+          ended_at: '2026-10-01T10:00:00Z',
+          reason: 'company_purged',
+        }}
+      />
+    </Providers>
+  );
+
+  it('draws right to left', () => {
+    expect(render(row).toJSON()).toMatchSnapshot();
+  });
+
+  it('draws at the largest text size', () => {
+    mockWindow.fontScale = 3.571;
+    expect(render(row).toJSON()).toMatchSnapshot();
   });
 });
