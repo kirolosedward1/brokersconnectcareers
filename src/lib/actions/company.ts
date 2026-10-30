@@ -528,6 +528,76 @@ export async function saveCompanyHiring(input: unknown): Promise<ActionResult> {
   return { ok: true };
 }
 
+/**
+ * Hand the company to somebody already on the team (Phase B 07c, decided).
+ * transfer_company_ownership() checks everything: the caller owns it, the
+ * receiver is a member in good standing, nothing is closing.
+ */
+export async function transferCompanyOwnership(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ userId: z.string().uuid() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('transfer_company_ownership', { p_to: parsed.data.userId });
+  if (error) return refused('team', error, { to: parsed.data.userId });
+  if (data !== 'ok') return { ok: false, error: data ?? 'failed' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+/**
+ * The owner asks for the company to go (Phase B 07c): hidden at once, its
+ * listings off the board, gone after 14 days unless cancelled. The company's
+ * name typed back is the confirmation, as GitHub asks for a repository's.
+ */
+export async function requestCompanyDeletion(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ confirmName: z.string().max(200) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const { data: company } = await supabase.from('companies').select('name_ar, name_en').eq('id', companyId).maybeSingle();
+  const typed = parsed.data.confirmName.trim();
+  if (!company || (typed !== company.name_ar.trim() && typed !== (company.name_en ?? '').trim())) {
+    return { ok: false, error: 'invalid', fieldErrors: { confirmName: 'mismatch' } };
+  }
+  const { data, error } = await supabase.rpc('request_company_deletion');
+  if (error) return refused('company', error, { company: companyId });
+  if (data !== 'ok') return { ok: false, error: data ?? 'failed' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+export async function cancelCompanyDeletion(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('cancel_company_deletion');
+  if (error) return refused('company', error, {});
+  if (data !== 'ok') return { ok: false, error: data ?? 'failed' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+/**
+ * How long the applications to an ended listing are kept (Phase B 07c): 30,
+ * 90, 180 or 365 days, or until the yearly retention (null). The candidate
+ * keeps a record of each one cleared. An admin's, under the update policy.
+ */
+export async function setApplicationPurge(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ days: z.union([z.literal(30), z.literal(90), z.literal(180), z.literal(365), z.null()]) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const { data, error } = await supabase
+    .from('companies')
+    .update({ purge_closed_after_days: parsed.data.days })
+    .eq('id', companyId)
+    .select('id');
+  if (error) return refused('company', error, { company: companyId });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
 export async function removeCompanyMember(userId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc('my_company_id');

@@ -344,6 +344,10 @@ export type MobileActions = {
     output: ActionResult<{ sent: number; skipped: number }>;
   };
   /** Migration 376: a member's switches; admins only, never the owner. */
+  transferCompanyOwnership: { input: { userId: string }; output: ActionResult };
+  requestCompanyDeletion: { input: { confirmName: string }; output: ActionResult };
+  cancelCompanyDeletion: { input: Record<string, never>; output: ActionResult };
+  setApplicationPurge: { input: { days: 30 | 90 | 180 | 365 | null }; output: ActionResult };
   saveCompanyHiring: {
     input: {
       hiringStatus: 'open' | 'paused';

@@ -169,6 +169,14 @@ export type CompanyRow = Timestamped & {
   paused_until?: string | null;
   contact_whatsapp?: string | null;
   reply_hours?: ReplyHours | null;
+  /**
+   * Migration 379: the owner asked for the company to go. Hidden at once;
+   * deleted 14 days later, or closed (closed_at) when it has orders.
+   */
+  deletion_requested_at?: string | null;
+  closed_at?: string | null;
+  /** Applications to listings ended longer than this many days are cleared nightly. */
+  purge_closed_after_days?: 30 | 90 | 180 | 365 | null;
   /** Ours: a seed, QA, or store-review company (migration 368). Absent before it. */
   is_test?: boolean;
   /**
@@ -212,6 +220,20 @@ export type CompanyMemberRow = Timestamped & {
   can_spend?: boolean;
 };
 
+/** Migration 379: what a candidate keeps of an application a company cleared or took with it. */
+export type ApplicationRecordRow = {
+  id: number;
+  candidate_id: string;
+  job_title_ar: string;
+  job_title_en: string | null;
+  company_name_ar: string;
+  company_name_en: string | null;
+  applied_at: string;
+  last_status: ApplicationStatus;
+  ended_at: string;
+  reason: 'company_deleted' | 'company_purged';
+};
+
 /** Migration 377: one thing the team did. Names are read as the log is read; a row stores only ids. */
 export type CompanyActivityKind =
   | 'application_moved'
@@ -223,7 +245,10 @@ export type CompanyActivityKind =
   | 'member_added'
   | 'member_removed'
   | 'member_changed'
-  | 'order_paid';
+  | 'order_paid'
+  | 'owner_changed'
+  | 'deletion_requested'
+  | 'deletion_cancelled';
 
 export type CompanyActivityRow = {
   id: number;
@@ -1464,6 +1489,7 @@ export type Database = {
         Insertable<CompanyCandidateNoteRow, 'company_id' | 'candidate_id' | 'body'>
       >;
       saved_replies: Table<SavedReplyRow, Insertable<SavedReplyRow, 'company_id' | 'body'>>;
+      application_records: Table<ApplicationRecordRow, never>;
       interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
       /**
        * No Insertable worth naming: nothing in the app writes one. Every row
@@ -1690,6 +1716,12 @@ export type Database = {
           created_at: string;
         }[];
       };
+      /** Migration 379: the owner hands the company to a member, asks for it to go, or changes their mind. */
+      transfer_company_ownership: { Args: { p_to: string }; Returns: 'ok' | 'not_owner' | 'not_member' | 'not_eligible' | 'closing' };
+      request_company_deletion: { Args: Record<string, never>; Returns: 'ok' | 'not_owner' };
+      cancel_company_deletion: { Args: Record<string, never>; Returns: 'ok' | 'not_owner' };
+      close_due_companies: { Args: { p_limit?: number }; Returns: Record<string, unknown> };
+      purge_company_activity: { Args: Record<string, never>; Returns: number };
       /** Migration 378: whether a company takes applications today. */
       company_is_hiring: { Args: { p_company: string }; Returns: boolean };
       /**

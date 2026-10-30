@@ -447,6 +447,8 @@ function mapJobError(message: string): string {
   // (migration 327). And a suspended company submits nothing at all (317).
   if (message.includes('account_not_in_good_standing')) return 'standing';
   if (message.includes('company_suspended')) return 'company_suspended';
+  // The owner asked for the company to be deleted (migration 379): cancel that first.
+  if (message.includes('company_closing')) return 'company_closing';
   if (message.includes('job_post_rate_limit')) return 'post_rate_limit';
   if (message.includes('duplicate_listing')) return 'duplicate_listing';
   return 'failed';
