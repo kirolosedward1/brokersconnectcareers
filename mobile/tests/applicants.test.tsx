@@ -6,7 +6,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTranslator } from 'use-intl';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
-import type { ApplicationNoteRow, InterviewInviteRow, ProfileRow } from '@/lib/supabase/database.types';
+import { savedReplies } from '~/components/employer/saved-replies';
+import type { ApplicationNoteRow, InterviewInviteRow, ProfileRow, SavedReplyRow } from '@/lib/supabase/database.types';
 import { shownToast } from '~/components/feedback/toast';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
@@ -117,6 +118,7 @@ const notes: ApplicationNoteRow[] = [
 
 let rows: Applicant[];
 let interviews: InterviewInviteRow[] = [];
+let replies: SavedReplyRow[] = [];
 let client: QueryClient;
 
 beforeAll(() => {
@@ -125,6 +127,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   interviews = [];
+  replies = [];
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   rows = [sara, omar];
   jest.mocked(WebBrowser.openBrowserAsync).mockClear();
@@ -155,6 +158,9 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/cancelInterview', { ok: true });
   server.on('POST /api/mobile/v1/actions/setApplicationStatuses', { ok: true, data: { moved: 2, movedAlready: 0, failed: 0, reasonsNotKept: 0 } });
   server.on('POST /api/mobile/v1/actions/messageApplicants', { ok: true, data: { sent: 2, skipped: 0 } });
+  server.on('GET /rest/v1/saved_replies', () => replies);
+  server.on('POST /api/mobile/v1/actions/saveReply', { ok: true, data: { reply: null } });
+  server.on('POST /api/mobile/v1/actions/deleteReply', { ok: true });
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
   server.on('POST /api/mobile/v1/actions/markApplicantsSeen', { ok: true });
   server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true });
@@ -1160,5 +1166,63 @@ describe('several applicants at once', () => {
     const sent = input('/api/mobile/v1/actions/messageApplicants') as { applicationIds: string[]; message: string; key: string };
     expect(sent.applicationIds).toEqual([sara.id, omar.id]);
     expect(sent.key).toMatch(/^[0-9a-f-]{36}$/);
+  });
+});
+
+describe('saved replies kept on the account', () => {
+  const reply = (overrides: Partial<SavedReplyRow>): SavedReplyRow => ({
+    id: 'c0000000-0000-4000-8000-000000000001',
+    company_id: ownedCompany.id,
+    person_id: null,
+    title: null,
+    body: 'أهلًا {first_name}، نود مقابلتك بخصوص {job}.',
+    channel: 'whatsapp',
+    version: 1,
+    created_by: USER_ID,
+    created_at: '2026-10-29T10:00:00Z',
+    updated_at: '2026-10-29T10:00:00Z',
+    ...overrides,
+  });
+  const open = async () => {
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));
+  };
+
+  it("offers the team's and one's own, and sends a WhatsApp one with the applicant's words put in", async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
+    replies = [reply({}), reply({ id: 'c0000000-0000-4000-8000-000000000002', person_id: USER_ID, body: 'شكرًا {name}' })];
+    await open();
+    expect(await screen.findByText(ar.app.replies.team)).toBeTruthy();
+    expect(screen.getByText(ar.app.replies.own)).toBeTruthy();
+    fireEvent.press(screen.getAllByRole('button', { name: ar.app.replies.send })[1]);
+    const url = decodeURIComponent(String(openURL.mock.calls[0]?.[0]));
+    expect(url).toContain('أهلًا سارة، نود مقابلتك بخصوص مستشار مبيعات.');
+    openURL.mockRestore();
+  });
+
+  it('sends an email one through the website, which fills it', async () => {
+    replies = [reply({ channel: 'email', body: 'نشكرك {first_name} على اهتمامك.' })];
+    await open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.replies.sendEmail }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/messageApplicants')).toMatchObject({ applicationIds: [sara.id], message: 'نشكرك {first_name} على اهتمامك.' }),
+    );
+  });
+
+  it('keeps a new one on the account, and says which words it does not know', async () => {
+    await open();
+    fireEvent.changeText(await screen.findByLabelText(ar.app.replies.new), 'موعدنا {day}');
+    server.on('POST /api/mobile/v1/actions/saveReply', { ok: false, error: 'unknown_variable', fieldErrors: { body: '{day}' } });
+    fireEvent.press(screen.getByRole('button', { name: ar.app.replies.keep }));
+    expect(await screen.findByText(ar.app.replies.unknownVariable.replace('{words}', '{day}'))).toBeTruthy();
+    expect(input('/api/mobile/v1/actions/saveReply')).toEqual({ body: 'موعدنا {day}', channel: 'whatsapp', teamWide: false });
+  });
+
+  it("moves the replies kept on this phone to the account, once", async () => {
+    savedReplies.replace(USER_ID, [{ id: 'l1', text: 'رد قديم على الهاتف' }]);
+    await open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.replies.moveLocal }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveReply')).toEqual({ body: 'رد قديم على الهاتف', channel: 'whatsapp', teamWide: false }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.replies.moveLocal })).toBeNull());
   });
 });

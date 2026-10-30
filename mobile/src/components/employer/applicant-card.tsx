@@ -10,6 +10,7 @@ import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { PIPELINE_STAGES, STAGE_TONE, WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
 import type { ApplicationNoteRow, ApplicationStatus, InterviewInviteRow } from '@/lib/supabase/database.types';
 import { CompanyInterview } from '~/components/interviews/interview-panels';
+import { firstName } from '@/lib/replies';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { toast } from '~/components/feedback/toast';
 import { ReasonTick } from '~/components/employer/reason-tick';
@@ -355,7 +356,8 @@ export function ApplicantCard({
             onDismiss={replies.onDismiss}
             phone={candidate.whatsapp_phone}
             opener={employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' })}
-            values={{ name, job: jobTitle }}
+            values={{ name, first_name: firstName(name), job: jobTitle, company: companyName, stage: t(`applicationStatus.${status}`) }}
+            applicationId={applicant.id}
           />
         ) : null}
         {applicant.cv_path ? (

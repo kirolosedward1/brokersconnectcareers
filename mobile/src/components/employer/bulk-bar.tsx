@@ -6,6 +6,7 @@ import { PIPELINE_STAGES } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { toast } from '~/components/feedback/toast';
 import { Button } from '~/components/ui/button';
+import { Chip } from '~/components/ui/chip';
 import { ChoiceRow } from '~/components/ui/settings-list';
 import { Field } from '~/components/ui/field';
 import { FormSheet } from '~/components/ui/form-sheet';
@@ -13,6 +14,7 @@ import { Check } from '~/components/ui/lucide';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { ReasonTick } from '~/components/employer/reason-tick';
+import { useReplies } from '~/features/employer/replies';
 import { BulkRefused, DECLINE_REASONS, useBulkMove, useMessageApplicants, type DeclineReason } from '~/features/employer/bulk';
 import type { Applicant } from '~/features/employer/applicants';
 import { markupTags } from '~/i18n/rich';
@@ -183,13 +185,23 @@ function MoveSheet({ visible, onClose, onDismiss, items, onMoved }: SheetProps &
 function MessageSheet({ visible, onClose, onDismiss, ids, onSent }: SheetProps & { ids: string[]; onSent: () => void }) {
   const t = useTranslations();
   const send = useMessageApplicants();
+  const replies = useReplies(visible);
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // The saved replies kept for email (migration 374): one tap puts its words in the box; the email fills each applicant's.
+  const saved = [...(replies.data?.team ?? []), ...(replies.data?.own ?? [])].filter((reply) => reply.channel === 'email');
   return (
     <FormSheet visible={visible} onClose={onClose} onDismiss={onDismiss} title={t('app.bulk.messageTitle')} busy={send.isPending}>
       <Text variant="small" tone="mutedForeground">
         {t('app.bulk.messageHint')}
       </Text>
+      {saved.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+          {saved.map((reply) => (
+            <Chip key={reply.id} label={reply.title || reply.body.slice(0, 32)} onPress={() => setMessage(reply.body)} />
+          ))}
+        </View>
+      ) : null}
       <Field label={t('app.bulk.messageField')}>
         <TextField
           value={message}

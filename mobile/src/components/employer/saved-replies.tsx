@@ -2,7 +2,14 @@ import { useState } from 'react';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
+import { fillReply, type ReplyValues } from '@/lib/replies';
+import type { SavedReplyRow } from '@/lib/supabase/database.types';
 import { whatsappLink } from '@/lib/whatsapp';
+import { toast } from '~/components/feedback/toast';
+import { Segmented } from '~/components/ui/segmented';
+import { SwitchRow } from '~/components/ui/settings-list';
+import { useMessageApplicants } from '~/features/employer/bulk';
+import { ReplyRefused, useReplies, useReplyActions } from '~/features/employer/replies';
 import { Button } from '~/components/ui/button';
 import { MessageCircle, Trash2, X } from '~/components/ui/lucide';
 import { KeyboardRoom } from '~/components/ui/keyboard-room';
@@ -21,16 +28,16 @@ export type SavedReply = { id: string; text: string };
 
 /** The words put in for the applicant and the job, shown as they are typed. */
 const TOKENS = { name: '{name}', job: '{job}' };
+/** Every word a reply may stand in for (src/lib/replies.ts), shown as written. */
+const VARIABLES = { name: '{name}', first_name: '{first_name}', job: '{job}', company: '{company}', stage: '{stage}' };
 
-/** As many replies as a person keeps to hand. */
+/** As many replies as a person kept on a phone, before they were kept on the account. */
 const KEPT = 20;
 const MAX_LENGTH = 1000;
 
 /**
- * Replies a company sends again and again on WhatsApp — "we'd like to meet
- * you on…", "thank you, the role is filled" — kept on this phone for the
- * person who wrote them (src/lib/local-list.ts). `{name}` and `{job}` in one
- * become the applicant's name and the listing's title when it is sent.
+ * Replies kept on this phone before v1.1 Phase B (src/lib/local-list.ts):
+ * read only to offer moving them to the account, then cleared.
  */
 export const savedReplies = createLocalList<SavedReply>('bc.wa-replies.v1', {
   max: KEPT,
@@ -38,15 +45,13 @@ export const savedReplies = createLocalList<SavedReply>('bc.wa-replies.v1', {
   valid: (item): item is SavedReply => Boolean(item && typeof (item as SavedReply).id === 'string' && typeof (item as SavedReply).text === 'string'),
 });
 
-/** A reply with the applicant's name and the listing's title put in. */
-export function fillReply(text: string, values: { name: string; job: string }): string {
-  return text.replaceAll('{name}', values.name).replaceAll('{job}', values.job);
-}
-
 /**
- * The sheet a WhatsApp message is chosen from: the opener the app writes
- * (`opener`) first, then the saved replies, each sent with a tap; and a field
- * to write and keep a new one. Removing one asks first.
+ * The sheet a message is chosen from (the SavedReplies board): the opener the
+ * app writes first, then the team's replies and the person's own (migration
+ * 374), each sent with a tap — on WhatsApp with the applicant's words put in
+ * on the phone, or by email, filled by the email (src/lib/replies.ts) — and a
+ * field to keep a new one: one's own, or, for an admin, the whole team's.
+ * Replies still on this phone are offered for moving to the account once.
  */
 export function SavedRepliesSheet({
   visible,
@@ -55,13 +60,16 @@ export function SavedRepliesSheet({
   phone,
   opener,
   values,
+  applicationId,
 }: {
   visible: boolean;
   onClose: () => void;
   onDismiss?: () => void;
   phone: string;
   opener: string;
-  values: { name: string; job: string };
+  values: ReplyValues;
+  /** For a reply sent by email. */
+  applicationId: string;
 }) {
   const t = useTranslations('app.replies');
   // The sheet keeps its touches from the row or card it is drawn in (sheet-fence.ts).
@@ -70,28 +78,80 @@ export function SavedRepliesSheet({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const owner = useListOwner();
-  const replies = savedReplies.useItems(owner);
+  const local = savedReplies.useItems(owner);
+  const replies = useReplies(visible);
+  const { save, remove } = useReplyActions();
+  const email = useMessageApplicants();
   const [draft, setDraft] = useState('');
+  const [channel, setChannel] = useState<'whatsapp' | 'email'>('whatsapp');
+  const [teamWide, setTeamWide] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
   // A reply half written: pulled down, the sheet stays and asks first (iOS hands the attempt to onRequestClose).
   const confirmDiscard = useConfirmDiscard();
   const writing = draft.trim() !== '';
   const requestClose = () => (writing ? confirmDiscard(onClose) : onClose());
+  const isAdmin = replies.data?.isAdmin ?? false;
 
-  const send = (text: string) => {
+  const failure = (reason: unknown) =>
+    reason instanceof ReplyRefused && reason.reason === 'unknown_variable'
+      ? t('unknownVariable', { words: reason.detail ?? '' })
+      : reason instanceof ReplyRefused && reason.reason === 'limit'
+        ? t('limit')
+        : tCommon('errorBody');
+
+  const sendWhatsApp = (text: string) => {
     onClose();
-    Linking.openURL(whatsappLink(phone, text)).catch(() => {});
+    Linking.openURL(whatsappLink(phone, fillReply(text, values))).catch(() => {});
+  };
+  const sendEmail = (text: string) => {
+    setError(null);
+    email.mutate(
+      { applicationIds: [applicationId], message: text },
+      {
+        onSuccess: () => {
+          toast.show({ message: t('emailed'), tone: 'success' });
+          onClose();
+        },
+        onError: () => setError(tCommon('errorBody')),
+      },
+    );
   };
   const keep = () => {
     const text = draft.trim().slice(0, MAX_LENGTH);
     if (!text) return;
-    savedReplies.add(owner, { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, text });
-    setDraft('');
+    setError(null);
+    save.mutate(
+      { body: text, channel, teamWide: isAdmin && teamWide },
+      { onSuccess: () => setDraft(''), onError: (reason) => setError(failure(reason)) },
+    );
   };
-  const remove = (reply: SavedReply) =>
-    dialog.alert(t('removeTitle'), reply.text.slice(0, 120), [
+  // The phone's replies, moved to the account as the person's own; cleared once all are kept.
+  const moveLocal = () => {
+    setMoving(true);
+    setError(null);
+    Promise.all(local.map((reply) => save.mutateAsync({ body: reply.text, channel: 'whatsapp', teamWide: false })))
+      .then(() => savedReplies.clear(owner))
+      .catch((reason: unknown) => setError(failure(reason)))
+      .then(() => setMoving(false));
+  };
+  const confirmRemove = (reply: SavedReplyRow) =>
+    dialog.alert(t('removeTitle'), reply.body.slice(0, 120), [
       { text: tCommon('cancel'), style: 'cancel' },
-      { text: t('remove'), style: 'destructive', onPress: () => savedReplies.remove(owner, reply.id) },
+      { text: t('remove'), style: 'destructive', onPress: () => remove.mutate(reply.id, { onError: () => setError(tCommon('errorBody')) }) },
     ]);
+
+  const card = (reply: SavedReplyRow, removable: boolean) => (
+    <Reply
+      key={reply.id}
+      text={reply.channel === 'whatsapp' ? fillReply(reply.body, values) : reply.body}
+      label={reply.channel === 'email' ? t('channelEmail') : undefined}
+      sendLabel={reply.channel === 'email' ? t('sendEmail') : t('send')}
+      busy={reply.channel === 'email' && email.isPending}
+      onSend={() => (reply.channel === 'email' ? sendEmail(reply.body) : sendWhatsApp(reply.body))}
+      onRemove={removable ? () => confirmRemove(reply) : undefined}
+    />
+  );
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal={!writing} onRequestClose={requestClose} onDismiss={onDismiss}>
@@ -118,10 +178,33 @@ export function SavedRepliesSheet({
             keyboardDismissMode="interactive"
             contentContainerStyle={{ padding: gutter, gap: space[3], paddingBottom: insets.bottom + space[6] }}
           >
-            <Reply text={opener} label={t('opener')} onSend={() => send(opener)} />
-            {replies.map((reply) => (
-              <Reply key={reply.id} text={fillReply(reply.text, values)} onSend={() => send(fillReply(reply.text, values))} onRemove={() => remove(reply)} />
-            ))}
+            <Reply text={opener} label={t('opener')} sendLabel={t('send')} onSend={() => sendWhatsApp(opener)} />
+
+            {local.length ? (
+              <View style={{ gap: space[2], padding: space[3], ...corner('lg'), backgroundColor: colors.accent }}>
+                <Text variant="small">{t('localFound')}</Text>
+                <View style={{ alignItems: 'flex-start' }}>
+                  <Button label={t('moveLocal')} variant="outline" size="sm" loading={moving} onPress={moveLocal} />
+                </View>
+              </View>
+            ) : null}
+
+            {replies.data?.team.length ? (
+              <View style={{ gap: space[2] }}>
+                <Text variant="small" weight="semibold" accessibilityRole="header">
+                  {t('team')}
+                </Text>
+                {replies.data.team.map((reply) => card(reply, isAdmin))}
+              </View>
+            ) : null}
+            {replies.data?.own.length ? (
+              <View style={{ gap: space[2] }}>
+                <Text variant="small" weight="semibold" accessibilityRole="header">
+                  {t('own')}
+                </Text>
+                {replies.data.own.map((reply) => card(reply, true))}
+              </View>
+            ) : null}
 
             <View style={{ gap: space[2], marginTop: space[3] }}>
               <Text variant="small" weight="semibold" accessibilityRole="header">
@@ -137,10 +220,27 @@ export function SavedRepliesSheet({
                 style={{ minHeight: 72, paddingVertical: space[2], textAlignVertical: 'top' }}
               />
               <Text variant="caption" tone="mutedForeground">
-                {t('tokens', TOKENS)}
+                {t('variables', VARIABLES)}
               </Text>
+              <Segmented
+                label={t('channel')}
+                options={[
+                  { value: 'whatsapp' as const, label: t('channelWhatsApp') },
+                  { value: 'email' as const, label: t('channelEmail') },
+                ]}
+                value={channel}
+                onChange={setChannel}
+              />
+              {isAdmin ? (
+                <SwitchRow label={t('teamWide')} hint={t('teamWideHint')} value={teamWide} onChange={setTeamWide} />
+              ) : null}
+              {error ? (
+                <Text variant="small" tone="destructive" accessibilityRole="alert">
+                  {error}
+                </Text>
+              ) : null}
               <View style={{ alignItems: 'flex-start' }}>
-                <Button label={t('keep')} variant="outline" size="sm" disabled={!draft.trim()} onPress={keep} />
+                <Button label={t('keep')} variant="outline" size="sm" loading={save.isPending && !moving} disabled={!draft.trim()} onPress={keep} />
               </View>
             </View>
           </ScrollView>
@@ -150,7 +250,21 @@ export function SavedRepliesSheet({
   );
 }
 
-function Reply({ text, label, onSend, onRemove }: { text: string; label?: string; onSend: () => void; onRemove?: () => void }) {
+function Reply({
+  text,
+  label,
+  sendLabel,
+  busy = false,
+  onSend,
+  onRemove,
+}: {
+  text: string;
+  label?: string;
+  sendLabel: string;
+  busy?: boolean;
+  onSend: () => void;
+  onRemove?: () => void;
+}) {
   const t = useTranslations('app.replies');
   const { colors } = useTheme();
   return (
@@ -171,7 +285,7 @@ function Reply({ text, label, onSend, onRemove }: { text: string; label?: string
       ) : null}
       <Text variant="small">{text}</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
-        <Button label={t('send')} size="sm" icon={<MessageCircle size={16} color={colors.primaryForeground} />} onPress={onSend} />
+        <Button label={sendLabel} size="sm" loading={busy} icon={<MessageCircle size={16} color={colors.primaryForeground} />} onPress={onSend} />
         {onRemove ? (
           <Pressable
             accessibilityRole="button"
