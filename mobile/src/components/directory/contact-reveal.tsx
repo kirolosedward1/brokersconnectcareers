@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocale, useTranslations } from 'use-intl';
+import { formatDateTime } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { ContactButtons } from '~/components/ui/contact-buttons';
 import { Download, Eye } from '~/components/ui/lucide';
@@ -9,6 +10,7 @@ import { Button } from '~/components/ui/button';
 import { useSheetFence } from '~/components/ui/sheet-fence';
 import { Text } from '~/components/ui/text';
 import { openAgentCv, RevealRefused, useRevealContact, type RevealedContact } from '~/features/directory/queries';
+import { useCompanyRevealed } from '~/features/directory/reveals';
 import { track } from '~/lib/analytics';
 import { ApiError } from '~/lib/api';
 import { appDirection } from '~/lib/direction';
@@ -35,6 +37,8 @@ export function ContactReveal({ handle, hasCv, name, detail }: { handle: string;
   const { colors } = useTheme();
   const reveal = useRevealContact();
   const sheet = useSheet();
+  // Read when the confirmation opens, not for every card on a list.
+  const before = useCompanyRevealed(handle, sheet.mounted).data ?? null;
   const [revealed, setRevealed] = useState<RevealedContact | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   useAnnounce(message);
@@ -105,6 +109,7 @@ export function ContactReveal({ handle, hasCv, name, detail }: { handle: string;
           detail={detail ?? null}
           busy={reveal.isPending}
           onConfirm={ask}
+          revealedBefore={before}
         />
       ) : null}
     </View>
@@ -125,6 +130,7 @@ export function RevealConfirm({
   detail,
   busy,
   onConfirm,
+  revealedBefore = null,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -133,6 +139,8 @@ export function RevealConfirm({
   detail: string | null;
   busy: boolean;
   onConfirm: () => void;
+  /** When the viewer's company last revealed this number (migration 381): «كشف سابق». */
+  revealedBefore?: string | null;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -173,6 +181,11 @@ export function RevealConfirm({
             ) : null}
           </View>
           <Text variant="small">{t('app.reveal.body')}</Text>
+          {revealedBefore ? (
+            <Text variant="small" weight="medium" testID="revealed-before">
+              {t('app.reveal.before', { date: formatDateTime(revealedBefore, locale) })}
+            </Text>
+          ) : null}
           {recordedAs ? (
             <View
               accessible

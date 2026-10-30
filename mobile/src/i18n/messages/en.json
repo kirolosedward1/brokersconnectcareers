@@ -699,7 +699,11 @@
     "analytics": "Usage analytics",
     "analyticsHint": "Anonymous steps inside the app, without your name, number or email. Kept on this phone.",
     "hidden": "What you hid on this phone",
-    "policy": "Privacy policy"
+    "policy": "Privacy policy",
+    "revealLog": "Who revealed your number",
+    "revealLogHint": "Companies that revealed your number in the last three months, by company, never by who pressed.",
+    "revealLogEmpty": "No company has revealed your number in the last three months.",
+    "revealLogGone": "A company that no longer exists"
   },
   "seeking": {
     "title": "Job-seeking status",
@@ -741,7 +745,8 @@
     "recordedAs": "Recorded under",
     "ledger": "Every reveal is kept in a record the profile's owner may see.",
     "again": "Opening it again today does not count as a new reveal.",
-    "confirm": "Reveal contact"
+    "confirm": "Reveal contact",
+    "before": "Your company has revealed this number before, last on {date}."
   },
   "listingStats": {
     "open": "Performance",
@@ -758,7 +763,9 @@
     "chartEmpty": "No applications in this period.",
     "range7": "<v>7</v> days",
     "range14": "<v>14</v> days",
-    "range30": "<v>30</v> days"
+    "range30": "<v>30</v> days",
+    "viewsChart": "Views day by day",
+    "viewsChartEmpty": "No daily views recorded in this period yet."
   },
   "employerHome": {
     "today": "Needs you today",

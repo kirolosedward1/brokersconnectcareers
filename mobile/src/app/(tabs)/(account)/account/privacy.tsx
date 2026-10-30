@@ -15,6 +15,7 @@ import { shareMyData } from '~/features/account/settings';
 import { useFewerKinds } from '~/features/jobs/fewer';
 import { useListOwner } from '~/features/jobs/recent';
 import { useHiddenAgentEntries } from '~/features/moderation/hidden-agents';
+import { RevealLog } from '~/components/directory/reveal-log';
 import { useHiddenCompanyEntries } from '~/features/moderation/hidden-companies';
 import { useHiddenJobEntries } from '~/features/moderation/hidden-jobs';
 import { useSaveCardFields } from '~/features/profile/card-fields';
@@ -135,6 +136,9 @@ export default function PrivacyScreen() {
             </View>
           )
         ) : null}
+
+        {/* Which companies revealed the number (Phase B 10): a consultant's own log. */}
+        {candidate && card.agent ? <RevealLog /> : null}
 
         <SettingsGroup title={t('app.privacy.data')}>
           {session ? (

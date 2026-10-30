@@ -20,6 +20,11 @@ export type ListingStats = {
   applications: number;
   /** One per Cairo day, oldest first, ending today: the applications made that day. */
   days: { d: string; applications: number }[];
+  /**
+   * The views of each of those days (migration 382), or null when the server
+   * keeps none: views before that migration were only ever a total.
+   */
+  viewDays: number[] | null;
 };
 
 const dayFormat = new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -54,9 +59,9 @@ export function dailyApplications(createdAt: readonly string[], now: Date, count
 /**
  * One listing's performance (the ListingStats board), from what the company
  * may already read: the listing with its views and applicant count, and the
- * applications of the last thirty days, counted by Cairo day. Views are
- * kept only as a total, so the chart is applications; the board's daily
- * views and category average have nothing behind them yet (Phase B notes).
+ * applications of the last thirty days, counted by Cairo day, and the views
+ * of those days (migration 382). The category average has nothing behind it
+ * yet (Phase B notes).
  */
 export function useListingStats(jobId: string) {
   const { viewer, actor } = useSession();
@@ -76,15 +81,22 @@ export function useListingStats(jobId: string) {
       const row = data as unknown as Omit<ListingStats, 'applications' | 'days'> & { applications: { count: number }[] };
       const now = new Date();
       const since = new Date(now.getTime() - STATS_DAYS * 86_400_000).toISOString();
-      const recent = await supabase.from('applications').select('created_at').eq('job_id', jobId).gte('created_at', since).limit(5000);
+      const [recent, viewed] = await Promise.all([
+        supabase.from('applications').select('created_at').eq('job_id', jobId).gte('created_at', since).limit(5000),
+        supabase.from('job_view_days').select('day, views').eq('job_id', jobId).gte('day', since.slice(0, 10)),
+      ]);
       if (recent.error) throw recent.error;
+      const days = dailyApplications(
+        (recent.data ?? []).map((application) => application.created_at as string),
+        now,
+      );
+      // A server from before the migration has no such table: no daily views, not a failed page.
+      const byDay = viewed.error ? null : new Map(((viewed.data ?? []) as { day: string; views: number }[]).map((row) => [row.day, row.views]));
       return {
         ...row,
         applications: row.applications?.[0]?.count ?? 0,
-        days: dailyApplications(
-          (recent.data ?? []).map((application) => application.created_at as string),
-          now,
-        ),
+        days,
+        viewDays: byDay ? days.map((day) => byDay.get(day.d) ?? 0) : null,
       };
     },
   });

@@ -6529,6 +6529,292 @@ exports[`RecordRow draws right to left 1`] = `
 </RNCSafeAreaProvider>
 `;
 
+exports[`RevealLogList draws at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "gap": 8,
+      }
+    }
+  >
+    <Text
+      accessibilityRole="header"
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_600SemiBold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 11,
+            "lineHeight": 16,
+          },
+          {
+            "paddingHorizontal": 4,
+          },
+        ]
+      }
+    >
+      من كشف رقمك
+    </Text>
+    <View
+      style={
+        {
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#E6E1D8",
+            "borderCurve": "continuous",
+            "borderRadius": 20,
+            "borderWidth": 1,
+            "overflow": "hidden",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "marginTop": -1,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 0,
+                "gap": 2,
+                "paddingHorizontal": 16,
+                "paddingVertical": 12,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 16,
+                    "lineHeight": 28,
+                  },
+                  undefined,
+                ]
+              }
+            >
+              شركة النيل
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "color": "#5C6270",
+                    "fontFamily": "IBMPlexSansArabic_400Regular",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 12,
+                    "lineHeight": 18,
+                  },
+                  undefined,
+                ]
+              }
+            >
+              29 أكتوبر، 1:00 م
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          {
+            "paddingHorizontal": 4,
+          },
+        ]
+      }
+    >
+      الشركات التي كشفت رقمك في آخر ثلاثة أشهر، باسم الشركة لا باسم من ضغط.
+    </Text>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`RevealLogList draws right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "gap": 8,
+      }
+    }
+  >
+    <Text
+      accessibilityRole="header"
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_600SemiBold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 11,
+            "lineHeight": 16,
+          },
+          {
+            "paddingHorizontal": 4,
+          },
+        ]
+      }
+    >
+      من كشف رقمك
+    </Text>
+    <View
+      style={
+        {
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#E6E1D8",
+            "borderCurve": "continuous",
+            "borderRadius": 20,
+            "borderWidth": 1,
+            "overflow": "hidden",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "marginTop": -1,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 0,
+                "gap": 2,
+                "paddingHorizontal": 16,
+                "paddingVertical": 12,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_500Medium",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 16,
+                    "lineHeight": 28,
+                  },
+                  undefined,
+                ]
+              }
+            >
+              شركة النيل
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "color": "#5C6270",
+                    "fontFamily": "IBMPlexSansArabic_400Regular",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 12,
+                    "lineHeight": 18,
+                  },
+                  undefined,
+                ]
+              }
+            >
+              29 أكتوبر، 1:00 م
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          {
+            "paddingHorizontal": 4,
+          },
+        ]
+      }
+    >
+      الشركات التي كشفت رقمك في آخر ثلاثة أشهر، باسم الشركة لا باسم من ضغط.
+    </Text>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
 exports[`RulesSettings and RequestCard draws at the largest text size 1`] = `
 <RNCSafeAreaProvider
   onInsetsChange={[Function]}

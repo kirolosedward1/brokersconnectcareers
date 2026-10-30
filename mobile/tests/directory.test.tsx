@@ -475,6 +475,14 @@ describe("a consultant's page", () => {
     expect(screen.getByRole('button', { name: ar.agents.report })).toBeTruthy();
   });
 
+  it('says on the confirmation when the company last revealed this number', async () => {
+    server.on('POST /rest/v1/rpc/my_company_revealed', () => '2026-10-27T10:00:00Z');
+    await renderRouter(app, { initialUrl: '/agents/mona-ali' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.agents.revealContact }));
+    expect(await screen.findByTestId('revealed-before')).toBeTruthy();
+    expect(server.asked('/rest/v1/rpc/my_company_revealed')[0]?.body).toEqual({ p_handle: 'mona-ali' });
+  });
+
   it('asks for the number once the reveal is confirmed, then offers WhatsApp, a call and the CV', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     const events: [string, unknown][] = [];

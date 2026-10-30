@@ -71,6 +71,7 @@ function Stats({ stats, refetch }: { stats: ListingStats; refetch: () => Promise
   const shown = displayJobStatus(stats);
   const ended = shown === 'expired' || shown === 'closed';
   const days = stats.days.slice(-Number(range));
+  const viewDays = stats.viewDays ? stats.viewDays.slice(-Number(range)) : null;
   // Out of a hundred views, to one decimal; none drawn before there is a view to divide by.
   const rate = stats.view_count > 0 ? Math.round((stats.applications / stats.view_count) * 1000) / 10 : null;
 
@@ -140,6 +141,16 @@ function Stats({ stats, refetch }: { stats: ListingStats; refetch: () => Promise
           empty={t('app.listingStats.chartEmpty')}
           totalLabel={t('app.listingStats.applications')}
         />
+        {/* Views per Cairo day (migration 382): counted from then on, so the first days may be empty. */}
+        {viewDays ? (
+          <TrendBars
+            title={t('app.listingStats.viewsChart')}
+            days={days.map((day) => day.d)}
+            values={viewDays}
+            empty={t('app.listingStats.viewsChartEmpty')}
+            totalLabel={t('app.listingStats.views')}
+          />
+        ) : null}
       </View>
     </ScrollView>
   );

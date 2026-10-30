@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CompanyContact, PausedNotice } from '~/components/companies/hiring-notice';
 import { RecordRow } from '~/components/applications/cleared-applications';
+import { RevealLogList } from '~/components/directory/reveal-log';
 import { HiringSettings } from '~/components/employer/hiring-settings';
 import { OwnershipSettings } from '~/components/employer/ownership-settings';
 import { RulesSettings } from '~/components/employer/rules-settings';
@@ -228,6 +229,35 @@ describe('RulesSettings and RequestCard', () => {
     expect(screen.getByTestId('rule-decline').props.value).toBe(true);
     expect(screen.getByTestId('rule-pay').props.value).toBe(false);
     expect(screen.getByLabelText(ar.app.rules.ceiling).props.value).toBe('5000');
+  });
+
+  it('draws right to left', () => {
+    expect(render(view).toJSON()).toMatchSnapshot();
+  });
+
+  it('draws at the largest text size', () => {
+    mockWindow.fontScale = 3.571;
+    expect(render(view).toJSON()).toMatchSnapshot();
+  });
+});
+
+describe('RevealLogList', () => {
+  const view = (
+    <Providers>
+      <RevealLogList
+        entries={[{ revealedAt: '2026-10-29T10:00:00Z', companyNameAr: 'شركة النيل', companyNameEn: null, companySlug: 'nile' }]}
+      />
+    </Providers>
+  );
+  const empty = (
+    <Providers>
+      <RevealLogList entries={[]} />
+    </Providers>
+  );
+
+  it('says when no company has', () => {
+    render(empty);
+    expect(screen.getByText(ar.app.privacy.revealLogEmpty)).toBeTruthy();
   });
 
   it('draws right to left', () => {

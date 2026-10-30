@@ -418,6 +418,17 @@ describe("a listing's performance", () => {
     );
   });
 
+  it("draws the listing's views day by day once the server counts them", async () => {
+    const live = listing({ view_count: 40 });
+    listings = [live];
+    server.on('GET /rest/v1/applications', []);
+    server.on('GET /rest/v1/job_view_days', [{ day: new Date().toISOString().slice(0, 10), views: 7 }]);
+    await signIn();
+    await renderRouter(app, { initialUrl: `/employer/jobs/${live.id}/stats` });
+    expect(await screen.findByText(ar.app.listingStats.viewsChart)).toBeTruthy();
+    expect(server.asked('/rest/v1/job_view_days')[0]?.url.searchParams.get('job_id')).toBe(`eq.${live.id}`);
+  });
+
   it('says the company keeps this member from posting when a repost is refused for it', async () => {
     const ended = listing({ status: 'expired', expires_at: '2026-09-30T10:00:00Z' });
     listings = [ended];

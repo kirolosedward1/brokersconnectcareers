@@ -224,6 +224,17 @@ describe('Appearance', () => {
 });
 
 describe('Privacy', () => {
+  it('lists which companies revealed the number, by company, newest first', async () => {
+    server.on('POST /rest/v1/rpc/my_contact_reveals', [
+      { revealed_at: '2026-10-29T10:00:00Z', company_name_ar: 'شركة النيل', company_name_en: null, company_slug: 'nile' },
+      { revealed_at: '2026-10-20T10:00:00Z', company_name_ar: null, company_name_en: null, company_slug: null },
+    ]);
+    await renderRouter(app, { initialUrl: '/account/privacy' });
+    expect(await screen.findByText(ar.app.privacy.revealLog)).toBeTruthy();
+    expect(screen.getByText('شركة النيل')).toBeTruthy();
+    expect(screen.getByText(ar.app.privacy.revealLogGone)).toBeTruthy();
+  });
+
   it('saves who sees the card the moment it is picked, with everything else on the card as it was read', async () => {
     await renderRouter(app, { initialUrl: '/account/privacy' });
     fireEvent.press(await screen.findByRole('radio', { name: new RegExp(`^${ar.visibility.hidden}`) }));

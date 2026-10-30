@@ -108,3 +108,25 @@ added to `app-preferences.ts` when asked for.
 ## Interviews today (EmployerHome)
 
 See 09.
+
+## Built (2026-10-30)
+
+- **«كشف سابق»** (migration 381). `my_company_revealed(handle)` gives when
+  the caller's company last revealed a consultant, within the 90 days the
+  ledger keeps. The confirmation says it.
+- **The consultant's reveal log** (migration 381). `my_contact_reveals()`
+  lists which companies revealed the consultant's number and when. It names
+  the company, never who on its team pressed (that is the company's own
+  activity log). It is shown as «من كشف رقمك» under Privacy. The push per
+  reveal is not built: it needs a notification kind of its own.
+- **Daily views** (migration 382). `job_view_days` counts views per Cairo
+  day, written by `increment_job_view()` beside the total, which is counted
+  as before. Only the listing's company reads it. The stats screen draws
+  «المشاهدات يومًا بيوم» under the applications. The category average is
+  still not built.
+- Tests: `supabase/tests/reveal-reads.test.mjs` and
+  `supabase/tests/job-view-days.test.mjs`.
+
+Everything else in this doc stays as written: each needs a product decision
+or a design of its own.
+
