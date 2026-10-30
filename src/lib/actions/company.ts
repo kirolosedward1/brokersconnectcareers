@@ -16,6 +16,7 @@ import { recordSecurityEvent } from '@/lib/security/events';
 import { clean, cleanText, safeHttpUrl } from '@/lib/security/sanitize';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { refused } from '@/lib/observe';
+import { isValidPhone, normalisePhone } from '@/lib/phone';
 
 const schema = z.object({
   nameAr: z.string().trim().min(2).max(160),
@@ -467,6 +468,61 @@ export async function updateMemberPermissions(input: unknown): Promise<ActionRes
     .eq('user_id', parsed.data.userId)
     .select('user_id');
   if (error) return refused('team', error, { member: parsed.data.userId });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const hiringSchema = z.object({
+  hiringStatus: z.enum(['open', 'paused']),
+  // A Cairo calendar day, or null for "until we open again".
+  pausedUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  contactWhatsapp: z.string().max(32).nullable(),
+  replyHours: z
+    .object({
+      days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+      from: z.string().regex(HH_MM),
+      to: z.string().regex(HH_MM),
+    })
+    .refine((hours) => hours.from < hours.to, { message: 'hoursOrder', path: ['to'] })
+    .nullable(),
+});
+
+/**
+ * Whether the company takes applications now, and how and when it answers
+ * (migration 378, Phase B 07a). A company admin's, through their own session
+ * (companies_update); a pause stops new applications in the database itself.
+ */
+export async function saveCompanyHiring(input: unknown): Promise<ActionResult> {
+  const parsed = hiringSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) fieldErrors[String(issue.path[0] ?? 'form')] = issue.message;
+    return { ok: false, error: 'invalid', fieldErrors };
+  }
+  const phone = parsed.data.contactWhatsapp?.trim() ? normalisePhone(parsed.data.contactWhatsapp) : null;
+  if (phone && !isValidPhone(phone)) return { ok: false, error: 'invalid', fieldErrors: { contactWhatsapp: 'invalidPhone' } };
+
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+
+  const days = parsed.data.replyHours ? [...new Set(parsed.data.replyHours.days)].sort() : null;
+  const { data, error } = await supabase
+    .from('companies')
+    .update({
+      hiring_status: parsed.data.hiringStatus,
+      // A day only means something while paused.
+      paused_until: parsed.data.hiringStatus === 'paused' ? parsed.data.pausedUntil : null,
+      contact_whatsapp: phone,
+      reply_hours: parsed.data.replyHours && days ? { ...parsed.data.replyHours, days } : null,
+    })
+    .eq('id', companyId)
+    .select('id');
+  if (error) return refused('company', error, { company: companyId });
+  // No row: the caller is a member but not an admin, which the policy decides.
   if (!data?.length) return { ok: false, error: 'forbidden' };
   revalidatePath('/employer/company');
   return { ok: true };

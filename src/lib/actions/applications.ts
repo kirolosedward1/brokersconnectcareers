@@ -128,6 +128,8 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     if (error.message.includes('application_rate_limit')) {
       return { ok: false, error: 'rate_limit' };
     }
+    // The company has paused hiring (migration 378): no form can fix that, so it is named.
+    if (error.message.includes('company_paused')) return { ok: false, error: 'company_paused' };
 
     /*
       A refusal by policy (42501) is almost always the listing: it closed,

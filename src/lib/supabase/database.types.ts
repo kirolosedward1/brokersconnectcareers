@@ -131,6 +131,9 @@ export type DeveloperRow = {
   slug: string;
 };
 
+/** When a company answers, Cairo time (migration 378). */
+export type ReplyHours = { days: number[]; from: string; to: string };
+
 export type CompanyRow = Timestamped & {
   id: string;
   owner_id: string;
@@ -157,6 +160,15 @@ export type CompanyRow = Timestamped & {
    */
   suspended_at?: string | null;
   suspension_reason?: string | null;
+  /**
+   * Migration 378: 'paused' takes no new applications until paused_until has
+   * passed (company_is_hiring). The number and the hours are public, shown
+   * only when set. reply_hours is Cairo time, 0 being Sunday.
+   */
+  hiring_status?: 'open' | 'paused';
+  paused_until?: string | null;
+  contact_whatsapp?: string | null;
+  reply_hours?: ReplyHours | null;
   /** Ours: a seed, QA, or store-review company (migration 368). Absent before it. */
   is_test?: boolean;
   /**
@@ -1678,6 +1690,8 @@ export type Database = {
           created_at: string;
         }[];
       };
+      /** Migration 378: whether a company takes applications today. */
+      company_is_hiring: { Args: { p_company: string }; Returns: boolean };
       /**
        * Migration 377: what the team did, newest first, a page at a time. An
        * admin reads everyone's (and may narrow it to one member); anybody else

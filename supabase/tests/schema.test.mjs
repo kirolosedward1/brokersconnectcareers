@@ -428,6 +428,9 @@ report.section('who may call a definer function, on purpose');
     // 370): three aggregates over the last 180 days, none under five
     // applications, never a row — what a script can learn is what the listing says.
     'company_response_stats',
+    // Whether a company takes applications today (migration 378): a boolean
+    // read off columns the public row already shows, for the listing's notice.
+    'company_is_hiring',
     // my_company_id is not here: no policy calls it, and migration 350 closed
     // it to the signed-out side, where it only ever answered null.
     'owns_company',

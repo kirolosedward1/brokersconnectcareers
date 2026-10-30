@@ -344,6 +344,15 @@ export type MobileActions = {
     output: ActionResult<{ sent: number; skipped: number }>;
   };
   /** Migration 376: a member's switches; admins only, never the owner. */
+  saveCompanyHiring: {
+    input: {
+      hiringStatus: 'open' | 'paused';
+      pausedUntil: string | null;
+      contactWhatsapp: string | null;
+      replyHours: { days: number[]; from: string; to: string } | null;
+    };
+    output: ActionResult;
+  };
   updateMemberPermissions: { input: { userId: string; canPost: boolean; canReveal: boolean; canSpend: boolean }; output: ActionResult };
   /** Migration 375: a note about the person, read on every application they send the company. */
   addCandidateNote: { input: { applicationId: string; body: string; idempotencyKey?: string }; output: ActionResult<{ id: number }> };

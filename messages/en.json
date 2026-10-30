@@ -576,7 +576,8 @@
     "privacyNote": "If your consultant directory profile is not hidden, this company also sees it in full — headline, tracks, districts and your sales record — and can ask for your number and CV from it, even if it is not verified. You can withdraw the application at any time from “My applications”.",
     "suspendedTitle": "Your account is suspended",
     "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account.",
-    "notOpen": "This listing stopped taking applications while the form was open. Nothing was sent."
+    "notOpen": "This listing stopped taking applications while the form was open. Nothing was sent.",
+    "companyPaused": "This company has paused new applications for now. Nothing was sent, and its listings are still up."
   },
   "employer": {
     "company": "Company profile",
