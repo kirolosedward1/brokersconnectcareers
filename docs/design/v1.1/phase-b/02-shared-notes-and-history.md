@@ -5,6 +5,30 @@ dealings with a candidate on every application they send: earlier
 applications to its other listings, how each one ended, and notes the team
 wrote about the person (not about one application).
 
+## Built (2026-10-30)
+
+- **Migration 375, `company_candidate_notes`.**
+  - Who may read, write and remove is decided by `knows_candidate()`: the
+    caller works one of the person's applications to this company.
+  - Reads are open to the whole company (decided).
+  - A note is written only as yourself.
+  - A note is removed by its author, or by one of the company's admins.
+  - The candidate never reads them, and another company never does either.
+  - Two read functions, `candidate_notes_for(uuid[])` and
+    `candidate_history_for(uuid[])`, run under the caller's row-level
+    security, one call each for a whole screen.
+  - Test: `supabase/tests/candidate-notes.test.mjs`.
+- **Website actions:** `addCandidateNote` (the person and the company come
+  from the application; keyed once per note) and `deleteCandidateNote`.
+- **App:** every applicant card shows «تقدّم من قبل»: how many times, how the
+  latest ended, and the list a tap away. It also shows «عن المرشّح»: the
+  team's notes about the person and a field to add one.
+- **The data export does not mention the notes** (decided), and nothing was
+  added to it.
+
+The read functions are named `candidate_*_for` and take several
+applications, rather than the single `candidate_history_here` sketched below.
+
 ## What exists
 
 - `application_notes` (migration 58) holds notes **per application**. The
