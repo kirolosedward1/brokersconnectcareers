@@ -194,6 +194,10 @@ export type CompanyMemberRow = Timestamped & {
   company_id: string;
   user_id: string;
   role: CompanyMemberRole;
+  /** Migration 376: what the member may do. The owner may always do all three, whatever is stored. */
+  can_post?: boolean;
+  can_reveal?: boolean;
+  can_spend?: boolean;
 };
 
 export type JobRow = Timestamped & {
@@ -1348,7 +1352,7 @@ export type SecuritySummary = {
 
 /** What reveal_agent_contact() answers with — one row, always. */
 export type ContactRevealRow = {
-  status: 'ok' | 'unauthenticated' | 'forbidden' | 'locked' | 'not_found' | 'rate_limited';
+  status: 'ok' | 'unauthenticated' | 'forbidden' | 'not_permitted' | 'locked' | 'not_found' | 'rate_limited';
   retry_after_seconds: number | null;
   full_name: string | null;
   whatsapp_phone: string | null;
@@ -1624,6 +1628,8 @@ export type Database = {
        * how many, the share it opened (0–1), the median days to a first
        * answer. No row under five applications; no median under three answered.
        */
+      /** Migration 376: whether the caller may post, reveal or spend for the company; the owner always may. */
+      member_can: { Args: { p_company: string; p_permission: 'post' | 'reveal' | 'spend' }; Returns: boolean };
       /** Migration 375: the notes about each card's candidate, and their other applications to this company. Under RLS. */
       candidate_notes_for: {
         Args: { p_application_ids: string[] };

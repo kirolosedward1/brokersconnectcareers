@@ -52,6 +52,9 @@ export async function startCheckout(input: unknown): Promise<ActionResult<{ url:
   });
   if (!access.ok) return { ok: false, error: access.error };
   const { company } = access;
+  // The member's own switch (migration 376): an admin the company keeps from spending is refused; the owner never is.
+  const { data: maySpend } = await supabase.rpc('member_can', { p_company: company.id, p_permission: 'spend' });
+  if (maySpend === false) return { ok: false, error: 'not_permitted' };
 
   const { data: profile } = await supabase
     .from('profiles')

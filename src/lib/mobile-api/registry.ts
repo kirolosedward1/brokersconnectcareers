@@ -53,6 +53,7 @@ import {
 import { requestPasswordReset, resendConfirmation } from '@/lib/actions/auth-email';
 import {
   addCompanyMember,
+  updateMemberPermissions,
   claimMonthlyFreePost,
   recordCompanyDocument,
   removeCompanyMember,
@@ -233,6 +234,7 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   setApplicationStatuses: { run: (input) => setApplicationStatuses(input) },
   messageApplicants: { run: (input) => messageApplicants(input) },
   saveReply: { run: (input) => saveReply(input) },
+  updateMemberPermissions: { run: (input) => updateMemberPermissions(input) },
   addCandidateNote: { run: (input) => addCandidateNote(input) },
   deleteCandidateNote: { run: (input) => deleteCandidateNote(input) },
   deleteReply: { run: (input) => deleteReply(input) },

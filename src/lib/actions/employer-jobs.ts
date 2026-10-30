@@ -102,6 +102,9 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     : { data: null };
 
   if (!company) return { ok: false, error: 'no_company' };
+  // The member's own switch (migration 376): a company may keep a member from posting.
+  const { data: mayPost } = await supabase.rpc('member_can', { p_company: company.id, p_permission: 'post' });
+  if (mayPost === false) return { ok: false, error: 'not_permitted' };
 
   const value = parsed.data;
 
@@ -366,6 +369,11 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
   // Scoped to the caller's own company for the reason saveJob gives.
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'forbidden' };
+  // The member's own switch (migration 376): submitting and reopening are posting.
+  if (parsed.data.status === 'pending_review') {
+    const { data: mayPost } = await supabase.rpc('member_can', { p_company: companyId, p_permission: 'post' });
+    if (mayPost === false) return { ok: false, error: 'not_permitted' };
+  }
 
   // Allowed to fail quietly: it only decides whether Google is told, and a
   // missing answer means it is not.

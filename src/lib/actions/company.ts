@@ -418,7 +418,8 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
 
   const { error } = await supabase
     .from('company_members')
-    .insert({ company_id: companyId, user_id: invitee, role: parsed.data.role });
+    // An admin may buy, as admins always could; the switch (migration 376) can take it away.
+    .insert({ company_id: companyId, user_id: invitee, role: parsed.data.role, can_spend: parsed.data.role === 'admin' });
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
@@ -433,6 +434,40 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
     return { ok: false, error: 'forbidden' };
   }
 
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+const permissionsSchema = z.object({
+  userId: z.string().uuid(),
+  canPost: z.boolean(),
+  canReveal: z.boolean(),
+  canSpend: z.boolean(),
+});
+
+/**
+ * A member's switches (migration 376, decided: switches rather than more
+ * roles): may they post, reveal a number, spend. Admins change them, through
+ * their own session (company_members_manage); the owner's are not theirs to
+ * change, and mean nothing anyway — the owner may always do all three.
+ */
+export async function updateMemberPermissions(input: unknown): Promise<ActionResult> {
+  const parsed = permissionsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const { data: company } = await supabase.from('companies').select('owner_id').eq('id', companyId).maybeSingle();
+  if (company?.owner_id === parsed.data.userId) return { ok: false, error: 'owner' };
+
+  const { data, error } = await supabase
+    .from('company_members')
+    .update({ can_post: parsed.data.canPost, can_reveal: parsed.data.canReveal, can_spend: parsed.data.canSpend })
+    .eq('company_id', companyId)
+    .eq('user_id', parsed.data.userId)
+    .select('user_id');
+  if (error) return refused('team', error, { member: parsed.data.userId });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
   revalidatePath('/employer/company');
   return { ok: true };
 }

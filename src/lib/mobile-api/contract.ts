@@ -51,7 +51,7 @@ export type ContactRevealResult =
   | { ok: true; data: { fullName: string; phone: string; whatsappUrl: string; hasCv: boolean } }
   | {
       ok: false;
-      error: 'invalid' | 'unauthenticated' | 'forbidden' | 'locked' | 'not_found' | 'rate_limit' | 'failed';
+      error: 'invalid' | 'unauthenticated' | 'forbidden' | 'not_permitted' | 'locked' | 'not_found' | 'rate_limit' | 'failed';
       retryAfterSeconds?: number;
     };
 
@@ -343,6 +343,8 @@ export type MobileActions = {
     input: { applicationIds: string[]; message: string; key: string };
     output: ActionResult<{ sent: number; skipped: number }>;
   };
+  /** Migration 376: a member's switches; admins only, never the owner. */
+  updateMemberPermissions: { input: { userId: string; canPost: boolean; canReveal: boolean; canSpend: boolean }; output: ActionResult };
   /** Migration 375: a note about the person, read on every application they send the company. */
   addCandidateNote: { input: { applicationId: string; body: string; idempotencyKey?: string }; output: ActionResult<{ id: number }> };
   deleteCandidateNote: { input: { id: number }; output: ActionResult };
