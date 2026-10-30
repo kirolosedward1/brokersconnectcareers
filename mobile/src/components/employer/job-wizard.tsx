@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { toast } from '~/components/feedback/toast';
 import { Scale, TriangleAlert } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
@@ -42,6 +43,7 @@ import {
   type Problem,
 } from '~/features/employer/job-form';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
+import { useBranches } from '~/features/employer/branches';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
@@ -86,6 +88,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const locale = useLocale();
   const { colors } = useTheme();
   const districts = useDistricts().data ?? [];
+  const branches = useBranches(useSession().viewer?.company?.id ?? null).data ?? [];
   const developers = useDevelopers().data ?? [];
   const save = useSaveJob();
   const { actor } = useSession();
@@ -202,8 +205,10 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     setErrors({});
     save.mutate(toJobInput(values, { id: job?.id, version, idempotencyKey, submit: publish }), {
       // Closed once the guard has stood down (the effect above), not from here.
-      onSuccess: () => {
+      onSuccess: (result) => {
         kept.clear();
+        // Saved, but the live listing's new pay waits for an admin (migration 380).
+        if (result.pendingApproval) toast.show({ message: t('app.rules.payAsked'), tone: 'default' });
         setSaved(true);
       },
       onError: (failure) => {
@@ -218,6 +223,9 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
           return refuse(t(actor?.profile?.approval_status === 'pending' ? 'employer.pendingBody' : 'employer.standingBlocked'));
         }
         if (reason === 'company_suspended') return refuse(t('employer.companySuspendedBlocked'));
+        // The company keeps this member from posting (migration 376).
+        if (reason === 'not_permitted') return refuse(t('app.team.notPermittedPost'));
+        if (reason === 'company_closing') return refuse(t('app.closure.closingBlocked'));
         if (reason === 'post_cap' || reason === 'post_rate_limit') {
           return refuse(t(reason === 'post_cap' ? 'employer.postCapBlocked' : 'employer.postRateLimited'), 3);
         }
@@ -407,6 +415,22 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               onChange={(value) => value != null && set('districtId')(value)}
             />
           </Field>
+          {/* The company's branch, when it lists any (migration 383): choosing one sets the district to it. */}
+          {branches.length ? (
+            <Field label={t('app.branches.forListing')} hint={t('app.branches.forListingHint')}>
+              <Select
+                label={t('app.branches.forListing')}
+                value={values.branchId ?? null}
+                placeholder={t('app.branches.none')}
+                options={branches.map((branch) => ({ value: branch.id, label: localized(locale, branch.name_ar, branch.name_en) }))}
+                onChange={(value) => {
+                  set('branchId')(value);
+                  const chosen = branches.find((branch) => branch.id === value);
+                  if (chosen?.district_id) set('districtId')(chosen.district_id);
+                }}
+              />
+            </Field>
+          ) : null}
           <Field ref={inView.place('seats')} label={t('jobForm.seats')} hint={t('jobForm.seatsHint')} error={errors.seats}>
             <TextField
               value={values.seats}
@@ -459,7 +483,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
             <View style={{ flexDirection: 'row', gap: space[1] }}>
               <Scale size={13} color={colors.mutedForeground} style={{ marginTop: 3 }} />
               <Text variant="caption" tone="mutedForeground" style={{ flex: 1 }}>
-                {t.markup('compensation.reference', {
+                {t.markup('app.money.reference', {
                   low: formatEgp(reference.low, locale),
                   high: formatEgp(reference.high, locale),
                   count: reference.sample,

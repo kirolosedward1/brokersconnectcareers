@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>طلب الإشعارات وبطاقة المشاركة وإشعار العطل</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.cap{position:absolute;padding:4px 10px;border-radius:999px;background:#121620;color:#fff;font-size:10px;opacity:.8}
+.card{background:#fff;border-radius:20px;box-shadow:0 6px 20px rgba(18,22,32,.08)}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#E6E1D8;position:relative;overflow:hidden;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+
+  <span class="cap" style="top:6px;right:16px">طلب الإشعارات، يظهر بعد أول تقديم</span>
+  <div class="card" style="margin-top:14px;padding:18px;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:48px;height:48px;border-radius:14px;background:#ECEEF4;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:2px"><strong style="font-size:15px;font-weight:600">اعرف فور ردّ الشركة</strong><span style="font-size:12px;line-height:17px;color:#5C6270">إشعار واحد لكل تغيير في طلبك.</span></div>
+    </div>
+    <div style="display:flex;gap:8px"><button type="button" style="flex:1;height:44px;border-radius:999px;background:#16295A;color:#fff;border:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer">فعّل الإشعارات</button><button type="button" style="height:44px;padding:0 16px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;font:inherit;font-size:14px;font-weight:600;color:#5C6270;cursor:pointer">لاحقًا</button></div>
+  </div>
+
+  <span class="cap" style="top:196px;right:16px">بطاقة المشاركة، صورة تُرسل على واتساب</span>
+  <div style="margin-top:14px;border-radius:20px;overflow:hidden;background:#16295A;background-image:linear-gradient(160deg,#16295A 0%,#0B1734 100%);color:#fff;padding:20px;display:flex;flex-direction:column;gap:12px;position:relative;box-shadow:0 18px 48px rgba(14,29,68,.28)">
+    <svg aria-hidden="true" viewBox="0 0 200 200" width="200" height="200" style="position:absolute;top:-110px;left:-110px;pointer-events:none"><circle cx="100" cy="100" r="60" fill="none" stroke="#D8BC86" stroke-opacity=".22"/><circle cx="100" cy="100" r="85" fill="none" stroke="#D8BC86" stroke-opacity=".18"/></svg>
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:#D8BC86;color:#17120A;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center"><img src="/_blob/ce247a26bca4a27be7eaa0fe73f9182b" alt="بروكرز كونكت" style="width:70%;height:70%;object-fit:contain"></span><span style="font-size:12px;font-weight:600;color:#D8BC86">بروكرز كونكت</span></div>
+    <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:#C9D0DE">ماونتن فيو للتطوير · التجمع الخامس</span><strong style="font-size:20px;line-height:28px;font-weight:700">استشاري مبيعات عقارية</strong></div>
+    <div style="display:flex;align-items:baseline;gap:8px"><b class="num" style="font-size:30px;line-height:34px;color:#D8BC86">12,000</b><span style="font-size:13px;color:#C9D0DE">ج.م / شهر</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:#C9D0DE">عملاء من الشركة · <span class="num">4</span> مقاعد</span><span style="font-size:11px;direction:ltr;unicode-bidi:isolate;color:#C9D0DE">brokersconnect.net/j/mv-sales</span></div>
+  </div>
+
+  <span class="cap" style="top:462px;right:16px">إشعار بعد عطل، عند الفتح التالي</span>
+  <div class="card" style="margin-top:14px;padding:16px;display:flex;flex-direction:column;gap:10px;border:1px solid #FAEED6">
+    <div style="display:flex;align-items:flex-start;gap:10px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#8F5B0E" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0"><path d="M12 9v4M12 17h.01M10.3 3.9 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div style="flex:1;display:flex;flex-direction:column;gap:2px"><strong style="font-size:14px;font-weight:600">أُغلق التطبيق فجأة في المرة الماضية</strong><span style="font-size:12px;line-height:17px;color:#5C6270">مسودتك في الإعلان محفوظة. أرسل تقرير العطل لنصلحه، بلا بيانات شخصية.</span></div></div>
+    <div style="display:flex;gap:8px"><button type="button" style="height:40px;padding:0 14px;border-radius:999px;background:#16295A;color:#fff;border:0;font:inherit;font-size:13px;font-weight:600;cursor:pointer">أرسل التقرير</button><button type="button" style="height:40px;padding:0 14px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;font:inherit;font-size:13px;font-weight:600;color:#5C6270;cursor:pointer">لا، شكرًا</button></div>
+  </div>
+
+  <span class="cap" style="top:632px;right:16px">نافذة النظام للإشعارات (iOS)</span>
+  <div dir="rtl" style="margin:14px 36px 0;border-radius:14px;background:rgba(249,249,249,.96);box-shadow:0 10px 30px rgba(0,0,0,.2);overflow:hidden;text-align:center">
+    <div style="padding:18px 16px 14px;display:flex;flex-direction:column;gap:4px"><strong style="font-size:16px;font-weight:600">«بروكرز كونكت» يريد إرسال إشعارات</strong><span style="font-size:12px;line-height:17px;color:#5C6270">قد تتضمن الإشعارات تنبيهات وأصواتًا وشارات.</span></div>
+    <div style="display:flex;border-top:1px solid #D9D4CA"><span style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#007AFF;border-inline-end:1px solid #D9D4CA">لا تسمح</span><span style="flex:1;height:44px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#007AFF">اسمح</span></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

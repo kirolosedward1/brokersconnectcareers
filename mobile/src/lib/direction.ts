@@ -52,6 +52,11 @@ export function setDrawnLocale(locale: Locale) {
   drawnLocale = locale;
 }
 
+/** The language the screens are drawn in, for code that writes text outside a component (the in-sentence number tag). */
+export function drawnLanguage(): Locale {
+  return drawnLocale;
+}
+
 export function drawnDirection(): 'rtl' | 'ltr' {
   return dirOf(drawnLocale);
 }

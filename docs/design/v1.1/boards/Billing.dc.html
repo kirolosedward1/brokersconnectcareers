@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الفوترة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}a:hover{color:#0E1D44}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06);overflow:hidden}
+.ib{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.inv{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.inv:last-child{border-bottom:0}
+.inv strong{display:block;font-size:14px;line-height:20px;font-weight:600}
+.inv span.m{display:block;font-size:12px;line-height:17px;color:#5C6270}
+h2{margin:0 4px;font-size:12px;font-weight:600;color:#5C6270}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="CompanySettings.dc.html" class="ib" aria-label="رجوع"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <h1 style="margin:0;flex:1;font-size:18px;line-height:26px;font-weight:700">الفوترة</h1>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:14px;flex:1;overflow:hidden">
+
+    <div style="padding:18px;border-radius:20px;background:#16295A;color:#fff;display:flex;flex-direction:column;gap:12px;box-shadow:0 18px 48px rgba(14,29,68,.22)">
+      <span style="font-size:12px;color:#C9D0DE">رصيد النشر</span>
+      <div style="display:flex;align-items:baseline;gap:8px"><b class="num" style="font-size:40px;line-height:44px;font-weight:700;color:#D8BC86">3</b><span style="font-size:14px">إعلانات متبقية</span></div>
+      <div style="display:flex;gap:4px" aria-hidden="true"><span style="flex:1;height:6px;border-radius:999px;background:#D8BC86"></span><span style="flex:1;height:6px;border-radius:999px;background:#D8BC86"></span><span style="flex:1;height:6px;border-radius:999px;background:#D8BC86"></span><span style="flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.2)"></span><span style="flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.2)"></span></div>
+      <span style="font-size:12px;color:#C9D0DE">استُخدم <span class="num">2</span> من باقة <span class="num">5</span> إعلانات · تنتهي في <span class="num">14</span> يناير <span class="num">2027</span></span>
+    </div>
+
+    <div class="card" style="padding:12px 14px;display:flex;align-items:flex-start;gap:10px;border:1px solid #F0E6D0;background:#FBF8F1">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#A27A3B" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      <span style="flex:1;font-size:13px;line-height:19px;color:#4A3F2A">الشراء والتجديد يتمّان من موقع brokersconnect.net. التطبيق يعرض الرصيد والفواتير فقط.</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>الباقة</h2>
+      <div class="card">
+        <div class="inv"><div style="flex:1"><strong>باقة <span class="num">5</span> إعلانات</strong><span class="m">كل إعلان منشور <span class="num">30</span> يومًا · تمويل الإعلان يُحتسب منفصلًا</span></div></div>
+        <div class="inv"><div style="flex:1"><strong>الفاتورة إلى</strong><span class="m">ماونتن فيو للتطوير · رقم ضريبي <span class="num">***-***-412</span></span></div><a href="#" style="font-size:12px;font-weight:600">على الموقع</a></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>الفواتير</h2>
+      <div class="card">
+        <div class="inv"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><div style="flex:1"><strong>باقة <span class="num">5</span> إعلانات</strong><span class="m"><span class="num">14</span> أكتوبر <span class="num">2026</span> · مدفوعة</span></div><a href="#" style="font-size:12px;font-weight:600">PDF</a></div>
+        <div class="inv"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><div style="flex:1"><strong>تمويل إعلان · استشاري مبيعات</strong><span class="m"><span class="num">22</span> أكتوبر <span class="num">2026</span> · مدفوعة</span></div><a href="#" style="font-size:12px;font-weight:600">PDF</a></div>
+        <div class="inv"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><div style="flex:1"><strong>إعلان مفرد</strong><span class="m"><span class="num">3</span> سبتمبر <span class="num">2026</span> · مدفوعة</span></div><a href="#" style="font-size:12px;font-weight:600">PDF</a></div>
+      </div>
+    </div>
+
+    <a href="#" style="align-self:center;font-size:13px;font-weight:500">سياسة الاسترداد</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

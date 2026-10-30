@@ -1,5 +1,6 @@
 'use server';
 
+import { askForApproval } from '@/lib/actions/approval-requests';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
@@ -46,6 +47,11 @@ const jobSchema = z
     descriptionEn: z.string().trim().max(8000).optional().nullable(),
     requirementsAr: z.string().trim().max(4000).optional().nullable(),
     developerIds: z.array(z.coerce.number().int().positive()).max(30),
+    /**
+     * The company's branch (migration 383), or null for none. Absent leaves it
+     * as it is: the website's form does not send one.
+     */
+    branchId: z.coerce.number().int().positive().nullable().optional(),
     /** The version the form was built from; absent when creating. */
     version: z.coerce.number().int().positive().optional(),
     /**
@@ -73,7 +79,7 @@ const jobSchema = z
  * review; publishing is a moderation action and is refused at the database
  * level for anyone who is not an admin.
  */
-export async function saveJob(input: unknown): Promise<ActionResult<{ id: string }>> {
+export async function saveJob(input: unknown): Promise<ActionResult<{ id: string; pendingApproval?: boolean }>> {
   const parsed = jobSchema.safeParse(input);
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -102,6 +108,9 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     : { data: null };
 
   if (!company) return { ok: false, error: 'no_company' };
+  // The member's own switch (migration 376): a company may keep a member from posting.
+  const { data: mayPost } = await supabase.rpc('member_can', { p_company: company.id, p_permission: 'post' });
+  if (mayPost === false) return { ok: false, error: 'not_permitted' };
 
   const value = parsed.data;
 
@@ -169,9 +178,13 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     description_ar: description.value,
     description_en: descriptionEn.value || null,
     requirements_ar: requirements.value || null,
+    // Only when the form sends it (migration 383): the website's form does not.
+    ...(value.branchId !== undefined ? { branch_id: value.branchId } : {}),
   } as const;
 
   let jobId = value.id;
+  // A pay change the company's admin must approve first (migration 380).
+  let payWaits = false;
 
   if (jobId) {
     // .select() so a listing the caller does not belong to is a refusal rather
@@ -201,9 +214,31 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
       // is `is_admin()`, and this console is a company's, not the platform's.
       .eq('company_id', company.id);
 
-    const { data: saved, error } = await (
+    let { data: saved, error } = await (
       value.version ? query.eq('version', value.version) : query
     ).select('id');
+
+    // The company has an admin approve a live listing's pay (migration 380):
+    // the rest of the edit is saved as it stood, and the pay waits for them.
+    if (error && error.message.includes('pay_change_needs_approval')) {
+      const pay = {
+        basic_salary_min: payload.basic_salary_min,
+        basic_salary_max: payload.basic_salary_max,
+        commission_type: payload.commission_type,
+        commission_value: payload.commission_value,
+        commission_note_ar: payload.commission_note_ar,
+      };
+      // The edit as it was sent, its pay as the listing has it now.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { basic_salary_min, basic_salary_max, commission_type, commission_value, commission_note_ar, ...rest } = payload;
+      const again = supabase.from('jobs').update(live ? rest : { ...rest, status }).eq('id', jobId).eq('company_id', company.id);
+      ({ data: saved, error } = await (value.version ? again.eq('version', value.version) : again).select('id'));
+      if (!error && saved?.length) {
+        const asked = await askForApproval(supabase, 'pay_change', jobId, pay);
+        if (!asked.ok) return asked;
+        payWaits = true;
+      }
+    }
 
     if (error) {
       logFailure('listing', 'save refused', { job: jobId, company: company.id, code: error.code });
@@ -340,7 +375,7 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
   }
 
   revalidatePath('/employer/jobs');
-  return { ok: true, data: { id: jobId! } };
+  return { ok: true, data: { id: jobId!, ...(payWaits ? { pendingApproval: true } : {}) } };
 }
 
 const transitionSchema = z.object({
@@ -366,6 +401,11 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
   // Scoped to the caller's own company for the reason saveJob gives.
   const { data: companyId } = await supabase.rpc('my_company_id');
   if (!companyId) return { ok: false, error: 'forbidden' };
+  // The member's own switch (migration 376): submitting and reopening are posting.
+  if (parsed.data.status === 'pending_review') {
+    const { data: mayPost } = await supabase.rpc('member_can', { p_company: companyId, p_permission: 'post' });
+    if (mayPost === false) return { ok: false, error: 'not_permitted' };
+  }
 
   // Allowed to fail quietly: it only decides whether Google is told, and a
   // missing answer means it is not.
@@ -433,12 +473,16 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
  * the other end of a refused write is not always the employer.
  */
 function mapJobError(message: string): string {
+  // A branch of another company (migration 383): the form offered only the company's own.
+  if (message.includes('branch_not_of_company')) return 'invalid';
   if (message.includes('unverified_company_post_cap')) return 'post_cap';
   if (message.includes('job status cannot go from')) return 'invalid_transition';
   // Restricted or suspended: nothing new goes in front of a moderator
   // (migration 327). And a suspended company submits nothing at all (317).
   if (message.includes('account_not_in_good_standing')) return 'standing';
   if (message.includes('company_suspended')) return 'company_suspended';
+  // The owner asked for the company to be deleted (migration 379): cancel that first.
+  if (message.includes('company_closing')) return 'company_closing';
   if (message.includes('job_post_rate_limit')) return 'post_rate_limit';
   if (message.includes('duplicate_listing')) return 'duplicate_listing';
   return 'failed';

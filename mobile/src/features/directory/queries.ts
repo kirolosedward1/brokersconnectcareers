@@ -307,7 +307,7 @@ export type RevealedContact = { fullName: string; phone: string; whatsappUrl: st
 /** Why a number was not handed over, in the website's words for each. */
 export class RevealRefused extends Error {
   constructor(
-    readonly reason: 'rate_limit' | 'locked' | 'failed',
+    readonly reason: 'rate_limit' | 'locked' | 'not_permitted' | 'failed',
     readonly retryAfterSeconds?: number,
   ) {
     super(reason);
@@ -327,6 +327,8 @@ export function useRevealContact() {
       if (result.ok) return result.data;
       if (result.error === 'rate_limit') throw new RevealRefused('rate_limit', result.retryAfterSeconds);
       if (result.error === 'locked' || result.error === 'forbidden') throw new RevealRefused('locked');
+      // The company keeps this member from revealing numbers (migration 376).
+      if (result.error === 'not_permitted') throw new RevealRefused('not_permitted');
       throw new RevealRefused('failed');
     },
   });

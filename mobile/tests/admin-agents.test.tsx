@@ -307,7 +307,7 @@ describe('the consultant profiles', () => {
 describe("a consultant's profile", () => {
   it('shows the profile as the directory would, the owner, the reports, and says only whether a CV was uploaded', async () => {
     server.on('GET /rest/v1/reports', [
-      { id: 'r1', reason: 'impersonation', detail: 'ده مش هو.', status: 'open', created_at: '2026-10-21T10:00:00Z', reporter: { id: REPORTER, full_name: 'منى علي' } },
+      { id: 'r1', reason: 'impersonation', detail: 'هذا ليس هو.', status: 'open', created_at: '2026-10-21T10:00:00Z', reporter: { id: REPORTER, full_name: 'منى علي' } },
     ]);
     await signIn();
     await renderRouter(app, { initialUrl: `/admin/agents/${AGENT_ID}` });

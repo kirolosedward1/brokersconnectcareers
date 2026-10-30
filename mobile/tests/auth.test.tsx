@@ -28,6 +28,10 @@ import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applicati
 import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete';
 import * as LicensesScreen from '../src/app/(tabs)/(account)/account/licenses';
+import * as AppearanceScreen from '../src/app/(tabs)/(account)/account/appearance';
+import * as PrivacyScreen from '../src/app/(tabs)/(account)/account/privacy';
+import * as SupportScreen from '../src/app/(tabs)/(account)/account/support';
+import * as AvailabilityScreen from '../src/app/(tabs)/(account)/account/availability';
 import * as ConfirmScreen from '../src/app/auth/confirm';
 import * as CallbackScreen from '../src/app/auth/callback';
 import * as MfaScreen from '../src/app/mfa';
@@ -214,6 +218,10 @@ const app = {
   '(tabs)/(account)/account/index': AccountScreen,
   '(tabs)/(account)/account/delete': DeleteAccountScreen,
   '(tabs)/(account)/account/licenses': LicensesScreen,
+  '(tabs)/(account)/account/appearance': AppearanceScreen,
+  '(tabs)/(account)/account/privacy': PrivacyScreen,
+  '(tabs)/(account)/account/support': SupportScreen,
+  '(tabs)/(account)/account/availability': AvailabilityScreen,
   '(auth)/_layout': AuthLayout,
   '(auth)/sign-in/index': SignInScreen,
   '(auth)/sign-in/forgot': ForgotScreen,
@@ -251,15 +259,15 @@ const EMPLOYER = `${ar.onboarding.roleEmployer}. ${ar.onboarding.roleEmployerHin
  * asked, the name and number, who sees the card, and the agreement.
  */
 async function answerOnboarding(name = 'سارة عادل') {
-  expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+  expect(await screen.findByTestId('onboarding')).toBeTruthy();
   if (screen.queryByLabelText(ar.onboarding.roleQuestion)) await onward();
+  // Past the tracks and the areas, to the card and the agreement.
+  await press(ar.app.onboarding.skip);
   fireEvent.changeText(await screen.findByLabelText(ar.onboarding.fullName), name);
   fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
-  await onward();
   fireEvent.press(await screen.findByRole('radio', { name: HIDDEN }));
-  await onward();
   fireEvent.press(await screen.findByRole('checkbox'));
-  await press(ar.onboarding.submit);
+  await press(ar.app.onboarding.directorySubmit);
 }
 
 /** Signed in before the app opens, the way a returning person is. */
@@ -295,13 +303,14 @@ describe('the Account tab', () => {
     // Alert.alert is the suite's own stand-in (above).
     jest.mocked(Alert.alert).mockClear();
     await renderRouter(app, { initialUrl: '/account' });
-    await press(ar.app.account.contact);
+    await press(ar.app.account.support);
+    await press(ar.app.support.email);
     expect(open).toHaveBeenCalledWith('mailto:help@brokersconnect.net');
     expect(screen.queryByText('help@brokersconnect.net')).toBeNull();
     expect(Alert.alert).not.toHaveBeenCalled();
 
     open.mockRejectedValue(new Error('no mail app'));
-    await press(ar.app.account.contact);
+    await press(ar.app.support.email);
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.contact, 'help@brokersconnect.net'));
     open.mockRestore();
   });
@@ -500,6 +509,26 @@ describe('creating an account', () => {
     }
   });
 
+  it('asks the kind of account when the door did not say, and keeps it and the name with the account', async () => {
+    await renderRouter(app, { initialUrl: '/sign-up' });
+    expect((await screen.findByLabelText(ar.onboarding.roleQuestion)).props.accessibilityRole).toBe('radiogroup');
+    fireEvent.press(screen.getByRole('radio', { name: EMPLOYER }));
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.email), 'new@example.com');
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'short');
+    // How strong it is, while typing: a guide, the length still the rule.
+    expect(screen.getByLabelText(ar.app.auth.strengthLabel.replace('{level}', ar.app.auth.strength.weak))).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.auth.password), 'Correct-horse-42');
+    expect(screen.getByLabelText(ar.app.auth.strengthLabel.replace('{level}', ar.app.auth.strength.strong))).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.auth.passwordConfirm), 'Correct-horse-42');
+    await press(ar.auth.signUp);
+
+    expect(await screen.findByText(ar.auth.checkEmailTitle)).toBeTruthy();
+    const request = server.asked('/auth/v1/signup')[0];
+    expect(request.body).toMatchObject({ email: 'new@example.com', data: { role: 'employer', full_name: 'سارة عادل' } });
+    expect(request.url.searchParams.get('redirect_to')).toBe(`${SITE}${confirmationPath({ role: 'employer', next: null })}`);
+  });
+
   it('catches a mistyped password before sending it', async () => {
     await renderRouter(app, { initialUrl: '/sign-up' });
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'new@example.com');
@@ -512,6 +541,15 @@ describe('creating an account', () => {
 });
 
 describe('onboarding', () => {
+  const stepOf = (current: number, total: number) =>
+    ar.app.jobs.wizardStep.replace('<v>{current}</v>', `⁦${current}⁩`).replace('<v>{total}</v>', `⁦${total}⁩`);
+  /** To a consultant's directory card: past the kind of account (the consultant's), then the two steps before the card. */
+  const toDirectory = async () => {
+    await screen.findByTestId('onboarding');
+    if (screen.queryByLabelText(ar.onboarding.roleQuestion)) await onward();
+    await press(ar.app.onboarding.skip);
+  };
+
   it('follows a sign-in on an account with no profile, and makes one', async () => {
     profileRow = null;
     await renderRouter(app, { initialUrl: '/account' });
@@ -519,24 +557,26 @@ describe('onboarding', () => {
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
 
-    expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
-    // A step at a time, and where it is in them, to VoiceOver too.
-    const stepOf = (current: number, total: number) =>
-      ar.app.jobs.wizardStep.replace('<v>{current}</v>', `\u2066${current}\u2069`).replace('<v>{total}</v>', `\u2066${total}\u2069`);
-    expect(screen.getByRole('progressbar', { name: stepOf(1, 4) })).toBeTruthy();
-    // First the kind of account, the consultant's offered.
+    expect(await screen.findByTestId('onboarding')).toBeTruthy();
+    // First the kind of account, outside the three steps, the consultant's offered.
     expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
     expect(screen.getByRole('radio', { name: `${ar.onboarding.roleCandidate}. ${ar.onboarding.roleCandidateHint}`, checked: true })).toBeTruthy();
+    expect(screen.queryByRole('progressbar')).toBeNull();
     // No way back from the first step; sign out and delete are there instead.
     expect(screen.queryByRole('button', { name: ar.common.back })).toBeNull();
     await onward();
 
+    // A step at a time, and where it is in them, to VoiceOver too.
+    expect(await screen.findByRole('progressbar', { name: stepOf(1, 3) })).toBeTruthy();
+    await press(ar.app.onboarding.workNext);
+    expect(await screen.findByRole('progressbar', { name: stepOf(2, 3) })).toBeTruthy();
+    await press(ar.app.onboarding.areaNext);
+    expect(await screen.findByRole('progressbar', { name: stepOf(3, 3) })).toBeTruthy();
+
     // The name offered is the address's, as on the website when no provider gave one.
     expect(await screen.findByDisplayValue('sara')).toBeTruthy();
-    expect(screen.getByRole('progressbar', { name: stepOf(2, 4) })).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.fullName), 'سارة عادل');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
-    await onward();
 
     // Who sees the directory card is asked, one choice among three, with none made for them.
     const visibility = await screen.findByLabelText(ar.onboarding.visibilityQuestion);
@@ -544,17 +584,16 @@ describe('onboarding', () => {
     expect(within(visibility).getAllByRole('radio')).toHaveLength(3);
     expect(within(visibility).queryAllByRole('radio', { checked: true })).toHaveLength(0);
     fireEvent.press(screen.getByRole('radio', { name: HIDDEN }));
-    // Back keeps what was typed.
+    // Back and on again keeps what was typed and chosen.
     await press(ar.common.back);
+    await press(ar.app.onboarding.areaNext);
     expect(await screen.findByDisplayValue('سارة عادل')).toBeTruthy();
-    await onward();
     expect(await screen.findByRole('radio', { name: HIDDEN, checked: true })).toBeTruthy();
-    await onward();
 
     // The language is a choice of its own, made already: the phone's.
-    expect((await screen.findByLabelText(ar.onboarding.locale)).props.accessibilityRole).toBe('radiogroup');
+    expect(screen.getByLabelText(ar.onboarding.locale).props.accessibilityRole).toBe('radiogroup');
     fireEvent.press(screen.getByRole('checkbox'));
-    await press(ar.onboarding.submit);
+    await press(ar.app.onboarding.directorySubmit);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/completeOnboarding')).toEqual({
@@ -570,13 +609,71 @@ describe('onboarding', () => {
     });
   });
 
+  it("writes a consultant's tracks, years, areas and pay onto the card made, alerts them, and opens the board those answers make", async () => {
+    profileRow = null;
+    await signedIn();
+    server.on('GET /rest/v1/agent_profiles', {
+      id: 'agent-1',
+      headline_ar: null,
+      headline_en: null,
+      languages: ['ar'],
+      visibility: 'hidden',
+      tracks: [],
+      district_ids: [],
+      years_experience: 0,
+    });
+    server.on('GET /rest/v1/agent_developers', []);
+    server.on('POST /api/mobile/v1/actions/saveAgentProfile', { ok: true });
+    server.on('POST /api/mobile/v1/actions/saveSearch', { ok: true, data: { id: 's-1' } });
+    await renderRouter({ ...app, '(tabs)/(home,account)/jobs/index': () => <Text>the board</Text> }, { initialUrl: '/onboarding' });
+    await onward();
+
+    // A consultant's three steps, the first of them first.
+    expect(await screen.findByRole('progressbar', { name: stepOf(1, 3) })).toBeTruthy();
+    // Several tracks, one band.
+    fireEvent.press(screen.getByRole('checkbox', { name: `${ar.track.primary}. ${ar.app.onboarding.trackHint.primary}` }));
+    fireEvent.press(screen.getByRole('checkbox', { name: `${ar.track.resale}. ${ar.app.onboarding.trackHint.resale}` }));
+    fireEvent.press(screen.getByRole('radio', { name: ar.experienceBand.mid_3_5 }));
+    await press(ar.app.onboarding.workNext);
+
+    fireEvent.press(await screen.findByRole('button', { name: newCairo.name_ar }));
+    fireEvent.press(screen.getByRole('radio', { name: `⁦10,000⁩ ج.م` }));
+    fireEvent.press(screen.getByRole('radio', { name: `${ar.app.onboarding.leads.company}. ${ar.app.onboarding.leads.companyHint}` }));
+    await press(ar.app.onboarding.areaNext);
+
+    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
+    fireEvent.changeText(screen.getByLabelText(ar.app.onboarding.unitsLabel), '31');
+    fireEvent.press(screen.getByRole('radio', { name: HIDDEN }));
+    fireEvent.press(screen.getByRole('checkbox'));
+    await press(ar.app.onboarding.directorySubmit);
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveSearch')).toHaveLength(1));
+    expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile')).toMatchObject({
+      input: {
+        yearsExperience: 3,
+        tracks: ['primary', 'resale'],
+        districtIds: [newCairo.id],
+        developerIds: [],
+        languages: ['ar'],
+        availability: 'open_to_offers',
+        visibility: 'hidden',
+      },
+    });
+    expect(bodyOf('/api/mobile/v1/actions/saveProfileRecord')).toEqual({ input: { unitsClosed: 31 } });
+    const search = (bodyOf('/api/mobile/v1/actions/saveSearch') as { input: { query: string } }).input;
+    const params = new URLSearchParams(search.query);
+    expect(params.getAll('track')).toEqual(['primary', 'resale']);
+    expect(params.get('min_salary') ?? params.get('salary') ?? search.query).toContain('10000');
+    expect(await screen.findByText('the board')).toBeTruthy();
+  });
+
   it('moves from the name to the number with the return key', async () => {
     profileRow = null;
     await signedIn();
     const focus = watchFocus();
     try {
       await renderRouter(app, { initialUrl: '/onboarding' });
-      await onward();
+      await toDirectory();
       fireEvent(await screen.findByLabelText(ar.onboarding.fullName), 'submitEditing');
       expect(focus.focused).toEqual([ar.onboarding.whatsapp]);
     } finally {
@@ -588,11 +685,7 @@ describe('onboarding', () => {
     profileRow = null;
     await signedIn();
     await renderRouter(app, { initialUrl: '/onboarding' });
-    await onward();
-    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
-    await onward();
-    fireEvent.press(await screen.findByRole('radio', { name: HIDDEN }));
-    await onward();
+    await toDirectory();
     const agreement = await screen.findByRole('checkbox');
     expect(agreement.props.accessibilityActions.map((action: { label: string }) => action.label)).toEqual([ar.footer.terms, ar.footer.privacy]);
 
@@ -608,16 +701,14 @@ describe('onboarding', () => {
     profileRow = null;
     await signedIn();
     await renderRouter(app, { initialUrl: '/onboarding' });
-    await onward();
+    await toDirectory();
     fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '01001234567');
-    await onward();
-    // Who sees the card: answered before going on.
-    await screen.findByLabelText(ar.onboarding.visibilityQuestion);
-    await onward();
+    await press(ar.app.onboarding.directorySubmit);
+    // Who sees the card, and the agreement: both answered before anything is made.
     expect(await screen.findByText(ar.onboarding.visibilityRequired)).toBeTruthy();
+    expect(screen.getByText(ar.onboarding.consentRequired)).toBeTruthy();
     fireEvent.press(screen.getByRole('radio', { name: HIDDEN }));
-    await onward();
-    await press(ar.onboarding.submit);
+    await press(ar.app.onboarding.directorySubmit);
     expect(await screen.findByText(ar.onboarding.consentRequired)).toBeTruthy();
     expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
   });
@@ -630,9 +721,9 @@ describe('onboarding', () => {
     const layout = placeViewsAt(300);
     try {
       await renderRouter(app, { initialUrl: '/onboarding' });
-      await onward();
+      await toDirectory();
       fireEvent.changeText(await screen.findByLabelText(ar.onboarding.whatsapp), '12');
-      await onward();
+      await press(ar.app.onboarding.directorySubmit);
 
       expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
       expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
@@ -656,15 +747,15 @@ describe('onboarding', () => {
     // The two kinds of account are one choice, named by the question they answer.
     expect(screen.getByLabelText(ar.onboarding.roleQuestion).props.accessibilityRole).toBe('radiogroup');
     await onward();
-    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
+    expect(await screen.findByRole('progressbar', { name: stepOf(1, 3) })).toBeTruthy();
+    fireEvent.changeText(await screen.findByLabelText(ar.app.onboarding.companyNameAr), 'نايل بروكرز');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
-    await onward();
-    // A company is not asked about a consultant's card: the agreement is next, and last.
+    // A company is not asked about a consultant's card.
     expect(screen.queryByLabelText(ar.onboarding.visibilityQuestion)).toBeNull();
-    fireEvent.press(await screen.findByRole('checkbox'));
-    await press(ar.onboarding.submit);
+    fireEvent.press(screen.getByRole('checkbox'));
+    await press(ar.app.onboarding.companyNext);
 
-    // Refused: back on the step that asks for the number, with the reason under it.
+    // Refused: on the step that asks for the number, with the reason under it.
     expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
     expect(screen.getByLabelText(ar.onboarding.whatsapp)).toBeTruthy();
     expect(bodyOf('/api/mobile/v1/actions/completeOnboarding')).toEqual({
@@ -686,31 +777,96 @@ describe('onboarding', () => {
     await renderRouter(app, { initialUrl: '/onboarding' });
     fireEvent.press(await screen.findByRole('radio', { name: EMPLOYER }));
     await onward();
-    fireEvent.changeText(await screen.findByLabelText(ar.onboarding.companyName), 'نايل بروكرز');
+    fireEvent.changeText(await screen.findByLabelText(ar.app.onboarding.companyNameAr), 'نايل بروكرز');
     fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    fireEvent.press(screen.getByRole('checkbox'));
 
-    // Not an address: said before going on.
-    fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'نايل بروكرز دوت كوم');
-    await onward();
+    // Not an address: said before anything is sent.
+    fireEvent.changeText(screen.getByLabelText(ar.app.onboarding.companyWebsite), 'نايل بروكرز دوت كوم');
+    await press(ar.app.onboarding.companyNext);
     expect(await screen.findByText(ar.validation.invalidUrl)).toBeTruthy();
-    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
 
     // A bare domain is the https address.
-    fireEvent.changeText(screen.getByLabelText(ar.onboarding.companyWebsite), 'nilebrokers.com');
-    await onward();
-    fireEvent.press(await screen.findByRole('checkbox'));
-    await press(ar.onboarding.submit);
+    fireEvent.changeText(screen.getByLabelText(ar.app.onboarding.companyWebsite), 'nilebrokers.com');
+    await press(ar.app.onboarding.companyNext);
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(1));
     expect((bodyOf('/api/mobile/v1/actions/completeOnboarding') as { input: { company: { website: string } } }).input.company.website).toBe(
       'https://nilebrokers.com',
     );
   });
 
+  it("goes on to a company's papers and its first listing once the account and the company are made", async () => {
+    profileRow = null;
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/onboarding' });
+    fireEvent.press(await screen.findByRole('radio', { name: EMPLOYER }));
+    await onward();
+    fireEvent.changeText(await screen.findByLabelText(ar.app.onboarding.companyNameAr), 'نايل بروكرز');
+    fireEvent.changeText(screen.getByLabelText(ar.onboarding.whatsapp), '01001234567');
+    fireEvent.press(screen.getByRole('checkbox'));
+    await press(ar.app.onboarding.companyNext);
+
+    // Made, and still here: the papers, then what is left to do.
+    expect(await screen.findByText(ar.app.onboarding.verifyTitle)).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: stepOf(2, 3) })).toBeTruthy();
+    // The company's own step is behind it now: no way back to it.
+    expect(screen.queryByRole('button', { name: ar.common.back })).toBeNull();
+    await press(ar.app.onboarding.later);
+    expect(await screen.findByText(ar.app.onboarding.readyTitle.replace('{company}', 'نايل بروكرز'))).toBeTruthy();
+    expect(screen.getByRole('button', { name: ar.app.onboarding.readyListing })).toBeTruthy();
+    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(1);
+  });
+
+  it("asks a consultant whose account the apply screen made only their answers, and keeps the card's own choice of who sees it", async () => {
+    await signedIn();
+    server.on('GET /rest/v1/agent_profiles', {
+      id: 'agent-1',
+      headline_ar: null,
+      headline_en: null,
+      languages: [],
+      visibility: 'verified_employers_only',
+      tracks: [],
+      district_ids: [],
+      years_experience: 2,
+    });
+    server.on('GET /rest/v1/agent_developers', [{ developer_id: 7 }]);
+    server.on('POST /api/mobile/v1/actions/saveAgentProfile', { ok: true });
+    await renderRouter(app, { initialUrl: '/onboarding?setup=1' });
+
+    // The three steps, no kind of account: the account exists.
+    expect(await screen.findByRole('progressbar', { name: stepOf(1, 3) })).toBeTruthy();
+    expect(screen.queryByLabelText(ar.onboarding.roleQuestion)).toBeNull();
+    fireEvent.press(screen.getByRole('checkbox', { name: `${ar.track.rental}. ${ar.app.onboarding.trackHint.rental}` }));
+    await press(ar.app.onboarding.workNext);
+    await press(ar.app.onboarding.areaNext);
+    // Nothing of the account asked again.
+    expect(await screen.findByText(ar.app.onboarding.directoryTitle)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.onboarding.fullName)).toBeNull();
+    expect(screen.queryByLabelText(ar.onboarding.visibilityQuestion)).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    await press(ar.app.onboarding.setupSubmit);
+
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/saveAgentProfile')).toHaveLength(1));
+    expect(bodyOf('/api/mobile/v1/actions/saveAgentProfile')).toMatchObject({
+      input: {
+        fullName: profile.full_name,
+        whatsapp: profile.whatsapp_phone,
+        tracks: ['rental'],
+        // Years skipped: the card's own; its developers kept.
+        yearsExperience: 2,
+        developerIds: [7],
+        visibility: 'verified_employers_only',
+      },
+    });
+    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
+  });
+
   it('opens by itself when a returning session has no profile yet', async () => {
     profileRow = null;
     await signedIn();
     await renderRouter(app, { initialUrl: '/' });
-    expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+    expect(await screen.findByTestId('onboarding')).toBeTruthy();
   });
 
   /** The buttons of the last question Alert.alert asked. */
@@ -779,7 +935,7 @@ describe('onboarding', () => {
     await act(async () => alertButtons().find((button) => button.style === 'destructive')?.onPress?.());
 
     expect(await screen.findByText(ar.onboarding.leaveFailed)).toBeTruthy();
-    expect(screen.getByText(ar.onboarding.title)).toBeTruthy();
+    expect(screen.getByTestId('onboarding')).toBeTruthy();
     const { data } = await supabase.auth.getSession();
     expect(data.session).not.toBeNull();
     expect(await AsyncStorage.getItem(`bc.saved-notes.v1:${mine}`)).not.toBeNull();
@@ -1185,12 +1341,12 @@ describe('one-tap sign-in, as App Review asks', () => {
     });
     await act(() => jest.advanceTimersByTimeAsync(500));
     // Not pushed over it by the session gate: the welcome hands over itself once its sign-in has finished (useLand).
-    expect(screen.queryByText(ar.onboarding.title)).toBeNull();
+    expect(screen.queryByTestId('onboarding')).toBeNull();
     expect(screen.getByTestId('welcome')).toBeTruthy();
 
     // Left without finishing: the gate takes over from the tabs.
     fireEvent.press(screen.getByRole('button', { name: ar.app.welcome.skip }));
-    expect(await screen.findByText(ar.onboarding.title)).toBeTruthy();
+    expect(await screen.findByTestId('onboarding')).toBeTruthy();
   });
 
   it('signs in from the welcome with the round buttons beside Sign in, and closes it', async () => {
@@ -1253,7 +1409,8 @@ describe('an email link opened in the app', () => {
     });
 
     expect(await screen.findByText(ar.onboarding.confirmedBanner)).toBeTruthy();
-    expect(screen.getByText(ar.onboarding.roleKnownEmployer)).toBeTruthy();
+    // The door's kind of account, said on the steps it opens: the company's.
+    expect(screen.getByText(ar.app.onboarding.forCompanies.replace('<v>{current}</v>', '\u20661\u2069').replace('<v>{total}</v>', '\u20663\u2069'))).toBeTruthy();
     expect(bodyOf('/auth/v1/verify')).toMatchObject({ token_hash: 'pkce_0123456789abcdef', type: 'signup' });
   });
 
@@ -1604,7 +1761,7 @@ describe('onboarding cut short', () => {
     await signedIn();
     try {
       const first = await renderRouter(app, { initialUrl: '/onboarding?role=employer' });
-      expect(await screen.findByText(ar.onboarding.roleKnownEmployer)).toBeTruthy();
+      expect(await screen.findByText(ar.app.onboarding.forCompanies.replace('<v>{current}</v>', '\u20661\u2069').replace('<v>{total}</v>', '\u20663\u2069'))).toBeTruthy();
       // The wrong door: out, by onboarding's own way out.
       await press(ar.nav.signOut);
       await waitFor(async () => expect((await supabase.auth.getSession()).data.session).toBeNull());
@@ -1614,7 +1771,7 @@ describe('onboarding cut short', () => {
       await signedIn();
       await renderRouter(app, { initialUrl: '/onboarding' });
       expect(await screen.findByText(ar.onboarding.roleQuestion)).toBeTruthy();
-      expect(screen.queryByText(ar.onboarding.roleKnownEmployer)).toBeNull();
+      expect(screen.queryByText(ar.app.onboarding.forCompanies.replace('<v>{current}</v>', '\u20661\u2069').replace('<v>{total}</v>', '\u20663\u2069'))).toBeNull();
     } finally {
       await AsyncStorage.removeItem('bc.onboarding-intent.v1');
     }

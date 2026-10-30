@@ -30,6 +30,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { ChipGroup, wholeNumber } from './fields';
 import { toast } from '~/components/feedback/toast';
+import { markupTags } from '~/i18n/rich';
 
 const VISIBILITIES: AgentVisibility[] = ['public', 'verified_employers_only', 'hidden'];
 const LANGUAGES = ['ar', 'en', 'fr'] as const;
@@ -112,7 +113,7 @@ export function ProfileForm({
     const yearsExperience = wholeNumber(years) ?? 0;
     if (fullName.trim().length < 2) local.fullName = t('validation.required');
     if (!isValidPhone(normalisePhone(whatsapp))) local.whatsapp = t('validation.invalidPhone');
-    if (!Number.isInteger(yearsExperience) || yearsExperience > 60) local.yearsExperience = t('app.profile.yearsInvalid');
+    if (!Number.isInteger(yearsExperience) || yearsExperience > 60) local.yearsExperience = t.markup('app.profile.yearsInvalid', markupTags);
     if (Object.keys(local).length) {
       refuse(local);
       return;

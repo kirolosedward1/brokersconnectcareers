@@ -144,7 +144,7 @@ beforeEach(async () => {
   server.on('POST /rest/v1/rpc/admin_job_signals', () => [signals]);
   server.on('GET /rest/v1/job_moderation', []);
   server.on('GET /rest/v1/reports', [
-    { id: 'r1', reason: 'scam', detail: 'طلبوا فلوس قبل المقابلة.', status: 'open', created_at: '2026-10-20T10:00:00Z', reporter: { id: OTHER_USER, full_name: 'منى علي' } },
+    { id: 'r1', reason: 'scam', detail: 'طلبوا مالًا قبل المقابلة.', status: 'open', created_at: '2026-10-20T10:00:00Z', reporter: { id: OTHER_USER, full_name: 'منى علي' } },
   ]);
   // Five new, one hired, nothing at the other stages.
   server.on('HEAD /rest/v1/applications', (url: URL) => ({
@@ -431,7 +431,7 @@ describe("a listing's review", () => {
     await signIn();
     const result = await renderRouter(app, { initialUrl: `/admin/jobs/${JOB_ID}` });
 
-    expect(await screen.findByText('طلبوا فلوس قبل المقابلة.')).toBeTruthy();
+    expect(await screen.findByText('«طلبوا مالًا قبل المقابلة.»')).toBeTruthy();
     // One open report, and the way to the queue.
     expect(screen.getByText('بلاغ واحد')).toBeTruthy();
     expect(screen.getByRole('link', { name: ar.admin.openReportsQueue })).toBeTruthy();

@@ -250,6 +250,7 @@ describe('a new listing', () => {
       descriptionEn: null,
       requirementsAr: null,
       developerIds: [3],
+      branchId: null,
       submit: true,
     });
     await waitFor(() => expect(result.getPathname()).toBe('/employer/jobs'));
@@ -298,6 +299,24 @@ describe('a new listing', () => {
     } finally {
       layout.undo();
     }
+  });
+
+  it("names one of the company's branches, which sets the listing's district to its own", async () => {
+    server.on('GET /rest/v1/company_branches', [
+      { id: 7, company_id: 'c', name_ar: 'فرع زايد', name_en: null, district_id: zayed.id, created_at: '2026-10-01T10:00:00Z', district: { name_ar: zayed.name_ar, name_en: zayed.name_en } },
+    ]);
+    await renderRouter(app, { initialUrl: '/employer/jobs/new' });
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.titleAr), 'مستشار مبيعات');
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.branches.forListing}: ${ar.app.branches.none}` }));
+    fireEvent.press(await screen.findByRole('radio', { name: 'فرع زايد' }));
+    expect(await screen.findByLabelText(`${ar.jobForm.district}: ${zayed.name_ar}`)).toBeTruthy();
+    next();
+    fireEvent.changeText(await screen.findByLabelText(ar.jobForm.commissionValue), '2');
+    next();
+    next();
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobForm.review }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.employer.saveDraft }));
+    await waitFor(() => expect(saved()[0]).toMatchObject({ branchId: 7, districtId: zayed.id }));
   });
 
   it('saves a draft as it stands, and repeats the same key when the save is tried again', async () => {

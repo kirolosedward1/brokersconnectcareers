@@ -3,7 +3,7 @@ import { router, Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Compass, Gift } from '~/components/ui/lucide';
-import { formatDate, formatEgp, formatNumber } from '@/lib/format';
+import { formatDate, formatNumber } from '@/lib/format';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
@@ -20,6 +20,7 @@ import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
+import { useMoney } from '~/features/money';
 
 /**
  * The company's balance — the website's /employer/billing, read-only: the
@@ -29,6 +30,7 @@ import { gutter, space } from '~/theme/tokens';
  */
 export default function BillingScreen() {
   const t = useTranslations();
+  const money = useMoney();
   const locale = useLocale();
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
@@ -131,7 +133,7 @@ export default function BillingScreen() {
                       {t(`billing.packName.${order.pack_key}`)}
                     </Text>
                     <Text variant="caption" tone="mutedForeground">
-                      {`${formatDate(order.created_at, locale)} · ${formatEgp(order.amount_egp, locale)} ${t('common.egp')}`}
+                      {`${formatDate(order.created_at, locale)} · ${money.amount(order.amount_egp)}`}
                     </Text>
                   </View>
                   <Badge

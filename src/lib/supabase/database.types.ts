@@ -131,6 +131,9 @@ export type DeveloperRow = {
   slug: string;
 };
 
+/** When a company answers, Cairo time (migration 378). */
+export type ReplyHours = { days: number[]; from: string; to: string };
+
 export type CompanyRow = Timestamped & {
   id: string;
   owner_id: string;
@@ -157,6 +160,23 @@ export type CompanyRow = Timestamped & {
    */
   suspended_at?: string | null;
   suspension_reason?: string | null;
+  /**
+   * Migration 378: 'paused' takes no new applications until paused_until has
+   * passed (company_is_hiring). The number and the hours are public, shown
+   * only when set. reply_hours is Cairo time, 0 being Sunday.
+   */
+  hiring_status?: 'open' | 'paused';
+  paused_until?: string | null;
+  contact_whatsapp?: string | null;
+  reply_hours?: ReplyHours | null;
+  /**
+   * Migration 379: the owner asked for the company to go. Hidden at once;
+   * deleted 14 days later, or closed (closed_at) when it has orders.
+   */
+  deletion_requested_at?: string | null;
+  closed_at?: string | null;
+  /** Applications to listings ended longer than this many days are cleared nightly. */
+  purge_closed_after_days?: 30 | 90 | 180 | 365 | null;
   /** Ours: a seed, QA, or store-review company (migration 368). Absent before it. */
   is_test?: boolean;
   /**
@@ -194,11 +214,102 @@ export type CompanyMemberRow = Timestamped & {
   company_id: string;
   user_id: string;
   role: CompanyMemberRole;
+  /** Migration 376: what the member may do. The owner may always do all three, whatever is stored. */
+  can_post?: boolean;
+  can_reveal?: boolean;
+  can_spend?: boolean;
+};
+
+/** Migration 383: one of a company's places — a name and a district. */
+export type CompanyBranchRow = {
+  id: number;
+  company_id: string;
+  name_ar: string;
+  name_en: string | null;
+  district_id: number | null;
+  created_at: string;
+};
+
+/** Migration 380: the rules a company sets for its own team. */
+export type CompanyPolicyRow = {
+  company_id: string;
+  approve_decline: boolean;
+  approve_pay_change: boolean;
+  spend_ceiling_month_egp: number | null;
+  require_mfa: boolean;
+  cv_admins_only: boolean;
+  updated_at: string;
+};
+
+/** Migration 380: a decline or a pay change waiting for one of the company's admins. */
+export type ApprovalRequestRow = {
+  id: string;
+  company_id: string;
+  kind: 'decline' | 'pay_change';
+  subject_id: string;
+  payload: Record<string, unknown>;
+  requested_by: string | null;
+  status: 'pending' | 'approved' | 'refused' | 'expired';
+  decided_by: string | null;
+  decided_at: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+/** Migration 379: what a candidate keeps of an application a company cleared or took with it. */
+export type ApplicationRecordRow = {
+  id: number;
+  candidate_id: string;
+  job_title_ar: string;
+  job_title_en: string | null;
+  company_name_ar: string;
+  company_name_en: string | null;
+  applied_at: string;
+  last_status: ApplicationStatus;
+  ended_at: string;
+  reason: 'company_deleted' | 'company_purged';
+};
+
+/** Migration 377: one thing the team did. Names are read as the log is read; a row stores only ids. */
+export type CompanyActivityKind =
+  | 'application_moved'
+  | 'note_added'
+  | 'interview_invited'
+  | 'contact_revealed'
+  | 'job_created'
+  | 'job_status'
+  | 'member_added'
+  | 'member_removed'
+  | 'member_changed'
+  | 'order_paid'
+  | 'owner_changed'
+  | 'deletion_requested'
+  | 'deletion_cancelled';
+
+export type CompanyActivityRow = {
+  id: number;
+  at: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  kind: CompanyActivityKind;
+  job_id: string | null;
+  job_title_ar: string | null;
+  job_title_en: string | null;
+  application_id: string | null;
+  candidate_name: string | null;
+  subject_user_id: string | null;
+  subject_name: string | null;
+  agent_id: string | null;
+  agent_name: string | null;
+  /** from/to (a status), role, can_* (a member's switches), pack and credits (an order). */
+  detail: Record<string, string | number | boolean | null>;
 };
 
 export type JobRow = Timestamped & {
   id: string;
   company_id: string;
+  /** Migration 383: the company's branch this listing is for, when it names one. */
+  branch_id?: number | null;
   title_ar: string;
   title_en: string | null;
   slug: string;
@@ -375,7 +486,11 @@ export type NotificationKind =
   // and followed companies (/api/cron/new-jobs).
   | 'new_jobs'
   // Migration 348: a moderator took a company's verification away.
-  | 'company_verification_revoked';
+  | 'company_verification_revoked'
+  // Migrations 372–373: an interview invitation (to the candidate) and the
+  // candidate's answer (to the company's members).
+  | 'interview_invited'
+  | 'interview_answered';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -383,6 +498,51 @@ export type NotificationKind =
  * forever. Every field is optional because it is a snapshot of whatever the
  * event had to hand.
  */
+export type InterviewMode = 'office' | 'phone' | 'video';
+export type InterviewStatus = 'proposed' | 'accepted' | 'declined' | 'counter' | 'cancelled';
+
+/** An interview a company invited a candidate to (migration 373). Times are instants, shown in Cairo time. */
+export type InterviewInviteRow = {
+  id: string;
+  application_id: string;
+  starts_at: string;
+  minutes: number;
+  mode: InterviewMode;
+  place: string | null;
+  note: string | null;
+  status: InterviewStatus;
+  /** The candidate's proposed time, while status is 'counter'. */
+  counter_starts_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** A company's note about a person who applied to it (migration 375), read on every application they send it. */
+export type CompanyCandidateNoteRow = {
+  id: number;
+  company_id: string;
+  candidate_id: string;
+  author_id: string | null;
+  body: string;
+  idempotency_key: string | null;
+  created_at: string;
+};
+
+/** A reply a company keeps (migration 374): the team's (person_id null) or one person's own. */
+export type SavedReplyRow = {
+  id: string;
+  company_id: string;
+  person_id: string | null;
+  title: string | null;
+  body: string;
+  channel: 'whatsapp' | 'email';
+  version: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type NotificationRow = {
   id: string;
   user_id: string;
@@ -416,6 +576,13 @@ export type NotificationRow = {
     source?: 'follow' | 'search' | 'mixed';
     /** new_jobs: the saved search's own name, when one search found them. */
     label?: string;
+    /** interview_invited / interview_answered: when (the proposed time, for a counter), how, and which invitation. */
+    starts_at?: string;
+    mode?: InterviewMode;
+    interview_id?: string;
+    /** interview_answered: the candidate's name and answer. */
+    name?: string;
+    answer?: 'accepted' | 'declined' | 'counter';
   };
   href: string | null;
   read_at: string | null;
@@ -1292,7 +1459,7 @@ export type SecuritySummary = {
 
 /** What reveal_agent_contact() answers with — one row, always. */
 export type ContactRevealRow = {
-  status: 'ok' | 'unauthenticated' | 'forbidden' | 'locked' | 'not_found' | 'rate_limited';
+  status: 'ok' | 'unauthenticated' | 'forbidden' | 'not_permitted' | 'locked' | 'not_found' | 'rate_limited';
   retry_after_seconds: number | null;
   full_name: string | null;
   whatsapp_phone: string | null;
@@ -1355,6 +1522,18 @@ export type Database = {
         ApplicationNoteRow,
         Insertable<ApplicationNoteRow, 'application_id' | 'body'>
       >;
+      company_candidate_notes: Table<
+        CompanyCandidateNoteRow,
+        Insertable<CompanyCandidateNoteRow, 'company_id' | 'candidate_id' | 'body'>
+      >;
+      saved_replies: Table<SavedReplyRow, Insertable<SavedReplyRow, 'company_id' | 'body'>>;
+      application_records: Table<ApplicationRecordRow, never>;
+      /** Migration 382: a listing's views per Cairo day, written by increment_job_view(). */
+      job_view_days: Table<{ job_id: string; day: string; views: number }, never>;
+      company_branches: Table<CompanyBranchRow, Insertable<CompanyBranchRow, 'company_id' | 'name_ar'>>;
+      company_policies: Table<CompanyPolicyRow, Insertable<CompanyPolicyRow, 'company_id'>>;
+      company_approval_requests: Table<ApprovalRequestRow, Insertable<ApprovalRequestRow, 'company_id' | 'kind' | 'subject_id'>>;
+      interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
       /**
        * No Insertable worth naming: nothing in the app writes one. Every row
        * comes from a trigger, and the table has no insert policy on purpose —
@@ -1557,6 +1736,75 @@ export type Database = {
       my_company_private: { Args: Empty; Returns: CompanyPrivate | null };
       /** Whether that company is suspended. A boolean the public page may ask (migration 367). */
       company_suspended: { Args: { p_id: string }; Returns: boolean };
+      /**
+       * How a company answers applications, last 180 days (migration 370):
+       * how many, the share it opened (0–1), the median days to a first
+       * answer. No row under five applications; no median under three answered.
+       */
+      /** Migration 376: whether the caller may post, reveal or spend for the company; the owner always may. */
+      member_can: { Args: { p_company: string; p_permission: 'post' | 'reveal' | 'spend' }; Returns: boolean };
+      /** Migration 375: the notes about each card's candidate, and their other applications to this company. Under RLS. */
+      candidate_notes_for: {
+        Args: { p_application_ids: string[] };
+        Returns: { for_application: string; id: number; author_id: string | null; body: string; created_at: string }[];
+      };
+      candidate_history_for: {
+        Args: { p_application_ids: string[] };
+        Returns: {
+          for_application: string;
+          application_id: string;
+          job_title_ar: string;
+          job_title_en: string | null;
+          status: ApplicationStatus;
+          created_at: string;
+        }[];
+      };
+      /** Migration 381: when the caller's company last revealed this consultant, and a consultant's own reveal log. */
+      my_company_revealed: { Args: { p_handle: string }; Returns: string | null };
+      my_contact_reveals: {
+        Args: { p_limit?: number };
+        Returns: { revealed_at: string; company_name_ar: string | null; company_name_en: string | null; company_slug: string | null }[];
+      };
+      /** Migration 380: the rules the caller's company sets, and whether a required second factor is met. */
+      company_rules: {
+        Args: Record<string, never>;
+        Returns: {
+          company_id: string;
+          approve_decline: boolean;
+          approve_pay_change: boolean;
+          spend_ceiling_month_egp: number | null;
+          require_mfa: boolean;
+          cv_admins_only: boolean;
+          mfa_satisfied: boolean;
+        }[];
+      };
+      may_read_application_cv: { Args: { p_application: string }; Returns: boolean };
+      /** Migration 379: the owner hands the company to a member, asks for it to go, or changes their mind. */
+      transfer_company_ownership: { Args: { p_to: string }; Returns: 'ok' | 'not_owner' | 'not_member' | 'not_eligible' | 'closing' };
+      request_company_deletion: { Args: Record<string, never>; Returns: 'ok' | 'not_owner' };
+      cancel_company_deletion: { Args: Record<string, never>; Returns: 'ok' | 'not_owner' };
+      close_due_companies: { Args: { p_limit?: number }; Returns: Record<string, unknown> };
+      purge_company_activity: { Args: Record<string, never>; Returns: number };
+      /** Migration 378: whether a company takes applications today. */
+      company_is_hiring: { Args: { p_company: string }; Returns: boolean };
+      /**
+       * Migration 377: what the team did, newest first, a page at a time. An
+       * admin reads everyone's (and may narrow it to one member); anybody else
+       * on the team reads their own. Six months.
+       */
+      company_activity_page: {
+        Args: { p_before?: string | null; p_before_id?: number | null; p_member?: string | null; p_limit?: number };
+        Returns: CompanyActivityRow[];
+      };
+      /** The candidate's answer to an invitation still waiting on them (migration 373). */
+      answer_interview: {
+        Args: { p_id: string; p_answer: 'accepted' | 'declined' | 'counter'; p_counter?: string | null };
+        Returns: 'ok' | 'not_found' | 'closed' | 'invalid';
+      };
+      company_response_stats: {
+        Args: { p_company_id: string };
+        Returns: { sample: number; open_rate: number | string; median_days: number | string | null }[];
+      };
       /**
        * Service-role only, and called with the admin client: the answer is
        * whether an address has an account, which is not for every signed-in

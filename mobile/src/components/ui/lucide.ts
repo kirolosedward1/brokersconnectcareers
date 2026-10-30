@@ -26,8 +26,10 @@ export { default as Briefcase } from 'lucide-react-native/icons/briefcase';
 export { default as BriefcaseBusiness } from 'lucide-react-native/icons/briefcase-business';
 export { default as Building2 } from 'lucide-react-native/icons/building-complex';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
+export { default as CalendarCheck } from 'lucide-react-native/icons/calendar-check';
 export { default as CalendarClock } from 'lucide-react-native/icons/calendar-clock';
 export { default as CalendarX2 } from 'lucide-react-native/icons/calendar-x-2';
+export { default as ChartColumn } from 'lucide-react-native/icons/chart-column';
 export { default as Check } from 'lucide-react-native/icons/check';
 export { default as CheckCheck } from 'lucide-react-native/icons/check-check';
 export { default as CheckCircle2 } from 'lucide-react-native/icons/circle-check';
@@ -86,6 +88,7 @@ export { default as MessageSquareReply } from 'lucide-react-native/icons/message
 export { default as MessageSquareText } from 'lucide-react-native/icons/message-square-text';
 export { default as MoveHorizontal } from 'lucide-react-native/icons/move-horizontal';
 export { default as NotebookPen } from 'lucide-react-native/icons/notebook-pen';
+export { default as Palette } from 'lucide-react-native/icons/palette';
 export { default as Paperclip } from 'lucide-react-native/icons/paperclip';
 export { default as Pencil } from 'lucide-react-native/icons/pencil';
 export { default as Phone } from 'lucide-react-native/icons/phone';
@@ -129,6 +132,7 @@ export { default as UserRoundPlus } from 'lucide-react-native/icons/user-round-p
 export { default as UserRoundX } from 'lucide-react-native/icons/user-round-x';
 export { default as Users } from 'lucide-react-native/icons/users';
 export { default as UserX } from 'lucide-react-native/icons/user-x';
+export { default as UsersRound } from 'lucide-react-native/icons/users-round';
 export { default as WifiOff } from 'lucide-react-native/icons/wifi-off';
 export { default as X } from 'lucide-react-native/icons/x';
 export type { LucideIcon, LucideProps } from 'lucide-react-native';

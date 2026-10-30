@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الإدارة · ورقة القرار</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.sheet{background:#F6F4F0;border-radius:24px;box-shadow:0 16px 40px rgba(18,22,32,.18);overflow:hidden;display:flex;flex-direction:column}
+.grab{display:flex;justify-content:center;padding:10px 0 4px}
+.grab span{width:36px;height:5px;border-radius:999px;background:#D9D4CA}
+.cap{position:absolute;padding:4px 10px;border-radius:999px;background:#121620;color:#fff;font-size:10px;opacity:.8}
+.who{display:flex;align-items:center;gap:8px;font-size:12px;line-height:17px;color:#4A3F2A;padding:10px 12px;border-radius:12px;background:#FBF8F1;border:1px solid #F0E6D0}
+.who svg{width:16px;height:16px;flex-shrink:0}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#E6E1D8;position:relative;overflow:hidden;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+
+  <span class="cap" style="top:6px;right:16px">ورقة القرار · سبب إجباري (<span class="num">≥3</span> أحرف، <span class="num">≤500</span>)</span>
+  <div class="sheet" style="margin-top:14px">
+    <div class="grab"><span></span></div>
+    <div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;flex-direction:column;gap:4px"><h2 style="margin:0;font-size:17px;font-weight:700">إيقاف شركة: دلتا بروكرز</h2><span style="font-size:13px;line-height:19px;color:#5C6270">تُسحب إعلاناتها المنشورة والمعلّقة من السوق فورًا. الاستعادة لاحقًا لا تعيدها تلقائيًا.</span></div>
+      <div class="who"><svg viewBox="0 0 24 24" fill="none" stroke="#A27A3B" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span>يُبلَّغ <b>كل أعضاء الشركة</b> بالسبب بالبريد. يُسجَّل في سجل التدقيق باسمك.</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><label for="r1" style="font-size:13px;font-weight:600">السبب <span style="color:#B5372C">*</span></label><textarea id="r1" rows="3" placeholder="يُرسل كما هو. اكتب ما يمكن للشركة فعله لرفع الإيقاف." style="padding:12px 14px;border:1.5px solid #16295A;border-radius:14px;background:#fff;font:inherit;font-size:14px;line-height:22px;resize:none;box-sizing:border-box;width:100%">طلب رسوم تدريب من المتقدمين، بلاغات من <span class="num">4</span> مرشّحين. أرسلوا ما يثبت إلغاء الرسوم لرفع الإيقاف.</textarea><span class="num" style="font-size:11px;color:#8B8578;text-align:left">98 / 500</span></div>
+      <div style="display:flex;gap:8px"><button type="button" style="height:48px;padding:0 18px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;font:inherit;font-size:14px;font-weight:600;color:#16295A;cursor:pointer">إلغاء</button><button type="button" style="flex:1;height:48px;border-radius:999px;background:#B5372C;color:#fff;border:0;font:inherit;font-size:15px;font-weight:600;cursor:pointer">أوقف الشركة</button></div>
+    </div>
+  </div>
+
+  <span class="cap" style="top:392px;right:16px">أثناء الإرسال، ثم الرفض من الموقع</span>
+  <div class="sheet" style="margin-top:14px">
+    <div class="grab"><span></span></div>
+    <div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;flex-direction:column;gap:4px"><h2 style="margin:0;font-size:17px;font-weight:700">نشر الإعلان: تيم ليدر أوف بلان</h2><span style="font-size:13px;color:#5C6270">يظهر في اللوحة فورًا ويُبلَّغ متابعو الشركة.</span></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#FAE8E4;color:#7A2219;font-size:13px;line-height:19px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><span>الإعلان تغيّر بعد فتحك له. أعد التحميل وراجع النسخة الجديدة قبل النشر.</span></div>
+      <div style="display:flex;gap:8px"><button type="button" style="height:48px;padding:0 18px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;font:inherit;font-size:14px;font-weight:600;color:#16295A;cursor:pointer">إغلاق</button><button type="button" style="flex:1;height:48px;border-radius:999px;background:#16295A;color:#fff;border:0;font:inherit;font-size:15px;font-weight:600;cursor:pointer">أعد التحميل</button></div>
+    </div>
+  </div>
+
+  <span class="cap" style="top:660px;right:16px">تم، فقط بعد رد الموقع بـ ok</span>
+  <div style="margin-top:14px;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:#121620;color:#fff;box-shadow:0 16px 40px rgba(0,0,0,.35)" role="status">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#55B582" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+    <span style="flex:1;font-size:13px;font-weight:500">أُوقفت دلتا بروكرز · سُحب <span class="num">3</span> إعلانات</span>
+    <a href="AdminAudit.dc.html" style="font-size:12px;font-weight:600;color:#D8BC86">السجل</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

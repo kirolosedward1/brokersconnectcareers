@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>البريد الإلكتروني</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06);overflow:hidden}
+.ib{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center}
+.row{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 14px;border-bottom:1px solid #F0EDE7;font-size:14px}
+.row:last-child{border-bottom:0}
+.sw{width:44px;height:26px;border-radius:999px;background:#16295A;position:relative;flex-shrink:0;border:0;cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:999px;background:#fff}
+.sw.off{background:#D9D4CA}.sw.off::after{left:auto;right:3px}
+h2{margin:0 4px;font-size:12px;font-weight:600;color:#5C6270}
+.em{direction:ltr;unicode-bidi:isolate;text-align:start}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px"><a href="Account.dc.html" class="ib" aria-label="رجوع"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a><h1 style="margin:0;flex:1;font-size:18px;line-height:26px;font-weight:700">البريد الإلكتروني</h1></div>
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:14px;flex:1;overflow:hidden">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>عنوان الدخول</h2>
+      <div class="card">
+        <div class="row"><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span class="em" style="font-weight:600">kirolos@topsuite.ae</span><span style="font-size:12px;color:#1B7A4B;font-weight:600">مؤكَّد · أساسي</span></div><a href="#" style="font-size:13px;font-weight:600">غيّره</a></div>
+        <div class="row"><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span class="em">kirolosedward1@gmail.com</span><span style="font-size:12px;color:#8F5B0E;font-weight:600">بانتظار التأكيد · أُرسل من ساعة</span></div><a href="#" style="font-size:13px;font-weight:600">أعد الإرسال</a></div>
+      </div>
+      <span style="font-size:12px;line-height:17px;color:#5C6270;padding:0 4px">تغيير العنوان الأساسي يحتاج تأكيدًا من العنوانين، القديم والجديد.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2>رسائل تصلك</h2>
+      <div class="card">
+        <div class="row"><span style="flex:1;display:flex;flex-direction:column"><span>ردود الشركات على طلباتك</span><span style="font-size:12px;color:#5C6270">فوري</span></span><button type="button" class="sw" role="switch" aria-checked="true" aria-label="ردود الشركات"></button></div>
+        <div class="row"><span style="flex:1;display:flex;flex-direction:column"><span>وظائف جديدة من بحوثك المحفوظة</span><span style="font-size:12px;color:#5C6270">ملخّص يومي</span></span><button type="button" class="sw" role="switch" aria-checked="true" aria-label="وظائف جديدة"></button></div>
+        <div class="row"><span style="flex:1;display:flex;flex-direction:column"><span>ملخّص أسبوعي لسوق العقارات</span><span style="font-size:12px;color:#5C6270">الأحد صباحًا</span></span><button type="button" class="sw" role="switch" aria-checked="true" aria-label="ملخّص أسبوعي"></button></div>
+        <div class="row"><span style="flex:1;display:flex;flex-direction:column"><span>نصائح وتحديثات المنصة</span><span style="font-size:12px;color:#5C6270">نادرًا</span></span><button type="button" class="sw off" role="switch" aria-checked="false" aria-label="نصائح"></button></div>
+      </div>
+      <span style="font-size:12px;line-height:17px;color:#5C6270;padding:0 4px">رسائل الأمان (تسجيل دخول جديد، تغيير كلمة السر) تصل دائمًا.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

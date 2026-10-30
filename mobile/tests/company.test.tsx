@@ -5,15 +5,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { ImageManipulator } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import type { CompanyDocumentRow, CompanyRow, OrderRow, ProfileRow } from '@/lib/supabase/database.types';
+import type { CompanyActivityRow, CompanyDocumentRow, CompanyRow, OrderRow, ProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { useEmployerSummary } from '~/features/employer/overview';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
+import * as ActivityScreen from '../src/app/(tabs)/(account)/employer/activity';
+import * as ApprovalsScreen from '../src/app/(tabs)/(account)/employer/approvals';
 import * as BillingScreen from '../src/app/(tabs)/(account)/employer/billing';
 import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
 import { DeclaredTabs } from './declared-tabs';
@@ -58,19 +61,31 @@ jest.mock('expo-image-manipulator', () => {
   return { ImageManipulator: { manipulate: jest.fn(() => context) }, SaveFormat: { JPEG: 'jpeg', PNG: 'png' } };
 });
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
+const mockWritten: Record<string, string> = {};
 jest.mock('expo-file-system', () => ({
+  Paths: { cache: 'file:///cache' },
   // As expo-file-system's File: a name, a type from the extension, and its own bytes.
   File: jest.fn().mockImplementation((...parts: string[]) => {
-    const name = parts.join('/').split('/').at(-1) ?? '';
+    const uri = parts.join('/');
+    const name = uri.split('/').at(-1) ?? '';
     return {
+      uri,
       name,
       type: name.endsWith('.png') ? 'image/png' : '',
       size: 120_000,
       arrayBuffer: async () => new ArrayBuffer(4096),
       bytes: async () => new TextEncoder().encode(`the bytes of ${name}`),
+      exists: false,
+      create: jest.fn(),
+      delete: jest.fn(),
+      write: async (content: string) => {
+        await Promise.resolve();
+        mockWritten[uri] = content;
+      },
     };
   }),
 }));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(async () => {}) }));
 
 
 const ar = catalogues.ar;
@@ -79,12 +94,39 @@ const PASSWORD = 'correct-horse';
 const user = authUser();
 const RECRUITER = 'c0000000-0000-4000-8000-000000000002';
 const employer: ProfileRow = { ...profile, role: 'employer', full_name: 'أحمد سمير' };
-const baseCompany: CompanyRow = { ...ownedCompany, verification_status: 'unverified', version: 3 };
+const baseCompany: CompanyRow = {
+  ...ownedCompany,
+  verification_status: 'unverified',
+  version: 3,
+  // Migration 379's columns, as a server that has them answers.
+  deletion_requested_at: null,
+  closed_at: null,
+  purge_closed_after_days: null,
+};
 
 let company: CompanyRow | null;
 /** The chooser's answer for a paper: 0 camera, 1 photo library, 2 a file, 3 cancel. */
 let paperFrom = 2;
 let role: 'admin' | 'recruiter';
+let activity: CompanyActivityRow[];
+const happened = (id: number, row: Partial<CompanyActivityRow>): CompanyActivityRow => ({
+  id,
+  at: '2026-10-30T11:04:00Z',
+  actor_id: RECRUITER,
+  actor_name: 'منى عادل',
+  kind: 'note_added',
+  job_id: null,
+  job_title_ar: null,
+  job_title_en: null,
+  application_id: null,
+  candidate_name: null,
+  subject_user_id: null,
+  subject_name: null,
+  agent_id: null,
+  agent_name: null,
+  detail: {},
+  ...row,
+});
 let documents: CompanyDocumentRow[];
 
 beforeAll(() => {
@@ -95,6 +137,11 @@ beforeAll(() => {
 beforeEach(async () => {
   company = { ...baseCompany };
   role = 'admin';
+  activity = [
+    happened(3, { kind: 'application_moved', candidate_name: 'سارة عادل', job_title_ar: 'مستشار مبيعات', detail: { from: 'new', to: 'shortlisted' } }),
+    happened(2, { kind: 'order_paid', actor_id: null, actor_name: null, detail: { pack: 'bulk', credits: 5 } }),
+    happened(1, { kind: 'contact_revealed', actor_id: USER_ID, actor_name: 'أحمد سمير', agent_name: '=HYPERLINK("x")' }),
+  ];
   documents = [
     {
       id: 'd1',
@@ -140,6 +187,7 @@ beforeEach(async () => {
   server.on('GET /rest/v1/monthly_free_post_grants', []);
   server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 0 });
   server.on('POST /api/mobile/v1/actions/claimMonthlyFreePost', { ok: true, data: { claimed: true } });
+  server.on('POST /rest/v1/rpc/company_activity_page', () => activity);
 
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
@@ -182,8 +230,12 @@ const app = {
   '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(account)/employer/company': CompanyScreen,
   '(tabs)/(account)/employer/billing': BillingScreen,
+  '(tabs)/(account)/employer/activity': ActivityScreen,
+  '(tabs)/(account)/employer/approvals': ApprovalsScreen,
 };
 
+// The company's profile read, not the hiring or closure columns read on their own (migrations 378, 379).
+const profileReads = () => server.asked('/rest/v1/companies').filter((request) => request.url.searchParams.get('select')?.startsWith('id,'));
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: Record<string, unknown> } | undefined)?.input;
 
 function answerAlert(alert: jest.SpyInstance, label: string) {
@@ -254,7 +306,7 @@ describe("the company's page, for a company admin", () => {
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordCompanyDocument')).toHaveLength(1));
     // Read again at version 5; the form is the one it was.
-    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(3));
+    await waitFor(() => expect(profileReads()).toHaveLength(3));
     expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
 
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
@@ -262,7 +314,7 @@ describe("the company's page, for a company admin", () => {
     expect([4, 5]).toContain(input('/api/mobile/v1/actions/saveCompany')?.version);
     // Its own save coming back at version 6 leaves the form, and the word that it saved, where they are.
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
-    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(4));
+    await waitFor(() => expect(profileReads()).toHaveLength(4));
     await waitFor(() => expect(screen.getByText(ar.common.saveSuccess)).toBeTruthy());
     expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
   });
@@ -420,6 +472,109 @@ describe("the company's page, for a company admin", () => {
     expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
+  it('keeps a team to five, the owner included, and says why nobody more can be added', async () => {
+    server.on('GET /rest/v1/company_members', () =>
+      [USER_ID, RECRUITER, 'r3', 'r4', 'r5'].map((id, index) => ({
+        user_id: id.length > 2 ? id : `0b000000-0000-4000-8000-00000000000${index}`,
+        role: index === 0 ? role : 'recruiter',
+        created_at: `2026-09-0${index + 1}T10:00:00Z`,
+        profile: { full_name: `عضو ${index}` },
+      })),
+    );
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByText(ar.employer.teamFull)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.employer.teamEmail)).toBeNull();
+  });
+
+  it("turns a member's switch at once, sends all three, and puts it back when the website refuses", async () => {
+    server.on('POST /api/mobile/v1/actions/updateMemberPermissions', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.team.permissions}: —` }));
+    fireEvent(await screen.findByTestId('permission-reveal'), 'valueChange', false);
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/updateMemberPermissions')).toEqual({ userId: RECRUITER, canPost: true, canReveal: false, canSpend: false }),
+    );
+    // The owner has no switches: they may always do everything.
+    expect(screen.queryByRole('button', { name: `${ar.app.team.permissions}: أحمد سمير` })).toBeNull();
+
+    server.on('POST /api/mobile/v1/actions/updateMemberPermissions', { ok: false, error: 'forbidden' });
+    fireEvent(screen.getByTestId('permission-post'), 'valueChange', false);
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('permission-post').props.value).toBe(true));
+  });
+
+  it('pauses hiring for a week, with a number and reply hours, in one save', async () => {
+    server.on('POST /api/mobile/v1/actions/saveCompanyHiring', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent(await screen.findByTestId('hiring-open'), 'valueChange', false);
+    fireEvent.press(await screen.findByRole('radio', { name: ar.app.hiring.untilWeek }));
+    fireEvent.changeText(screen.getByLabelText(ar.app.hiring.whatsapp), '01055500123');
+    fireEvent(screen.getByTestId('hiring-hours'), 'valueChange', true);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.hiring.save }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveCompanyHiring')).toBeTruthy());
+    const sent = input('/api/mobile/v1/actions/saveCompanyHiring')!;
+    expect(sent).toMatchObject({
+      hiringStatus: 'paused',
+      contactWhatsapp: '01055500123',
+      replyHours: { days: [0, 1, 2, 3, 4], from: '10:00', to: '18:00' },
+    });
+    expect(sent.pausedUntil).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(await screen.findByText(ar.app.hiring.saved)).toBeTruthy();
+  });
+
+  it("says the website's word for a number it refuses", async () => {
+    server.on('POST /api/mobile/v1/actions/saveCompanyHiring', { ok: false, error: 'invalid', fieldErrors: { contactWhatsapp: 'invalidPhone' } });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.app.hiring.whatsapp), '123');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.hiring.save }));
+    expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
+  });
+
+  it("keeps an ended listing's applications as long as the admin chooses", async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationPurge', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('radio', { name: ar.app.closure.purgeThreeMonths }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/setApplicationPurge')).toEqual({ days: 90 }));
+  });
+
+  it('hands ownership to a member only after asking', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    server.on('POST /api/mobile/v1/actions/transferCompanyOwnership', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    // The colleague has no readable name: the roster's dash.
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.closure.transferTo}: ${ar.app.closure.transferPick}` }));
+    fireEvent.press(await screen.findByRole('radio', { name: '—' }));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.closure.transfer }));
+    expect(server.asked('/api/mobile/v1/actions/transferCompanyOwnership')).toHaveLength(0);
+    answerAlert(alert, ar.app.closure.transfer);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/transferCompanyOwnership')).toEqual({ userId: RECRUITER }));
+  });
+
+  it("deletes the company only with its name typed back, and offers to cancel while it goes", async () => {
+    server.on('POST /api/mobile/v1/actions/requestCompanyDeletion', () => {
+      company = { ...company!, deletion_requested_at: '2026-10-30T10:00:00Z' };
+      return { ok: true };
+    });
+    server.on('POST /api/mobile/v1/actions/cancelCompanyDeletion', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.closure.delete }));
+    const confirm = await screen.findByRole('button', { name: ar.app.closure.deleteConfirm });
+    expect(confirm.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.changeText(screen.getByLabelText(ar.app.closure.deleteConfirmLabel.replace('{name}', company!.name_ar)), company!.name_ar);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.closure.deleteConfirm }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/requestCompanyDeletion')).toEqual({ confirmName: company!.name_ar }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.closure.cancel }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/cancelCompanyDeletion')).toHaveLength(1));
+  });
+
+  it('says the team is full when the website refuses a sixth', async () => {
+    server.on('POST /api/mobile/v1/actions/addCompanyMember', { ok: false, error: 'team_full' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.employer.teamEmail), 'mona@example.com');
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
+    expect(await screen.findByText(ar.employer.teamFull)).toBeTruthy();
+  });
+
   it("adds a colleague, says the website's word when it cannot, and takes one off after asking", async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await renderRouter(app, { initialUrl: '/employer/company' });
@@ -487,6 +642,183 @@ describe("the company's page, for a recruiter", () => {
     expect(screen.queryByLabelText(ar.companies.nameAr) === null).toBe(true);
     expect(screen.queryByText(ar.employer.verification) === null).toBe(true);
     expect(screen.queryByLabelText(ar.employer.teamEmail) === null).toBe(true);
+  });
+});
+
+describe("the team's activity", () => {
+  const rpcBody = (index: number) => server.asked('/rest/v1/rpc/company_activity_page')[index]?.body as Record<string, unknown> | undefined;
+
+  it('opens from the company page, and says each thing done, about whom, by whom', async () => {
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByTestId('team-activity'));
+    expect(await screen.findByText(ar.app.activity.ledeAll)).toBeTruthy();
+    expect(await screen.findByText(ar.app.activity.applicationMoved.replace('{to}', ar.applicationStatus.shortlisted))).toBeTruthy();
+    expect(screen.getByText('سارة عادل · مستشار مبيعات')).toBeTruthy();
+    // A payment the provider confirmed was nobody's doing.
+    expect(screen.getByText(new RegExp(`^${ar.app.activity.automatic} · `))).toBeTruthy();
+    expect(screen.getByText(ar.app.activity.contactRevealed)).toBeTruthy();
+  });
+
+  it("lets an admin narrow it to one member, which the database is asked for", async () => {
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    fireEvent.press(await screen.findByRole('radio', { name: 'أحمد سمير' }));
+    await waitFor(() => expect(rpcBody(1)).toMatchObject({ p_member: USER_ID, p_before: null }));
+  });
+
+  it('shares the six months as a spreadsheet Excel reads, with nothing in it that runs', async () => {
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.activity.export }));
+    await waitFor(() => expect(Sharing.shareAsync).toHaveBeenCalled());
+    const [uri, options] = jest.mocked(Sharing.shareAsync).mock.calls.at(-1)!;
+    expect(options).toMatchObject({ mimeType: 'text/csv' });
+    const csv = mockWritten[uri]!;
+    expect(csv.startsWith('\uFEFF' + ar.app.activity.csvWhen)).toBe(true);
+    expect(csv).toContain('2026-10-30 13:04');
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    // The file is asked for in large pages, not the screen's fifty.
+    expect(server.asked('/rest/v1/rpc/company_activity_page').some((ask) => (ask.body as { p_limit?: number }).p_limit === 500)).toBe(true);
+  });
+
+  it('tells a recruiter it is their own, and offers no one else', async () => {
+    role = 'recruiter';
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    expect(await screen.findByText(ar.app.activity.ledeOwn)).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: ar.app.activity.everyone })).toBeNull();
+    expect(rpcBody(0)).toMatchObject({ p_member: null });
+  });
+
+  it('says there is nothing yet when nothing has been done', async () => {
+    activity = [];
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    expect(await screen.findByText(ar.app.activity.emptyTitle)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.activity.export })).toBeNull();
+  });
+});
+
+describe("the team's rules and what waits for an admin", () => {
+  const rules = {
+    company_id: 'x',
+    approve_decline: false,
+    approve_pay_change: false,
+    spend_ceiling_month_egp: null,
+    require_mfa: false,
+    cv_admins_only: false,
+    mfa_satisfied: true,
+  };
+
+  it('saves the rules an admin turns on, the ceiling in Western digits', async () => {
+    server.on('POST /rest/v1/rpc/company_rules', [rules]);
+    server.on('POST /api/mobile/v1/actions/saveCompanyRules', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent(await screen.findByTestId('rule-decline'), 'valueChange', true);
+    fireEvent(screen.getByTestId('rule-cv'), 'valueChange', true);
+    fireEvent.changeText(screen.getByLabelText(ar.app.rules.ceiling), '٥٠٠٠');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.rules.save }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/saveCompanyRules')).toEqual({
+        approveDecline: true,
+        approvePayChange: false,
+        requireMfa: false,
+        cvAdminsOnly: true,
+        spendCeilingMonthEgp: 5000,
+      }),
+    );
+  });
+
+  it('says a second factor must be used before it is required of the team', async () => {
+    server.on('POST /rest/v1/rpc/company_rules', [rules]);
+    server.on('POST /api/mobile/v1/actions/saveCompanyRules', { ok: false, error: 'mfa_required' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent(await screen.findByTestId('rule-mfa'), 'valueChange', true);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.rules.save }));
+    expect(await screen.findByText(ar.app.rules.mfaFirst)).toBeTruthy();
+  });
+
+  it('tells a member the company requires a second factor they have not used, and the way through', async () => {
+    server.on('POST /rest/v1/rpc/company_rules', [{ ...rules, require_mfa: true, mfa_satisfied: false }]);
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByText(ar.app.rules.mfaShutTitle)).toBeTruthy();
+  });
+
+  it("lets an admin approve a colleague's decline, made as them", async () => {
+    server.on('GET /rest/v1/company_approval_requests', [
+      {
+        id: 'r1',
+        company_id: 'x',
+        kind: 'decline',
+        subject_id: 'a1',
+        payload: { from: 'shortlisted' },
+        requested_by: RECRUITER,
+        status: 'pending',
+        decided_by: null,
+        decided_at: null,
+        note: null,
+        created_at: '2026-10-30T09:00:00Z',
+      },
+    ]);
+    server.on('GET /rest/v1/applications', [
+      { id: 'a1', status: 'shortlisted', candidate: { full_name: 'سارة عادل' }, job: { title_ar: 'مستشار مبيعات', title_en: null } },
+    ]);
+    server.on('POST /api/mobile/v1/actions/decideApprovalRequest', { ok: true, data: { outcome: 'approved' } });
+    await renderRouter(app, { initialUrl: '/employer/approvals' });
+    expect(await screen.findByText(ar.app.rules.queueLedeAdmin)).toBeTruthy();
+    expect(screen.getByText('سارة عادل · مستشار مبيعات')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.rules.approve }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/decideApprovalRequest')).toEqual({ id: 'r1', approve: true }));
+  });
+
+  it('shows a recruiter their own asks, with nothing to decide', async () => {
+    role = 'recruiter';
+    server.on('GET /rest/v1/company_approval_requests', [
+      {
+        id: 'r2',
+        company_id: 'x',
+        kind: 'pay_change',
+        subject_id: 'j1',
+        payload: {},
+        requested_by: USER_ID,
+        status: 'refused',
+        decided_by: 'someone',
+        decided_at: '2026-10-30T10:00:00Z',
+        note: null,
+        created_at: '2026-10-30T09:00:00Z',
+      },
+    ]);
+    server.on('GET /rest/v1/jobs', [{ id: 'j1', title_ar: 'مستشار مبيعات', title_en: null }]);
+    await renderRouter(app, { initialUrl: '/employer/approvals' });
+    expect(await screen.findByText(ar.app.rules.queueLedeOwn)).toBeTruthy();
+    expect(screen.getByText(ar.app.rules.status_refused)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.rules.approve })).toBeNull();
+  });
+});
+
+describe("the company's branches", () => {
+  it('adds a branch with its district, and removes one after asking', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    server.on('GET /rest/v1/company_branches', [
+      { id: 3, company_id: baseCompany.id, name_ar: 'فرع التجمع', name_en: null, district_id: newCairo.id, created_at: '2026-10-01T10:00:00Z', district: { name_ar: newCairo.name_ar, name_en: newCairo.name_en } },
+    ]);
+    server.on('POST /api/mobile/v1/actions/saveBranch', { ok: true, data: { id: 4 } });
+    server.on('POST /api/mobile/v1/actions/deleteBranch', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByText('فرع التجمع')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.app.branches.name), 'فرع زايد');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.branches.add }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveBranch')).toEqual({ nameAr: 'فرع زايد', districtId: null }));
+
+    fireEvent.press(screen.getByRole('button', { name: `${ar.app.branches.remove}: فرع التجمع` }));
+    expect(server.asked('/api/mobile/v1/actions/deleteBranch')).toHaveLength(0);
+    answerAlert(alert, ar.app.branches.remove);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/deleteBranch')).toEqual({ id: 3 }));
+  });
+
+  it('says when the company has as many branches as it may', async () => {
+    server.on('GET /rest/v1/company_branches', []);
+    server.on('POST /api/mobile/v1/actions/saveBranch', { ok: false, error: 'branch_cap' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.app.branches.name), 'فرع');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.branches.add }));
+    expect(await screen.findByText(ar.app.branches.full)).toBeTruthy();
   });
 });
 
@@ -562,7 +894,7 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
 
     expect(await screen.findByText('2')).toBeTruthy();
-    const select = server.asked('/rest/v1/companies')[0]?.url.searchParams.get('select') ?? '';
+    const select = profileReads()[0]?.url.searchParams.get('select') ?? '';
     expect(select.includes('post_credits')).toBe(false);
     expect(select.includes('owner_id')).toBe(false);
     expect(select.includes('suspended_at')).toBe(false);

@@ -1,9 +1,11 @@
+import { CandidateInterview } from '~/components/interviews/interview-panels';
+import { useMyInterviews } from '~/features/interviews/interviews';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useIsFocused } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatRelativeDay } from '@/lib/format';
 import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
 import { displayJobStatus } from '@/lib/job-state';
@@ -13,18 +15,27 @@ import { ApplicationTimeline } from '~/components/applications/timeline';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Illustration } from '~/components/ui/illustration';
+import { ClearedApplications } from '~/components/applications/cleared-applications';
 import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import {
+  daysWithoutAnswer,
+  lastMovedAt,
+  QUIET_DAYS,
   useMyApplications,
   useWithdrawApplication,
   type CandidateApplication,
 } from '~/features/applications/queries';
+import { useCompanyResponse } from '~/features/companies/response';
+import { applyQueue } from '~/features/apply/queue';
+import { Segmented } from '~/components/ui/segmented';
+import { markupTags } from '~/i18n/rich';
+import { useMarkStagesSeen } from '~/features/applications/moved';
 import { useTabList } from '~/features/tab-bar';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
-import { corner, gutter, space } from '~/theme/tokens';
+import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
 import { toast } from '~/components/feedback/toast';
 import { useListMotion } from '~/components/motion/list-motion';
@@ -40,6 +51,9 @@ export default function ApplicationsScreen() {
   const { colors, shadow } = useTheme();
   const { session } = useSession();
   const applications = useMyApplications();
+  const [view, setView] = useState<'all' | 'news' | 'interviews' | 'ended'>('all');
+  // In view, what each application stands at is seen: the tab's badge for a move goes (features/applications/moved.ts).
+  useMarkStagesSeen(applications.data, useIsFocused() && Boolean(session));
   // A push about a move reads the list again; the spinner is the pull's alone.
   const pull = usePullRefresh(() => applications.refetch());
   const list = useTabList();
@@ -61,7 +75,17 @@ export default function ApplicationsScreen() {
     // Never "you have not applied" for a read that failed.
     body = <ErrorState error={applications.error} onRetry={() => applications.refetch()} />;
   } else {
-    const rows = applications.data.filter((application) => application.job);
+    const all = applications.data.filter((application) => application.job);
+    // Which of them, as the segments at the top choose (v1.1): all, those with news this week, interviews, the ended.
+    const news = all.filter(hasNews);
+    const rows =
+      view === 'news'
+        ? news
+        : view === 'interviews'
+          ? all.filter((application) => application.status === 'interview')
+          : view === 'ended'
+            ? all.filter((application) => DECIDED.has(application.status) || application.status === 'withdrawn')
+            : all;
     const active = rows.filter((application) => !DECIDED.has(application.status));
     const decided = rows.filter((application) => DECIDED.has(application.status));
     body = (
@@ -75,7 +99,28 @@ export default function ApplicationsScreen() {
       >
         <Text tone="mutedForeground">{t('dashboard.applicationsLede')}</Text>
 
-        {rows.length === 0 ? (
+        {/* Written with no connection, waiting to go (features/apply/queue.ts). */}
+        <QueuedApplications />
+
+        {all.length ? (
+          <Segmented
+            label={t('app.applications.segmentsLabel')}
+            value={view}
+            onChange={setView}
+            options={[
+              { value: 'all', label: t.markup('app.applications.segmentAll', { count: all.length, ...markupTags }) },
+              { value: 'news', label: t.markup('app.applications.segmentNews', { count: news.length, ...markupTags }) },
+              { value: 'interviews', label: t('app.applications.segmentInterviews') },
+              { value: 'ended', label: t('app.applications.segmentEnded') },
+            ]}
+          />
+        ) : null}
+
+        {all.length && rows.length === 0 ? (
+          <Text tone="mutedForeground" style={{ textAlign: 'center', paddingVertical: space[6] }}>
+            {t('app.applications.segmentEmpty')}
+          </Text>
+        ) : rows.length === 0 ? (
           <View
             style={{
               alignItems: 'center',
@@ -126,6 +171,9 @@ export default function ApplicationsScreen() {
             )}
           </View>
         )}
+
+        {/* What a company cleared or took with it when it closed (Phase B 07c). */}
+        {view === 'all' || view === 'ended' ? <ClearedApplications /> : null}
       </ScrollView>
     );
   }
@@ -143,18 +191,30 @@ export default function ApplicationsScreen() {
 /** Where an application has come to its end: the company has answered. */
 const DECIDED = new Set<ApplicationStatus>(['hired', 'rejected']);
 
+/** News this week: the company moved it in the last seven days. */
+function hasNews(application: CandidateApplication): boolean {
+  const moved = lastMovedAt(application);
+  return Boolean(moved) && Date.now() - new Date(moved as string).getTime() < QUIET_DAYS * 24 * 60 * 60 * 1000;
+}
+
 function ApplicationRow({ application, first }: { application: CandidateApplication; first: boolean }) {
   const t = useTranslations();
   const locale = useLocale();
   const { colors } = useTheme();
   const withdraw = useWithdrawApplication();
   const [failed, setFailed] = useState<'unavailable' | 'failed' | null>(null);
+  // One read for the whole list (the query is shared): this application's invitation, if any.
+  const invite = useMyInterviews().data?.get(application.id) ?? null;
+  const [openedAt] = useState(() => Date.now());
 
   const job = application.job;
   if (!job) return null;
 
   const title = localized(locale, job.title_ar, job.title_en);
   const shown = displayJobStatus(job);
+  const moved = lastMovedAt(application);
+  const quiet = daysWithoutAnswer(application);
+  const quietStrip = quiet !== null && quiet >= QUIET_DAYS && canWithdraw(application.status);
 
   const confirmWithdraw = () => {
     dialog.alert(t('myApplications.withdrawTitle', { title }), t('myApplications.withdrawBody'), [
@@ -217,6 +277,9 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
       {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
       <ApplicationTimeline application={application} />
 
+      {/* An interview the company invited them to, and their answer (migration 373). */}
+      {invite && application.status !== 'withdrawn' ? <CandidateInterview invite={invite} now={openedAt} /> : null}
+
       {/* That a person at the company has had it on screen — only while the
           outcome is open; once the status moves, the status is the news. */}
       {application.status === 'new' && application.employer_viewed_at ? (
@@ -226,6 +289,11 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
             {t('dashboard.applicationOpened')}
           </Text>
         </View>
+      ) : null}
+
+      {/* A week and more at «new», nothing heard (v1.1): how long, how soon this company usually answers, and the way out. */}
+      {quietStrip ? (
+        <QuietStrip days={quiet} companyId={job.company.id ?? null} busy={withdraw.isPending} onWithdraw={confirmWithdraw} />
       ) : null}
 
       {/* What happened to the listing, by its date as well as its label. */}
@@ -250,10 +318,16 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
       ) : null}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: space[2] }}>
-        <Text variant="caption" tone="mutedForeground">
-          {t('dashboard.appliedOn', { date: formatDate(application.created_at, locale) })}
+        <Text variant="caption" tone="mutedForeground" style={{ flexShrink: 1 }}>
+          {[
+            moved ? t('app.applications.movedAgo', { when: formatRelativeDay(moved, locale) }) : null,
+            t('dashboard.appliedOn', { date: formatDate(application.created_at, locale) }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </Text>
-        {canWithdraw(application.status) ? (
+        {/* The quiet strip above already offers it: not twice. */}
+        {canWithdraw(application.status) && !quietStrip ? (
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ busy: withdraw.isPending }}
@@ -275,6 +349,82 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
           {failed === 'unavailable' ? t('myApplications.withdrawUnavailable') : t('common.errorBody')}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+/** The applications waiting on this phone for a connection, each with the way to call it off. */
+function QueuedApplications() {
+  const t = useTranslations();
+  const locale = useLocale();
+  const { colors } = useTheme();
+  const { session } = useSession();
+  const owner = session?.user.id ?? 'anon';
+  const waiting = applyQueue.useItems(owner);
+  if (!waiting.length) return null;
+  return (
+    <View style={{ gap: space[2] }}>
+      {waiting.map((item) => {
+        const title = localized(locale, item.titleAr, item.titleEn);
+        return (
+          <View
+            key={item.jobId}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[4], ...corner('xl'), borderWidth: 1, borderColor: colors.champagne, backgroundColor: colors.card }}
+          >
+            <View style={{ flex: 1, gap: space[0.5] }}>
+              <Text weight="semibold">{t('app.applications.queuedTitle')}</Text>
+              <Text variant="caption" tone="mutedForeground">
+                {title}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${t('app.applications.queuedCancel')}: ${title}`}
+              onPress={() => applyQueue.remove(owner, item.jobId)}
+              style={{ minHeight: hitTarget, paddingHorizontal: space[2], justifyContent: 'center' }}
+            >
+              <Text variant="small" weight="medium" tone="destructive">
+                {t('app.applications.queuedCancel')}
+              </Text>
+            </Pressable>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * «لم تردّ بعد منذ N أيام», the company's usual answer time beside it when it
+ * has one (migration 370), and Withdraw a tap away.
+ */
+function QuietStrip({ days, companyId, busy, onWithdraw }: { days: number; companyId: string | null; busy: boolean; onWithdraw: () => void }) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const usual = useCompanyResponse(companyId).data?.medianDays ?? null;
+  const said = [
+    t.markup('app.applications.quietFor', { days, ...markupTags }),
+    usual !== null && companyId ? t.markup('app.applications.usuallyIn', { days: Math.max(0, Math.round(usual)), ...markupTags }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], paddingStart: space[3], ...corner('md'), backgroundColor: colors.warningMuted }}>
+      <Text variant="caption" style={{ flex: 1, color: colors.warning, paddingVertical: space[2] }}>
+        {said}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint={said}
+        accessibilityState={{ busy }}
+        disabled={busy}
+        onPress={onWithdraw}
+        style={{ minHeight: hitTarget, paddingHorizontal: space[3], justifyContent: 'center' }}
+      >
+        <Text variant="small" weight="semibold" tone="destructive">
+          {t('dashboard.withdraw')}
+        </Text>
+      </Pressable>
     </View>
   );
 }

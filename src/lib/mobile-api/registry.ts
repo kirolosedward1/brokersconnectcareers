@@ -1,3 +1,5 @@
+import { deleteReply, saveReply } from '@/lib/actions/replies';
+import { acceptProposedTime, answerInterview, cancelInterview, inviteToInterview } from '@/lib/actions/interviews';
 import 'server-only';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
@@ -42,11 +44,24 @@ import {
   applyToJob,
   deleteApplicationNote,
   setApplicationStatus,
+  setApplicationStatuses,
+  addCandidateNote,
+  deleteCandidateNote,
+  messageApplicants,
   withdrawApplication,
 } from '@/lib/actions/applications';
 import { requestPasswordReset, resendConfirmation } from '@/lib/actions/auth-email';
+import { decideApprovalRequest, saveCompanyRules } from '@/lib/actions/approvals';
 import {
   addCompanyMember,
+  updateMemberPermissions,
+  saveCompanyHiring,
+  saveBranch,
+  deleteBranch,
+  transferCompanyOwnership,
+  requestCompanyDeletion,
+  cancelCompanyDeletion,
+  setApplicationPurge,
   claimMonthlyFreePost,
   recordCompanyDocument,
   removeCompanyMember,
@@ -224,6 +239,27 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
 
   // Employer: applicants
   setApplicationStatus: { run: (input) => setApplicationStatus(input) },
+  setApplicationStatuses: { run: (input) => setApplicationStatuses(input) },
+  messageApplicants: { run: (input) => messageApplicants(input) },
+  saveReply: { run: (input) => saveReply(input) },
+  updateMemberPermissions: { run: (input) => updateMemberPermissions(input) },
+  saveCompanyHiring: { run: (input) => saveCompanyHiring(input) },
+  saveBranch: { run: (input) => saveBranch(input) },
+  deleteBranch: { run: (input) => deleteBranch(input) },
+  saveCompanyRules: { run: (input) => saveCompanyRules(input) },
+  decideApprovalRequest: { run: (input) => decideApprovalRequest(input) },
+  transferCompanyOwnership: { run: (input) => transferCompanyOwnership(input) },
+  requestCompanyDeletion: { run: (input) => requestCompanyDeletion(input) },
+  cancelCompanyDeletion: { run: () => cancelCompanyDeletion() },
+  setApplicationPurge: { run: (input) => setApplicationPurge(input) },
+  addCandidateNote: { run: (input) => addCandidateNote(input) },
+  deleteCandidateNote: { run: (input) => deleteCandidateNote(input) },
+  deleteReply: { run: (input) => deleteReply(input) },
+  inviteToInterview: { run: (input) => inviteToInterview(input) },
+  cancelInterview: { run: (input) => cancelInterview(input) },
+  acceptProposedTime: { run: (input) => acceptProposedTime(input) },
+  // Candidate: the answer to an invitation
+  answerInterview: { run: (input) => answerInterview(input) },
   addApplicationNote: { run: (input) => addApplicationNote(input) },
   deleteApplicationNote: {
     run: positional(z.number().int().positive(), 'id', deleteApplicationNote),

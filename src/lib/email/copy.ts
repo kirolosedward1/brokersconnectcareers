@@ -163,6 +163,16 @@ export const emailCopy = {
       labelStatus: 'الحالة الجديدة',
     },
 
+    companyMessage: {
+      subject: (company: string) => `رسالة من ${company} عن طلبك`,
+      preheader: 'رسالة من الشركة عن طلبك.',
+      heading: 'رسالة من الشركة',
+      body: (job: string, company: string) => `كتبت لك شركة ${company} عن طلبك على وظيفة «${job}»:`,
+      cta: 'عرض طلباتي',
+      labelJob: 'الوظيفة',
+      labelCompany: 'الشركة',
+    },
+
     applicationRejected: {
       subject: (job: string) => `تحديث على طلبك على وظيفة ${job}`,
       preheader: 'هناك تحديث على طلبك.',
@@ -316,6 +326,18 @@ export const emailCopy = {
       preheader: 'نحتاج إلى مراجعة بيانات حسابك مرة أخرى.',
       heading: 'تم إيقاف حسابك مؤقتًا',
       body: 'أوقفنا الحساب مؤقتًا إلى حين مراجعة البيانات مرة أخرى.',
+    },
+
+    companyOwnershipTransferred: {
+      subject: (company: string) => `انتقلت ملكية ${company}`,
+      preheader: 'تغيّر مالك الشركة على Brokers Connect.',
+      heading: 'انتقلت ملكية الشركة',
+      bodyNew: (company: string, from: string) =>
+        `نقل ${from} إليك ملكية «${company}». أصبحت المالك: تستطيع وحدك نقلها أو حذفها، ولك كل صلاحيات المسؤول.`,
+      bodyOld: (company: string, to: string) =>
+        `نقلت ملكية «${company}» إلى ${to}. بقيت مسؤولًا في الفريق. إن لم تكن أنت من فعل ذلك، فتواصل معنا فورًا.`,
+      cta: 'صفحة الشركة',
+      labelCompany: 'الشركة',
     },
 
     companyVerified: {
@@ -511,6 +533,16 @@ export const emailCopy = {
       labelStatus: 'New status',
     },
 
+    companyMessage: {
+      subject: (company: string) => `A message from ${company} about your application`,
+      preheader: 'A message from the company about your application.',
+      heading: 'A message from the company',
+      body: (job: string, company: string) => `${company} wrote to you about your application for "${job}":`,
+      cta: 'My applications',
+      labelJob: 'Role',
+      labelCompany: 'Company',
+    },
+
     applicationRejected: {
       subject: (job: string) => `Update on your application for ${job}`,
       preheader: 'There is an update on your application.',
@@ -649,6 +681,18 @@ export const emailCopy = {
       preheader: 'We need to review your account details again.',
       heading: 'Your account is on hold',
       body: 'We have paused the account until we can review the details again.',
+    },
+
+    companyOwnershipTransferred: {
+      subject: (company: string) => `Ownership of ${company} has changed`,
+      preheader: "The company's owner on Brokers Connect has changed.",
+      heading: 'Company ownership changed',
+      bodyNew: (company: string, from: string) =>
+        `${from} handed ownership of "${company}" to you. You are now the owner: only you can hand it on or delete it, and you have every admin permission.`,
+      bodyOld: (company: string, to: string) =>
+        `You handed ownership of "${company}" to ${to}. You stay on the team as an admin. If this wasn't you, contact us at once.`,
+      cta: 'Company page',
+      labelCompany: 'Company',
     },
 
     companyVerified: {

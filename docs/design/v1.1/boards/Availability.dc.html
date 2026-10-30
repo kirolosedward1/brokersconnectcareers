@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>حالة البحث عن عمل</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06)}
+h2{margin:0;font-size:15px;font-weight:600}
+.row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.row:last-child{border-bottom:0}
+.row strong{display:block;font-size:14px;font-weight:600}
+.row .h{display:block;font-size:12px;line-height:17px;color:#5C6270}
+.sw{width:46px;height:28px;border-radius:999px;background:#D9D4CA;position:relative;flex-shrink:0}
+.sw i{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw.on{background:#16295A}.sw.on i{right:auto;left:3px}
+.st{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:14px;border:1.5px solid #E6E1D8;background:#fff;text-align:center;font-size:12px;font-weight:600}
+.st i{width:12px;height:12px;border-radius:999px}
+.st.on{border-color:#16295A;background:#ECEEF4}
+.chip{display:inline-flex;align-items:center;height:30px;padding:0 12px;border-radius:999px;background:#F0EDE7;font-size:12px;font-weight:500;color:#5C6270}
+.chip.on{background:#16295A;color:#fff}
+.chev{flex-shrink:0}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1300px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="Account.dc.html" aria-label="رجوع" style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <h1 style="margin:0;flex:1;font-size:18px;line-height:24px;font-weight:700">حالة البحث عن عمل</h1>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:14px">
+
+    <div style="display:flex;gap:8px">
+      <div class="st on"><i style="background:#1B7A4B"></i>متاح فورًا</div>
+      <div class="st"><i style="background:#A27A3B"></i>خلال شهر</div>
+      <div class="st"><i style="background:#5C6270"></i>أتابع بهدوء</div>
+      <div class="st"><i style="background:#C9C3B8"></i>غير متاح</div>
+    </div>
+    <span style="font-size:12px;line-height:17px;color:#5C6270;padding:0 4px">«أتابع بهدوء»: ظاهر في الدليل بلا شارة توفّر.</span>
+
+    <h2>ما تبحث عنه</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="row"><div style="flex:1"><strong>المسارات</strong></div><div style="display:flex;gap:6px"><span class="chip on">ريسيل</span><span class="chip on">أوف بلان</span><span class="chip">إيجارات</span></div></div>
+      <div class="row"><div style="flex:1"><strong>المناطق</strong><span class="h">التجمع الخامس، الشيخ زايد، <span class="num">+2</span></span></div><svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="row"><div style="flex:1"><strong>الحد الأدنى للأساسي</strong><span class="h">لا تُعرض عليك وظائف أقل منه في «وظائف تناسبك».</span></div><strong class="num" style="color:#16295A"><span class="num">9,000</span> ج.م</strong></div>
+      <div class="row"><div style="flex:1"><strong>نوع العملاء</strong></div><div style="display:flex;gap:6px"><span class="chip on">من الشركة</span><span class="chip">عملائي</span></div></div>
+      <div class="row"><div style="flex:1"><strong>الدوام</strong></div><div style="display:flex;gap:6px"><span class="chip on">كامل</span><span class="chip">جزئي</span><span class="chip">عمولة فقط</span></div></div>
+    </div>
+
+    <h2>متى تستطيع البدء</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="row"><div style="flex:1"><strong>فترة الإخطار الحالية</strong></div><div style="display:flex;gap:6px"><span class="chip on">فورًا</span><span class="chip">أسبوعان</span><span class="chip">شهر</span></div></div>
+      <div class="row"><div style="flex:1"><strong>أقرب تاريخ للبدء</strong></div><span style="height:36px;padding:0 12px;border-radius:10px;background:#F0EDE7;display:inline-flex;align-items:center;font-size:14px;font-weight:600"><span class="num">1</span>&nbsp;نوفمبر</span></div>
+    </div>
+
+    <h2>التواصل أثناء البحث</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="row"><div style="flex:1"><strong>أفضّل واتساب</strong><span class="h">تظهر أيقونة واتساب أولًا للشركات.</span></div><span class="sw on"><i></i></span></div>
+      <div class="row"><div style="flex:1"><strong>أوقات التواصل</strong><span class="h">من <span class="num">10</span> ص إلى <span class="num">8</span> م · عدا الجمعة</span></div><svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></div>
+      <div class="row"><div style="flex:1"><strong>تذكير بتحديث الحالة</strong><span class="h">نسألك كل <span class="num">30</span> يومًا إن كانت الحالة ما زالت صحيحة.</span></div><span class="sw on"><i></i></span></div>
+    </div>
+
+    <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#16295A,#0E1D44);color:#fff">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#D8BC86" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="flex-shrink:0"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span style="flex:1;font-size:13px;line-height:19px">بهذه الإعدادات تطابق <b class="num">23</b> وظيفة منشورة الآن، وتظهر لـ<b class="num">41</b> شركة موثّقة تبحث في مناطقك.</span>
+    </div>
+
+    <a href="#" style="height:52px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;margin-bottom:30px">حفظ</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1300}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

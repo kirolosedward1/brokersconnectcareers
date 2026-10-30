@@ -153,7 +153,7 @@ function AgentRow({ agent }: { agent: AgentListRow }) {
       style={{ gap: space[3] }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <Avatar name={agent.profile.full_name} src={agent.profile.avatar_url} seed={agent.id} size="md" />
+        <Avatar name={agent.profile.full_name} src={agent.profile.avatar_url} size="md" />
         <View style={{ flex: 1, gap: 2 }}>
           <Text weight="semibold">{agent.profile.full_name}</Text>
           {/* The slug as written, left to right. */}

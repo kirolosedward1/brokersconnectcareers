@@ -15,6 +15,7 @@ import type {
 import { westernDigits } from '@/lib/search/arabic';
 import { clean } from '@/lib/security/sanitize';
 import { wholeNumber } from '~/components/profile/fields';
+import { track } from '~/lib/analytics';
 import { callAction, refusedAtTheDoor } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
@@ -45,6 +46,11 @@ export type JobValues = {
   descriptionEn: string;
   requirementsAr: string;
   developerIds: number[];
+  /**
+   * The company's branch (migration 383), or null for none. Absent on a draft
+   * kept on the phone before branches, and then left as the listing has it.
+   */
+  branchId?: number | null;
 };
 
 /** The website's defaults for a new listing, and a stored one as the form shows it. */
@@ -71,6 +77,7 @@ export function initialValues(job: JobRow | null, developerIds: number[], firstD
     descriptionEn: job?.description_en ?? '',
     requirementsAr: job?.requirements_ar ?? '',
     developerIds,
+    branchId: job?.branch_id ?? null,
   };
 }
 
@@ -170,6 +177,7 @@ export function toJobInput(
     descriptionEn: orNull(values.descriptionEn),
     requirementsAr: orNull(values.requirementsAr),
     developerIds: values.developerIds,
+    ...(values.branchId !== undefined ? { branchId: values.branchId } : {}),
     submit: extras.submit,
   };
 }
@@ -297,15 +305,17 @@ export function useSaveJob() {
       const result = await callAction('saveJob', input).catch(async (error: unknown) => {
         // An edit with no answer may be in. A new listing needs no such look:
         // its idempotency key makes the one sent again the same listing.
-        if (edit && !refusedAtTheDoor(error) && (await storedAsSent(edit))) return { ok: true as const, data: { id: edit.id } };
+        if (edit && !refusedAtTheDoor(error) && (await storedAsSent(edit))) return { ok: true as const, data: { id: edit.id, pendingApproval: false } };
         if (!edit && input.idempotencyKey && !refusedAtTheDoor(error)) unanswered.current.add(input.idempotencyKey);
         throw error;
       });
       if (!result.ok) {
-        if (result.error === 'stale' && edit && (await storedAsSent(edit))) return edit.id;
+        if (result.error === 'stale' && edit && (await storedAsSent(edit))) return { id: edit.id, pendingApproval: false };
         throw new JobSaveRefused(result.error, result.fieldErrors);
       }
       const id = result.data?.id ?? null;
+      // Saved, but a live listing's new pay waits for an admin (migration 380).
+      const pendingApproval = result.data?.pendingApproval === true;
       // A new listing sent again with the key of a save that had no answer is
       // answered with that save's listing, as that save left it: a draft, when
       // this one is "submit for review", or with the words since changed. What
@@ -318,13 +328,15 @@ export function useSaveJob() {
           if (!again.ok) throw new JobSaveRefused(again.error, again.fieldErrors);
         }
       }
-      return id;
+      return { id, pendingApproval };
     },
     // Not waited for: the wizard closes on its own save, and while every
     // employer screen was read again first, the edited listing came back at its
     // new version and the wizard it keyed was drawn anew — at step 1 — instead
     // of closing. The listing's public page is read again too.
-    onSuccess: () => {
+    onSuccess: (_id, input) => {
+      // The start of employer post → first applicant opened: a listing sent for review.
+      if (input.submit) track('job_submitted', {});
       void queryClient.invalidateQueries({ queryKey: ['employer'] });
       void queryClient.invalidateQueries({ queryKey: ['jobs', 'detail'] });
     },

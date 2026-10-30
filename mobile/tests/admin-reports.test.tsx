@@ -117,7 +117,7 @@ const report = (over: Partial<AdminReportDetail>): AdminReportDetail => ({
   target_live: true,
   reason: 'scam',
   severity: 3,
-  detail: 'طلبوا فلوس قبل المقابلة.',
+  detail: 'طلبوا مالًا قبل المقابلة.',
   status: 'open',
   source: 'user',
   abusive: false,
@@ -148,7 +148,7 @@ const investigatedReport = report({
   reason: 'duplicate',
   severity: 1,
   status: 'investigating',
-  detail: 'نفس الإعلان متكرر.',
+  detail: 'الإعلان نفسه مكرر.',
   reporter_id: '8b7c7f1e-0000-4000-8000-000000000098',
   reporter_name: 'سامي حسن',
   reporter_since: '2026-01-01T10:00:00Z',
@@ -284,7 +284,7 @@ describe('the views', () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
 
-    expect(await screen.findByText(openReport.detail as string)).toBeTruthy();
+    expect(await screen.findByText(`«${openReport.detail}»`)).toBeTruthy();
     expect(lastAsked('admin_report_cases')).toEqual({ p_view: 'new', ...NO_FILTER, p_min_reporters: null, p_limit: 20, p_offset: 0 });
     // Only the reports drawn are read, and signals only for targets that still exist.
     expect(lastAsked('admin_report_rows')).toEqual({ p_ids: [R1, R2, R3] });
@@ -299,13 +299,13 @@ describe('the views', () => {
   it('draws the closed reports themselves, thirty a page, with no lever on them', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.reportView.resolved }));
     expect(await screen.findByText('21 أكتوبر 2026', { exact: false })).toBeTruthy();
     expect(lastAsked('admin_report_rows')).toEqual({ p_status: 'resolved', ...NO_FILTER, p_limit: 30, p_offset: 0 });
     expect(server.asked('/rest/v1/rpc/admin_report_cases')).toHaveLength(1);
-    expect(screen.getByText(openReport.detail as string)).toBeTruthy();
+    expect(screen.getByText(`«${openReport.detail}»`)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.admin.investigate })).toBeNull();
     expect(screen.queryByRole('button', { name: ar.admin.resolveOnly })).toBeNull();
     expect(screen.queryByRole('button', { name: new RegExp(`^${ar.admin.dismissAbusive}`) })).toBeNull();
@@ -361,7 +361,7 @@ describe('the views', () => {
 
     server.on('POST /rest/v1/rpc/admin_report_cases', [liveCase]);
     fireEvent.press(screen.getByRole('button', { name: ar.common.retry }));
-    expect(await screen.findByText(openReport.detail as string)).toBeTruthy();
+    expect(await screen.findByText(`«${openReport.detail}»`)).toBeTruthy();
   });
 });
 
@@ -369,7 +369,7 @@ describe('the filters', () => {
   it('sends the kind, the reason, the severity, the Cairo days and the repeat exactly as the website does', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.kind.job }));
     await waitFor(() => expect(lastAsked('admin_report_cases')).toMatchObject({ p_view: 'new', p_type: 'job', p_offset: 0 }));
@@ -409,7 +409,7 @@ describe('the filters', () => {
   it('refuses a day that is not one, and applies nothing', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     fireEvent.press(screen.getByRole('button', { name: ar.admin.filtersLabel }));
     fireEvent.changeText(await screen.findByLabelText(ar.admin.filterFrom), '2026-02-30');
@@ -455,7 +455,7 @@ describe('a report line', () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
 
-    expect(await screen.findByText(openReport.detail as string)).toBeTruthy();
+    expect(await screen.findByText(`«${openReport.detail}»`)).toBeTruthy();
     expect(screen.getByText(ar.admin.reporterRecord.replace('{filed}', '4').replace('{dismissed}', '2').replace('{abusive}', '1'))).toBeTruthy();
     expect(screen.getByText(ar.admin.reporterNewAccount)).toBeTruthy();
     expect(screen.getByText(ar.admin.reporterBanned)).toBeTruthy();
@@ -470,7 +470,7 @@ describe('a report line', () => {
   it("dismisses one report as filed in bad faith, only with a reason, and only a person's open report", async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     // The person's open report and the one under investigation offer it; the platform's flag does not.
     expect(screen.getAllByRole('button', { name: new RegExp(`^${ar.admin.dismissAbusive}`) })).toHaveLength(2);
@@ -493,7 +493,7 @@ describe('a report line', () => {
   it('opens the reporter\'s file', async () => {
     await signIn();
     const result = await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     fireEvent.press(screen.getByText('منى علي'));
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/users/${REPORTER}`));
@@ -504,7 +504,7 @@ describe('a case whose target was deleted', () => {
   it('shows what it said when reported, and can only be closed — all its open reports at once, the note optional', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     expect(screen.getByText(ar.admin.snapshotLabel)).toBeTruthy();
     expect(screen.getByText('ادفع ٥٠٠ جنيه رسوم تدريب قبل البدء.')).toBeTruthy();
@@ -535,7 +535,7 @@ describe('a case whose target was deleted', () => {
   it('closes them as no breach the same way', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     fireEvent.press(screen.getByRole('button', { name: ar.admin.closeDeletedDismiss }));
     await screen.findByText(ar.admin.closeDeletedBody);
@@ -550,7 +550,7 @@ describe('a case whose target was deleted', () => {
     server.on('POST /api/mobile/v1/actions/closeReports', { ok: false, error: 'not_found' });
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
-    await screen.findByText(openReport.detail as string);
+    await screen.findByText(`«${openReport.detail}»`);
 
     fireEvent.press(screen.getByRole('button', { name: ar.admin.closeDeletedResolve }));
     await screen.findByText(ar.admin.closeDeletedBody);

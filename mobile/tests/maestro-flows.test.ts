@@ -42,6 +42,7 @@ const KEYS: Record<string, string> = {
   'منصة متخصصة لوظائف العقارات في مصر': 'landingPage.hero.title',
   'الرئيسية': 'app.tabs.home',
   'حسابي': 'app.tabs.account',
+  'المظهر': 'app.account.appearanceRow',
   'غامق': 'theme.dark',
   // The board, a listing, the companies.
   'الفلاتر.*': 'jobs.filters',

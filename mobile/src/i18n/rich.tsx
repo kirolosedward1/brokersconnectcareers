@@ -12,11 +12,16 @@
  *
  * For `t.markup(key, { ...values, ...markupTags })`, which returns a string.
  */
+import { appPreferences, toNumerals } from '~/features/preferences/app-preferences';
+import { drawnLanguage } from '~/lib/direction';
+
 export const LRI = '\u2066';
 export const PDI = '\u2069';
 
 export const markupTags = {
-  v: (chunks: string) => `${LRI}${chunks}${PDI}`,
+  // In the digits this phone draws numbers in (Account → Appearance).
+  // use-intl hands the run over as its parts, which a template string joins.
+  v: (chunks: string) => `${LRI}${toNumerals(String(chunks), appPreferences().numerals, drawnLanguage())}${PDI}`,
   b: (chunks: string) => chunks,
 };
 

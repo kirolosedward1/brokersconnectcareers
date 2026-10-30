@@ -131,7 +131,7 @@ export function AgentProfile({ handle }: { handle: string }) {
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[4] }}>
           {card.is_unlocked ? (
-            <Avatar name={card.full_name ?? ''} src={card.avatar_url} seed={card.slug} size="lg" />
+            <Avatar name={card.full_name ?? ''} src={card.avatar_url} size="lg" />
           ) : (
             <View
               accessible={false}
@@ -168,7 +168,14 @@ export function AgentProfile({ handle }: { handle: string }) {
         {card.is_unlocked ? (
           canReveal || (isOwner && card.has_cv) || canShortlist ? (
             <View style={{ gap: space[3] }}>
-              {canReveal ? <ContactReveal handle={card.slug} hasCv={card.has_cv} /> : null}
+              {canReveal ? (
+                <ContactReveal
+                  handle={card.slug}
+                  hasCv={card.has_cv}
+                  name={name}
+                  detail={[headline, ...areas.slice(0, 2).map((area) => localized(locale, area.name_ar, area.name_en))].filter(Boolean).join(' · ')}
+                />
+              ) : null}
               {isOwner && card.has_cv ? <CvButton handle={card.slug} /> : null}
               {canShortlist ? (
                 <View style={{ alignItems: 'flex-start' }}>

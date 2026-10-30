@@ -1,0 +1,5522 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`the stacked activity chart draws at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 12,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 2,
+        }
+      }
+    >
+      <Text
+        accessibilityRole="header"
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            undefined,
+          ]
+        }
+      >
+        نشاط المنصة
+      </Text>
+    </View>
+    <View
+      accessibilityLabel="نشاط المنصة: ⁦30⁩ يومًا"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": false,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#8B8578",
+          "borderCurve": "continuous",
+          "borderRadius": 14,
+          "borderWidth": 1,
+          "flexDirection": "row",
+          "gap": 8,
+          "justifyContent": "space-between",
+          "minHeight": 50,
+          "paddingHorizontal": 14,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            {
+              "flexShrink": 1,
+            },
+          ]
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 16,
+                "lineHeight": 28,
+              },
+              undefined,
+            ]
+          }
+        >
+          نشاط المنصة: 
+        </Text>
+        ⁦30⁩ يومًا
+      </Text>
+      <RNSVGSvgView
+        align="xMidYMid"
+        aria-hidden="true"
+        bbHeight={18}
+        bbWidth={18}
+        className="lucide lucide-chevron-down"
+        fill="none"
+        focusable={false}
+        height={18}
+        meetOrSlice={0}
+        minX={0}
+        minY={0}
+        stroke="#5C6270"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        style={
+          [
+            {
+              "backgroundColor": "transparent",
+              "borderWidth": 0,
+            },
+            {
+              "flex": 0,
+              "height": 18,
+              "width": 18,
+            },
+          ]
+        }
+        vbHeight={24}
+        vbWidth={24}
+        width={18}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <RNSVGGroup
+          fill={null}
+          propList={
+            [
+              "fill",
+              "stroke",
+              "strokeWidth",
+              "strokeLinecap",
+              "strokeLinejoin",
+            ]
+          }
+          stroke={
+            {
+              "payload": 4284244592,
+              "type": 0,
+            }
+          }
+          strokeLinecap={1}
+          strokeLinejoin={1}
+          strokeWidth={2}
+        >
+          <RNSVGPath
+            d="m6 9 6 6 6-6"
+            fill={null}
+            propList={
+              [
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+                "strokeLinejoin",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4284244592,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeLinejoin={1}
+            strokeWidth={2}
+          />
+        </RNSVGGroup>
+      </RNSVGSvgView>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "flexWrap": "wrap",
+          "gap": 12,
+        }
+      }
+    >
+      <View
+        accessible={true}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 4,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#16295A",
+              "borderCurve": "continuous",
+              "borderRadius": 6,
+              "height": 10,
+              "width": 10,
+            }
+          }
+        />
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          طلبات
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              [
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                  "writingDirection": "ltr",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          ⁦47⁩
+        </Text>
+      </View>
+      <View
+        accessible={true}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 4,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#A27A3B",
+              "borderCurve": "continuous",
+              "borderRadius": 6,
+              "height": 10,
+              "width": 10,
+            }
+          }
+        />
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          إعلانات نُشرت
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              [
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                  "writingDirection": "ltr",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          ⁦30⁩
+        </Text>
+      </View>
+      <View
+        accessible={true}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 4,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#5CE1E6",
+              "borderCurve": "continuous",
+              "borderRadius": 6,
+              "height": 10,
+              "width": 10,
+            }
+          }
+        />
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          حسابات جديدة
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              [
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                  "writingDirection": "ltr",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          ⁦30⁩
+        </Text>
+      </View>
+    </View>
+    <View
+      accessibilityActions={
+        [
+          {
+            "name": "increment",
+          },
+          {
+            "name": "decrement",
+          },
+        ]
+      }
+      accessibilityLabel="نشاط المنصة"
+      accessibilityRole="adjustable"
+      accessibilityValue={
+        {
+          "text": "طلبات: 47، إعلانات نُشرت: 30، حسابات جديدة: 30",
+        }
+      }
+      accessible={true}
+      onAccessibilityAction={[Function]}
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "direction": "ltr",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "height": 140,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                [
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                    "writingDirection": "ltr",
+                  },
+                  undefined,
+                ],
+              ]
+            }
+          >
+            ⁦6⁩
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                [
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                    "writingDirection": "ltr",
+                  },
+                  undefined,
+                ],
+              ]
+            }
+          >
+            ⁦0⁩
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "flex-end",
+              "borderBottomColor": "#E6E1D8",
+              "borderBottomWidth": 1,
+              "flex": 1,
+              "flexDirection": "row",
+              "gap": 2,
+              "height": 140,
+            }
+          }
+        >
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "direction": "ltr",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          30 سبتمبر
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          29 أكتوبر
+        </Text>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`the stacked activity chart draws right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 12,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 2,
+        }
+      }
+    >
+      <Text
+        accessibilityRole="header"
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            undefined,
+          ]
+        }
+      >
+        نشاط المنصة
+      </Text>
+    </View>
+    <View
+      accessibilityLabel="نشاط المنصة"
+      accessibilityRole="radiogroup"
+      style={
+        {
+          "backgroundColor": "#ECEEF4",
+          "borderCurve": "continuous",
+          "borderRadius": 999,
+          "flexDirection": "row",
+          "gap": 2,
+          "padding": 3,
+        }
+      }
+    >
+      <View
+        accessibilityLabel="⁦7⁩ أيام"
+        accessibilityRole="radio"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": false,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={
+          {
+            "bottom": 4,
+            "top": 4,
+          }
+        }
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "flexGrow": 1,
+            "justifyContent": "center",
+            "minHeight": 36,
+            "paddingHorizontal": 12,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          collapsable={false}
+          pointerEvents="none"
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#8B8578",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 1,
+              "bottom": 0,
+              "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+              "left": 0,
+              "opacity": 0,
+              "position": "absolute",
+              "right": 0,
+              "top": 0,
+              "transform": [
+                {
+                  "scale": 0.94,
+                },
+              ],
+            }
+          }
+        />
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_500Medium",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          ⁦7⁩ أيام
+        </Text>
+      </View>
+      <View
+        accessibilityLabel="⁦30⁩ يومًا"
+        accessibilityRole="radio"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": true,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={
+          {
+            "bottom": 4,
+            "top": 4,
+          }
+        }
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "flexGrow": 1,
+            "justifyContent": "center",
+            "minHeight": 36,
+            "paddingHorizontal": 12,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          collapsable={false}
+          pointerEvents="none"
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#8B8578",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 1,
+              "bottom": 0,
+              "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+              "left": 0,
+              "opacity": 1,
+              "position": "absolute",
+              "right": 0,
+              "top": 0,
+              "transform": [
+                {
+                  "scale": 1,
+                },
+              ],
+            }
+          }
+        />
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          ⁦30⁩ يومًا
+        </Text>
+      </View>
+      <View
+        accessibilityLabel="⁦90⁩ يومًا"
+        accessibilityRole="radio"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": false,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={
+          {
+            "bottom": 4,
+            "top": 4,
+          }
+        }
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "flexGrow": 1,
+            "justifyContent": "center",
+            "minHeight": 36,
+            "paddingHorizontal": 12,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          collapsable={false}
+          pointerEvents="none"
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#8B8578",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 1,
+              "bottom": 0,
+              "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+              "left": 0,
+              "opacity": 0,
+              "position": "absolute",
+              "right": 0,
+              "top": 0,
+              "transform": [
+                {
+                  "scale": 0.94,
+                },
+              ],
+            }
+          }
+        />
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_500Medium",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          ⁦90⁩ يومًا
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "flexWrap": "wrap",
+          "gap": 12,
+        }
+      }
+    >
+      <View
+        accessible={true}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 4,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#16295A",
+              "borderCurve": "continuous",
+              "borderRadius": 6,
+              "height": 10,
+              "width": 10,
+            }
+          }
+        />
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          طلبات
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              [
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                  "writingDirection": "ltr",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          ⁦47⁩
+        </Text>
+      </View>
+      <View
+        accessible={true}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 4,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#A27A3B",
+              "borderCurve": "continuous",
+              "borderRadius": 6,
+              "height": 10,
+              "width": 10,
+            }
+          }
+        />
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          إعلانات نُشرت
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              [
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                  "writingDirection": "ltr",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          ⁦30⁩
+        </Text>
+      </View>
+      <View
+        accessible={true}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 4,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#5CE1E6",
+              "borderCurve": "continuous",
+              "borderRadius": 6,
+              "height": 10,
+              "width": 10,
+            }
+          }
+        />
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          حسابات جديدة
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              [
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                  "writingDirection": "ltr",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          ⁦30⁩
+        </Text>
+      </View>
+    </View>
+    <View
+      accessibilityActions={
+        [
+          {
+            "name": "increment",
+          },
+          {
+            "name": "decrement",
+          },
+        ]
+      }
+      accessibilityLabel="نشاط المنصة"
+      accessibilityRole="adjustable"
+      accessibilityValue={
+        {
+          "text": "طلبات: 47، إعلانات نُشرت: 30، حسابات جديدة: 30",
+        }
+      }
+      accessible={true}
+      onAccessibilityAction={[Function]}
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "direction": "ltr",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "height": 140,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                [
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                    "writingDirection": "ltr",
+                  },
+                  undefined,
+                ],
+              ]
+            }
+          >
+            ⁦6⁩
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                [
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                    "writingDirection": "ltr",
+                  },
+                  undefined,
+                ],
+              ]
+            }
+          >
+            ⁦0⁩
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "flex-end",
+              "borderBottomColor": "#E6E1D8",
+              "borderBottomWidth": 1,
+              "flex": 1,
+              "flexDirection": "row",
+              "gap": 2,
+              "height": 140,
+            }
+          }
+        >
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+          <View
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            importantForAccessibility="no"
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "flex": 1,
+                "height": 140,
+                "justifyContent": "flex-end",
+                "opacity": 1,
+              }
+            }
+            testID="chart-day"
+          >
+            <View
+              style={
+                {
+                  "flexDirection": "column-reverse",
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "backgroundColor": "#16295A",
+                    "height": 70,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#A27A3B",
+                    "height": 46.666666666666664,
+                  }
+                }
+              />
+              <View
+                style={
+                  {
+                    "backgroundColor": "#5CE1E6",
+                    "height": 23.333333333333332,
+                  }
+                }
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "direction": "ltr",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          30 سبتمبر
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          29 أكتوبر
+        </Text>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;

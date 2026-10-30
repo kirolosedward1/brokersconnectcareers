@@ -4,7 +4,8 @@ import { router, Stack, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import type { NotificationRow } from '@/lib/supabase/database.types';
+import { createTranslator } from 'use-intl';
+import type { InterviewInviteRow, NotificationRow } from '@/lib/supabase/database.types';
 import { shownToast, STAY_WITH_ACTION_MS } from '~/components/feedback/toast';
 import { PendingPath } from '~/components/navigation/pending-path';
 import { SessionGate } from '~/components/navigation/session-gate';
@@ -91,6 +92,7 @@ function notification(overrides: Partial<NotificationRow> = {}): NotificationRow
 }
 
 let applications: CandidateApplication[] = [];
+let interviews: InterviewInviteRow[] = [];
 let feed: NotificationRow[] = [];
 
 beforeAll(() => {
@@ -99,6 +101,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   applications = [application()];
+  interviews = [];
   feed = [
     notification(),
     notification({
@@ -116,6 +119,8 @@ beforeEach(async () => {
   server.on('POST /auth/v1/logout', {});
   server.on('/rest/v1/profiles', [profile]);
   server.on('GET /rest/v1/applications', () => applications);
+  server.on('GET /rest/v1/interview_invites', () => interviews);
+  server.on('POST /api/mobile/v1/actions/answerInterview', { ok: true });
   server.on('GET /rest/v1/notifications', () => feed);
   server.on('HEAD /rest/v1/notifications', () => ({
     body: null,
@@ -462,6 +467,96 @@ describe('paging the feed', () => {
 });
 
 describe('the applications', () => {
+  const tAr = createTranslator({ locale: 'ar', messages: catalogues.ar });
+  const DAY = 24 * 60 * 60 * 1000;
+
+  it('says a week and more without an answer, how soon the company usually answers, and offers to withdraw there', async () => {
+    applications = [
+      application({
+        created_at: new Date(Date.now() - 9 * DAY).toISOString(),
+        job: { ...JOB, company: { ...JOB.company, id: 'c0000000-0000-4000-8000-000000000001' } },
+      }),
+    ];
+    server.on('POST /rest/v1/rpc/company_response_stats', [{ sample: 12, open_rate: 0.9, median_days: 3.6 }]);
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+
+    const strip = `${tAr.markup('app.applications.quietFor', { days: 9, v: (chunks) => `\u2066${chunks}\u2069` })} · ${tAr.markup(
+      'app.applications.usuallyIn',
+      { days: 4, v: (chunks) => `\u2066${chunks}\u2069` },
+    )}`;
+    expect(await screen.findByText(strip)).toBeTruthy();
+    // The way out once, there: not again under the row.
+    expect(screen.getAllByRole('button', { name: ar.dashboard.withdraw })).toHaveLength(1);
+    expect(server.asked('/rest/v1/rpc/company_response_stats')[0].body).toEqual({ p_company_id: 'c0000000-0000-4000-8000-000000000001' });
+  });
+
+  it('says nothing of waiting under a week, or once the company has moved it', async () => {
+    applications = [
+      application({ created_at: new Date(Date.now() - 3 * DAY).toISOString() }),
+      application({
+        id: 'a0000000-0000-4000-8000-000000000002',
+        status: 'shortlisted',
+        created_at: new Date(Date.now() - 20 * DAY).toISOString(),
+        events: [{ from_status: 'new', to_status: 'shortlisted', created_at: new Date(Date.now() - 1 * DAY).toISOString() }],
+      }),
+    ];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect((await screen.findAllByRole('button', { name: ar.dashboard.withdraw })).length).toBe(2);
+    expect(screen.queryByText(/لم تردّ بعد/)).toBeNull();
+    // Moved: when, beside when it was sent.
+    expect(screen.getByText(new RegExp(`^${ar.app.applications.movedAgo.replace('{when}', '.+')} · `))).toBeTruthy();
+  });
+
+  it('shows all, those with news this week, the interviews or the ended, as the segments choose', async () => {
+    applications = [
+      application({ id: 'a0000000-0000-4000-8000-000000000011', job: { ...JOB, title_ar: 'وظيفة جديدة' } }),
+      application({
+        id: 'a0000000-0000-4000-8000-000000000012',
+        status: 'interview',
+        job: { ...JOB, title_ar: 'وظيفة مقابلة' },
+        events: [{ from_status: 'shortlisted', to_status: 'interview', created_at: new Date(Date.now() - DAY).toISOString() }],
+      }),
+      application({ id: 'a0000000-0000-4000-8000-000000000013', status: 'rejected', job: { ...JOB, title_ar: 'وظيفة منتهية' } }),
+    ];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByText('وظيفة منتهية')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('radio', { name: tAr.markup('app.applications.segmentNews', { count: 1, v: (chunks) => `\u2066${chunks}\u2069` }) }));
+    expect(screen.getByText('وظيفة مقابلة')).toBeTruthy();
+    expect(screen.queryByText('وظيفة منتهية')).toBeNull();
+    fireEvent.press(screen.getByRole('radio', { name: ar.app.applications.segmentEnded }));
+    expect(screen.getByText('وظيفة منتهية')).toBeTruthy();
+    expect(screen.queryByText('وظيفة مقابلة')).toBeNull();
+  });
+
+  it('keeps a record of an application a company deleted with its account, under its own heading', async () => {
+    server.on('GET /rest/v1/application_records', [
+      {
+        id: 1,
+        candidate_id: 'x',
+        job_title_ar: 'مستشار عقاري',
+        job_title_en: null,
+        company_name_ar: 'شركة أُغلقت',
+        company_name_en: null,
+        applied_at: '2026-08-01T10:00:00Z',
+        last_status: 'shortlisted',
+        ended_at: '2026-10-01T10:00:00Z',
+        reason: 'company_deleted',
+      },
+    ]);
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByText(ar.app.closure.recordsHeading)).toBeTruthy();
+    expect(screen.getByText('مستشار عقاري')).toBeTruthy();
+    expect(screen.getByText(`شركة أُغلقت · ${ar.applicationStatus.shortlisted}`)).toBeTruthy();
+    // Not under "with news": it is history.
+    fireEvent.press(screen.getByRole('radio', { name: ar.app.applications.segmentInterviews }));
+    expect(screen.queryByText(ar.app.closure.recordsHeading)).toBeNull();
+  });
+
   it('shows each one with where it stands, what the company said, and what became of the listing', async () => {
     applications = [
       application({ employer_viewed_at: '2026-09-21T10:00:00Z' }),
@@ -563,5 +658,58 @@ describe('signing in on the way somewhere', () => {
     await waitFor(() => expect(result.getPathname()).toBe('/dashboard/applications'));
     expect(result.getSegments()).toEqual(['(tabs)', '(applications)', 'dashboard', 'applications']);
     expect(await screen.findByText('مستشار مبيعات')).toBeTruthy();
+  });
+});
+
+describe('an interview invitation', () => {
+  const invite = (overrides: Partial<InterviewInviteRow> = {}): InterviewInviteRow => ({
+    id: 'b0000000-0000-4000-8000-000000000009',
+    application_id: applications[0]?.id as string,
+    starts_at: '2099-11-02T09:00:00Z',
+    minutes: 30,
+    mode: 'video',
+    place: 'https://meet.example.com/abc',
+    note: 'أحضر نسخة من سيرتك.',
+    status: 'proposed',
+    counter_starts_at: null,
+    created_by: null,
+    created_at: '2026-10-29T10:00:00Z',
+    updated_at: '2026-10-29T10:00:00Z',
+    ...overrides,
+  });
+
+  it('shows when, how and where, and sends the answer', async () => {
+    applications = [application({ status: 'interview' })];
+    interviews = [invite()];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByTestId('interview-candidate')).toBeTruthy();
+    expect(screen.getByText('«أحضر نسخة من سيرتك.»')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.interview.accept }));
+    await waitFor(() =>
+      expect(server.asked('/api/mobile/v1/actions/answerInterview')[0]?.body).toMatchObject({ input: { id: interviews[0]?.id, answer: 'accepted' } }),
+    );
+  });
+
+  it('proposes another time, in Cairo time', async () => {
+    applications = [application({ status: 'interview' })];
+    interviews = [invite()];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.interview.proposeOther }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.interview.counterSend }));
+    await waitFor(() => expect(server.asked('/api/mobile/v1/actions/answerInterview')).toHaveLength(1));
+    const body = server.asked('/api/mobile/v1/actions/answerInterview')[0]?.body as { input: { answer: string; counterStartsAt: string } };
+    expect(body.input.answer).toBe('counter');
+    expect(body.input.counterStartsAt).toMatch(/T11:00:00\+0[23]:00$/);
+  });
+
+  it('says what they answered once they have', async () => {
+    applications = [application({ status: 'interview' })];
+    interviews = [invite({ status: 'counter', counter_starts_at: '2099-11-03T10:00:00Z' })];
+    await signedIn();
+    await renderRouter(app, { initialUrl: '/dashboard/applications' });
+    expect(await screen.findByTestId('interview-candidate')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.interview.accept })).toBeNull();
   });
 });

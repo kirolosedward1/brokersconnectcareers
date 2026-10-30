@@ -8,6 +8,7 @@ import { supabase } from '~/lib/supabase';
 import { useCandidateId } from './candidate';
 import { holdNote, restoreNote } from './notes';
 import { cancelReminder, restoreReminder } from './reminders';
+import { savedOffline } from '~/features/saved/offline';
 
 /**
  * What a candidate keeps: bookmarked listings, saved searches, and followed
@@ -128,7 +129,10 @@ export function useSavedJobs({ active = true }: { active?: boolean } = {}) {
         marksKey(candidateId),
         rows.map((row) => ({ job_id: row.job.id, note: row.note ?? null, remind_at: row.remind_at ?? null })),
       );
-      return rows.map((row) => row.job);
+      const jobs = rows.map((row) => row.job);
+      // For the next time there is no connection (features/saved/offline.ts).
+      if (candidateId) savedOffline.replace(candidateId, jobs);
+      return jobs;
     },
   });
 }

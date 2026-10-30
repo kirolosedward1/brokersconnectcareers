@@ -37,6 +37,13 @@ export const palette = {
     success: '#1B7A4B',
     successForeground: '#FFFFFF',
     successMuted: '#E2F2E7',
+    /** WhatsApp's own green, for the one button that opens it (rule 8), with an ink that reads on it (8:1; white is 2:1). */
+    whatsapp: '#25D366',
+    whatsappForeground: '#052E16',
+    /** The stacked activity chart's three series, in their order (Admin board): navy, champagne, cyan. */
+    chart1: '#16295A',
+    chart2: '#A27A3B',
+    chart3: '#5CE1E6',
     warning: '#8F5B0E',
     warningMuted: '#FAEED6',
     destructive: '#B5372C',
@@ -77,6 +84,11 @@ export const palette = {
     success: '#55B582',
     successForeground: '#06120B',
     successMuted: '#11281B',
+    whatsapp: '#25D366',
+    whatsappForeground: '#052E16',
+    chart1: '#D8BC86',
+    chart2: '#5CE1E6',
+    chart3: '#8FA3D9',
     warning: '#E2B05A',
     warningMuted: '#33270E',
     destructive: '#F27468',
@@ -203,12 +215,16 @@ export const font = {
 
 export const type = {
   display: { fontSize: 30, lineHeight: 43 },
+  /** A screen's own title, at its top (v1.1: the onboarding steps, the board's heading). */
+  screen: { fontSize: 26, lineHeight: 34 },
   title: { fontSize: 20, lineHeight: 29 },
   headline: { fontSize: 17, lineHeight: 26 },
   body: { fontSize: 16, lineHeight: 28 },
   small: { fontSize: 14, lineHeight: 22 },
   caption: { fontSize: 12, lineHeight: 18 },
   label: { fontSize: 11, lineHeight: 16 },
+  /** What a listing pays, on its card: the largest figure on it, in tabular figures. */
+  pay: { fontSize: 26, lineHeight: 30 },
 } as const;
 
 /**

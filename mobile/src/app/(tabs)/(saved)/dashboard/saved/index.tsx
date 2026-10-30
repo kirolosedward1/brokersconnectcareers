@@ -26,6 +26,9 @@ import { corner, gutter, space } from '~/theme/tokens';
 import { Scale, UserRound } from '~/components/ui/lucide';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useAnnounce } from '~/lib/use-announce';
+import { JobCard } from '~/components/jobs/job-card';
+import { Notice } from '~/components/ui/notice';
+import { savedOffline } from '~/features/saved/offline';
 
 /**
  * What the candidate kept — the website's /dashboard/saved: the bookmarked
@@ -47,6 +50,7 @@ export default function SavedScreen() {
   const { colors } = useTheme();
   const { session } = useSession();
   const jobs = useSavedJobs();
+  const kept = savedOffline.useItems(session?.user.id ?? 'anon');
   const searches = useSavedSearches();
   const pull = usePullRefresh(() => Promise.all([jobs.refetch(), searches.refetch()]));
   const list = useTabList();
@@ -99,6 +103,23 @@ export default function SavedScreen() {
     );
   } else if (jobs.isPending || searches.isPending) {
     body = <SkeletonScreen />;
+  } else if (jobs.isError && !jobs.data && kept.length) {
+    // No connection: the list as it was last read, said to be so (v1.1).
+    body = (
+      <ScrollView {...list} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[3] }}>
+        <Notice tone="muted" title={t('app.offline.title')}>
+          <View style={{ gap: space[2] }}>
+            <Text variant="small">{t('app.saved.offlineKept')}</Text>
+            <View style={{ alignItems: 'flex-start' }}>
+              <Button label={t('common.retry')} size="sm" variant="outline" onPress={() => void jobs.refetch()} />
+            </View>
+          </View>
+        </Notice>
+        {withoutHiddenJobs([...kept], hiddenJobs).map((job) => (
+          <JobCard key={job.id} job={job} />
+        ))}
+      </ScrollView>
+    );
   } else if ((jobs.isError && !jobs.data) || (searches.isError && !searches.data)) {
     body = (
       <ErrorState

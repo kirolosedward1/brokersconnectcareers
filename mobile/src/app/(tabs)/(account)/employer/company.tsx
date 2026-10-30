@@ -1,12 +1,17 @@
 import { useRef } from 'react';
 import { RefreshControl, ScrollView, type ScrollViewInstance } from 'react-native';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
 import { localized } from '@/lib/locale';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { CompanyForm } from '~/components/employer/company-form';
 import { LogoControls } from '~/components/employer/logo-controls';
+import { BranchSettings } from '~/components/employer/branch-settings';
+import { HiringSettings } from '~/components/employer/hiring-settings';
+import { CompanyMfaNotice } from '~/components/employer/mfa-required';
+import { OwnershipSettings } from '~/components/employer/ownership-settings';
+import { RulesSettings } from '~/components/employer/rules-settings';
 import { TeamSettings } from '~/components/employer/team-settings';
 import { VerificationPanel } from '~/components/employer/verification-panel';
 import { SignedOut } from '~/components/navigation/signed-out';
@@ -14,11 +19,17 @@ import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
+import { useCompanyHiring } from '~/features/companies/hiring';
+import { useBranches } from '~/features/employer/branches';
+import { useCompanyClosure } from '~/features/employer/closure';
+import { useApprovalRequests, useCompanyRules } from '~/features/employer/rules';
 import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
-import { Compass } from '~/components/ui/lucide';
+import { Compass, History, ShieldCheck } from '~/components/ui/lucide';
+import { Num } from '~/components/ui/num';
+import { SettingsGroup, SettingsRow } from '~/components/ui/settings-list';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
@@ -38,6 +49,11 @@ export default function CompanyScreen() {
   const page = useCompanyPage();
   const pull = usePullRefresh(() => Promise.all([page.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
   const company = viewer?.company ?? null;
+  const hiring = useCompanyHiring(company?.id ?? null).data ?? null;
+  const closure = useCompanyClosure(company?.id ?? null).data ?? null;
+  const rules = useCompanyRules().data ?? null;
+  const branches = useBranches(company?.id ?? null).data ?? null;
+  const pendingApprovals = (useApprovalRequests().data ?? []).filter((request) => request.status === 'pending').length;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
   const scroll = useRef<ScrollViewInstance>(null);
 
@@ -63,6 +79,7 @@ export default function CompanyScreen() {
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('employer.companyLede')}</Text>
+        <CompanyMfaNotice />
         {company && isAdmin ? (
           <LogoControls
             companyId={company.id}
@@ -76,7 +93,37 @@ export default function CompanyScreen() {
         {company && isAdmin ? (
           <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
         ) : null}
+        {company && isAdmin && hiring ? <HiringSettings key={company.id} companyId={company.id} hiring={hiring} /> : null}
+        {company && branches ? <BranchSettings companyId={company.id} branches={branches} canManage={isAdmin} /> : null}
         {company && page.data ? <TeamSettings members={page.data.team} canManage={isAdmin} /> : null}
+        {company && isAdmin && rules ? <RulesSettings key={company.id} rules={rules} /> : null}
+        {company && isAdmin && page.data && closure ? (
+          <OwnershipSettings
+            companyName={company.name_ar}
+            team={page.data.team}
+            isOwner={page.data.team.some((member) => member.isOwner && member.userId === session.user.id)}
+            closure={closure}
+          />
+        ) : null}
+        {company && page.data ? (
+          <SettingsGroup>
+            <SettingsRow
+              icon={<ShieldCheck size={18} color={colors.foreground} />}
+              label={t('app.rules.queueRow')}
+              hint={t('app.rules.queueRowHint')}
+              value={pendingApprovals ? <Num value={pendingApprovals} variant="small" tone="mutedForeground" /> : undefined}
+              onPress={() => router.navigate('/employer/approvals' as never)}
+              testID="approvals-row"
+            />
+            <SettingsRow
+              icon={<History size={18} color={colors.foreground} />}
+              label={t('app.activity.title')}
+              hint={isAdmin ? t('app.activity.rowHintAll') : t('app.activity.rowHintOwn')}
+              onPress={() => router.navigate('/employer/activity' as never)}
+              testID="team-activity"
+            />
+          </SettingsGroup>
+        ) : null}
       </ScrollView>
     );
   }

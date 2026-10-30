@@ -3,7 +3,7 @@ import * as Notifications from 'expo-notifications';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { timelineSteps } from '~/components/applications/timeline';
-import { fillReply } from '~/components/employer/saved-replies';
+import { fillReply } from '@/lib/replies';
 import { ringShare } from '~/components/profile/completeness-ring';
 import { SwipeRow } from '~/components/ui/swipe-row';
 import { checkAgentSearches, saveAgentSearch, savedAgentSearches } from '~/features/directory/alerts';

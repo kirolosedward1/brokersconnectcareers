@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -16,6 +17,8 @@ import { recordSecurityEvent } from '@/lib/security/events';
 import { clean, cleanText, safeHttpUrl } from '@/lib/security/sanitize';
 import { policyFor, rateLimit } from '@/lib/security/rate-limit';
 import { refused } from '@/lib/observe';
+import { publish } from '@/lib/notifications/events';
+import { isValidPhone, normalisePhone } from '@/lib/phone';
 
 const schema = z.object({
   nameAr: z.string().trim().min(2).max(160),
@@ -418,7 +421,8 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
 
   const { error } = await supabase
     .from('company_members')
-    .insert({ company_id: companyId, user_id: invitee, role: parsed.data.role });
+    // An admin may buy, as admins always could; the switch (migration 376) can take it away.
+    .insert({ company_id: companyId, user_id: invitee, role: parsed.data.role, can_spend: parsed.data.role === 'admin' });
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'already_member' };
@@ -426,11 +430,227 @@ export async function addCompanyMember(input: unknown): Promise<ActionResult> {
     // email is a consultant's" would tell a company that somebody who chose
     // to stay hidden from it is on the platform.
     if (error.message.includes('company_member_role')) return { ok: false, error: 'no_account' };
+    // Five people at most, the owner included (migration 371).
+    if (error.message.includes('team_full')) return { ok: false, error: 'team_full' };
     // One company per account (migration 307): somebody already on another
     // team is answered the same way as somebody who may not be added.
     return { ok: false, error: 'forbidden' };
   }
 
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+const permissionsSchema = z.object({
+  userId: z.string().uuid(),
+  canPost: z.boolean(),
+  canReveal: z.boolean(),
+  canSpend: z.boolean(),
+});
+
+/**
+ * A member's switches (migration 376, decided: switches rather than more
+ * roles): may they post, reveal a number, spend. Admins change them, through
+ * their own session (company_members_manage); the owner's are not theirs to
+ * change, and mean nothing anyway — the owner may always do all three.
+ */
+export async function updateMemberPermissions(input: unknown): Promise<ActionResult> {
+  const parsed = permissionsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const { data: company } = await supabase.from('companies').select('owner_id').eq('id', companyId).maybeSingle();
+  if (company?.owner_id === parsed.data.userId) return { ok: false, error: 'owner' };
+
+  const { data, error } = await supabase
+    .from('company_members')
+    .update({ can_post: parsed.data.canPost, can_reveal: parsed.data.canReveal, can_spend: parsed.data.canSpend })
+    .eq('company_id', companyId)
+    .eq('user_id', parsed.data.userId)
+    .select('user_id');
+  if (error) return refused('team', error, { member: parsed.data.userId });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const hiringSchema = z.object({
+  hiringStatus: z.enum(['open', 'paused']),
+  // A Cairo calendar day, or null for "until we open again".
+  pausedUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  contactWhatsapp: z.string().max(32).nullable(),
+  replyHours: z
+    .object({
+      days: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+      from: z.string().regex(HH_MM),
+      to: z.string().regex(HH_MM),
+    })
+    .refine((hours) => hours.from < hours.to, { message: 'hoursOrder', path: ['to'] })
+    .nullable(),
+});
+
+/**
+ * Whether the company takes applications now, and how and when it answers
+ * (migration 378, Phase B 07a). A company admin's, through their own session
+ * (companies_update); a pause stops new applications in the database itself.
+ */
+export async function saveCompanyHiring(input: unknown): Promise<ActionResult> {
+  const parsed = hiringSchema.safeParse(input);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) fieldErrors[String(issue.path[0] ?? 'form')] = issue.message;
+    return { ok: false, error: 'invalid', fieldErrors };
+  }
+  const phone = parsed.data.contactWhatsapp?.trim() ? normalisePhone(parsed.data.contactWhatsapp) : null;
+  if (phone && !isValidPhone(phone)) return { ok: false, error: 'invalid', fieldErrors: { contactWhatsapp: 'invalidPhone' } };
+
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+
+  const days = parsed.data.replyHours ? [...new Set(parsed.data.replyHours.days)].sort() : null;
+  const { data, error } = await supabase
+    .from('companies')
+    .update({
+      hiring_status: parsed.data.hiringStatus,
+      // A day only means something while paused.
+      paused_until: parsed.data.hiringStatus === 'paused' ? parsed.data.pausedUntil : null,
+      contact_whatsapp: phone,
+      reply_hours: parsed.data.replyHours && days ? { ...parsed.data.replyHours, days } : null,
+    })
+    .eq('id', companyId)
+    .select('id');
+  if (error) return refused('company', error, { company: companyId });
+  // No row: the caller is a member but not an admin, which the policy decides.
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+/**
+ * Hand the company to somebody already on the team (Phase B 07c, decided).
+ * transfer_company_ownership() checks everything: the caller owns it, the
+ * receiver is a member in good standing, nothing is closing.
+ */
+export async function transferCompanyOwnership(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ userId: z.string().uuid() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  const { data, error } = await supabase.rpc('transfer_company_ownership', { p_to: parsed.data.userId });
+  if (error) return refused('team', error, { to: parsed.data.userId });
+  if (data !== 'ok') return { ok: false, error: data ?? 'failed' };
+  // Both people are told by email (Phase B 07c).
+  if (companyId) {
+    after(() => publish({ type: 'COMPANY_OWNERSHIP_TRANSFERRED', companyId, fromId: user.id, toId: parsed.data.userId }));
+  }
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+/**
+ * The owner asks for the company to go (Phase B 07c): hidden at once, its
+ * listings off the board, gone after 14 days unless cancelled. The company's
+ * name typed back is the confirmation, as GitHub asks for a repository's.
+ */
+export async function requestCompanyDeletion(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ confirmName: z.string().max(200) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const { data: company } = await supabase.from('companies').select('name_ar, name_en').eq('id', companyId).maybeSingle();
+  const typed = parsed.data.confirmName.trim();
+  if (!company || (typed !== company.name_ar.trim() && typed !== (company.name_en ?? '').trim())) {
+    return { ok: false, error: 'invalid', fieldErrors: { confirmName: 'mismatch' } };
+  }
+  const { data, error } = await supabase.rpc('request_company_deletion');
+  if (error) return refused('company', error, { company: companyId });
+  if (data !== 'ok') return { ok: false, error: data ?? 'failed' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+export async function cancelCompanyDeletion(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('cancel_company_deletion');
+  if (error) return refused('company', error, {});
+  if (data !== 'ok') return { ok: false, error: data ?? 'failed' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+/**
+ * How long the applications to an ended listing are kept (Phase B 07c): 30,
+ * 90, 180 or 365 days, or until the yearly retention (null). The candidate
+ * keeps a record of each one cleared. An admin's, under the update policy.
+ */
+export async function setApplicationPurge(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ days: z.union([z.literal(30), z.literal(90), z.literal(180), z.literal(365), z.null()]) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const { data, error } = await supabase
+    .from('companies')
+    .update({ purge_closed_after_days: parsed.data.days })
+    .eq('id', companyId)
+    .select('id');
+  if (error) return refused('company', error, { company: companyId });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
+const branchSchema = z.object({
+  id: z.number().int().positive().optional(),
+  nameAr: z.string().trim().min(1).max(80),
+  nameEn: z.string().trim().max(80).optional().nullable(),
+  districtId: z.number().int().positive().nullable(),
+});
+
+/**
+ * One of the company's places (migration 383, Phase B 07b): a name and a
+ * district. An admin's, under the branches' policies; twenty at most.
+ */
+export async function saveBranch(input: unknown): Promise<ActionResult<{ id: number }>> {
+  const parsed = branchSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const nameAr = clean(parsed.data.nameAr);
+  if (!nameAr) return { ok: false, error: 'invalid', fieldErrors: { nameAr: 'required' } };
+  const row = {
+    name_ar: nameAr,
+    name_en: clean(parsed.data.nameEn) || null,
+    district_id: parsed.data.districtId,
+  };
+  const query = parsed.data.id
+    ? supabase.from('company_branches').update(row).eq('id', parsed.data.id).eq('company_id', companyId)
+    : supabase.from('company_branches').insert({ company_id: companyId, ...row });
+  const { data, error } = await query.select('id');
+  if (error?.message.includes('branch_cap')) return { ok: false, error: 'branch_cap' };
+  if (error) return refused('company', error, { company: companyId });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true, data: { id: data[0]!.id } };
+}
+
+export async function deleteBranch(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ id: z.number().int().positive() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('company_branches').delete().eq('id', parsed.data.id).select('id');
+  if (error) return refused('company', error, { branch: parsed.data.id });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
   revalidatePath('/employer/company');
   return { ok: true };
 }

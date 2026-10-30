@@ -66,7 +66,7 @@ export function AgentCard({
     >
       <View style={{ flexDirection: 'row', gap: space[3] }}>
         {agent.is_unlocked ? (
-          <Avatar name={agent.full_name ?? ''} src={agent.avatar_url} seed={agent.slug} size="md" />
+          <Avatar name={agent.full_name ?? ''} src={agent.avatar_url} size="md" />
         ) : (
           <Silhouette />
         )}

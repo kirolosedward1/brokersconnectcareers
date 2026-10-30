@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الإدارة · الأمان</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#121620;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06);overflow:hidden}
+.ib{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center}
+.stat{padding:10px 4px;display:flex;flex-direction:column;gap:1px;align-items:center}
+.stat b{font-size:18px;font-weight:700;color:#16295A}
+.stat span{font-size:9px;color:#5C6270;text-align:center}
+.r{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid #F0EDE7;font-size:12px;line-height:17px}
+.r:last-child{border-bottom:0}
+.r .m{display:block;font-size:11px;color:#5C6270}
+.r time{color:#8B8578;white-space:nowrap;flex-shrink:0;min-width:40px}
+.dot{width:8px;height:8px;border-radius:999px;flex-shrink:0;margin-top:5px}
+.pill{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:10px;font-weight:600;white-space:nowrap}
+.mono{direction:ltr;unicode-bidi:isolate;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+h2{margin:0 4px;font-size:12px;font-weight:600;color:#5C6270}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{padding:8px 10px;text-align:start;border-bottom:1px solid #F0EDE7}
+th{font-weight:500;color:#5C6270;background:#FBFAF7}
+tr:last-child td{border-bottom:0}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;height:50px;justify-content:center;border-radius:999px;color:#5C6270;font-size:11px;font-weight:500;text-decoration:none}
+.tab.on{background:rgba(22,41,90,.08);color:#16295A;font-weight:600}
+.tab svg{width:22px;height:22px}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1500px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px"><a href="Admin.dc.html" class="ib" aria-label="رجوع"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a><div style="flex:1;display:flex;flex-direction:column"><h1 style="margin:0;font-size:18px;line-height:26px;font-weight:700">الأمان</h1><span style="font-size:12px;color:#5C6270">آخر <span class="num">24</span> ساعة · للقراءة</span></div></div>
+  <div style="padding:14px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1">
+    <h2>الدخول والجلسات</h2>
+    <div class="card" style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr))"><div class="stat"><b class="num">1,812</b><span>دخول ناجح</span></div><div class="stat" style="border-inline:1px solid #F0EDE7"><b class="num" style="color:#8F5B0E">38</b><span>دخول فاشل</span></div><div class="stat" style="border-inline-end:1px solid #F0EDE7"><b class="num">3</b><span>حسابات مقفولة مؤقتًا</span></div><div class="stat"><b class="num">12</b><span>تحدّيات تحقق بخطوتين</span></div></div>
+    <h2>الحماية والحدود</h2>
+    <div class="card" style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr))"><div class="stat"><b class="num">1,240</b><span>محجوب بالجدار</span></div><div class="stat" style="border-inline:1px solid #F0EDE7"><b class="num">86</b><span>تجاوز حدّ الطلبات</span></div><div class="stat" style="border-inline-end:1px solid #F0EDE7"><b class="num">14</b><span>تجاوز حدّ التقديم</span></div><div class="stat"><b class="num" style="color:#1B7A4B">0</b><span>كشف تواصل مرفوض</span></div></div>
+    <h2>أحداث الأمان · أحدث <span class="num">50</span></h2>
+    <div class="card">
+      <div class="r"><time class="num">02:14</time><span class="dot" style="background:#8F5B0E"></span><span style="flex:1"><b style="font-weight:600">قفل مؤقت</b> · <span class="num">22</span> محاولة على حساب واحد من IP واحد · مصر · <span class="num">30</span> دقيقة<span class="m">login.lockout · <span class="mono">41.xx.xx.12</span></span></span></div>
+      <div class="r"><time class="num">08:12</time><span class="dot" style="background:#1B7A4B"></span><span style="flex:1"><b style="font-weight:600">دخول مشرف من جهاز جديد</b> · أنت · دبي · بالتحقق بخطوتين<span class="m">admin.login.new_device</span></span></div>
+      <div class="r"><time class="num">09:40</time><span class="dot" style="background:#8F5B0E"></span><span style="flex:1"><b style="font-weight:600">زحف غير معتاد</b> · <span class="num">4,100</span> طلب على /companies من نطاق سحابي · حُجب<span class="m">waf.block · قاعدة bot-asn</span></span></div>
+      <div class="r"><time class="num">10:05</time><span class="dot" style="background:#5C6270"></span><span style="flex:1"><b style="font-weight:600">كشف تواصل</b> · ريم كشفت بيانات محمود علي بسبب<span class="m">contact.reveal · مُسجَّل في التدقيق</span></span></div>
+      <div class="r"><time class="num">10:30</time><span class="dot" style="background:#8F5B0E"></span><span style="flex:1"><b style="font-weight:600">تجاوز حدّ التقديم</b> · حساب جديد حاول <span class="num">21</span> طلبًا في ساعة<span class="m">abuse.apply_limit · <a href="AdminUser.dc.html" style="color:#16295A;font-weight:600">افتح الحساب</a></span></span></div>
+    </div>
+    <h2>سجل النظام (audit_log) · أحدث <span class="num">50</span></h2>
+    <div class="card">
+      <div class="r"><time class="num">11:30</time><span class="dot" style="background:#B5372C"></span><span style="flex:1"><span class="mono">company.suspend</span> · ريم · هوم فايندر</span></div>
+      <div class="r"><time class="num">11:02</time><span class="dot" style="background:#1B7A4B"></span><span style="flex:1"><span class="mono">job.publish</span> · ريم · مدير مبيعات</span></div>
+      <div class="r"><time class="num">08:30</time><span class="dot" style="background:#B5372C"></span><span style="flex:1"><span class="mono">user.suspend</span> · system · سامح رضا</span></div>
+      <div class="r"><time class="num">03:12</time><span class="dot" style="background:#5C6270"></span><span style="flex:1"><span class="mono">backup.verify</span> · system · ok</span></div>
+    </div>
+    <h2>حدود الاستخدام (abuse_limits) · للقراءة</h2>
+    <div class="card"><table><thead><tr><th>الحد</th><th>القيمة</th><th>النافذة</th></tr></thead><tbody>
+      <tr><td class="mono">apply.per_user</td><td class="num">20</td><td>يوم</td></tr>
+      <tr><td class="mono">report.per_user</td><td class="num">5</td><td>يوم</td></tr>
+      <tr><td class="mono">contact_reveal.per_company</td><td class="num">20</td><td>شهر</td></tr>
+      <tr><td class="mono">login.attempts</td><td class="num">10</td><td><span class="num">15</span> دقيقة</td></tr>
+      <tr><td class="mono">signup.per_ip</td><td class="num">5</td><td>ساعة</td></tr>
+      <tr><td class="mono">api.mobile.rps</td><td class="num">30</td><td>ثانية</td></tr>
+    </tbody></table></div>
+    <span style="font-size:11px;color:#5C6270;padding:0 4px">تعديل الحدود من الموقع فقط. التقرير الكامل: docs/security.</span>
+    <div style="height:90px"></div>
+  </div>
+  <nav aria-label="التبويبات" style="position:absolute;left:16px;right:16px;bottom:22px;height:56px;padding:3px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid #E6E1D8;box-shadow:0 2px 6px rgba(18,22,32,.06),0 16px 40px rgba(18,22,32,.10);display:flex;box-sizing:border-box">
+    <a href="Admin.dc.html" class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>الإدارة</a>
+    <a href="Account.dc.html" class="tab"><span style="width:22px;height:22px;border-radius:999px;background:#16295A;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;line-height:1"><svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></span>حسابي</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

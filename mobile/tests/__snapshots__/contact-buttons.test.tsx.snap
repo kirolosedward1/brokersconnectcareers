@@ -1,0 +1,879 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`the contact buttons draw at the largest text size 1`] = `
+<View
+  style={
+    {
+      "alignItems": "center",
+      "flexDirection": "row",
+      "gap": 8,
+    }
+  }
+>
+  <View
+    accessibilityLabel="مراسلة سارة عادل على واتساب"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "#25D366",
+        "borderCurve": "continuous",
+        "borderRadius": 999,
+        "flex": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "center",
+        "minHeight": 52,
+        "paddingHorizontal": 16,
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      }
+    }
+  >
+    <RNSVGSvgView
+      accessibilityElementsHidden={true}
+      align="xMidYMid"
+      bbHeight={20}
+      bbWidth={20}
+      focusable={false}
+      height={20}
+      importantForAccessibility="no"
+      meetOrSlice={0}
+      minX={0}
+      minY={0}
+      style={
+        [
+          {
+            "backgroundColor": "transparent",
+            "borderWidth": 0,
+          },
+          {
+            "flex": 0,
+            "height": 20,
+            "width": 20,
+          },
+        ]
+      }
+      vbHeight={24}
+      vbWidth={24}
+      width={20}
+    >
+      <RNSVGGroup
+        fill={
+          {
+            "payload": 4278190080,
+            "type": 0,
+          }
+        }
+      >
+        <RNSVGPath
+          d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+          fill={
+            {
+              "payload": 4278529558,
+              "type": 0,
+            }
+          }
+          propList={
+            [
+              "fill",
+            ]
+          }
+        />
+      </RNSVGGroup>
+    </RNSVGSvgView>
+    <Text
+      style={
+        [
+          {
+            "color": "#121620",
+            "fontFamily": "IBMPlexSansArabic_600SemiBold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 16,
+            "lineHeight": 28,
+          },
+          {
+            "color": "#052E16",
+          },
+        ]
+      }
+    >
+      واتساب
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="الاتصال بـسارة عادل"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "#FFFFFF",
+        "borderColor": "#E6E1D8",
+        "borderCurve": "continuous",
+        "borderRadius": 999,
+        "borderWidth": 1,
+        "height": 52,
+        "justifyContent": "center",
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+        "width": 52,
+      }
+    }
+  >
+    <RNSVGSvgView
+      align="xMidYMid"
+      aria-hidden="true"
+      bbHeight={20}
+      bbWidth={20}
+      className="lucide lucide-phone"
+      fill="none"
+      focusable={false}
+      height={20}
+      meetOrSlice={0}
+      minX={0}
+      minY={0}
+      stroke="#16295A"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      style={
+        [
+          {
+            "backgroundColor": "transparent",
+            "borderWidth": 0,
+          },
+          {
+            "flex": 0,
+            "height": 20,
+            "width": 20,
+          },
+        ]
+      }
+      vbHeight={24}
+      vbWidth={24}
+      width={20}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <RNSVGGroup
+        fill={null}
+        propList={
+          [
+            "fill",
+            "stroke",
+            "strokeWidth",
+            "strokeLinecap",
+            "strokeLinejoin",
+          ]
+        }
+        stroke={
+          {
+            "payload": 4279642458,
+            "type": 0,
+          }
+        }
+        strokeLinecap={1}
+        strokeLinejoin={1}
+        strokeWidth={2}
+      >
+        <RNSVGPath
+          d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"
+          fill={null}
+          propList={
+            [
+              "fill",
+              "stroke",
+              "strokeWidth",
+              "strokeLinecap",
+              "strokeLinejoin",
+            ]
+          }
+          stroke={
+            {
+              "payload": 4279642458,
+              "type": 0,
+            }
+          }
+          strokeLinecap={1}
+          strokeLinejoin={1}
+          strokeWidth={2}
+        />
+      </RNSVGGroup>
+    </RNSVGSvgView>
+  </View>
+</View>
+`;
+
+exports[`the contact buttons draw right to left 1`] = `
+<View
+  style={
+    {
+      "alignItems": "center",
+      "flexDirection": "row",
+      "gap": 8,
+    }
+  }
+>
+  <View
+    accessibilityLabel="مراسلة سارة عادل على واتساب"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "#25D366",
+        "borderCurve": "continuous",
+        "borderRadius": 999,
+        "flex": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "center",
+        "minHeight": 52,
+        "paddingHorizontal": 16,
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      }
+    }
+  >
+    <RNSVGSvgView
+      accessibilityElementsHidden={true}
+      align="xMidYMid"
+      bbHeight={20}
+      bbWidth={20}
+      focusable={false}
+      height={20}
+      importantForAccessibility="no"
+      meetOrSlice={0}
+      minX={0}
+      minY={0}
+      style={
+        [
+          {
+            "backgroundColor": "transparent",
+            "borderWidth": 0,
+          },
+          {
+            "flex": 0,
+            "height": 20,
+            "width": 20,
+          },
+        ]
+      }
+      vbHeight={24}
+      vbWidth={24}
+      width={20}
+    >
+      <RNSVGGroup
+        fill={
+          {
+            "payload": 4278190080,
+            "type": 0,
+          }
+        }
+      >
+        <RNSVGPath
+          d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+          fill={
+            {
+              "payload": 4278529558,
+              "type": 0,
+            }
+          }
+          propList={
+            [
+              "fill",
+            ]
+          }
+        />
+      </RNSVGGroup>
+    </RNSVGSvgView>
+    <Text
+      style={
+        [
+          {
+            "color": "#121620",
+            "fontFamily": "IBMPlexSansArabic_600SemiBold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 16,
+            "lineHeight": 28,
+          },
+          {
+            "color": "#052E16",
+          },
+        ]
+      }
+    >
+      واتساب
+    </Text>
+  </View>
+  <View
+    accessibilityLabel="الاتصال بـسارة عادل"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "#FFFFFF",
+        "borderColor": "#E6E1D8",
+        "borderCurve": "continuous",
+        "borderRadius": 999,
+        "borderWidth": 1,
+        "height": 52,
+        "justifyContent": "center",
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+        "width": 52,
+      }
+    }
+  >
+    <RNSVGSvgView
+      align="xMidYMid"
+      aria-hidden="true"
+      bbHeight={20}
+      bbWidth={20}
+      className="lucide lucide-phone"
+      fill="none"
+      focusable={false}
+      height={20}
+      meetOrSlice={0}
+      minX={0}
+      minY={0}
+      stroke="#16295A"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      style={
+        [
+          {
+            "backgroundColor": "transparent",
+            "borderWidth": 0,
+          },
+          {
+            "flex": 0,
+            "height": 20,
+            "width": 20,
+          },
+        ]
+      }
+      vbHeight={24}
+      vbWidth={24}
+      width={20}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <RNSVGGroup
+        fill={null}
+        propList={
+          [
+            "fill",
+            "stroke",
+            "strokeWidth",
+            "strokeLinecap",
+            "strokeLinejoin",
+          ]
+        }
+        stroke={
+          {
+            "payload": 4279642458,
+            "type": 0,
+          }
+        }
+        strokeLinecap={1}
+        strokeLinejoin={1}
+        strokeWidth={2}
+      >
+        <RNSVGPath
+          d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"
+          fill={null}
+          propList={
+            [
+              "fill",
+              "stroke",
+              "strokeWidth",
+              "strokeLinecap",
+              "strokeLinejoin",
+            ]
+          }
+          stroke={
+            {
+              "payload": 4279642458,
+              "type": 0,
+            }
+          }
+          strokeLinecap={1}
+          strokeLinejoin={1}
+          strokeWidth={2}
+        />
+      </RNSVGGroup>
+    </RNSVGSvgView>
+  </View>
+</View>
+`;
+
+exports[`the figure tiles draw right to left, the figure first 1`] = `
+<View
+  accessibilityLabel="أداء الإعلان"
+  style={
+    {
+      "flexDirection": "row",
+      "flexWrap": "wrap",
+      "gap": 8,
+    }
+  }
+>
+  <View
+    accessible={true}
+    style={
+      {
+        "backgroundColor": "#FFFFFF",
+        "borderColor": "#E6E1D8",
+        "borderCurve": "continuous",
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "flexBasis": 0,
+        "flexGrow": 1,
+        "gap": 2,
+        "padding": 12,
+        "shadowColor": "#121620",
+        "shadowOffset": {
+          "height": 5,
+          "width": 0,
+        },
+        "shadowOpacity": 0.07,
+        "shadowRadius": 10,
+      }
+    }
+    testID="figure-tile"
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#16295A",
+            "fontFamily": "IBMPlexSansArabic_700Bold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 20,
+            "lineHeight": 29,
+          },
+          [
+            {
+              "fontVariant": [
+                "tabular-nums",
+              ],
+              "writingDirection": "ltr",
+            },
+            undefined,
+          ],
+        ]
+      }
+    >
+      ⁦1,284⁩
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_500Medium",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      مشاهدات
+    </Text>
+  </View>
+  <View
+    accessible={true}
+    style={
+      {
+        "backgroundColor": "#FFFFFF",
+        "borderColor": "#E6E1D8",
+        "borderCurve": "continuous",
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "flexBasis": 0,
+        "flexGrow": 1,
+        "gap": 2,
+        "padding": 12,
+        "shadowColor": "#121620",
+        "shadowOffset": {
+          "height": 5,
+          "width": 0,
+        },
+        "shadowOpacity": 0.07,
+        "shadowRadius": 10,
+      }
+    }
+    testID="figure-tile"
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#16295A",
+            "fontFamily": "IBMPlexSansArabic_700Bold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 20,
+            "lineHeight": 29,
+          },
+          [
+            {
+              "fontVariant": [
+                "tabular-nums",
+              ],
+              "writingDirection": "ltr",
+            },
+            undefined,
+          ],
+        ]
+      }
+    >
+      ⁦3.6%⁩
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_500Medium",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      معدّل التقديم
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      الطلبات من كل مئة مشاهدة.
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`the figure tiles draw two to a row at the largest text size 1`] = `
+<View
+  accessibilityLabel="أداء الإعلان"
+  style={
+    {
+      "flexDirection": "row",
+      "flexWrap": "wrap",
+      "gap": 8,
+    }
+  }
+>
+  <View
+    accessible={true}
+    style={
+      {
+        "backgroundColor": "#FFFFFF",
+        "borderColor": "#E6E1D8",
+        "borderCurve": "continuous",
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "flexBasis": "45%",
+        "flexGrow": 1,
+        "gap": 2,
+        "padding": 12,
+        "shadowColor": "#121620",
+        "shadowOffset": {
+          "height": 5,
+          "width": 0,
+        },
+        "shadowOpacity": 0.07,
+        "shadowRadius": 10,
+      }
+    }
+    testID="figure-tile"
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#16295A",
+            "fontFamily": "IBMPlexSansArabic_700Bold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 20,
+            "lineHeight": 29,
+          },
+          [
+            {
+              "fontVariant": [
+                "tabular-nums",
+              ],
+              "writingDirection": "ltr",
+            },
+            undefined,
+          ],
+        ]
+      }
+    >
+      ⁦1,284⁩
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_500Medium",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      مشاهدات
+    </Text>
+  </View>
+  <View
+    accessible={true}
+    style={
+      {
+        "backgroundColor": "#FFFFFF",
+        "borderColor": "#E6E1D8",
+        "borderCurve": "continuous",
+        "borderRadius": 20,
+        "borderWidth": 1,
+        "flexBasis": "45%",
+        "flexGrow": 1,
+        "gap": 2,
+        "padding": 12,
+        "shadowColor": "#121620",
+        "shadowOffset": {
+          "height": 5,
+          "width": 0,
+        },
+        "shadowOpacity": 0.07,
+        "shadowRadius": 10,
+      }
+    }
+    testID="figure-tile"
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#16295A",
+            "fontFamily": "IBMPlexSansArabic_700Bold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 20,
+            "lineHeight": 29,
+          },
+          [
+            {
+              "fontVariant": [
+                "tabular-nums",
+              ],
+              "writingDirection": "ltr",
+            },
+            undefined,
+          ],
+        ]
+      }
+    >
+      ⁦3.6%⁩
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_500Medium",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      معدّل التقديم
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      الطلبات من كل مئة مشاهدة.
+    </Text>
+  </View>
+</View>
+`;

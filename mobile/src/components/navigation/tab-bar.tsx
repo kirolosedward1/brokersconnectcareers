@@ -19,7 +19,9 @@ import { trustedAvatarUrl } from '@/lib/avatar-url';
 import { formatList, formatNumber } from '@/lib/format';
 import { Appear } from '~/components/motion/appear';
 import type { LucideProps } from '~/components/ui/lucide';
+import { NUM_STYLE } from '~/components/ui/num';
 import { PressableScale } from '~/components/ui/pressable-scale';
+import { PersonGlyph } from '~/components/ui/silhouette';
 import { Text } from '~/components/ui/text';
 import { setTabBarSmall, useTabBarSmall } from '~/features/tab-bar';
 import { env } from '~/lib/env';
@@ -102,7 +104,7 @@ type Frame = { x: number; width: number };
  * Arabic, Home is at the right.
  *
  * A tab can wear a count (`tabBarBadge`, as React Navigation's own bar takes
- * it): a small pill in the brand colour at the icon's top corner on the
+ * it): a small red pill at the icon's top corner on the
  * reading side's end, "9+" past nine, gone at nought and while that tab is
  * the one open. VoiceOver hears it in the tab's name — the screen's own words
  * for the count when it gives them (`tabBarAccessibilityLabel`), the name and
@@ -573,7 +575,7 @@ export function badgeText(badge: number | string | undefined, locale: string): s
 }
 
 /**
- * The count on a tab: a pill in the brand colour, ringed in the bar's own so
+ * The count on a tab: a red pill, as the design draws it, ringed in the bar's own so
  * it stands off the icon, settling into place as it first shows (only fading,
  * with Reduce Motion on). Its size stays put at every text size, as the
  * tabs' names do; the number is in the tab's name for VoiceOver.
@@ -582,8 +584,8 @@ function TabBadge({ text }: { text: string }) {
   const { colors } = useTheme();
   return (
     <Appear from="none" scale={0.5} duration={240} pointerEvents="none" style={styles.badge}>
-      <View testID="tab-badge" style={[styles.badgePill, { backgroundColor: colors.primary, borderColor: colors.card }]}>
-        <Text weight="bold" allowFontScaling={false} style={{ color: colors.primaryForeground, fontSize: 11, lineHeight: 14, textAlign: 'center' }}>
+      <View testID="tab-badge" style={[styles.badgePill, { backgroundColor: colors.destructive, borderColor: colors.card }]}>
+        <Text weight="bold" allowFontScaling={false} style={[NUM_STYLE, { color: colors.destructiveForeground, fontSize: 11, lineHeight: 14, textAlign: 'center' }]}>
           {text}
         </Text>
       </View>
@@ -617,9 +619,11 @@ function clear(hex: string): string {
 type TabIconProps = { focused: boolean; color: ColorValue; size: number };
 
 /**
- * The Account tab's icon: the reader's own photo, round, when they have put
- * one on their account — ringed in the open tab's colour while it is open —
- * and otherwise the person's icon, as every other tab has.
+ * The Account tab's icon. Signed in, it is the reader themselves: their own
+ * photo, round, once they have put one on their account, and the generic
+ * person's silhouette until then (or when it does not load) — ringed in the
+ * open tab's colour while it is open. Signed out, the person's icon, as every
+ * other tab has one.
  */
 export function accountTabIcon(symbol: { default: SFSymbol; selected: SFSymbol }, Fallback: ComponentType<LucideProps>) {
   const Icon = tabIcon(symbol, Fallback);
@@ -629,15 +633,17 @@ export function accountTabIcon(symbol: { default: SFSymbol; selected: SFSymbol }
 }
 
 function OwnPhoto({ focused, color, size, otherwise }: TabIconProps & { otherwise: ReactElement }) {
+  const { colors } = useTheme();
   const { viewer } = useSession();
   const photo = trustedAvatarUrl(viewer?.profile?.avatar_url, env.supabaseUrl);
   // Which photo failed, not whether one did: a new one is tried again.
   const [failed, setFailed] = useState<string | null>(null);
-  if (!photo || failed === photo) return otherwise;
+  if (!viewer) return otherwise;
+  const shown = photo && failed !== photo ? photo : null;
   const ring = 2;
   return (
     <View
-      testID="tab-photo"
+      testID={shown ? 'tab-photo' : 'tab-silhouette'}
       style={{
         width: size + ring * 2,
         height: size + ring * 2,
@@ -648,14 +654,20 @@ function OwnPhoto({ focused, color, size, otherwise }: TabIconProps & { otherwis
         borderColor: focused ? color : 'transparent',
       }}
     >
-      <Image
-        source={{ uri: photo }}
-        recyclingKey={photo}
-        contentFit="cover"
-        accessible={false}
-        onError={() => setFailed(photo)}
-        style={{ flex: 1, borderRadius: size / 2 }}
-      />
+      {shown ? (
+        <Image
+          source={{ uri: shown }}
+          recyclingKey={shown}
+          contentFit="cover"
+          accessible={false}
+          onError={() => setFailed(shown)}
+          style={{ flex: 1, borderRadius: size / 2 }}
+        />
+      ) : (
+        <View style={{ flex: 1, borderRadius: size / 2, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+          <PersonGlyph size={Math.round(size * 0.58)} color={colors.primaryForeground} />
+        </View>
+      )}
     </View>
   );
 }

@@ -88,7 +88,7 @@ function ViewedRow({ job, first }: { job: ViewedJob; first: boolean }) {
         backgroundColor: pressed ? colors.muted : 'transparent',
       })}
     >
-      <CompanyLogo name={company} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
+      <CompanyLogo name={company} logoUrl={job.company.logo_url} size="sm" />
       <View style={{ flex: 1, gap: 2 }}>
         <Text weight="medium" numberOfLines={large ? undefined : 1}>
           {title}

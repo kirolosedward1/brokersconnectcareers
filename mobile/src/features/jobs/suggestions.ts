@@ -128,14 +128,37 @@ function spanOf(original: string, name: Folded, found: Found): Span {
   return { start, end };
 }
 
-/** The first of `names` the typed words are found in, best match first. */
+/** The same text without its spaces, each letter still knowing where it came from: «اوفبلان» typed is «أوف بلان». */
+function compact(folded: Folded): Folded {
+  let text = '';
+  const from: number[] = [];
+  for (let index = 0; index < folded.text.length; index++) {
+    if (folded.text[index] === ' ') continue;
+    text += folded.text[index];
+    from.push(folded.from[index]);
+  }
+  return { text, from };
+}
+
+/**
+ * The first of `names` the typed words are found in, best match first. Words
+ * run together or split apart («اوفبلان», «أوف بلان», «off plan», «offplan»)
+ * still find the name, a step below a match as spelled.
+ */
 function bestOf(names: string[], needles: string[]): { name: string; span: Span; quality: number } | null {
   let best: { name: string; span: Span; quality: number } | null = null;
+  const tight = [...new Set(needles.map((needle) => needle.replace(/ /g, '')))].filter((needle) => needle.length >= MIN_LETTERS);
   for (const name of names) {
     if (!name.trim()) continue;
     const folded = fold(name);
-    const found = find(folded, needles);
-    if (found && (!best || found.quality < best.quality)) best = { name, span: spanOf(name, folded, found), quality: found.quality };
+    let found = find(folded, needles);
+    let within = folded;
+    if (!found) {
+      within = compact(folded);
+      const loose = find(within, tight);
+      found = loose ? { ...loose, quality: Math.min(loose.quality + 1, 2) } : null;
+    }
+    if (found && (!best || found.quality < best.quality)) best = { name, span: spanOf(name, within, found), quality: found.quality };
     if (best?.quality === 0) break;
   }
   return best;
@@ -163,22 +186,9 @@ export function suggestionsFor(typed: string, { locale, districts, aliases, list
   const needles = stripped !== query && stripped.length >= MIN_LETTERS ? [query, stripped] : [query];
 
   const found: (SearchSuggestion & { quality: number })[] = [];
-
-  for (const district of districts) {
-    const label = localized(locale, district.name_ar, district.name_en);
-    const other = locale === 'en' ? district.name_ar : district.name_en;
-    const also = aliases.filter((alias) => alias.district_id === district.id).map((alias) => alias.alias);
-    const match = bestOf([label, other ?? '', ...also], needles);
-    if (match) found.push({ kind: 'district', key: `district:${district.slug}`, slug: district.slug, label, matched: match.name, span: match.span, quality: match.quality });
-  }
-
-  for (const track of JOB_TRACKS) {
-    const label = (locale === 'en' ? catalogues.en : catalogues.ar).track[track];
-    const other = (locale === 'en' ? catalogues.ar : catalogues.en).track[track];
-    const also = aliases.filter((alias) => alias.track === track).map((alias) => alias.alias);
-    const match = bestOf([label, other, ...also], needles);
-    if (match) found.push({ kind: 'track', key: `track:${track}`, track, label, matched: match.name, span: match.span, quality: match.quality });
-  }
+  const places = districtMatches(needles, { locale, districts, aliases });
+  const kinds = trackMatches(needles, { locale, aliases });
+  found.push(...places, ...kinds);
 
   // A title or a company once, however many listings carry it.
   const said = new Set<string>();
@@ -199,6 +209,15 @@ export function suggestionsFor(typed: string, { locale, districts, aliases, list
     companies.add(job.company.id);
     const words = name.name.trim();
     found.push({ kind: 'company', key: `company:${job.company.id}`, words, label: words, matched: words, span: name.span, quality: name.quality });
+  }
+
+  // Several words that name nothing together («اوفبلان تجمع»): what each names alone.
+  if (!found.length && query.includes(' ')) {
+    for (const word of wordsOf(query)) {
+      for (const suggestion of [...districtMatches([word], { locale, districts, aliases }), ...trackMatches([word], { locale, aliases })]) {
+        if (!found.some((other) => other.key === suggestion.key)) found.push(suggestion);
+      }
+    }
   }
 
   // Best first within each kind, the shorter name first between equals: it is the nearer one to what was typed.
@@ -229,6 +248,77 @@ export function suggestionsFor(typed: string, { locale, districts, aliases, list
   return [...picked]
     .sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind) || ranked.indexOf(a) - ranked.indexOf(b))
     .map(({ quality: _quality, ...suggestion }) => suggestion as SearchSuggestion);
+}
+
+type Ranked = SearchSuggestion & { quality: number };
+
+/** The places a needle names, by any of their names or aliases. */
+function districtMatches(
+  needles: string[],
+  { locale, districts, aliases }: Pick<SuggestionSources, 'locale' | 'districts' | 'aliases'>,
+): Ranked[] {
+  const found: Ranked[] = [];
+  for (const district of districts) {
+    const label = localized(locale, district.name_ar, district.name_en);
+    const other = locale === 'en' ? district.name_ar : district.name_en;
+    const also = aliases.filter((alias) => alias.district_id === district.id).map((alias) => alias.alias);
+    const match = bestOf([label, other ?? '', ...also], needles);
+    if (match) found.push({ kind: 'district', key: `district:${district.slug}`, slug: district.slug, label, matched: match.name, span: match.span, quality: match.quality });
+  }
+  return found;
+}
+
+/** The tracks a needle names, in either language or by an alias. */
+function trackMatches(needles: string[], { locale, aliases }: Pick<SuggestionSources, 'locale' | 'aliases'>): Ranked[] {
+  const found: Ranked[] = [];
+  for (const track of JOB_TRACKS) {
+    const label = (locale === 'en' ? catalogues.en : catalogues.ar).track[track];
+    const other = (locale === 'en' ? catalogues.ar : catalogues.en).track[track];
+    const also = aliases.filter((alias) => alias.track === track).map((alias) => alias.alias);
+    const match = bestOf([label, other, ...also], needles);
+    if (match) found.push({ kind: 'track', key: `track:${track}`, track, label, matched: match.name, span: match.span, quality: match.quality });
+  }
+  return found;
+}
+
+/** The words of a folded query, each with and without its article, long enough to mean something. */
+function wordsOf(query: string): string[] {
+  const words: string[] = [];
+  for (const word of query.split(' ')) {
+    if (word.length < MIN_LETTERS) continue;
+    words.push(word);
+    const bare = stripDefiniteArticle(word);
+    if (bare !== word && bare.length >= MIN_LETTERS) words.push(bare);
+  }
+  return words;
+}
+
+/** «هل تقصد»: a track and a place, each named by its own words in what was typed. */
+export type DidYouMean = { track: JobTrack; slug: string; label: string };
+
+/**
+ * One track and one place named by different words of the query —
+ * «اوفبلان تجمع» is «بيع أوف بلان · التجمع الخامس» — the best of each.
+ * Null for a query of one word, or one that names fewer than both.
+ */
+export function didYouMean(typed: string, sources: Pick<SuggestionSources, 'locale' | 'districts' | 'aliases'>): DidYouMean | null {
+  const query = fold(typed).text;
+  const words = query.split(' ').filter((word) => word.length >= MIN_LETTERS);
+  if (words.length < 2) return null;
+  let best: { track: Ranked & { kind: 'track' }; place: Ranked & { kind: 'district' }; quality: number } | null = null;
+  for (const [index, trackWord] of words.entries()) {
+    const kinds = trackMatches(wordsOf(trackWord), sources) as (Ranked & { kind: 'track' })[];
+    if (!kinds.length) continue;
+    const rest = words.filter((_, other) => other !== index).join(' ');
+    const places = [...districtMatches([rest], sources), ...wordsOf(rest).flatMap((word) => districtMatches([word], sources))] as (Ranked & { kind: 'district' })[];
+    for (const track of kinds) {
+      for (const place of places) {
+        const quality = track.quality + place.quality;
+        if (!best || quality < best.quality) best = { track, place, quality };
+      }
+    }
+  }
+  return best ? { track: best.track.track, slug: best.place.slug, label: `${best.track.label} · ${best.place.label}` } : null;
 }
 
 /**
@@ -291,6 +381,18 @@ function listingsRead(client: QueryClient): JobListItem[] {
     }
   }
   return jobs;
+}
+
+/** A track and a place for what is typed, when two of its words name them (the Search screen's «هل تقصد»). */
+export function useDidYouMean(typed: string): DidYouMean | null {
+  const locale = useLocale();
+  const enough = typedLetters(typed) >= MIN_LETTERS;
+  const districts = useDistricts().data;
+  const aliases = useSearchAliases(enough).data;
+  return useMemo(
+    () => (enough ? didYouMean(typed, { locale, districts: districts ?? [], aliases: aliases ?? [] }) : null),
+    [enough, typed, locale, districts, aliases],
+  );
 }
 
 /** The suggestions for what is typed in the filter sheet's search field. */

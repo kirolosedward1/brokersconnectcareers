@@ -5,6 +5,7 @@ import {
   type Actor,
   type RouteAudience,
 } from '@/lib/permissions';
+import { noteSharedArrival } from '~/features/jobs/arrival';
 import { tabsFor, type TabName } from './tabs';
 
 /**
@@ -82,6 +83,8 @@ export function webPathToAppPath(input: string): string {
   // parser resolves `/jobs/..//evil.com` to `//evil.com`, which expo-router
   // treats as an outside address and opens in Safari.
   const pathname = url.pathname.replace(/\/{2,}/g, '/').replace(LOCALE_PREFIX, '').replace(/\/+$/, '') || '/';
+  // A forwarded listing is noted for the funnel before its marker goes (features/jobs/arrival.ts).
+  noteSharedArrival(pathname, url.searchParams);
   for (const name of DROPPED_PARAMS) url.searchParams.delete(name);
   const search = url.searchParams.toString();
 
@@ -172,6 +175,8 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/employer/applicants', ['applicants']],
   ['/employer/company', ['account']],
   ['/employer/billing', ['account']],
+  ['/employer/activity', ['account']],
+  ['/employer/approvals', ['account']],
   // The directory is the Consultants tab's own screen, and the Admin tab's
   // for an admin, whose bar has no Consultants tab; a consultant's page
   // opens in any tab.

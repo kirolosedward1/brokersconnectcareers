@@ -223,7 +223,7 @@ const reportRow = {
   target_live: true,
   reason: 'scam',
   severity: 3,
-  detail: 'طلبوا فلوس قبل المقابلة.',
+  detail: 'طلبوا مالًا قبل المقابلة.',
   status: 'open',
   source: 'user',
   abusive: false,
@@ -777,7 +777,8 @@ describe('the overview', () => {
       act(() => router.navigate('/admin'));
       await screen.findByText(ar.app.admin.overview.sections);
     }
-  });
+    // Thirteen screens opened in turn: about four seconds alone, past Jest's five on a busy CI runner.
+  }, 20_000);
 
   it('lists the owners asking to leave while there are any, and closes a request through the website', async () => {
     server.on('GET /rest/v1/support_requests', (url: URL) => {
@@ -991,7 +992,7 @@ describe('the other queues', () => {
 
     expect(await screen.findByText(ar.admin.emptyQueue)).toBeTruthy();
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.reportView.under_review }));
-    expect(await screen.findByText(reportRow.detail as string)).toBeTruthy();
+    expect(await screen.findByText(`«${reportRow.detail}»`)).toBeTruthy();
     // Nothing left to take: no Investigate — the decisions are still here.
     expect(screen.queryByRole('button', { name: ar.admin.investigate })).toBeNull();
     expect(screen.getByRole('button', { name: ar.admin.resolveTakeDownJob })).toBeTruthy();
@@ -1005,7 +1006,7 @@ describe('the other queues', () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
 
-    expect(await screen.findByText(reportRow.detail as string)).toBeTruthy();
+    expect(await screen.findByText(`«${reportRow.detail}»`)).toBeTruthy();
     const asked = server.requests.find((request) => request.url.pathname === '/rest/v1/rpc/admin_report_rows');
     expect((asked?.body as { p_ids: string[] }).p_ids).toHaveLength(3);
     // The count, isolated left to right inside the Arabic sentence.
@@ -1016,7 +1017,7 @@ describe('the other queues', () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/reports' });
 
-    expect(await screen.findByText(reportRow.detail as string)).toBeTruthy();
+    expect(await screen.findByText(`«${reportRow.detail}»`)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: ar.admin.resolveTakeDownJob }));
     fireEvent.changeText(await screen.findByLabelText(ar.admin.reasonToCompany), 'نصب على المتقدمين');
     await act(async () => {

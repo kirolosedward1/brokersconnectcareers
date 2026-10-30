@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>طلباتي</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}a:hover{color:#0E1D44}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06)}
+.seg{flex:1;height:36px;border-radius:999px;border:0;background:transparent;font:inherit;font-size:13px;font-weight:500;color:#5C6270;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+.seg.on{background:#fff;color:#16295A;font-weight:600;box-shadow:0 1px 2px rgba(18,22,32,.08)}
+.badge{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.steps{display:flex;align-items:center;gap:0}
+.dot{width:8px;height:8px;border-radius:999px;background:#E6E1D8;flex-shrink:0}
+.dot.done{background:#16295A}
+.dot.now{background:#A27A3B;box-shadow:0 0 0 3px #F4EAD7}
+.line{flex:1;height:2px;background:#E6E1D8}
+.line.done{background:#16295A}
+.app{display:flex;flex-direction:column;gap:12px;padding:16px;color:#121620}
+.row{display:flex;align-items:center;gap:10px}
+.logo{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;height:50px;justify-content:center;border-radius:999px;color:#5C6270;font-size:11px;font-weight:500;text-decoration:none}
+.tab.on{background:rgba(22,41,90,.08);color:#16295A;font-weight:600}
+.tab svg{width:22px;height:22px}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+  <div style="padding:58px 20px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <h1 style="margin:0;font-size:26px;line-height:34px;font-weight:700">طلباتي</h1>
+      
+    </div>
+    <div style="display:flex;padding:3px;border-radius:999px;background:#ECEAE3">
+      <button type="button" class="seg on">الكل <span class="num" style="font-size:11px;opacity:.7">6</span></button>
+      <button type="button" class="seg">فيها جديد <span class="num" style="min-width:18px;height:18px;border-radius:999px;background:#B5372C;color:#fff;font-size:11px;display:inline-flex;align-items:center;justify-content:center">2</span></button>
+      <button type="button" class="seg">مقابلات</button>
+      <button type="button" class="seg">منتهية</button>
+    </div>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:12px;flex:1;overflow:hidden">
+
+    <a href="#" class="card app" style="border:1px solid #D8BC86">
+      <div class="row">
+        <div class="logo" style="background:#E2F2E7;color:#1B7A4B"><svg viewBox="0 0 24 24" width="52%" height="52%" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+          <strong style="font-size:15px;line-height:22px;font-weight:600">مدير مبيعات، فريق أوف بلان</strong>
+          <span style="font-size:12px;color:#5C6270">إعمار مصر · القاهرة الجديدة</span>
+        </div>
+        <span class="badge" style="background:#F4EAD7;color:#6B4E1A">مقابلة</span>
+      </div>
+      <div class="steps" aria-label="المرحلة 3 من 4">
+        <span class="dot done"></span><span class="line done"></span><span class="dot done"></span><span class="line done"></span><span class="dot now"></span><span class="line"></span><span class="dot"></span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span style="font-size:13px;line-height:18px;color:#2B303B">مقابلة الثلاثاء <span class="num">28</span> أكتوبر، <span class="num">11:00</span> صباحًا بمكتب التجمع</span>
+        <span style="display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:999px;background:#16295A;color:#fff;font-size:12px;font-weight:600;white-space:nowrap">أضفها للتقويم</span>
+      </div>
+    </a>
+
+    <a href="#" class="card app">
+      <div class="row">
+        <div class="logo" style="background:#ECEEF4;color:#16295A"><svg viewBox="0 0 24 24" width="52%" height="52%" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+          <strong style="font-size:15px;line-height:22px;font-weight:600">استشاري مبيعات عقارية</strong>
+          <span style="font-size:12px;color:#5C6270">ماونتن فيو · التجمع الخامس</span>
+        </div>
+        <span class="badge" style="background:#ECEEF4;color:#16295A">قائمة مختصرة</span>
+      </div>
+      <div class="steps" aria-label="المرحلة 2 من 4">
+        <span class="dot done"></span><span class="line done"></span><span class="dot now"></span><span class="line"></span><span class="dot"></span><span class="line"></span><span class="dot"></span>
+      </div>
+      <span style="font-size:12px;color:#5C6270">تحرّكت أمس · قدّمت من <span class="num">5</span> أيام</span>
+    </a>
+
+    <a href="#" class="card app">
+      <div class="row">
+        <div class="logo" style="background:#F4EAD7;color:#6B4E1A"><svg viewBox="0 0 24 24" width="52%" height="52%" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+          <strong style="font-size:15px;line-height:22px;font-weight:600">سينيور ريسيل</strong>
+          <span style="font-size:12px;color:#5C6270">كولدويل بانكر مصر · الشيخ زايد</span>
+        </div>
+        <span class="badge" style="background:#F0EDE7;color:#5C6270">جديد</span>
+      </div>
+      <div class="steps" aria-label="المرحلة 1 من 4">
+        <span class="dot now"></span><span class="line"></span><span class="dot"></span><span class="line"></span><span class="dot"></span><span class="line"></span><span class="dot"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#FBF8F1;font-size:12px;color:#8F5B0E"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span style="flex:1">لم تردّ بعد منذ <span class="num">8</span> أيام · تردّ هذه الشركة عادةً خلال <span class="num">4</span></span><span style="font-weight:600;color:#B5372C">اسحب</span></div>
+    </a>
+
+    <a href="#" class="card app" style="opacity:.75">
+      <div class="row">
+        <div class="logo" style="background:#F0EDE7;color:#5C6270"><svg viewBox="0 0 24 24" width="52%" height="52%" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+          <strong style="font-size:15px;line-height:22px;font-weight:600">استشاري إيجارات</strong>
+          <span style="font-size:12px;color:#5C6270">بالم هيلز · أكتوبر</span>
+        </div>
+        <span class="badge" style="background:#FAE8E4;color:#B5372C">غير مناسب</span>
+      </div>
+      <span style="font-size:12px;color:#5C6270">انتهى من أسبوعين</span>
+    </a>
+  </div>
+
+  <nav aria-label="التبويبات" style="position:absolute;left:16px;right:16px;bottom:22px;height:56px;padding:3px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid #E6E1D8;box-shadow:0 2px 6px rgba(18,22,32,.06),0 16px 40px rgba(18,22,32,.10);display:flex;box-sizing:border-box;backdrop-filter:blur(12px)">
+    <a href="Main.dc.html" class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>الرئيسية</a>
+    <a href="Jobs.dc.html" class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg>الوظائف</a>
+    <a href="Applications.dc.html" class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>طلباتي</a>
+    <a href="#" class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>محفوظة</a>
+    <a href="Account.dc.html" class="tab"><span style="width:22px;height:22px;border-radius:999px;background:#16295A;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;line-height:1"><svg viewBox="0 0 24 24" width="58%" height="58%" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8.5" r="4"/><path d="M4 20.5c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5z"/></svg></span>حسابي</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

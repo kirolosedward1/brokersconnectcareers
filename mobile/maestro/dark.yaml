@@ -1,11 +1,12 @@
 # The same screens in the dark appearance, chosen where a person chooses it
-# (Account, "مظهر التطبيق"): the app is light until someone picks otherwise,
+# (Account → "المظهر"): the app is light until someone picks otherwise,
 # whatever the phone is set to.
 appId: net.brokersconnect.app
 name: Store screens, dark
 ---
 - runFlow: launch.yaml
 - tapOn: "حسابي"
+- tapOn: "المظهر"
 - tapOn: "غامق"
 - tapOn: "الرئيسية"
 - extendedWaitUntil:

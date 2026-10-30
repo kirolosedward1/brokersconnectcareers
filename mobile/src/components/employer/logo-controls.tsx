@@ -80,7 +80,7 @@ export function LogoControls({
   return (
     <Card style={{ gap: space[3] }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <CompanyLogo name={companyName} logoUrl={logoUrl} seed={companySlug} size="lg" />
+        <CompanyLogo name={companyName} logoUrl={logoUrl} size="lg" />
         <View style={{ flex: 1, gap: 2 }}>
           <Text weight="semibold" accessibilityRole="header">
             {t('employer.logo')}

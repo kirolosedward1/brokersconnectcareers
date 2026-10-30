@@ -149,7 +149,7 @@ function CompanyRow({ company }: { company: CompanyListRow }) {
       style={{ gap: space[3] }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <CompanyLogo name={name} logoUrl={company.logo_url} seed={company.slug} size="sm" />
+        <CompanyLogo name={name} logoUrl={company.logo_url} size="sm" />
         <View style={{ flex: 1, gap: 2 }}>
           <Text weight="semibold">{name}</Text>
           <Text variant="small" tone="mutedForeground">

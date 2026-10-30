@@ -106,6 +106,10 @@ export function createLocalList<T>(prefix: string, { max, idOf, valid }: { max: 
     clear(owner: string) {
       change(owner, () => []);
     },
+    /** All of it at once, in this order: a list kept as the server last gave it. */
+    replace(owner: string, items: readonly T[]) {
+      change(owner, () => items);
+    },
     useItems(owner: string): readonly T[] {
       useEffect(() => {
         void load(owner);

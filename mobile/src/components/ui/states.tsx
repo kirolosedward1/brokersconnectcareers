@@ -181,9 +181,16 @@ export function CenteredScroll({
   );
 }
 
-export function LoadingState() {
+/**
+ * A screen on its way: the cards that will fill it, breathing, where they will
+ * land (v1.1: skeletons, not spinners) — said as "loading" to VoiceOver.
+ * `spinner` for a hand-over with nothing to lay out (an email link being
+ * read, a sign-in returning).
+ */
+export function LoadingState({ spinner = false }: { spinner?: boolean } = {}) {
   const { colors } = useTheme();
   const t = useTranslations('common');
+  if (!spinner) return <SkeletonScreen count={3} compact={false} />;
   return (
     <Centered>
       <ActivityIndicator color={colors.primary} accessibilityLabel={t('loading')} />

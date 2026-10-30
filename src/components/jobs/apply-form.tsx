@@ -192,6 +192,11 @@ export function ApplyForm({
           setErrors({ form: t('rateLimit') });
           return;
         }
+        if (result.error === 'company_paused') {
+          draft.clear();
+          setErrors({ form: t('companyPaused') });
+          return;
+        }
         if (result.error === 'not_open') {
           // Nothing this form holds can be sent to this listing now.
           draft.clear();

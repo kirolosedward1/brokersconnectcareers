@@ -85,6 +85,18 @@ async function handle(
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
+  // The company may keep CVs to its admins (migration 380). Asked of the
+  // database, which also knows the candidate's own; a database without the
+  // function (PGRST202, 42883) answers as before.
+  const { data: mayRead, error: ruleError } = await supabase.rpc('may_read_application_cv', { p_application: applicationId });
+  if (!ruleError && mayRead === false) {
+    return NextResponse.json({ error: 'cv_admins_only' }, { status: 403 });
+  }
+  if (ruleError && ruleError.code !== 'PGRST202' && ruleError.code !== '42883') {
+    logFailure('cv', 'could not ask whether the CV may be opened', { application: applicationId, code: ruleError.code });
+    return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  }
+
   const url = await signedUrl(CV_BUCKET, application.cv_path, 300);
   if (!url) {
     return NextResponse.json({ error: 'unavailable' }, { status: 500 });

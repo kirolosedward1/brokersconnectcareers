@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
 import { TrendingDown, TrendingUp } from '~/components/ui/lucide';
+import { TABULAR } from '~/components/ui/num';
 import { Text } from '~/components/ui/text';
 import { useTheme } from '~/theme/provider';
 import { corner, space } from '~/theme/tokens';
@@ -95,20 +96,15 @@ function Cell({ cell }: { cell: StatCell }) {
         backgroundColor: pressed ? colors.muted : colors.card,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        {tone.dot ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tone.dot }} /> : null}
-        <Text variant="caption" tone="mutedForeground" style={{ flexShrink: 1 }}>
-          {cell.label}
-        </Text>
-      </View>
+      {/* The figure first, at the line's start — the right, in Arabic — in tabular digits; its name under it (Admin board). */}
       <View style={{ flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', columnGap: space[2] }}>
-        <Text variant={isFigure ? 'title' : 'small'} weight="bold" style={{ color: tone.figure }}>
+        <Text variant={isFigure ? 'title' : 'small'} weight="bold" style={[TABULAR, { color: tone.figure }]}>
           {cell.value}
         </Text>
         {moved ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
             <Trend size={12} color={trendColor} />
-            <Text variant="caption" weight="medium" style={{ color: trendColor }}>
+            <Text variant="caption" weight="medium" style={[TABULAR, { color: trendColor }]}>
               {moved.value}
             </Text>
           </View>
@@ -118,6 +114,12 @@ function Cell({ cell }: { cell: StatCell }) {
             {cell.hint}
           </Text>
         ) : null}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {tone.dot ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tone.dot }} /> : null}
+        <Text variant="caption" tone="mutedForeground" style={{ flexShrink: 1 }}>
+          {cell.label}
+        </Text>
       </View>
     </Pressable>
   );

@@ -1,0 +1,1515 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    onLayout={[Function]}
+    style={
+      [
+        {
+          "flex": 1,
+        },
+        undefined,
+      ]
+    }
+  >
+    <RNSScreenStack
+      nativeContainerBackgroundColor="rgb(242, 242, 242)"
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <RNSScreen
+        activityState={2}
+        androidResetScreenShadowStateOnOrientationChangeEnabled={true}
+        aria-hidden={false}
+        bottomScrollEdgeEffect="automatic"
+        collapsable={false}
+        fullScreenSwipeEnabled="undefined"
+        fullScreenSwipeShadowEnabled={true}
+        gestureResponseDistance={
+          {
+            "bottom": -1,
+            "end": -1,
+            "start": -1,
+            "top": -1,
+          }
+        }
+        hasLargeHeader={false}
+        iosOrientationInheritanceFixEnabled={true}
+        leftScrollEdgeEffect="automatic"
+        nativeBackButtonDismissalEnabled={false}
+        onAppear={[Function]}
+        onDisappear={[Function]}
+        onDismissed={[Function]}
+        onGestureCancel={[Function]}
+        onHeaderBackButtonClicked={[Function]}
+        onHeaderHeightChange={[Function]}
+        onNativeDismissCancelled={[Function]}
+        onSheetDetentChanged={[Function]}
+        onTransitionProgress={[Function]}
+        onWillAppear={[Function]}
+        onWillDisappear={[Function]}
+        preventNativeDismiss={false}
+        replaceAnimation="push"
+        rightScrollEdgeEffect="automatic"
+        screenId="index:0-0"
+        sheetAllowedDetents={
+          [
+            1,
+          ]
+        }
+        sheetCornerRadius={-1}
+        sheetDefaultResizeAnimationEnabled={true}
+        sheetElevation={24}
+        sheetExpandsWhenScrolledToEdge={true}
+        sheetGrabberVisible={false}
+        sheetInitialDetent={0}
+        sheetInitialDetentIndex={0}
+        sheetLargestUndimmedDetent={-1}
+        sheetLargestUndimmedDetentIndex={-1}
+        sheetShouldOverflowTopInset={false}
+        stackPresentation="push"
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+            "zIndex": undefined,
+          }
+        }
+        swipeDirection="horizontal"
+        synchronousShadowStateUpdatesEnabled={true}
+        topScrollEdgeEffect="automatic"
+      >
+        <RNSScreenContentWrapper
+          collapsable={false}
+          style={
+            [
+              {
+                "flex": 1,
+              },
+              [
+                {
+                  "backgroundColor": "rgb(242, 242, 242)",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          <View
+            accessibilityActions={
+              [
+                {
+                  "label": "شارك الرابط",
+                  "name": "share",
+                },
+                {
+                  "label": "أخفِ هذا الإعلان",
+                  "name": "hide",
+                },
+              ]
+            }
+            accessibilityLabel="استشاري مبيعات عقارية، نايل بروكرز، القاهرة الجديدة. موثّقة. ⁦10,000 – 15,000⁩ ج.م / شهر. عملاء من الشركة. بيع أوف بلان. 3 وظائف خالية. قدّمت. اليوم"
+            accessibilityRole="link"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onAccessibilityAction={[Function]}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 20,
+                "borderWidth": 1,
+                "padding": 16,
+                "shadowColor": "#121620",
+                "shadowOffset": {
+                  "height": 5,
+                  "width": 0,
+                },
+                "shadowOpacity": 0.07,
+                "shadowRadius": 10,
+                "transform": [
+                  {
+                    "scale": 1,
+                  },
+                ],
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 10,
+                }
+              }
+            >
+              <View
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no-hide-descendants"
+                style={
+                  {
+                    "alignItems": "center",
+                    "backgroundColor": "#ECEEF4",
+                    "borderCurve": "continuous",
+                    "borderRadius": 12,
+                    "height": 44,
+                    "justifyContent": "center",
+                    "width": 44,
+                  }
+                }
+              >
+                <RNSVGSvgView
+                  accessible={false}
+                  align="xMidYMid"
+                  bbHeight={23}
+                  bbWidth={23}
+                  focusable={false}
+                  height={23}
+                  meetOrSlice={0}
+                  minX={0}
+                  minY={0}
+                  style={
+                    [
+                      {
+                        "backgroundColor": "transparent",
+                        "borderWidth": 0,
+                      },
+                      {
+                        "flex": 0,
+                        "height": 23,
+                        "width": 23,
+                      },
+                    ]
+                  }
+                  testID="building-silhouette"
+                  vbHeight={24}
+                  vbWidth={24}
+                  width={23}
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                  >
+                    <RNSVGPath
+                      d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"
+                      fill={null}
+                      propList={
+                        [
+                          "fill",
+                          "stroke",
+                          "strokeWidth",
+                          "strokeLinecap",
+                          "strokeLinejoin",
+                        ]
+                      }
+                      stroke={
+                        {
+                          "payload": 4279642458,
+                          "type": 0,
+                        }
+                      }
+                      strokeLinecap={1}
+                      strokeLinejoin={1}
+                      strokeWidth={1.8}
+                    />
+                  </RNSVGGroup>
+                </RNSVGSvgView>
+              </View>
+              <View
+                style={
+                  {
+                    "flex": 1,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 6,
+                    }
+                  }
+                >
+                  <Text
+                    ellipsizeMode="tail"
+                    numberOfLines={1}
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_500Medium",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 14,
+                          "lineHeight": 22,
+                        },
+                        {
+                          "flexShrink": 1,
+                        },
+                      ]
+                    }
+                  >
+                    نايل بروكرز
+                  </Text>
+                  <View
+                    accessibilityHint="يشرح معنى موثّقة"
+                    accessibilityLabel="موثّقة"
+                    accessibilityRole="button"
+                    accessibilityState={
+                      {
+                        "busy": undefined,
+                        "checked": undefined,
+                        "disabled": undefined,
+                        "expanded": undefined,
+                        "selected": undefined,
+                      }
+                    }
+                    accessibilityValue={
+                      {
+                        "max": undefined,
+                        "min": undefined,
+                        "now": undefined,
+                        "text": undefined,
+                      }
+                    }
+                    accessible={true}
+                    collapsable={false}
+                    focusable={true}
+                    hitSlop={15}
+                    onBlur={[Function]}
+                    onClick={[Function]}
+                    onFocus={[Function]}
+                    onResponderGrant={[Function]}
+                    onResponderMove={[Function]}
+                    onResponderRelease={[Function]}
+                    onResponderTerminate={[Function]}
+                    onResponderTerminationRequest={[Function]}
+                    onStartShouldSetResponder={[Function]}
+                    testID="verified-mark"
+                  >
+                    <RNSVGSvgView
+                      align="xMidYMid"
+                      aria-hidden="true"
+                      bbHeight={14}
+                      bbWidth={14}
+                      className="lucide lucide-badge-check lucide-verified"
+                      fill="none"
+                      focusable={false}
+                      height={14}
+                      meetOrSlice={0}
+                      minX={0}
+                      minY={0}
+                      stroke="#A27A3B"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      style={
+                        [
+                          {
+                            "backgroundColor": "transparent",
+                            "borderWidth": 0,
+                          },
+                          {
+                            "flex": 0,
+                            "height": 14,
+                            "width": 14,
+                          },
+                        ]
+                      }
+                      vbHeight={24}
+                      vbWidth={24}
+                      width={14}
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <RNSVGGroup
+                        fill={null}
+                        propList={
+                          [
+                            "fill",
+                            "stroke",
+                            "strokeWidth",
+                            "strokeLinecap",
+                            "strokeLinejoin",
+                          ]
+                        }
+                        stroke={
+                          {
+                            "payload": 4288838203,
+                            "type": 0,
+                          }
+                        }
+                        strokeLinecap={1}
+                        strokeLinejoin={1}
+                        strokeWidth={2}
+                      >
+                        <RNSVGPath
+                          d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"
+                          fill={null}
+                          propList={
+                            [
+                              "fill",
+                              "stroke",
+                              "strokeWidth",
+                              "strokeLinecap",
+                              "strokeLinejoin",
+                            ]
+                          }
+                          stroke={
+                            {
+                              "payload": 4288838203,
+                              "type": 0,
+                            }
+                          }
+                          strokeLinecap={1}
+                          strokeLinejoin={1}
+                          strokeWidth={2}
+                        />
+                        <RNSVGPath
+                          d="m16 9-5.5 5.5L8 12"
+                          fill={null}
+                          propList={
+                            [
+                              "fill",
+                              "stroke",
+                              "strokeWidth",
+                              "strokeLinecap",
+                              "strokeLinejoin",
+                            ]
+                          }
+                          stroke={
+                            {
+                              "payload": 4288838203,
+                              "type": 0,
+                            }
+                          }
+                          strokeLinecap={1}
+                          strokeLinejoin={1}
+                          strokeWidth={2}
+                        />
+                      </RNSVGGroup>
+                    </RNSVGSvgView>
+                  </View>
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={
+                    [
+                      {
+                        "color": "#5C6270",
+                        "fontFamily": "IBMPlexSansArabic_400Regular",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      undefined,
+                    ]
+                  }
+                >
+                  القاهرة الجديدة · اليوم
+                </Text>
+              </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#ECEEF4",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#16295A",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  قدّمت
+                </Text>
+              </View>
+            </View>
+            <Text
+              numberOfLines={2}
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 17,
+                    "lineHeight": 26,
+                  },
+                  {
+                    "marginTop": 12,
+                  },
+                ]
+              }
+            >
+              استشاري مبيعات عقارية
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_400Regular",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 26,
+                    "lineHeight": 30,
+                  },
+                  [
+                    {
+                      "fontVariant": [
+                        "tabular-nums",
+                      ],
+                    },
+                    {
+                      "marginTop": 12,
+                    },
+                  ],
+                ]
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#16295A",
+                      "fontFamily": "IBMPlexSansArabic_700Bold",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 26,
+                      "lineHeight": 30,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                ⁦10,000 – 15,000⁩
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#5C6270",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 12,
+                      "lineHeight": 18,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                  ج.م / شهر
+              </Text>
+            </Text>
+            <View
+              style={
+                {
+                  "flexDirection": "row",
+                  "flexWrap": "wrap",
+                  "gap": 6,
+                  "marginTop": 12,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#F4EAD7",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#6B4E1A",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  عملاء من الشركة
+                </Text>
+              </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#F0EDE7",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#5C6270",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  بيع أوف بلان
+                </Text>
+              </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#F0EDE7",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#5C6270",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  3 وظائف خالية
+                </Text>
+              </View>
+            </View>
+          </View>
+        </RNSScreenContentWrapper>
+        <RNSScreenStackHeaderConfig
+          backButtonInCustomView={false}
+          backTitleVisible={true}
+          backgroundColor="transparent"
+          color="rgb(0, 122, 255)"
+          consumeBottomInset={true}
+          consumeLeftInset={true}
+          consumeRightInset={true}
+          consumeTopInset={false}
+          direction="ltr"
+          disableBackButtonMenu={false}
+          experimental_userInterfaceStyle="light"
+          hidden={true}
+          hideBackButton={false}
+          largeTitleBackgroundColor="transparent"
+          largeTitleHideShadow={false}
+          legacyTopInsetBehavior={false}
+          pointerEvents="box-none"
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "position": "absolute",
+              "width": "100%",
+            }
+          }
+          synchronousShadowStateUpdatesEnabled={true}
+          title="index"
+          topInsetEnabled={false}
+          translucent={true}
+          userInterfaceStyle="light"
+        />
+      </RNSScreen>
+    </RNSScreenStack>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`the listing card is drawn whole at the largest accessibility text size (snapshot) 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    onLayout={[Function]}
+    style={
+      [
+        {
+          "flex": 1,
+        },
+        undefined,
+      ]
+    }
+  >
+    <RNSScreenStack
+      nativeContainerBackgroundColor="rgb(242, 242, 242)"
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <RNSScreen
+        activityState={2}
+        androidResetScreenShadowStateOnOrientationChangeEnabled={true}
+        aria-hidden={false}
+        bottomScrollEdgeEffect="automatic"
+        collapsable={false}
+        fullScreenSwipeEnabled="undefined"
+        fullScreenSwipeShadowEnabled={true}
+        gestureResponseDistance={
+          {
+            "bottom": -1,
+            "end": -1,
+            "start": -1,
+            "top": -1,
+          }
+        }
+        hasLargeHeader={false}
+        iosOrientationInheritanceFixEnabled={true}
+        leftScrollEdgeEffect="automatic"
+        nativeBackButtonDismissalEnabled={false}
+        onAppear={[Function]}
+        onDisappear={[Function]}
+        onDismissed={[Function]}
+        onGestureCancel={[Function]}
+        onHeaderBackButtonClicked={[Function]}
+        onHeaderHeightChange={[Function]}
+        onNativeDismissCancelled={[Function]}
+        onSheetDetentChanged={[Function]}
+        onTransitionProgress={[Function]}
+        onWillAppear={[Function]}
+        onWillDisappear={[Function]}
+        preventNativeDismiss={false}
+        replaceAnimation="push"
+        rightScrollEdgeEffect="automatic"
+        screenId="index:0-0"
+        sheetAllowedDetents={
+          [
+            1,
+          ]
+        }
+        sheetCornerRadius={-1}
+        sheetDefaultResizeAnimationEnabled={true}
+        sheetElevation={24}
+        sheetExpandsWhenScrolledToEdge={true}
+        sheetGrabberVisible={false}
+        sheetInitialDetent={0}
+        sheetInitialDetentIndex={0}
+        sheetLargestUndimmedDetent={-1}
+        sheetLargestUndimmedDetentIndex={-1}
+        sheetShouldOverflowTopInset={false}
+        stackPresentation="push"
+        style={
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+            "zIndex": undefined,
+          }
+        }
+        swipeDirection="horizontal"
+        synchronousShadowStateUpdatesEnabled={true}
+        topScrollEdgeEffect="automatic"
+      >
+        <RNSScreenContentWrapper
+          collapsable={false}
+          style={
+            [
+              {
+                "flex": 1,
+              },
+              [
+                {
+                  "backgroundColor": "rgb(242, 242, 242)",
+                },
+                undefined,
+              ],
+            ]
+          }
+        >
+          <View
+            accessibilityActions={
+              [
+                {
+                  "label": "شارك الرابط",
+                  "name": "share",
+                },
+                {
+                  "label": "أخفِ هذا الإعلان",
+                  "name": "hide",
+                },
+              ]
+            }
+            accessibilityLabel="استشاري مبيعات عقارية، نايل بروكرز، القاهرة الجديدة. موثّقة. ⁦10,000 – 15,000⁩ ج.م / شهر. عملاء من الشركة. بيع أوف بلان. 3 وظائف خالية. قدّمت. اليوم"
+            accessibilityRole="link"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onAccessibilityAction={[Function]}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E6E1D8",
+                "borderCurve": "continuous",
+                "borderRadius": 20,
+                "borderWidth": 1,
+                "padding": 16,
+                "shadowColor": "#121620",
+                "shadowOffset": {
+                  "height": 5,
+                  "width": 0,
+                },
+                "shadowOpacity": 0.07,
+                "shadowRadius": 10,
+                "transform": [
+                  {
+                    "scale": 1,
+                  },
+                ],
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 10,
+                }
+              }
+            >
+              <View
+                accessibilityElementsHidden={true}
+                importantForAccessibility="no-hide-descendants"
+                style={
+                  {
+                    "alignItems": "center",
+                    "backgroundColor": "#ECEEF4",
+                    "borderCurve": "continuous",
+                    "borderRadius": 12,
+                    "height": 44,
+                    "justifyContent": "center",
+                    "width": 44,
+                  }
+                }
+              >
+                <RNSVGSvgView
+                  accessible={false}
+                  align="xMidYMid"
+                  bbHeight={23}
+                  bbWidth={23}
+                  focusable={false}
+                  height={23}
+                  meetOrSlice={0}
+                  minX={0}
+                  minY={0}
+                  style={
+                    [
+                      {
+                        "backgroundColor": "transparent",
+                        "borderWidth": 0,
+                      },
+                      {
+                        "flex": 0,
+                        "height": 23,
+                        "width": 23,
+                      },
+                    ]
+                  }
+                  testID="building-silhouette"
+                  vbHeight={24}
+                  vbWidth={24}
+                  width={23}
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                  >
+                    <RNSVGPath
+                      d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"
+                      fill={null}
+                      propList={
+                        [
+                          "fill",
+                          "stroke",
+                          "strokeWidth",
+                          "strokeLinecap",
+                          "strokeLinejoin",
+                        ]
+                      }
+                      stroke={
+                        {
+                          "payload": 4279642458,
+                          "type": 0,
+                        }
+                      }
+                      strokeLinecap={1}
+                      strokeLinejoin={1}
+                      strokeWidth={1.8}
+                    />
+                  </RNSVGGroup>
+                </RNSVGSvgView>
+              </View>
+              <View
+                style={
+                  {
+                    "flex": 1,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 6,
+                    }
+                  }
+                >
+                  <Text
+                    ellipsizeMode="tail"
+                    numberOfLines={2}
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_500Medium",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 14,
+                          "lineHeight": 22,
+                        },
+                        {
+                          "flexShrink": 1,
+                        },
+                      ]
+                    }
+                  >
+                    نايل بروكرز
+                  </Text>
+                  <View
+                    accessibilityHint="يشرح معنى موثّقة"
+                    accessibilityLabel="موثّقة"
+                    accessibilityRole="button"
+                    accessibilityState={
+                      {
+                        "busy": undefined,
+                        "checked": undefined,
+                        "disabled": undefined,
+                        "expanded": undefined,
+                        "selected": undefined,
+                      }
+                    }
+                    accessibilityValue={
+                      {
+                        "max": undefined,
+                        "min": undefined,
+                        "now": undefined,
+                        "text": undefined,
+                      }
+                    }
+                    accessible={true}
+                    collapsable={false}
+                    focusable={true}
+                    hitSlop={15}
+                    onBlur={[Function]}
+                    onClick={[Function]}
+                    onFocus={[Function]}
+                    onResponderGrant={[Function]}
+                    onResponderMove={[Function]}
+                    onResponderRelease={[Function]}
+                    onResponderTerminate={[Function]}
+                    onResponderTerminationRequest={[Function]}
+                    onStartShouldSetResponder={[Function]}
+                    testID="verified-mark"
+                  >
+                    <RNSVGSvgView
+                      align="xMidYMid"
+                      aria-hidden="true"
+                      bbHeight={14}
+                      bbWidth={14}
+                      className="lucide lucide-badge-check lucide-verified"
+                      fill="none"
+                      focusable={false}
+                      height={14}
+                      meetOrSlice={0}
+                      minX={0}
+                      minY={0}
+                      stroke="#A27A3B"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      style={
+                        [
+                          {
+                            "backgroundColor": "transparent",
+                            "borderWidth": 0,
+                          },
+                          {
+                            "flex": 0,
+                            "height": 14,
+                            "width": 14,
+                          },
+                        ]
+                      }
+                      vbHeight={24}
+                      vbWidth={24}
+                      width={14}
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <RNSVGGroup
+                        fill={null}
+                        propList={
+                          [
+                            "fill",
+                            "stroke",
+                            "strokeWidth",
+                            "strokeLinecap",
+                            "strokeLinejoin",
+                          ]
+                        }
+                        stroke={
+                          {
+                            "payload": 4288838203,
+                            "type": 0,
+                          }
+                        }
+                        strokeLinecap={1}
+                        strokeLinejoin={1}
+                        strokeWidth={2}
+                      >
+                        <RNSVGPath
+                          d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"
+                          fill={null}
+                          propList={
+                            [
+                              "fill",
+                              "stroke",
+                              "strokeWidth",
+                              "strokeLinecap",
+                              "strokeLinejoin",
+                            ]
+                          }
+                          stroke={
+                            {
+                              "payload": 4288838203,
+                              "type": 0,
+                            }
+                          }
+                          strokeLinecap={1}
+                          strokeLinejoin={1}
+                          strokeWidth={2}
+                        />
+                        <RNSVGPath
+                          d="m16 9-5.5 5.5L8 12"
+                          fill={null}
+                          propList={
+                            [
+                              "fill",
+                              "stroke",
+                              "strokeWidth",
+                              "strokeLinecap",
+                              "strokeLinejoin",
+                            ]
+                          }
+                          stroke={
+                            {
+                              "payload": 4288838203,
+                              "type": 0,
+                            }
+                          }
+                          strokeLinecap={1}
+                          strokeLinejoin={1}
+                          strokeWidth={2}
+                        />
+                      </RNSVGGroup>
+                    </RNSVGSvgView>
+                  </View>
+                </View>
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#5C6270",
+                        "fontFamily": "IBMPlexSansArabic_400Regular",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      undefined,
+                    ]
+                  }
+                >
+                  القاهرة الجديدة · اليوم
+                </Text>
+              </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#ECEEF4",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#16295A",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  قدّمت
+                </Text>
+              </View>
+            </View>
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 17,
+                    "lineHeight": 26,
+                  },
+                  {
+                    "marginTop": 12,
+                  },
+                ]
+              }
+            >
+              استشاري مبيعات عقارية
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_400Regular",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 26,
+                    "lineHeight": 30,
+                  },
+                  [
+                    {
+                      "fontVariant": [
+                        "tabular-nums",
+                      ],
+                    },
+                    {
+                      "marginTop": 12,
+                    },
+                  ],
+                ]
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#16295A",
+                      "fontFamily": "IBMPlexSansArabic_700Bold",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 26,
+                      "lineHeight": 30,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                ⁦10,000 – 15,000⁩
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#5C6270",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 12,
+                      "lineHeight": 18,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                  ج.م / شهر
+              </Text>
+            </Text>
+            <View
+              style={
+                {
+                  "flexDirection": "row",
+                  "flexWrap": "wrap",
+                  "gap": 6,
+                  "marginTop": 12,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#F4EAD7",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#6B4E1A",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  عملاء من الشركة
+                </Text>
+              </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#F0EDE7",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#5C6270",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  بيع أوف بلان
+                </Text>
+              </View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "flex-start",
+                    "backgroundColor": "#F0EDE7",
+                    "borderColor": "transparent",
+                    "borderCurve": "continuous",
+                    "borderRadius": 999,
+                    "borderWidth": 0,
+                    "flexDirection": "row",
+                    "gap": 4,
+                    "maxWidth": "100%",
+                    "paddingHorizontal": 10,
+                    "paddingVertical": 5,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_500Medium",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 12,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#5C6270",
+                        "flexShrink": 1,
+                      },
+                    ]
+                  }
+                >
+                  3 وظائف خالية
+                </Text>
+              </View>
+            </View>
+          </View>
+        </RNSScreenContentWrapper>
+        <RNSScreenStackHeaderConfig
+          backButtonInCustomView={false}
+          backTitleVisible={true}
+          backgroundColor="transparent"
+          color="rgb(0, 122, 255)"
+          consumeBottomInset={true}
+          consumeLeftInset={true}
+          consumeRightInset={true}
+          consumeTopInset={false}
+          direction="ltr"
+          disableBackButtonMenu={false}
+          experimental_userInterfaceStyle="light"
+          hidden={true}
+          hideBackButton={false}
+          largeTitleBackgroundColor="transparent"
+          largeTitleHideShadow={false}
+          legacyTopInsetBehavior={false}
+          pointerEvents="box-none"
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "position": "absolute",
+              "width": "100%",
+            }
+          }
+          synchronousShadowStateUpdatesEnabled={true}
+          title="index"
+          topInsetEnabled={false}
+          translucent={true}
+          userInterfaceStyle="light"
+        />
+      </RNSScreen>
+    </RNSScreenStack>
+  </View>
+</RNCSafeAreaProvider>
+`;

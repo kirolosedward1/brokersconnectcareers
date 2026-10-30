@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>إتمام الشراء</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06)}
+h2{margin:0;font-size:15px;font-weight:600}
+.line{display:flex;align-items:center;justify-content:space-between;font-size:13px;padding:10px 16px;border-bottom:1px solid #F0EDE7}
+.line:last-child{border-bottom:0}
+.line span{color:#5C6270}
+.pay{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #F0EDE7}
+.pay:last-child{border-bottom:0}
+.pay .ic{width:44px;height:30px;border-radius:8px;border:1px solid #E6E1D8;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;color:#16295A}
+.pay strong{display:block;font-size:14px;font-weight:600}
+.pay span{display:block;font-size:12px;color:#5C6270}
+.rad{width:22px;height:22px;border-radius:999px;border:1.5px solid #8B8578;flex-shrink:0}
+.rad.on{border:7px solid #16295A}
+.in{height:46px;border-radius:12px;border:1px solid #E6E1D8;background:#fff;display:flex;align-items:center;padding:0 14px;font-size:14px}
+.in.ph{color:#8B8578}
+.lbl{font-size:12px;font-weight:600;color:#5C6270}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:1400px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="Plans.dc.html" aria-label="رجوع" style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <h1 style="margin:0;flex:1;font-size:18px;line-height:24px;font-weight:700">إتمام الشراء</h1>
+    <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#1B7A4B;font-weight:600"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>دفع آمن</span>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:14px">
+
+    <div class="card" style="overflow:hidden">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #F0EDE7">
+        <div style="width:44px;height:44px;border-radius:14px;background:#ECEEF4;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#16295A" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><strong style="font-size:15px;font-weight:600">باقة موسّعة</strong><span style="font-size:12px;color:#5C6270">إعلان واحد · حتى <span class="num">15</span> وظيفة · <span class="num">30</span> يومًا</span></div>
+        <a href="Plans.dc.html" style="font-size:13px;font-weight:500">تغيير</a>
+      </div>
+      <div class="line"><span>سعر الباقة</span><strong><span class="num">3,000</span> ج.م</strong></div>
+      <div class="line"><span>تمييز الإعلان <span class="num">14</span> يومًا <a href="#" style="font-weight:500">(أضف)</a></span><strong style="color:#5C6270"><span class="num">750</span> ج.م</strong></div>
+      <div class="line"><span>كود خصم</span><a href="#" style="font-weight:500">أدخل الكود</a></div>
+      <div class="line" style="background:#FBF8F1"><strong style="font-size:14px">الإجمالي شامل الضريبة</strong><strong style="font-size:18px;color:#16295A"><span class="num">3,000</span> ج.م</strong></div>
+    </div>
+
+    <h2>طريقة الدفع</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="pay"><span class="rad on"></span><div style="flex:1"><strong>بطاقة بنكية</strong><span>فيزا، ماستركارد، ميزة</span></div><div style="display:flex;gap:4px"><span class="ic">VISA</span><span class="ic">MC</span><span class="ic">ميزة</span></div></div>
+      <div class="pay"><span class="rad"></span><div style="flex:1"><strong>محفظة إلكترونية</strong><span>فودافون كاش، اتصالات كاش، أورنج</span></div><span class="ic">محفظة</span></div>
+      <div class="pay"><span class="rad"></span><div style="flex:1"><strong>فوري</strong><span>كود دفع صالح <span class="num">48</span> ساعة</span></div><span class="ic" style="color:#8F5B0E">فوري</span></div>
+      <div class="pay"><span class="rad"></span><div style="flex:1"><strong>Apple Pay</strong><span>بالبطاقة المسجّلة على جهازك</span></div><span class="ic" style="background:#000;color:#fff;border-color:#000">Pay</span></div>
+    </div>
+
+    <div class="card" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">رقم البطاقة</span><div class="in" style="justify-content:space-between"><span class="num">4421 •••• •••• ••••</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#5C6270" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></div></div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px"><span class="lbl">تاريخ الانتهاء</span><div class="in ph"><span class="num">MM / YY</span></div></div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px"><span class="lbl">CVV</span><div class="in ph"><span class="num">•••</span></div></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="width:22px;height:22px;border-radius:7px;background:#16295A;display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>احفظ البطاقة للمشتريات القادمة</label>
+    </div>
+
+    <h2>بيانات الفاتورة</h2>
+    <div class="card" style="overflow:hidden">
+      <div class="line"><span>باسم</span><strong>كولدويل بانكر مصر</strong></div>
+      <div class="line"><span>رقم التسجيل الضريبي</span><strong class="num">512-387-441</strong></div>
+      <div class="line"><span>تُرسل إلى</span><strong>finance@cb-egypt.com</strong></div>
+      <div class="line"><a href="#" style="font-weight:500">تعديل بيانات الفاتورة</a></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:30px">
+      <a href="Orders.dc.html" style="height:52px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>ادفع <span class="num">3,000</span> ج.م</a>
+      <span style="text-align:center;font-size:11px;line-height:17px;color:#5C6270">بالدفع توافق على <a href="#" style="font-weight:500">شروط الخدمة</a>. يُضاف الرصيد فور تأكيد Paymob، وتصلك الفاتورة بالبريد.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1400}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

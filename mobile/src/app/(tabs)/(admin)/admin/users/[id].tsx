@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
 import { formatDate, formatDateTime, formatList, formatNumber } from '@/lib/format';
@@ -7,6 +7,7 @@ import { localized } from '@/lib/locale';
 import { PIPELINE_STAGES } from '@/lib/application-stages';
 import type { JobStatus } from '@/lib/supabase/database.types';
 import { whatsappLink } from '@/lib/whatsapp';
+import { ContactButtons } from '~/components/ui/contact-buttons';
 import { openDecision } from '~/components/admin/decision-sheet';
 import { AdminGate, ApprovalBadge, Fact, SectionTitle, useRoleLabel } from '~/components/admin/kit';
 import { Record } from '~/components/admin/record';
@@ -24,8 +25,6 @@ import {
   Lock,
   LockOpen,
   LogOut,
-  MessageCircle,
-  Phone,
   RotateCcw,
   ShieldMinus,
   ShieldPlus,
@@ -102,7 +101,7 @@ function File({ id }: { id: string | undefined }) {
       contentContainerStyle={{ padding: gutter, paddingBottom: space[12], gap: space[5] }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[4] }}>
-        <Avatar name={profile.full_name} src={profile.avatar_url} seed={profile.id} size="lg" />
+        <Avatar name={profile.full_name} src={profile.avatar_url} size="lg" />
         <View style={{ flex: 1, gap: space[1] }}>
           <Text variant="title" weight="semibold" accessibilityRole="header">
             {profile.full_name}
@@ -396,7 +395,6 @@ function Actions({ account, self }: { account: AccountFile; self: boolean }) {
  */
 function Contact({ account, self }: { account: AccountFile; self: boolean }) {
   const t = useTranslations();
-  const { colors } = useTheme();
   const contact = account.contact;
   const phone = contact?.phone?.trim() || '';
 
@@ -421,21 +419,7 @@ function Contact({ account, self }: { account: AccountFile; self: boolean }) {
         </Fact>
       </Facts>
       {phone ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-          <Button
-            label={t('app.admin.openWhatsApp')}
-            size="sm"
-            icon={<MessageCircle size={16} color={colors.primaryForeground} />}
-            onPress={() => Linking.openURL(whatsappLink(phone)).catch(() => {})}
-          />
-          <Button
-            label={t('app.admin.call')}
-            variant="outline"
-            size="sm"
-            icon={<Phone size={16} color={colors.foreground} />}
-            onPress={() => Linking.openURL(`tel:${phone}`).catch(() => {})}
-          />
-        </View>
+        <ContactButtons size="sm" name={account.profile.full_name} phone={phone} whatsappUrl={whatsappLink(phone)} />
       ) : null}
     </Card>
   );

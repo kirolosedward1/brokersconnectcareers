@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الملاحظة والترتيب وإدخال السيرة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.sheet{background:#F6F4F0;border-radius:24px;box-shadow:0 16px 40px rgba(18,22,32,.18);overflow:hidden;display:flex;flex-direction:column}
+.grab{display:flex;justify-content:center;padding:10px 0 4px}
+.grab span{width:36px;height:5px;border-radius:999px;background:#D9D4CA}
+.ttl{display:flex;align-items:center;justify-content:space-between;padding:4px 16px 12px;border-bottom:1px solid #E6E1D8}
+.ttl h2{margin:0;font-size:16px;font-weight:700}
+.opt{display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-bottom:1px solid #F0EDE7;font-size:14px;background:#fff}
+.opt:last-child{border-bottom:0}
+.field{height:48px;padding:0 14px;border:1px solid #E6E1D8;border-radius:14px;background:#fff;font:inherit;font-size:15px;box-sizing:border-box;width:100%}
+.lbl{font-size:12px;font-weight:600}
+.cap{position:absolute;padding:4px 10px;border-radius:999px;background:#121620;color:#fff;font-size:10px;opacity:.8}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#E6E1D8;position:relative;overflow:hidden;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+
+  <span class="cap" style="top:6px;right:16px">ملاحظة وتذكير على وظيفة محفوظة</span>
+  <div class="sheet" style="margin-top:14px">
+    <div class="grab"><span></span></div>
+    <div class="ttl"><button type="button" style="border:0;background:transparent;font:inherit;font-size:14px;color:#5C6270;cursor:pointer;padding:0">إلغاء</button><h2>ملاحظة وتذكير</h2><button type="button" style="border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;color:#16295A;cursor:pointer;padding:0">حفظ</button></div>
+    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+      <span style="font-size:12px;color:#5C6270">استشاري مبيعات عقارية · ماونتن فيو</span>
+      <textarea rows="2" style="padding:12px 14px;border:1px solid #E6E1D8;border-radius:14px;background:#fff;font:inherit;font-size:14px;line-height:22px;resize:none;box-sizing:border-box;width:100%">سألت صديقي الذي يعمل هناك، المستهدف <span class="num">3</span> وحدات شهريًا</textarea>
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">ذكّرني</span><div style="display:flex;gap:6px;flex-wrap:wrap"><span style="height:34px;padding:0 12px;border-radius:999px;background:#16295A;color:#fff;font-size:12px;font-weight:600;display:inline-flex;align-items:center">بكرة <span class="num" style="margin-inline-start:4px">9</span> ص</span><span style="height:34px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;font-size:12px;display:inline-flex;align-items:center">بعد <span class="num" style="margin:0 3px">3</span> أيام</span><span style="height:34px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;font-size:12px;display:inline-flex;align-items:center">قبل الإغلاق بيوم</span><span style="height:34px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;font-size:12px;display:inline-flex;align-items:center">وقت آخر</span></div></div>
+    </div>
+  </div>
+
+  <span class="cap" style="top:300px;right:16px">ترتيب اللوحة</span>
+  <div class="sheet" style="margin-top:14px">
+    <div class="grab"><span></span></div>
+    <div class="ttl"><span></span><h2>ترتيب</h2><span></span></div>
+    <div class="opt" style="font-weight:600;color:#16295A"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>الأحدث أولًا</div>
+    <div class="opt"><span style="width:18px"></span>الأساسي: الأعلى أولًا</div>
+    <div class="opt"><span style="width:18px"></span>الأقرب للإغلاق</div>
+    <div class="opt"><span style="width:18px"></span>الأنسب لملفي</div>
+  </div>
+
+  <span class="cap" style="top:588px;right:16px">إدخال خبرة في السيرة</span>
+  <div class="sheet" style="margin-top:14px;flex:1">
+    <div class="grab"><span></span></div>
+    <div class="ttl"><button type="button" style="border:0;background:transparent;font:inherit;font-size:14px;color:#5C6270;cursor:pointer;padding:0">إلغاء</button><h2>خبرة جديدة</h2><button type="button" style="border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;color:#16295A;cursor:pointer;padding:0">إضافة</button></div>
+    <div style="padding:14px 16px;display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px">
+      <label style="grid-column:span 2;display:flex;flex-direction:column;gap:6px"><span class="lbl">المسمّى</span><input class="field" type="text" value="سينيور ريسيل"></label>
+      <label style="grid-column:span 2;display:flex;flex-direction:column;gap:6px"><span class="lbl">الشركة</span><input class="field" type="text" placeholder="ابدأ بالكتابة لاختيارها من الدليل"></label>
+      <label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">من</span><input class="field num" type="text" value="2023" style="direction:ltr;text-align:left"></label>
+      <label style="display:flex;flex-direction:column;gap:6px"><span class="lbl">إلى</span><input class="field" type="text" value="الآن"></label>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

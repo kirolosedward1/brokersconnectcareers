@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>إضافة وظيفة · الراتب والعمولة</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}a:hover{color:#0E1D44}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+label.l{font-size:13px;font-weight:600}
+.hint{font-size:12px;line-height:17px;color:#5C6270}
+.field{display:flex;align-items:center;height:52px;padding:0 14px;border:1px solid #E6E1D8;border-radius:14px;background:#fff;box-sizing:border-box;gap:8px}
+.field input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:17px;font-weight:600;color:#121620;direction:ltr;text-align:left}
+.field .u{font-size:13px;color:#5C6270;white-space:nowrap}
+.opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #E6E1D8;border-radius:14px;background:#fff;cursor:pointer}
+.opt.on{border:1.5px solid #16295A}
+.opt input{accent-color:#16295A;width:20px;height:20px;margin:0}
+.opt strong{display:block;font-size:14px;font-weight:600}
+.opt span.s{display:block;font-size:12px;color:#5C6270}
+.step{flex:1;height:4px;border-radius:999px;background:#E6E1D8}
+.step.done{background:#16295A}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+  <div style="padding:54px 20px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <a href="EmployerHome.dc.html" aria-label="رجوع" style="width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <h1 style="margin:0;font-size:18px;line-height:26px;font-weight:700">الراتب والعمولة</h1>
+        <span class="hint">الخطوة <span class="num">2</span> من <span class="num">4</span> · مسوّق إلكتروني</span>
+      </div>
+      <span style="font-size:12px;color:#1B7A4B;font-weight:600;display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>محفوظ كمسودة</span>
+    </div>
+    <div style="display:flex;gap:6px" aria-hidden="true"><span class="step done"></span><span class="step done"></span><span class="step"></span><span class="step"></span></div>
+  </div>
+
+  <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:20px;flex:1;overflow:hidden">
+
+    <div style="padding:12px 14px;border-radius:14px;background:#FBF8F1;border:1px solid #F0E6D0;font-size:13px;line-height:19px;color:#4A3F2A">الأرقام تظهر للمرشّح كما هي. إعلان بلا راتب محدّد لا يُنشر.</div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="l" for="basic">الراتب الأساسي الشهري</label>
+      <div class="field"><input id="basic" type="text" inputmode="numeric" value="12,000" class="num"><span class="u">ج.م / شهر</span></div>
+      <span class="hint">متوسط إعلانات الريسيل في القاهرة الجديدة: <span class="num">8,000</span> إلى <span class="num">14,000</span> ج.م</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="l" for="comm">العمولة</label>
+      <div style="display:flex;gap:8px">
+        <div class="field" style="flex:1"><input id="comm" type="text" inputmode="decimal" value="3" class="num"><span class="u">%</span></div>
+        <div class="field" style="flex:1.4;background:#F0EDE7;border-color:#F0EDE7"><span style="flex:1;font-size:14px;color:#121620">من قيمة البيع</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#5C6270" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+      </div>
+    </div>
+
+    <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
+      <legend class="l" style="padding:0;margin-bottom:8px">من يوفّر العملاء؟</legend>
+      <label class="opt on" for="ls1"><input id="ls1" type="radio" name="ls" checked><span style="flex:1"><strong>الشركة توفّر العملاء</strong><span class="s">من حملاتها وقاعدة بياناتها</span></span></label>
+      <label class="opt" for="ls2"><input id="ls2" type="radio" name="ls"><span style="flex:1"><strong>الاستشاري يجلب عملاءه</strong><span class="s">بشبكته الخاصة</span></span></label>
+      <label class="opt" for="ls3"><input id="ls3" type="radio" name="ls"><span style="flex:1"><strong>مشترك</strong><span class="s">جزء من الشركة وجزء من الاستشاري</span></span></label>
+    </fieldset>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="l" for="seats">عدد المقاعد</label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button type="button" aria-label="أقل" style="width:44px;height:44px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;font-size:20px;color:#16295A;cursor:pointer">−</button>
+        <input id="seats" type="text" inputmode="numeric" value="2" class="num" style="width:60px;height:44px;text-align:center;border:1px solid #E6E1D8;border-radius:12px;font:inherit;font-size:17px;font-weight:600;background:#fff">
+        <button type="button" aria-label="أكثر" style="width:44px;height:44px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;font-size:20px;color:#16295A;cursor:pointer">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 20px 34px;background:rgba(255,255,255,.94);border-top:1px solid #E6E1D8;backdrop-filter:blur(12px);display:flex;gap:10px">
+    <a href="EmployerHome.dc.html" style="height:52px;padding:0 20px;border-radius:999px;border:1px solid #E6E1D8;background:#fff;display:flex;align-items:center;font-size:15px;font-weight:600">السابق</a>
+    <a href="#" style="flex:1;height:52px;border-radius:999px;background:#16295A;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:600">التالي: الوصف والمطلوب <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

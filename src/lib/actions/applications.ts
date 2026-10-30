@@ -23,6 +23,8 @@ import { PIPELINE_STAGES } from '@/lib/application-stages';
 import { insertOnce } from '@/lib/actions/idempotency';
 import { jobIsLive } from '@/lib/job-state';
 import { refused } from '@/lib/observe';
+import { allow } from '@/lib/rate-limit';
+import { askForApproval } from '@/lib/actions/approval-requests';
 
 const applySchema = z.object({
   jobId: z.string().uuid(),
@@ -127,6 +129,8 @@ export async function applyToJob(input: unknown): Promise<ActionResult> {
     if (error.message.includes('application_rate_limit')) {
       return { ok: false, error: 'rate_limit' };
     }
+    // The company has paused hiring (migration 378): no form can fix that, so it is named.
+    if (error.message.includes('company_paused')) return { ok: false, error: 'company_paused' };
 
     /*
       A refusal by policy (42501) is almost always the listing: it closed,
@@ -347,14 +351,26 @@ const statusSchema = z.object({
    * candidate was emailed twice about two different outcomes.
    */
   from: z.enum(PIPELINE_STAGES).optional(),
+  /**
+   * Whether the candidate may read the reason (v1.1 Phase B, decided: the
+   * employer ticks it). Absent means yes, as every form before the tick sent.
+   * Unticked, the reason is not written to `decision_note` — which the
+   * candidate's own select policy returns with the row — but kept as one of
+   * the company's notes on the application (migration 58), which they never see.
+   */
+  shareReason: z.boolean().optional(),
 });
 
 /** Employer pipeline move. RLS restricts this to jobs the caller owns. */
-export async function setApplicationStatus(input: unknown): Promise<ActionResult> {
+export async function setApplicationStatus(
+  input: unknown,
+): Promise<ActionResult<{ reasonKept: boolean; pendingApproval?: boolean }>> {
   const parsed = statusSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid' };
 
   const supabase = await createClient();
+  const reason = clean(parsed.data.decisionNote, true) || null;
+  const shared = parsed.data.shareReason !== false;
 
   // Compare and swap, in one statement: matching the status the card rendered
   // makes "somebody moved this first" a refusal rather than an overwrite, and
@@ -364,7 +380,7 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     .update({
       status: parsed.data.status as ApplicationStatus,
       employer_viewed_at: new Date().toISOString(),
-      decision_note: clean(parsed.data.decisionNote, true) || null,
+      decision_note: shared ? reason : null,
     })
     .eq('id', parsed.data.applicationId);
 
@@ -378,6 +394,15 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     // moved. A false notification is worse than a failed one.
     .select('id');
 
+  // The company asks an admin to approve a decline (migration 380): the move
+  // is not made; the request is, and an admin's decision makes it.
+  if (error && error.message.includes('decline_needs_approval')) {
+    return askForApproval(supabase, 'decline', parsed.data.applicationId, {
+      from: parsed.data.from ?? null,
+      decisionNote: reason,
+      shareReason: shared,
+    });
+  }
   if (error) return refused('application', error, { application: parsed.data.applicationId });
 
   if (!moved?.length) {
@@ -399,14 +424,181 @@ export async function setApplicationStatus(input: unknown): Promise<ActionResult
     return { ok: false, error: current ? 'moved_already' : 'forbidden' };
   }
 
+  // Kept from the candidate: the reason becomes the company's own note on the
+  // application. Written after the move, which is the decision; a note that
+  // fails is said (reasonKept: false) rather than taking the move back.
+  let reasonKept = true;
+  if (!shared && reason) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { error: noteError } = user
+      ? await supabase.from('application_notes').insert({ application_id: parsed.data.applicationId, author_id: user.id, body: reason })
+      : { error: new Error('unauthenticated') };
+    if (noteError) {
+      reasonKept = false;
+      logFailure('pipeline', 'private reason not kept', { application: parsed.data.applicationId });
+    }
+  }
+
   after(() => publish({ type: 'APPLICATION_STATUS_CHANGED', applicationId: parsed.data.applicationId }));
 
   revalidatePath('/employer/jobs');
   revalidatePath('/dashboard/applications');
   revalidatePath('/admin', 'layout');
-  return { ok: true };
+  return { ok: true, data: { reasonKept } };
 }
 
+
+
+const bulkSchema = z.object({
+  items: z
+    .array(z.object({ applicationId: z.string().uuid(), from: z.enum(PIPELINE_STAGES) }))
+    .min(1)
+    .max(50),
+  status: z.enum(PIPELINE_STAGES),
+  decisionNote: z.string().trim().max(500).optional().nullable(),
+  shareReason: z.boolean().optional(),
+});
+
+/**
+ * Several applicants moved at once (Phase B 01): each exactly as a single
+ * move — compared and swapped on the stage its card showed, its reason shared
+ * or kept by the same tick, its candidate told as a single move tells them —
+ * so a batch is fifty ordinary moves, not a second set of rules. Fifty at
+ * most; the counts say what happened to each.
+ */
+export async function setApplicationStatuses(
+  input: unknown,
+): Promise<ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number; pendingApproval: number }>> {
+  const parsed = bulkSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+  if (!(await allow(`applications_bulk:${user.id}`, 30, 3600))) return { ok: false, error: 'rate_limited' };
+
+  const counts = { moved: 0, movedAlready: 0, failed: 0, reasonsNotKept: 0, pendingApproval: 0 };
+  for (const item of parsed.data.items) {
+    const result = await setApplicationStatus({
+      applicationId: item.applicationId,
+      status: parsed.data.status,
+      decisionNote: parsed.data.decisionNote ?? null,
+      from: item.from,
+      ...(parsed.data.shareReason === false ? { shareReason: false } : {}),
+    });
+    if (result.ok && result.data?.pendingApproval) counts.pendingApproval += 1;
+    else if (result.ok) {
+      counts.moved += 1;
+      if (result.data && !result.data.reasonKept) counts.reasonsNotKept += 1;
+    } else if (result.error === 'moved_already') counts.movedAlready += 1;
+    else counts.failed += 1;
+  }
+  return { ok: true, data: counts };
+}
+
+const messageSchema = z.object({
+  applicationIds: z.array(z.string().uuid()).min(1).max(50),
+  message: z.string().trim().min(2).max(1000),
+  /** Made once when the composer opens, so a retried send is the same message. */
+  key: z.string().uuid(),
+});
+
+/**
+ * One message to several applicants, by email (Phase B 01: email only,
+ * decided). Only to the company's own applicants — the read is under RLS, so
+ * an id that is not theirs simply is not found — and never to one who has
+ * withdrawn. Sent from the event bus like every other email.
+ */
+export async function messageApplicants(input: unknown): Promise<ActionResult<{ sent: number; skipped: number }>> {
+  const parsed = messageSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+  if (!(await allow(`applicant_messages:${user.id}`, 300, 86400))) return { ok: false, error: 'rate_limited' };
+
+  const { data, error } = await supabase
+    .from('applications')
+    .select('id, status')
+    .in('id', parsed.data.applicationIds);
+  if (error) return refused('pipeline', error, { count: parsed.data.applicationIds.length });
+
+  const message = clean(parsed.data.message, true);
+  if (!message) return { ok: false, error: 'invalid' };
+  const reachable = (data ?? []).filter((row) => row.status !== 'withdrawn').map((row) => row.id as string);
+  after(async () => {
+    for (const applicationId of reachable) {
+      await publish({ type: 'COMPANY_MESSAGE_SENT', applicationId, message, key: parsed.data.key });
+    }
+  });
+  return { ok: true, data: { sent: reachable.length, skipped: parsed.data.applicationIds.length - reachable.length } };
+}
+
+const candidateNoteSchema = z.object({
+  applicationId: z.string().uuid(),
+  body: z.string().trim().min(1).max(2000),
+  idempotencyKey: z.string().uuid().optional(),
+});
+
+/**
+ * A note about the person (migration 375, Phase B 02): written on one of
+ * their applications, read on every application they send the company, by
+ * the whole company (decided), never by them. The person and the company
+ * come from the application, read under RLS, so the client never names
+ * either; the policy decides whether it may be written at all.
+ */
+export async function addCandidateNote(input: unknown): Promise<ActionResult<{ id: number }>> {
+  const parsed = candidateNoteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: application } = await supabase
+    .from('applications')
+    .select('candidate_id, job:jobs (company_id)')
+    .eq('id', parsed.data.applicationId)
+    .maybeSingle();
+  const row = application as unknown as { candidate_id: string; job: { company_id: string } | null } | null;
+  if (!row?.job) return { ok: false, error: 'forbidden' };
+
+  const body = clean(parsed.data.body, true);
+  if (!body) return { ok: false, error: 'invalid' };
+  const note = { company_id: row.job.company_id, candidate_id: row.candidate_id, author_id: user.id, body };
+  const key = parsed.data.idempotencyKey;
+  const { data, error } = await insertOnce(
+    key,
+    (withKey) =>
+      supabase
+        .from('company_candidate_notes')
+        .insert({ ...note, ...(withKey ? { idempotency_key: key } : {}) })
+        .select('id')
+        .single(),
+    () =>
+      supabase.from('company_candidate_notes').select('id').eq('company_id', note.company_id).eq('idempotency_key', key!).maybeSingle(),
+  );
+  if (error || !data) return refused('notes', error ?? {}, { application: parsed.data.applicationId });
+  return { ok: true, data: { id: (data as { id: number }).id } };
+}
+
+export async function deleteCandidateNote(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ id: z.number().int().positive() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('company_candidate_notes').delete().eq('id', parsed.data.id).select('id');
+  if (error) return refused('notes', error, { note: parsed.data.id });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  return { ok: true };
+}
 
 const noteSchema = z.object({
   applicationId: z.string().uuid(),

@@ -1,0 +1,2546 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`the day and time fields draw at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "gap": 12,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        يوم المقابلة
+      </Text>
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 8,
+          }
+        }
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+      >
+        <View>
+          <View
+            accessibilityLabel="يوم المقابلة"
+            accessibilityRole="radiogroup"
+            style={
+              {
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <View
+              accessibilityLabel="الأحد، 1 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                اليوم
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الاثنين، 2 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": true,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#16295A",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 0,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#FFFFFF",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                غدًا
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الثلاثاء، 3 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الثلاثاء، 3 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الأربعاء، 4 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الأربعاء، 4 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الخميس، 5 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الخميس، 5 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الجمعة، 6 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الجمعة، 6 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="السبت، 7 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                السبت، 7 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الأحد، 8 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الأحد، 8 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الاثنين، 9 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الاثنين، 9 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الثلاثاء، 10 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الثلاثاء، 10 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الأربعاء، 11 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الأربعاء، 11 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الخميس، 12 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الخميس، 12 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الجمعة، 13 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الجمعة، 13 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="السبت، 14 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                السبت، 14 نوفمبر
+              </Text>
+            </View>
+          </View>
+        </View>
+      </RCTScrollView>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        الساعة
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+           · بتوقيت القاهرة
+        </Text>
+      </Text>
+      <View
+        accessibilityLabel="الساعة: 11:00"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": false,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#8B8578",
+            "borderCurve": "continuous",
+            "borderRadius": 14,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "gap": 8,
+            "justifyContent": "space-between",
+            "minHeight": 50,
+            "paddingHorizontal": 14,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 16,
+                "lineHeight": 28,
+              },
+              {
+                "flexShrink": 1,
+              },
+            ]
+          }
+        >
+          11:00
+        </Text>
+        <RNSVGSvgView
+          align="xMidYMid"
+          aria-hidden="true"
+          bbHeight={18}
+          bbWidth={18}
+          className="lucide lucide-chevron-down"
+          fill="none"
+          focusable={false}
+          height={18}
+          meetOrSlice={0}
+          minX={0}
+          minY={0}
+          stroke="#5C6270"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          style={
+            [
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 18,
+                "width": 18,
+              },
+            ]
+          }
+          vbHeight={24}
+          vbWidth={24}
+          width={18}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <RNSVGGroup
+            fill={null}
+            propList={
+              [
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+                "strokeLinejoin",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4284244592,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeLinejoin={1}
+            strokeWidth={2}
+          >
+            <RNSVGPath
+              d="m6 9 6 6 6-6"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+          </RNSVGGroup>
+        </RNSVGSvgView>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`the day and time fields draw right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "gap": 12,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        يوم المقابلة
+      </Text>
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 8,
+          }
+        }
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+      >
+        <View>
+          <View
+            accessibilityLabel="يوم المقابلة"
+            accessibilityRole="radiogroup"
+            style={
+              {
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <View
+              accessibilityLabel="الأحد، 1 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                اليوم
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الاثنين، 2 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": true,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#16295A",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 0,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#FFFFFF",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                غدًا
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الثلاثاء، 3 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الثلاثاء، 3 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الأربعاء، 4 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الأربعاء، 4 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الخميس، 5 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الخميس، 5 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الجمعة، 6 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الجمعة، 6 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="السبت، 7 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                السبت، 7 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الأحد، 8 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الأحد، 8 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الاثنين، 9 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الاثنين، 9 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الثلاثاء، 10 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الثلاثاء، 10 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الأربعاء، 11 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الأربعاء، 11 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الخميس، 12 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الخميس، 12 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="الجمعة، 13 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                الجمعة، 13 نوفمبر
+              </Text>
+            </View>
+            <View
+              accessibilityLabel="السبت، 14 نوفمبر"
+              accessibilityRole="radio"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": false,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={4}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E6E1D8",
+                  "borderCurve": "continuous",
+                  "borderRadius": 18,
+                  "borderWidth": 1,
+                  "flexDirection": "row",
+                  "gap": 6,
+                  "maxWidth": "100%",
+                  "minHeight": 36,
+                  "opacity": 1,
+                  "paddingHorizontal": 14,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_500Medium",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    {
+                      "color": "#121620",
+                      "flexShrink": 1,
+                    },
+                  ]
+                }
+              >
+                السبت، 14 نوفمبر
+              </Text>
+            </View>
+          </View>
+        </View>
+      </RCTScrollView>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        الساعة
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+           · بتوقيت القاهرة
+        </Text>
+      </Text>
+      <View
+        accessibilityLabel="الساعة: 11:00"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": false,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#8B8578",
+            "borderCurve": "continuous",
+            "borderRadius": 14,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "gap": 8,
+            "justifyContent": "space-between",
+            "minHeight": 50,
+            "paddingHorizontal": 14,
+          }
+        }
+      >
+        <Text
+          numberOfLines={1}
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 16,
+                "lineHeight": 28,
+              },
+              {
+                "flexShrink": 1,
+              },
+            ]
+          }
+        >
+          11:00
+        </Text>
+        <RNSVGSvgView
+          align="xMidYMid"
+          aria-hidden="true"
+          bbHeight={18}
+          bbWidth={18}
+          className="lucide lucide-chevron-down"
+          fill="none"
+          focusable={false}
+          height={18}
+          meetOrSlice={0}
+          minX={0}
+          minY={0}
+          stroke="#5C6270"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          style={
+            [
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 18,
+                "width": 18,
+              },
+            ]
+          }
+          vbHeight={24}
+          vbWidth={24}
+          width={18}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <RNSVGGroup
+            fill={null}
+            propList={
+              [
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+                "strokeLinejoin",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4284244592,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeLinejoin={1}
+            strokeWidth={2}
+          >
+            <RNSVGPath
+              d="m6 9 6 6 6-6"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+          </RNSVGGroup>
+        </RNSVGSvgView>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;

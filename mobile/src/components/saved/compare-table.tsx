@@ -35,12 +35,12 @@ type Row = {
 /**
  * Two or three saved listings side by side, a column each in the order they
  * were chosen: who is hiring at the head of each, then a row per fact — where,
- * the basic salary a month, the commission, who brings the clients, the kind
- * of role, the experience asked, the open seats and how fresh — and a link to
- * each listing at the foot.
+ * the basic salary a month, who brings the clients, the kind of role, the
+ * experience asked, the open seats and how fresh — and a link to each
+ * listing at the foot. No commission: the listing states it with its terms.
  *
- * Where one column is better than the others — the highest salary or
- * commission, the company bringing the clients, the most seats — its cell is
+ * Where one column is better than the others — the highest salary, the
+ * company bringing the clients, the most seats — its cell is
  * tinted and says "best", in words as well as colour. Nothing is marked where
  * they are all the same.
  *
@@ -69,10 +69,9 @@ export function CompareTable({ jobs }: { jobs: JobListItem[] }) {
     {
       key: 'salary',
       label: t('app.saved.compare.salary'),
-      value: (job) => ({ main: pay.salary(job, locale).amount }),
+      value: (job) => ({ main: pay.salary(job).amount }),
       best: best.salary,
     },
-    { key: 'commission', label: t('compensation.commission'), value: (job) => ({ main: pay.commission(job, locale) }), best: best.commission },
     { key: 'leads', label: t('compensation.leadsSource'), value: (job) => ({ main: t(`leadsSource.${job.leads_source}`) }), best: best.leads },
     { key: 'track', label: t('filters.track'), value: (job) => ({ main: t(`track.${job.track}`) }) },
     { key: 'experience', label: t('jobForm.experienceBand'), value: (job) => ({ main: t(`experienceBand.${job.experience_band}`) }) },
@@ -166,7 +165,7 @@ function Head({ job, width }: { job: JobListItem; width: number }) {
         ...lift,
       }}
     >
-      <CompanyLogo name={company} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
+      <CompanyLogo name={company} logoUrl={job.company.logo_url} size="sm" />
       <Text variant="small" weight="semibold" accessibilityRole="header" numberOfLines={large ? undefined : 3}>
         {title}
       </Text>

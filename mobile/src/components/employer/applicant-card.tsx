@@ -1,15 +1,22 @@
 import { useState } from 'react';
-import { Linking, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, Eye, FileX2, MessageCircle, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
-import { formatDate, formatEgp, formatList } from '@/lib/format';
+import { Download, FileX2, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
+import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
 import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { PIPELINE_STAGES, STAGE_TONE, WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
-import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
+import type { ApplicationNoteRow, ApplicationStatus, InterviewInviteRow } from '@/lib/supabase/database.types';
+import { CompanyInterview } from '~/components/interviews/interview-panels';
+import { CandidateFile } from '~/components/employer/candidate-file';
+import type { CandidateNote, EarlierApplication } from '~/features/employer/candidate-file';
+import { firstName } from '@/lib/replies';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
+import { toast } from '~/components/feedback/toast';
+import { ReasonTick } from '~/components/employer/reason-tick';
+import { ContactButtons } from '~/components/ui/contact-buttons';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
 import { SavedRepliesSheet } from '~/components/employer/saved-replies';
 import { Avatar } from '~/components/ui/avatar';
@@ -34,6 +41,7 @@ import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { useMoney } from '~/features/money';
 
 /**
  * One applicant, as a company reads them — the website's ApplicantCard: who
@@ -52,6 +60,8 @@ export function ApplicantCard({
   companyName,
   districtNames,
   notes,
+  interview,
+  candidateFile,
   authors,
   viewerId,
   leaveTo = (go) => go(),
@@ -62,6 +72,10 @@ export function ApplicantCard({
   districtNames: string[];
   /** Undefined until the company's notes have been read. */
   notes: ApplicationNoteRow[] | undefined;
+  /** The standing interview invitation (migration 373): null for none, undefined until read. */
+  interview?: InterviewInviteRow | null;
+  /** What the company knows of the person (migration 375); undefined until read. */
+  candidateFile?: { notes: CandidateNote[]; history: EarlierApplication[]; authors: Record<string, string> };
   authors: Record<string, string>;
   viewerId: string | null;
   /**
@@ -72,6 +86,9 @@ export function ApplicantCard({
   leaveTo?: (go: () => void) => void;
 }) {
   const t = useTranslations();
+  // When the card was drawn: what an invitation's "today" is counted from.
+  const [openedAt] = useState(() => Date.now());
+  const money = useMoney();
   const locale = useLocale();
   const { colors, scheme } = useTheme();
   const { actor } = useSession();
@@ -90,6 +107,8 @@ export function ApplicantCard({
   // The reason being typed follows the stored one for as long as nobody has typed in it.
   const [reasonFrom, setReasonFrom] = useState(storedReason);
   const [reason, setReason] = useState(storedReason);
+  // Whether the candidate may read the reason (the employer's tick; on, as before it existed).
+  const [shareReason, setShareReason] = useState(true);
   if (storedReason !== reasonFrom) {
     if (reason === reasonFrom) setReason(storedReason);
     setReasonFrom(storedReason);
@@ -121,12 +140,28 @@ export function ApplicantCard({
 
   const save = (next: ApplicationStatus, decisionNote: string, restoreBox?: string) => {
     const from = status;
-    setPending({ status: next, reason: decisionNote });
+    // Kept from the candidate, the reason leaves the row (it becomes a note), so the box empties with it.
+    const share = shareReason || !decisionNote.trim();
+    setPending({ status: next, reason: share ? decisionNote : '' });
     setConflict(false);
     setFailed(null);
     move.mutate(
-      { applicationId: applicant.id, status: next, decisionNote, from },
+      { applicationId: applicant.id, status: next, decisionNote, from, ...(share ? {} : { shareReason: false }) },
       {
+        onSuccess: (result) => {
+          // Not moved: an admin approves declines here (migration 380), and has been asked.
+          if (result.pendingApproval) {
+            toast.show({ message: t('app.rules.declineAsked'), tone: 'default' });
+            return;
+          }
+          if (share) return;
+          setReason('');
+          toast.show(
+            result.reasonKept
+              ? { message: t('app.applicants.reasonKeptPrivate'), tone: 'success' }
+              : { message: t('app.applicants.reasonNotKept'), tone: 'destructive' },
+          );
+        },
         // Settled once the stages have been read again (the hook waits for that), so what shows next is stored.
         onSettled: () => setPending(null),
         // What they typed stays in the box, and the card says it was not
@@ -217,7 +252,7 @@ export function ApplicantCard({
     <SwipeRow left={turnDown} right={shortlist}>
     <Card style={{ gap: space[3] }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-        <Avatar name={name} src={candidate?.avatar_url} seed={profile?.slug ?? name} size="md" />
+        <Avatar name={name} src={candidate?.avatar_url} size="md" />
         <View style={{ flex: 1, gap: 2 }}>
           <Text weight="semibold" accessibilityRole="header" style={withdrawn ? { color: withdrawnText } : undefined}>
             {name}
@@ -272,7 +307,7 @@ export function ApplicantCard({
                   profile.units_closed != null
                     ? t('agents.unitsClosedShort', { count: profile.units_closed })
                     : null,
-                  profile.volume_egp != null ? `${formatEgp(profile.volume_egp, locale)} ${t('common.egp')}` : null,
+                  profile.volume_egp != null ? money.amount(profile.volume_egp) : null,
                 ]
                   .filter(Boolean)
                   .join('   ')}
@@ -301,17 +336,17 @@ export function ApplicantCard({
       {!withdrawn ? (
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
         {candidate ? (
-          <Button
-            label={t('employer.whatsappCandidate')}
-            accessibilityLabel={`${t('employer.whatsappCandidate')}: ${name}`}
-            size="sm"
-            icon={<MessageCircle size={16} color={colors.primaryForeground} />}
-            onPress={() =>
-              Linking.openURL(
-                whatsappLink(candidate.whatsapp_phone, employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' })),
-              ).catch(() => {})
-            }
-          />
+          <View style={{ flexBasis: '100%' }}>
+            <ContactButtons
+              size="sm"
+              name={name}
+              phone={candidate.whatsapp_phone}
+              whatsappUrl={whatsappLink(
+                candidate.whatsapp_phone,
+                employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' }),
+              )}
+            />
+          </View>
         ) : null}
         {/* The company's own replies, kept on this phone (saved-replies.tsx). */}
         {candidate ? (
@@ -331,7 +366,8 @@ export function ApplicantCard({
             onDismiss={replies.onDismiss}
             phone={candidate.whatsapp_phone}
             opener={employerOpener({ candidateName: name, jobTitle, companyName, locale: locale as 'ar' | 'en' })}
-            values={{ name, job: jobTitle }}
+            values={{ name, first_name: firstName(name), job: jobTitle, company: companyName, stage: t(`applicationStatus.${status}`) }}
+            applicationId={applicant.id}
           />
         ) : null}
         {applicant.cv_path ? (
@@ -390,28 +426,20 @@ export function ApplicantCard({
         </Text>
       ) : null}
 
-      {/* Once there is a decision: the candidate reads it. The eye says so. */}
+      {/* Once there is a decision: its reason, which the candidate reads only when the tick says so. */}
       {status !== 'new' ? (
         <View style={{ gap: space[2], paddingTop: space[3], borderTopWidth: 1, borderTopColor: colors.border }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-            <Text variant="small" weight="medium">
-              {t('employer.decisionNote')}
-            </Text>
-            <Badge
-              variant="primary"
-              icon={<Eye size={12} color={colors.primary} accessible={false} />}
-              label={t('employer.decisionNoteVisible')}
-            />
-          </View>
-          <Text variant="caption" tone="mutedForeground">
-            {t('employer.decisionNoteHint')}
+          <Text variant="small" weight="medium">
+            {t('employer.decisionNote')}
           </Text>
+          {/* The employer decides whether the candidate reads it (v1.1 Phase B). */}
+          <ReasonTick shared={shareReason} onChange={setShareReason} testID="reason-tick" />
           <TextField
             tone="brand"
             value={reason}
             onChangeText={setReason}
             accessibilityLabel={t('employer.decisionNote')}
-            accessibilityHint={t('employer.decisionNoteHint')}
+            accessibilityHint={shareReason ? t('employer.decisionNoteHint') : t('app.applicants.reasonPrivateHint')}
             placeholder={t('employer.decisionNotePlaceholder')}
             multiline
             maxLength={500}
@@ -419,11 +447,11 @@ export function ApplicantCard({
           />
           <View style={{ alignItems: 'flex-start' }}>
             <Button
-              label={t('employer.decisionNoteSend')}
+              label={shareReason ? t('employer.decisionNoteSend') : t('app.applicants.reasonKeepPrivate')}
               variant="outline"
               size="sm"
               loading={move.isPending}
-              disabled={!reason.trim() || reason.trim() === savedReason.trim()}
+              disabled={!reason.trim() || (shareReason && reason.trim() === savedReason.trim())}
               onPress={() => save(status, reason)}
             />
           </View>
@@ -431,6 +459,27 @@ export function ApplicantCard({
       ) : null}
       </>
       )}
+
+      {interview !== undefined ? (
+        <CompanyInterview
+          applicationId={applicant.id}
+          name={name}
+          invite={interview}
+          closed={withdrawn || status === 'rejected' || status === 'hired'}
+          now={openedAt}
+        />
+      ) : null}
+
+      {candidateFile ? (
+        <CandidateFile
+          applicationId={applicant.id}
+          notes={candidateFile.notes}
+          history={candidateFile.history}
+          authors={candidateFile.authors}
+          viewerId={viewerId}
+          readOnly={withdrawn}
+        />
+      ) : null}
 
       <ApplicantNotes
         applicationId={applicant.id}

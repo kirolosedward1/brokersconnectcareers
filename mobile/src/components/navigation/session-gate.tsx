@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { router, useRootNavigationState, useSegments } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession, type Viewer } from '~/lib/session';
+import { useOnboardingHeld } from '~/lib/onboarding-hold';
 import { leaveSheets } from '~/lib/sheet-gate';
 
 /**
@@ -23,7 +24,9 @@ export function SessionGate() {
   const segments = useSegments();
   const navigationReady = Boolean(useRootNavigationState()?.key);
   const inFlow = FLOWS.has(segments[0] ?? '');
-  const needsProfile = Boolean(session && viewer && !viewer.profile && !viewer.profileUnreadable);
+  // A screen making the profile itself (guest apply, onboarding-hold.ts) is let finish first.
+  const held = useOnboardingHeld();
+  const needsProfile = Boolean(session && viewer && !viewer.profile && !viewer.profileUnreadable && !held);
   // A flow on its way, waiting for a sheet to close first: not asked for twice.
   const going = useRef(false);
 

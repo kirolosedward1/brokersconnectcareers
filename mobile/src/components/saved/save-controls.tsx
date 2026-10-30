@@ -20,7 +20,7 @@ import { toast } from '~/components/feedback/toast';
 import { haptic } from '~/lib/haptics';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { hitTarget, space } from '~/theme/tokens';
+import { corner, hitTarget, iconSize, space } from '~/theme/tokens';
 import { useAnnounce } from '~/lib/use-announce';
 
 /**
@@ -99,22 +99,18 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
       disabled={save.pending}
       onPress={save.toggle}
       hitSlop={4}
-      style={{
-        width: hitTarget,
-        height: hitTarget,
-        marginTop: -space[3],
-        marginEnd: -space[3],
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      style={{ width: hitTarget, height: hitTarget, marginEnd: -space[0.5], alignItems: 'center', justifyContent: 'center' }}
     >
-      <Pop key={save.jobId} trigger={save.saves}>
-        {save.saved ? (
-          <Bookmark size={20} color={colors.primary} fill={colors.primary} />
-        ) : (
-          <Bookmark size={20} color={colors.mutedForeground} />
-        )}
-      </Pop>
+      {/* A 40-point circle on the card, as the design draws it; the 44-point target round it. */}
+      <View style={{ width: 40, height: 40, ...corner('full'), backgroundColor: colors.muted, alignItems: 'center', justifyContent: 'center' }}>
+        <Pop key={save.jobId} trigger={save.saves}>
+          {save.saved ? (
+            <Bookmark size={iconSize.body} color={colors.primary} fill={colors.primary} />
+          ) : (
+            <Bookmark size={iconSize.body} color={colors.primary} />
+          )}
+        </Pop>
+      </View>
     </Pressable>
   );
 }

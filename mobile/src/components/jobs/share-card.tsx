@@ -11,6 +11,7 @@ import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { LOGO_MARK, Wordmark } from '~/components/brand/brand-logo';
 import { Button } from '~/components/ui/button';
 import { BadgeCheck, MapPin, Share2, Target, X } from '~/components/ui/lucide';
+import { TABULAR } from '~/components/ui/num';
 import { Text } from '~/components/ui/text';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { env } from '~/lib/env';
@@ -28,8 +29,9 @@ type ShareableJob = JobDetailResponse['job'];
 
 /**
  * A listing as a picture for a WhatsApp status or an Instagram story: the
- * brand's sapphire, its logo, the role and who is hiring, what it pays in the
- * website's own words, and where to find it — the site's address, not a link
+ * brand's sapphire, its logo, the role and who is hiring, the basic salary
+ * with its currency (the commission stays on the listing, with its terms),
+ * where the clients come from, and where to find it — the site's address, not a link
  * a picture cannot carry. Drawn at a story's shape; shared from the sheet that
  * shows it first, so what is sent is what was seen.
  */
@@ -38,8 +40,7 @@ export function JobShareCard({ job }: { job: ShareableJob }) {
   const locale = useLocale();
   const { colors } = useTheme();
   const pay = useCompensationText();
-  const salary = pay.salary(job, locale);
-  const commission = job.commission_type === 'percentage' && job.commission_value != null ? pay.commission(job, locale) : null;
+  const salary = pay.salary(job);
   const host = env.siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
   return (
@@ -106,15 +107,10 @@ export function JobShareCard({ job }: { job: ShareableJob }) {
             backgroundColor: 'rgba(255, 255, 255, 0.1)',
           }}
         >
-          <Text variant="title" weight="bold" style={{ color: colors.onHero }}>
-            {salary.amount}
-            {salary.perMonth ? <Text variant="small" style={{ color: colors.onHeroMuted }}>{` ${salary.perMonth}`}</Text> : null}
+          <Text variant="title" weight="bold" style={[TABULAR, { color: colors.onHero }]}>
+            {salary.figures}
+            {salary.unit ? <Text variant="small" style={{ color: colors.onHeroMuted }}>{` ${salary.unit}`}</Text> : null}
           </Text>
-          {commission ? (
-            <Text variant="small" weight="medium" style={{ color: colors.onHero }}>
-              {commission}
-            </Text>
-          ) : null}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Target size={13} color={colors.champagne} />
             <Text variant="small" style={{ color: colors.onHeroMuted }}>

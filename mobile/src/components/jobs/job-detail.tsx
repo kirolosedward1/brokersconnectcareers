@@ -14,9 +14,9 @@ import { router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
-import { BadgeCheck, Building2, CalendarClock, CalendarX2, Eye, MapPin, Share, Users } from '~/components/ui/lucide';
+import { BadgeCheck, Building2, CalendarClock, CalendarX2, Clock, Eye, MapPin, Share, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate, formatNumber, formatRate, formatRelativeDay } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
 import { isApproved, isCandidate } from '@/lib/permissions';
@@ -28,7 +28,6 @@ import { SavedJobNote } from '~/components/saved/note-sheet';
 import { SaveJobButton } from '~/components/saved/save-controls';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
-import { Badge } from '~/components/ui/badge';
 import { Appear } from '~/components/motion/appear';
 import { BarOnly } from '~/components/navigation/page-header';
 import { Button } from '~/components/ui/button';
@@ -37,6 +36,14 @@ import { ForwardChevron, SendForward } from '~/components/ui/icons';
 import { Notice } from '~/components/ui/notice';
 import { Text } from '~/components/ui/text';
 import { recentJobs, useListOwner, viewedFrom } from '~/features/jobs/recent';
+import { takeSharedArrival } from '~/features/jobs/arrival';
+import { useCompensationText } from '~/features/jobs/compensation';
+import { useCompanyResponse } from '~/features/companies/response';
+import { TABULAR } from '~/components/ui/num';
+import { isolate, markupTags } from '~/i18n/rich';
+import { analyticsRole } from '~/lib/analytics-role';
+import { track } from '~/lib/analytics';
+import { formatMonthYear } from '~/lib/month-year';
 import { ShareCardSheet } from './share-card';
 import { useAppliedJobIds } from '~/features/jobs/marks';
 import { useHiddenCompanies, withoutHidden } from '~/features/moderation/hidden-companies';
@@ -44,9 +51,12 @@ import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-j
 import { shareJobLink } from '~/features/jobs/share';
 import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
+import { PausedNotice } from '~/components/companies/hiring-notice';
+import { useCompanyHiring } from '~/features/companies/hiring';
 import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
+import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
@@ -83,9 +93,14 @@ export function JobDetail({
   const tTrack = useTranslations('track');
   const tType = useTranslations('employmentType');
   const tExp = useTranslations('experienceBand');
-  const tCompanies = useTranslations('companies');
   const tLanding = useTranslations('landing');
   const tApply = useTranslations('apply');
+  const tApp2 = useTranslations();
+  const tComp = useTranslations('compensation');
+  const tListing = useTranslations('app.listing');
+  const large = useLargeText();
+  const pinnedPay = useCompensationText().salary(job);
+  const pinnedRate = job.commission_type === 'percentage' && job.commission_value != null ? formatRate(job.commission_value, locale) : null;
   const shrink = useShrinkingTabBar();
   const { colors } = useTheme();
   const { session, viewer, actor } = useSession();
@@ -98,6 +113,9 @@ export function JobDetail({
   const role = viewer?.profile?.role;
   const canApply = !role || role === 'candidate';
   const applied = useAppliedJobIds([job.id]).has(job.id);
+  // A company that paused hiring takes no application (migration 378); its listing says so.
+  const hiring = useCompanyHiring(job.company.id).data ?? null;
+  const paused = hiring !== null && !hiring.open;
   const hasBoard = useHasBoard();
   const toBoard = useToBoard();
   // Like it, and not already applied to: those are done with, as Home's suggestions leave them out.
@@ -118,15 +136,22 @@ export function JobDetail({
     if (!open || counted.current === job.slug) return;
     counted.current = job.slug;
     callAction('recordJobView', { slug: job.slug }).catch(() => {});
+    // The funnel's first two steps: arrived from a forwarded link, and read.
+    const shared = takeSharedArrival(job.slug);
+    if (shared) track('arrived_from_share', {});
+    track('job_viewed', { role: analyticsRole(actor, Boolean(session)), from: shared ? 'share' : 'other' });
+    // Once per listing opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, job.slug]);
 
-  const apply = () =>
-    session
-      ? router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } })
-      : router.push({ pathname: '/sign-in', params: { next: `/jobs/${job.slug}/apply` } });
+  // Signed out too, the form opens: an account is made inside it (v1.1, guest apply).
+  const apply = () => {
+    track('apply_clicked', { role: analyticsRole(actor, Boolean(session)) });
+    router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } });
+  };
   const toApplications = () => router.navigate('/dashboard/applications');
   // What is pinned at the foot once the step has scrolled away: Apply, or the application already sent.
-  const pinnable = open && canApply && (applied || !(isCandidate(actor) && !isApproved(actor)));
+  const pinnable = open && canApply && (applied || (!paused && !(isCandidate(actor) && !isApproved(actor))));
   // Where the step's foot is in the page, and whether the page is scrolled past it.
   const [stepEnd, setStepEnd] = useState<number | null>(null);
   const [pastStep, setPastStep] = useState(false);
@@ -213,7 +238,7 @@ export function JobDetail({
 
         <View style={{ gap: space[4] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} />
+            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} />
             <View style={{ flex: 1, gap: space[0.5] }}>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[2], rowGap: space[0.5] }}>
                 <Text
@@ -225,22 +250,27 @@ export function JobDetail({
                 >
                   {companyName}
                 </Text>
-                {job.company.verification_status === 'verified' ? (
-                  <VerifiedMark>
-                    <Badge variant="accent" label={tCompanies('verified')} icon={<BadgeCheck size={12} color={colors.accentForeground} />} />
-                  </VerifiedMark>
-                ) : null}
+                {job.company.verification_status === 'verified' ? <VerifiedMark size={15} /> : null}
               </View>
+              {/* Where, how fresh, and since when the company is verified (v1.1). */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
                 <MapPin size={13} color={colors.mutedForeground} />
-                <Text variant="small" tone="mutedForeground">
-                  {districtName}
+                <Text variant="caption" tone="mutedForeground" style={{ flexShrink: 1 }}>
+                  {[
+                    districtName,
+                    job.published_at ? tListing('postedAgo', { when: formatRelativeDay(job.published_at, locale) }) : null,
+                    job.company.verification_status === 'verified' && job.company.verified_at
+                      ? tListing('verifiedSince', { when: formatMonthYear(job.company.verified_at, locale) })
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </Text>
               </View>
             </View>
           </View>
 
-          <Text variant="title" weight="semibold" accessibilityRole="header">
+          <Text variant="screen" weight="bold" accessibilityRole="header">
             {title}
           </Text>
 
@@ -250,6 +280,8 @@ export function JobDetail({
             <Fact icon={<Users size={13} color={colors.mutedForeground} />}>{tExp(job.experience_band)}</Fact>
             <Fact>{`${formatNumber(job.seats, locale)} ${t('seatsLabel', { count: job.seats })}`}</Fact>
           </View>
+
+          <ResponseLine companyId={job.company.id} />
 
           <Pressable
             accessibilityRole="link"
@@ -291,6 +323,8 @@ export function JobDetail({
               </Text>
               <Button label={tApply('viewApplications')} variant="outline" onPress={toApplications} />
             </Card>
+          ) : paused && hiring ? (
+            <PausedNotice hiring={hiring} />
           ) : isCandidate(actor) && !isApproved(actor) ? (
             // The database would refuse the application; say why before the form.
             <Card style={{ gap: space[1] }}>
@@ -300,12 +334,17 @@ export function JobDetail({
               </Text>
             </Card>
           ) : (
-            <Button
-              label={t('apply')}
-              size="lg"
-              icon={<SendForward size={18} color={colors.primaryForeground} />}
-              onPress={apply}
-            />
+            <View style={{ gap: space[1.5] }}>
+              <Button
+                label={t('apply')}
+                size="lg"
+                icon={<SendForward size={18} color={colors.primaryForeground} />}
+                onPress={apply}
+              />
+              <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+                {tApp2('app.apply.noFees')}
+              </Text>
+            </View>
           )}
         </View>
 
@@ -364,7 +403,7 @@ export function JobDetail({
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} seed={job.company.slug} size="sm" />
+            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} size="sm" />
             <Text variant="headline" weight="semibold" style={{ flex: 1 }}>
               {companyName}
             </Text>
@@ -415,7 +454,28 @@ export function JobDetail({
           {applied ? (
             <Button label={tApply('viewApplications')} variant="outline" onPress={toApplications} />
           ) : (
-            <Button label={t('apply')} icon={<SendForward size={18} color={colors.primaryForeground} />} onPress={apply} />
+            <View style={{ gap: space[1.5] }}>
+              {/* What it pays, beside the way to apply (v1.1): the basic, and the commission rate when there is one. */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
+                {pinnedPay.unit ? (
+                  <View style={{ flexShrink: 1 }}>
+                    <Text variant="label" tone="mutedForeground">
+                      {tComp('basicSalary')}
+                    </Text>
+                    <Text weight="bold" tone="primary" style={TABULAR} numberOfLines={large ? undefined : 1}>
+                      {pinnedPay.amount}
+                      {pinnedRate !== null ? <Text variant="caption" weight="semibold" tone="goldForeground">{`  ${isolate(`+${pinnedRate}%`)}`}</Text> : null}
+                    </Text>
+                  </View>
+                ) : null}
+                <View style={{ flexGrow: 1 }}>
+                  <Button label={t('apply')} icon={<SendForward size={18} color={colors.primaryForeground} />} onPress={apply} />
+                </View>
+              </View>
+              <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
+                {tApp2('app.apply.noFees')}
+              </Text>
+            </View>
           )}
         </Appear>
       ) : null}
@@ -423,8 +483,32 @@ export function JobDetail({
   );
 }
 
-/** The pinned bar's height, about: a button and the room round it. */
-const PINNED = 72;
+/** The pinned bar's height, about: the pay, a button, the line under it and the room round them. */
+const PINNED = 112;
+
+/**
+ * How this company answers, from what it did with the applications it got
+ * (migration 370): the median days to a first answer and the share it opened,
+ * over the last half year. Nothing when it has had too few to say.
+ */
+function ResponseLine({ companyId }: { companyId: string }) {
+  const t = useTranslations('app.listing');
+  const { colors } = useTheme();
+  const stats = useCompanyResponse(companyId).data;
+  if (!stats) return null;
+  const parts = [
+    stats.medianDays !== null ? t.markup('respondsIn', { days: Math.max(0, Math.round(stats.medianDays)), ...markupTags }) : null,
+    t.markup('opened', { percent: Math.round(stats.openRate * 100), ...markupTags }),
+  ].filter(Boolean);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: space[2], padding: space[3], ...corner('lg'), backgroundColor: colors.successMuted }}>
+      <Clock size={15} color={colors.success} style={{ marginTop: 2 }} />
+      <Text variant="caption" weight="semibold" tone="success" style={{ flex: 1 }}>
+        {parts.join(' · ')}
+      </Text>
+    </View>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   const { colors } = useTheme();

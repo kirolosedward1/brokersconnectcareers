@@ -76,6 +76,27 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // ------------------------------------------------------ company closure --
+  // Phase B 07c (migration 379): applications a company chose to clear, and
+  // companies on the 14th day after their owner asked to delete them. The
+  // team activity log keeps six months (migration 377). Before the file sweep,
+  // so logos, papers and CVs they release are queued with the rest. pg_cron
+  // runs them too where it exists; the closure takes a lock. A database
+  // without them answers PGRST202 or 42883, which is not a failure.
+  const { data: closure, error: closureError } = await admin.rpc('close_due_companies', { p_limit: 200 });
+  if (closureError && closureError.code !== 'PGRST202' && closureError.code !== '42883') {
+    logFailure('lifecycle', 'company closure failed', { code: closureError.code });
+  }
+  const closureErrors = (closure as { errors?: unknown } | null)?.errors;
+  if (Array.isArray(closureErrors) && closureErrors.length > 0) {
+    // Which companies, never the database's words.
+    logFailure('lifecycle', 'company closure incomplete', { count: closureErrors.length });
+  }
+  const { error: activityError } = await admin.rpc('purge_company_activity');
+  if (activityError && activityError.code !== 'PGRST202' && activityError.code !== '42883') {
+    logFailure('lifecycle', 'activity purge failed', { code: activityError.code });
+  }
+
   // ---------------------------------------------------------------- files --
   let removed = 0;
   let failed = 0;

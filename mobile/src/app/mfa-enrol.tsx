@@ -118,7 +118,7 @@ export default function EnrolSecondFactorScreen() {
               <Button label={t('common.retry')} onPress={start} />
             </View>
           ) : (
-            <LoadingState />
+            <LoadingState spinner />
           )
         ) : (
           <View style={{ gap: space[4] }}>

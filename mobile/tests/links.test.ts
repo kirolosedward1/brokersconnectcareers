@@ -134,6 +134,8 @@ describe('inOwnTab', () => {
     expect(inOwnTab('/employer/applicants?stage=new', tabs)).toBe('/(applicants)/employer/applicants?stage=new');
     expect(inOwnTab('/employer/company', tabs)).toBe('/(account)/employer/company');
     expect(inOwnTab('/employer/billing', tabs)).toBe('/(account)/employer/billing');
+    expect(inOwnTab('/employer/activity', tabs)).toBe('/(account)/employer/activity');
+    expect(inOwnTab('/employer/approvals', tabs)).toBe('/(account)/employer/approvals');
     expect(inOwnTab('/jobs/sales-a1b2', tabs)).toBe('/(home)/jobs/sales-a1b2');
     expect(inOwnTab('/companies/nile', tabs)).toBe('/(home)/companies/nile');
     // The board is the Jobs tab's own screen: without the tab there is none.

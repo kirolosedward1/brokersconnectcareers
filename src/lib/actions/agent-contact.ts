@@ -34,7 +34,7 @@ export type ContactRevealResult =
     }
   | {
       ok: false;
-      error: 'invalid' | 'unauthenticated' | 'forbidden' | 'locked' | 'not_found' | 'rate_limit' | 'failed';
+      error: 'invalid' | 'unauthenticated' | 'forbidden' | 'not_permitted' | 'locked' | 'not_found' | 'rate_limit' | 'failed';
       retryAfterSeconds?: number;
     };
 
@@ -67,6 +67,9 @@ export async function revealAgentContact(input: unknown): Promise<ContactRevealR
       return { ok: false, error: 'unauthenticated' };
     case 'forbidden':
       return { ok: false, error: 'forbidden' };
+    // The company keeps this member from revealing numbers (migration 376).
+    case 'not_permitted':
+      return { ok: false, error: 'not_permitted' };
     case 'locked':
       return { ok: false, error: 'locked' };
     default:

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تفاصيل الطلب</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}a:hover{color:#0E1D44}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(18,22,32,.04),0 6px 20px rgba(18,22,32,.06)}
+.ib{width:44px;height:44px;border-radius:999px;background:#fff;border:1px solid #E6E1D8;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tl{display:flex;gap:14px}
+.tl .rail{display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0}
+.tl .dot{width:24px;height:24px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tl .line{width:2px;flex:1;background:#E6E1D8;min-height:18px}
+.tl .line.done{background:#16295A}
+.tl strong{display:block;font-size:14px;line-height:20px;font-weight:600}
+.tl span{display:block;font-size:12px;line-height:18px;color:#5C6270}
+.tl .body{flex:1;min-width:0;padding-bottom:14px}
+h2{margin:0;font-size:16px;line-height:24px;font-weight:600}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+
+  <div style="padding:54px 20px 0;display:flex;align-items:center;gap:12px">
+    <a href="Applications.dc.html" class="ib" aria-label="رجوع"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#16295A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+    <h1 style="margin:0;flex:1;font-size:18px;line-height:26px;font-weight:700">طلبي</h1>
+    <button type="button" class="ib" aria-label="المزيد"><svg viewBox="0 0 24 24" width="18" height="18" fill="#16295A" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+  </div>
+
+  <div style="padding:16px 20px 0;display:flex;flex-direction:column;gap:16px;flex:1;overflow:hidden">
+
+    <a href="JobDetail.dc.html" class="card" style="padding:14px 16px;display:flex;align-items:center;gap:12px;color:#121620">
+      <div style="width:48px;height:48px;border-radius:12px;background:#E2F2E7;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1B7A4B;font-size:16px;flex-shrink:0"><svg viewBox="0 0 24 24" width="52%" height="52%" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></div>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+        <strong style="font-size:15px;line-height:22px;font-weight:600">مدير مبيعات، فريق أوف بلان</strong>
+        <span style="font-size:12px;color:#5C6270">إعمار مصر · القاهرة الجديدة</span>
+        <span style="display:flex;align-items:baseline;gap:6px"><b class="num" style="font-size:16px;color:#16295A">25,000</b><span style="font-size:11px;color:#5C6270">ج.م</span><span style="font-size:11px;font-weight:600;color:#7A5A1F"><span class="num">+1.5%</span></span></span>
+      </div>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#8B8578" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+    </a>
+
+    <div style="padding:14px 16px;border-radius:20px;background:#16295A;color:#fff;display:flex;flex-direction:column;gap:10px;box-shadow:0 18px 48px rgba(14,29,68,.22)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;background:#D8BC86;color:#17120A;font-size:12px;font-weight:600">مقابلة</span>
+        <span style="font-size:12px;color:#C9D0DE">المرحلة <span class="num">3</span> من <span class="num">4</span></span>
+      </div>
+      <strong style="font-size:16px;line-height:24px;font-weight:600">الثلاثاء <span class="num">28</span> أكتوبر، <span class="num">11:00</span> صباحًا</strong>
+      <span style="font-size:13px;line-height:19px;color:#C9D0DE">مكتب إعمار، التجمع الخامس. اسأل عن أ. محمد حسن في الاستقبال.</span>
+      <div style="display:flex;gap:8px">
+        <a href="#" style="height:40px;padding:0 14px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>أضف للتقويم</a>
+        <a href="#" style="height:40px;padding:0 14px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>الاتجاهات</a>
+      </div>
+    </div>
+
+    <h2>المسار</h2>
+    <div class="card" style="padding:16px 16px 2px">
+      <div class="tl">
+        <div class="rail"><span class="dot" style="background:#16295A"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span class="line done"></span></div>
+        <div class="body"><strong>أُرسل الطلب</strong><span>الأحد <span class="num">19</span> أكتوبر · بسيرة Kirolos-CV-2026.pdf</span></div>
+      </div>
+      <div class="tl">
+        <div class="rail"><span class="dot" style="background:#16295A"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span class="line done"></span></div>
+        <div class="body"><strong>فتحته الشركة</strong><span>الاثنين <span class="num">20</span> أكتوبر</span></div>
+      </div>
+      <div class="tl">
+        <div class="rail"><span class="dot" style="background:#16295A"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span class="line done"></span></div>
+        <div class="body"><strong>قائمة مختصرة</strong><span>الأربعاء <span class="num">22</span> أكتوبر</span></div>
+      </div>
+      <div class="tl">
+        <div class="rail"><span class="dot" style="background:#A27A3B;box-shadow:0 0 0 4px #F4EAD7"></span><span class="line"></span></div>
+        <div class="body"><strong style="color:#7A5A1F">مقابلة محدّدة</strong><span>الجمعة <span class="num">24</span> أكتوبر · عبر واتساب من الشركة</span></div>
+      </div>
+      <div class="tl">
+        <div class="rail"><span class="dot" style="border:2px dashed #E6E1D8;box-sizing:border-box"></span></div>
+        <div class="body"><strong style="color:#8B8578">القرار</strong><span>بعد المقابلة</span></div>
+      </div>
+    </div>
+
+    <button type="button" style="align-self:center;height:44px;padding:0 16px;border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;color:#B5372C;cursor:pointer">سحب الطلب</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

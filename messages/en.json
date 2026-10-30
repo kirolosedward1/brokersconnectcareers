@@ -576,7 +576,8 @@
     "privacyNote": "If your consultant directory profile is not hidden, this company also sees it in full — headline, tracks, districts and your sales record — and can ask for your number and CV from it, even if it is not verified. You can withdraw the application at any time from “My applications”.",
     "suspendedTitle": "Your account is suspended",
     "suspendedBody": "You cannot apply to roles until an administrator has reviewed your account.",
-    "notOpen": "This listing stopped taking applications while the form was open. Nothing was sent."
+    "notOpen": "This listing stopped taking applications while the form was open. Nothing was sent.",
+    "companyPaused": "This company has paused new applications for now. Nothing was sent, and its listings are still up."
   },
   "employer": {
     "company": "Company profile",
@@ -704,7 +705,8 @@
     "postRateLimited": "This company has created a lot of listings today. Try again tomorrow.",
     "standingBlocked": "Your account is restricted or suspended, so nothing can be sent for review right now. The notice on your dashboard says why and how to ask for a review.",
     "companySuspendedBlocked": "Your company is suspended, so its listings can’t be submitted or published. The notice on your dashboard says why and how to ask for a review.",
-    "listingMovedKept": "This listing changed somewhere else while you were editing. Reload the page: your changes are kept, and you can restore them over the new version."
+    "listingMovedKept": "This listing changed somewhere else while you were editing. Reload the page: your changes are kept, and you can restore them over the new version.",
+    "teamFull": "The team is full: five people at most, the owner included. Remove a member to add someone else."
   },
   "jobForm": {
     "basics": "Basics",
@@ -2099,6 +2101,12 @@
     "job_expired": "{subject} has ended — repost it to keep hiring",
     "company_verification_needed": "{subject} needs more documents to be verified",
     "company_verification_revoked": "{subject} is no longer verified",
+    "interview_invited": "Interview invitation for {subject}",
+    "interview_answered": "An answer to the interview for {subject}",
+    "interviewInvited": "Interview invitation for “{subject}”: {when}",
+    "interviewAccepted": "{name} accepted the interview for “{subject}”: {when}",
+    "interviewDeclined": "{name} declined the interview for “{subject}”",
+    "interviewCounter": "{name} proposed another time for the interview for “{subject}”: {when}",
     "profile_visibility_changed": "Your profile visibility changed",
     "profileVisibilityChanged": "Your profile visibility is now: {visibility}",
     "password_changed": "Your password was changed",

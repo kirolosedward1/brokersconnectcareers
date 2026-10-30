@@ -258,6 +258,22 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
+  company_message: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).companyMessage;
+    return {
+      subject: t.subject(w.company),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.body(w.job, w.company) },
+        { kind: 'text', value: w.note },
+        { kind: 'facts', rows: [[t.labelJob, w.job], [t.labelCompany, w.company]] },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/applications` },
+      ],
+    };
+  },
+
   application_withdrawn: (f) => {
     const w = words(f);
     const t = copyFor(f.locale).applicationWithdrawn;
@@ -447,6 +463,21 @@ const BUILDERS: Record<string, Builder> = {
         { kind: 'text', value: t.body },
         ...(note?.trim() ? [{ kind: 'text' as const, value: t.reason(note.trim()) }] : []),
         { kind: 'security', value: t.contact },
+      ],
+    };
+  },
+
+  company_ownership_transferred: (f) => {
+    const w = words(f);
+    const t = copyFor(f.locale).companyOwnershipTransferred;
+    return {
+      subject: t.subject(w.company),
+      preheader: t.preheader,
+      heading: t.heading,
+      blocks: [
+        { kind: 'text', value: t.bodyNew(w.company, w.name) },
+        { kind: 'facts', rows: [[t.labelCompany, w.company]] },
+        { kind: 'button', label: t.cta, href: `${env.siteUrl}/employer/company` },
       ],
     };
   },

@@ -108,6 +108,12 @@ export const EVENTS = {
   account_signed_up: { props: {}, metric: false },
   /** The profile row was created as a candidate — the first time, not a resubmit. */
   candidate_onboarding_completed: { props: {}, metric: false },
+  /**
+   * The candidate's profile reached a completeness the product promises
+   * something at — 60% is when Home starts showing how well a listing fits.
+   * Once per step per account and device: the end of sign up → profile 60%.
+   */
+  profile_completeness_reached: { props: { percent: oneOf(['60', '100'] as const) }, metric: true },
 
   // — Employer funnel -------------------------------------------------------
   /** The profile row and the company were created as an employer. */
@@ -120,6 +126,15 @@ export const EVENTS = {
   job_creation_started: { props: {}, metric: true },
   /** A listing entered the review queue. Publication is the moderator's, and is counted from the row. */
   job_submitted: { props: {}, metric: false },
+  /**
+   * An employer opened an application. `first` when it is the first one opened
+   * on that listing: the end of employer post → first applicant opened.
+   */
+  applicant_opened: { props: { first: bool() }, metric: true },
+  /** A company invited an applicant to an interview (migration 373). */
+  interview_invited: { props: {}, metric: true },
+  /** The candidate answered an invitation. */
+  interview_answered: { props: { answer: oneOf(['accepted', 'declined', 'counter'] as const) }, metric: true },
 
   // — Consultant directory --------------------------------------------------
   directory_viewed: { props: { role, access: oneOf(['full', 'anonymous'] as const) }, metric: true },
@@ -129,8 +144,10 @@ export const EVENTS = {
   },
   /** Never the slug: it is the consultant's name. */
   agent_profile_viewed: { props: { role, access: oneOf(['unlocked', 'locked'] as const) }, metric: true },
+  /** A company revealed a consultant's number, after confirming it. The start of reveal → WhatsApp tap. */
+  agent_contact_revealed: { props: {}, metric: true },
   /** The contact button was pressed. Never the number, never the link. */
-  agent_contact_clicked: { props: { method: oneOf(['whatsapp'] as const) }, metric: true },
+  agent_contact_clicked: { props: { method: oneOf(['whatsapp', 'call'] as const) }, metric: true },
 
   // — Kept from before this vocabulary ------------------------------------
   arrived_from_share: { props: {}, metric: false },
@@ -232,6 +249,12 @@ export function metricDimension(event: AnalyticsEvent, props: Record<string, unk
       return String(props.access);
     case 'agent_contact_clicked':
       return String(props.method);
+    case 'profile_completeness_reached':
+      return String(props.percent);
+    case 'applicant_opened':
+      return props.first ? 'first' : 'again';
+    case 'interview_answered':
+      return String(props.answer);
     default:
       return '';
   }

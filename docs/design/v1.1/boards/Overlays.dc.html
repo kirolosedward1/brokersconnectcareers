@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>قائمة الإجراءات والتنبيه السفلي</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'IBM Plex Sans Arabic',system-ui,sans-serif;color:#121620}
+a{color:#16295A;text-decoration:none}
+.num{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;text-align:right}
+.fact .num,.stat .num,[style*="text-align:center"] .num,[style*="align-items:center"]>.num{text-align:center}
+.ghost{background:#fff;border-radius:20px;opacity:.9}
+.mi{display:flex;align-items:center;gap:12px;height:52px;padding:0 16px;border-bottom:1px solid #F0EDE7;font-size:15px;font-weight:500;background:transparent;border-left:0;border-right:0;border-top:0;width:100%;font-family:inherit;cursor:pointer;color:#121620;text-align:start}
+.mi:last-child{border-bottom:0}
+.mi svg{width:20px;height:20px;flex-shrink:0;color:#16295A}
+</style>
+</helmet>
+<div dir="rtl" lang="ar" style="width:390px;height:844px;box-sizing:border-box;background:#F6F4F0;position:relative;overflow:hidden;display:flex;flex-direction:column">
+  <div aria-hidden="true" style="padding:58px 20px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="height:34px;width:120px;border-radius:8px;background:#E6E1D8"></div>
+    <div style="height:48px;border-radius:14px;background:#fff;border:1px solid #E6E1D8"></div>
+    <div class="ghost" style="height:150px;border:1.5px solid #16295A;box-shadow:0 6px 20px rgba(22,41,90,.15);padding:16px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;align-items:center"><div style="width:44px;height:44px;border-radius:12px;background:#ECEEF4"></div><div style="flex:1;display:flex;flex-direction:column;gap:6px"><div style="height:12px;width:50%;border-radius:4px;background:#E6E1D8"></div><div style="height:10px;width:35%;border-radius:4px;background:#F0EDE7"></div></div></div>
+      <div style="height:14px;width:60%;border-radius:4px;background:#E6E1D8"></div>
+      <div style="height:22px;width:40%;border-radius:4px;background:#ECEEF4"></div>
+    </div>
+    <div class="ghost" style="height:150px;opacity:.5"></div>
+  </div>
+
+  <div style="position:absolute;top:150px;right:20px;left:20px;display:flex;justify-content:center;pointer-events:none"><span style="padding:6px 12px;border-radius:999px;background:#121620;color:#fff;font-size:11px;font-weight:500">ضغطة مطوّلة على البطاقة</span></div>
+
+  <div style="position:absolute;inset:0;background:rgba(5,10,25,.45);display:flex;flex-direction:column;justify-content:flex-end;padding:0 12px 34px;gap:8px">
+    <div style="background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 16px 40px rgba(18,22,32,.2)">
+      <div style="padding:12px 16px;border-bottom:1px solid #F0EDE7;display:flex;flex-direction:column;gap:1px;text-align:center"><strong style="font-size:13px;font-weight:600">استشاري مبيعات عقارية</strong><span style="font-size:11px;color:#5C6270">ماونتن فيو للتطوير · التجمع الخامس</span></div>
+      <button type="button" class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>افتح الإعلان</button>
+      <button type="button" class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>احفظ</button>
+      <button type="button" class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>شارك</button>
+      <button type="button" class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l-7 7 7 7" opacity=".4"/><path d="M3 3l18 18"/></svg>أقل مثل هذا</button>
+      <button type="button" class="mi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M17.9 17.9A10 10 0 0 1 2.3 10M9.9 4.2A10 10 0 0 1 21.7 14M3 3l18 18"/></svg>أخفِ هذه الوظيفة</button>
+      <button type="button" class="mi" style="color:#B5372C"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true" style="color:#B5372C"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>أخفِ كل وظائف ماونتن فيو</button>
+    </div>
+    <button type="button" style="height:56px;border-radius:22px;background:#fff;border:0;font:inherit;font-size:16px;font-weight:600;color:#16295A;cursor:pointer">إلغاء</button>
+  </div>
+
+  <div style="position:absolute;left:16px;right:16px;top:600px;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:#121620;color:#fff;box-shadow:0 16px 40px rgba(0,0,0,.35)" role="status">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#D8BC86" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M17.9 17.9A10 10 0 0 1 2.3 10M9.9 4.2A10 10 0 0 1 21.7 14M3 3l18 18"/></svg>
+    <span style="flex:1;font-size:13px;font-weight:500">أُخفيت الوظيفة</span>
+    <button type="button" style="height:32px;padding:0 12px;border-radius:999px;border:0;background:rgba(255,255,255,.14);color:#D8BC86;font:inherit;font-size:13px;font-weight:600;cursor:pointer">تراجع</button>
+  </div>
+  <div style="position:absolute;left:16px;right:16px;top:570px;display:flex;justify-content:center;pointer-events:none"><span style="padding:4px 10px;border-radius:999px;background:#121620;color:#fff;font-size:10px;opacity:.75">التنبيه السفلي، يبقى <span class="num">5</span> ثوانٍ، مع تراجع</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

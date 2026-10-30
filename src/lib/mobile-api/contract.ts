@@ -14,6 +14,8 @@ import type {
   CommissionType,
   CompanyType,
   EmploymentType,
+  InterviewMode,
+  SavedReplyRow,
   ExperienceBand,
   HeadcountBand,
   JobTrack,
@@ -49,7 +51,7 @@ export type ContactRevealResult =
   | { ok: true; data: { fullName: string; phone: string; whatsappUrl: string; hasCv: boolean } }
   | {
       ok: false;
-      error: 'invalid' | 'unauthenticated' | 'forbidden' | 'locked' | 'not_found' | 'rate_limit' | 'failed';
+      error: 'invalid' | 'unauthenticated' | 'forbidden' | 'not_permitted' | 'locked' | 'not_found' | 'rate_limit' | 'failed';
       retryAfterSeconds?: number;
     };
 
@@ -145,6 +147,8 @@ export type JobInput = {
   descriptionEn?: Nullable<string>;
   requirementsAr?: Nullable<string>;
   developerIds: number[];
+  /** The company's branch (migration 383); null for none, absent to leave it as it is. */
+  branchId?: number | null;
   version?: number;
   /** Made once per form and repeated on every retry, so a retry cannot post twice. */
   idempotencyKey?: string;
@@ -301,7 +305,8 @@ export type MobileActions = {
   unfollowCompany: { input: { slug: string }; output: ActionResult };
 
   // Employer: listings
-  saveJob: { input: JobInput; output: ActionResult<{ id: string }> };
+  /** pendingApproval: saved, but the live listing's new pay waits for an admin (migration 380). */
+  saveJob: { input: JobInput; output: ActionResult<{ id: string; pendingApproval?: boolean }> };
   transitionJob: { input: { jobId: string; status: 'draft' | 'pending_review' | 'closed' }; output: ActionResult };
   findSimilarListing: {
     input: { titleAr: string; districtId: number; excludeId?: Nullable<string> };
@@ -320,7 +325,82 @@ export type MobileActions = {
       decisionNote?: Nullable<string>;
       /** The status the card showed, so a colleague's move is not overwritten. */
       from?: ApplicationStatus;
+      /** Whether the candidate may read the reason; absent is yes. Unticked, it is kept as the company's own note. */
+      shareReason?: boolean;
     };
+    /**
+     * reasonKept: false when an unshared reason could not be kept as a note (the move itself stands).
+     * pendingApproval: the company has an admin approve declines (migration 380); the move waits.
+     */
+    output: ActionResult<{ reasonKept: boolean; pendingApproval?: boolean }>;
+  };
+  /** Up to fifty moves at once, each as a single move (Phase B 01). */
+  setApplicationStatuses: {
+    input: {
+      items: { applicationId: string; from: ApplicationStatus }[];
+      status: ApplicationStatus;
+      decisionNote?: Nullable<string>;
+      shareReason?: boolean;
+    };
+    output: ActionResult<{ moved: number; movedAlready: number; failed: number; reasonsNotKept: number; pendingApproval?: number }>;
+  };
+  /** One message to up to fifty applicants, by email; key made once per composer. */
+  messageApplicants: {
+    input: { applicationIds: string[]; message: string; key: string };
+    output: ActionResult<{ sent: number; skipped: number }>;
+  };
+  /** Migration 376: a member's switches; admins only, never the owner. */
+  saveCompanyRules: {
+    input: { approveDecline: boolean; approvePayChange: boolean; spendCeilingMonthEgp: number | null; requireMfa: boolean; cvAdminsOnly: boolean };
+    output: ActionResult;
+  };
+  decideApprovalRequest: {
+    input: { id: string; approve: boolean; note?: string | null };
+    output: ActionResult<{ outcome: 'approved' | 'refused' | 'expired' }>;
+  };
+  saveBranch: { input: { id?: number; nameAr: string; nameEn?: string | null; districtId: number | null }; output: ActionResult<{ id: number }> };
+  deleteBranch: { input: { id: number }; output: ActionResult };
+  transferCompanyOwnership: { input: { userId: string }; output: ActionResult };
+  requestCompanyDeletion: { input: { confirmName: string }; output: ActionResult };
+  cancelCompanyDeletion: { input: Record<string, never>; output: ActionResult };
+  setApplicationPurge: { input: { days: 30 | 90 | 180 | 365 | null }; output: ActionResult };
+  saveCompanyHiring: {
+    input: {
+      hiringStatus: 'open' | 'paused';
+      pausedUntil: string | null;
+      contactWhatsapp: string | null;
+      replyHours: { days: number[]; from: string; to: string } | null;
+    };
+    output: ActionResult;
+  };
+  updateMemberPermissions: { input: { userId: string; canPost: boolean; canReveal: boolean; canSpend: boolean }; output: ActionResult };
+  /** Migration 375: a note about the person, read on every application they send the company. */
+  addCandidateNote: { input: { applicationId: string; body: string; idempotencyKey?: string }; output: ActionResult<{ id: number }> };
+  deleteCandidateNote: { input: { id: number }; output: ActionResult };
+  /** Migration 374: a reply of one's own, or the team's (admins); WhatsApp or email. */
+  saveReply: {
+    input: { id?: string; version?: number; title?: Nullable<string>; body: string; channel: 'whatsapp' | 'email'; teamWide: boolean };
+    output: ActionResult<{ reply: SavedReplyRow }>;
+  };
+  deleteReply: { input: { id: string }; output: ActionResult };
+  /** Migration 373. Times are ISO instants with an offset; shown in Cairo time. One invitation stands per application. */
+  inviteToInterview: {
+    input: {
+      applicationId: string;
+      startsAt: string;
+      minutes: number;
+      mode: InterviewMode;
+      place?: Nullable<string>;
+      note?: Nullable<string>;
+    };
+    output: ActionResult<{ id: string }>;
+  };
+  cancelInterview: { input: { id: string }; output: ActionResult };
+  /** The company agrees to the candidate's proposed time. */
+  acceptProposedTime: { input: { id: string }; output: ActionResult };
+  /** The candidate's answer; counterStartsAt with 'counter'. */
+  answerInterview: {
+    input: { id: string; answer: 'accepted' | 'declined' | 'counter'; counterStartsAt?: Nullable<string> };
     output: ActionResult;
   };
   addApplicationNote: {

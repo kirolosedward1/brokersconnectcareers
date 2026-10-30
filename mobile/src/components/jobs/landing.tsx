@@ -24,6 +24,7 @@ import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { SearchX } from '~/components/ui/lucide';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
+import { markupTags } from '~/i18n/rich';
 
 /**
  * One track in one district — the website's TrackDistrictLanding at
@@ -34,6 +35,7 @@ import { usePullRefresh } from '~/lib/use-pull-refresh';
 export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: string; track: JobTrack; districtSlug: string }) {
   const locale = useLocale();
   const t = useTranslations('landing');
+  const tApp = useTranslations('app.landing');
   const tJobs = useTranslations('jobs');
   const tNav = useTranslations('nav');
   const tTrack = useTranslations('track');
@@ -81,10 +83,10 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
       );
       if (facts.salaryFloor != null && facts.salaryCeiling != null && facts.salaryCeiling > facts.salaryFloor) {
         factLines.push(
-          t('factSalaryRange', { min: formatEgp(facts.salaryFloor, locale), max: formatEgp(facts.salaryCeiling, locale) }),
+          tApp.markup('factSalaryRange', { min: formatEgp(facts.salaryFloor, locale), max: formatEgp(facts.salaryCeiling, locale), ...markupTags }),
         );
       } else if (facts.salaryFloor != null) {
-        factLines.push(t('factSalaryFrom', { min: formatEgp(facts.salaryFloor, locale) }));
+        factLines.push(tApp.markup('factSalaryFrom', { min: formatEgp(facts.salaryFloor, locale), ...markupTags }));
       }
     }
   }

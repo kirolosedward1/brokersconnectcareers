@@ -6,7 +6,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createTranslator } from 'use-intl';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
-import type { ApplicationNoteRow, ProfileRow } from '@/lib/supabase/database.types';
+import { savedReplies } from '~/components/employer/saved-replies';
+import type { ApplicationNoteRow, InterviewInviteRow, ProfileRow, SavedReplyRow } from '@/lib/supabase/database.types';
 import { shownToast } from '~/components/feedback/toast';
 import type { Applicant } from '~/features/employer/applicants';
 import { parseInboxFilters } from '~/features/employer/applicants';
@@ -116,6 +117,10 @@ const notes: ApplicationNoteRow[] = [
 ];
 
 let rows: Applicant[];
+let interviews: InterviewInviteRow[] = [];
+let replies: SavedReplyRow[] = [];
+let candidateNotes: unknown[] = [];
+let candidateHistory: unknown[] = [];
 let client: QueryClient;
 
 beforeAll(() => {
@@ -123,6 +128,10 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+  interviews = [];
+  replies = [];
+  candidateNotes = [];
+  candidateHistory = [];
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   rows = [sara, omar];
   jest.mocked(WebBrowser.openBrowserAsync).mockClear();
@@ -147,6 +156,19 @@ beforeEach(async () => {
     return { body: null, headers: { 'content-range': `*/${standing.length}` } };
   });
   server.on('GET /rest/v1/application_notes', notes);
+  server.on('GET /rest/v1/interview_invites', () => interviews);
+  server.on('POST /api/mobile/v1/actions/inviteToInterview', { ok: true, data: { id: 'iv-1' } });
+  server.on('POST /api/mobile/v1/actions/acceptProposedTime', { ok: true });
+  server.on('POST /api/mobile/v1/actions/cancelInterview', { ok: true });
+  server.on('POST /api/mobile/v1/actions/setApplicationStatuses', { ok: true, data: { moved: 2, movedAlready: 0, failed: 0, reasonsNotKept: 0 } });
+  server.on('POST /api/mobile/v1/actions/messageApplicants', { ok: true, data: { sent: 2, skipped: 0 } });
+  server.on('GET /rest/v1/saved_replies', () => replies);
+  server.on('POST /rest/v1/rpc/candidate_notes_for', () => candidateNotes);
+  server.on('POST /rest/v1/rpc/candidate_history_for', () => candidateHistory);
+  server.on('POST /api/mobile/v1/actions/addCandidateNote', { ok: true, data: { id: 9 } });
+  server.on('POST /api/mobile/v1/actions/deleteCandidateNote', { ok: true });
+  server.on('POST /api/mobile/v1/actions/saveReply', { ok: true, data: { reply: null } });
+  server.on('POST /api/mobile/v1/actions/deleteReply', { ok: true });
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
   server.on('POST /api/mobile/v1/actions/markApplicantsSeen', { ok: true });
   server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true });
@@ -290,9 +312,49 @@ describe("a listing's applicants", () => {
     );
   });
 
+  it('keeps the reason from the candidate when the employer unticks it, as an internal note', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true, data: { reasonKept: true } });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const tick = await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible });
+    expect(tick.props.accessibilityState).toMatchObject({ checked: true });
+    fireEvent.press(tick);
+    expect(screen.getByRole('checkbox', { name: ar.employer.decisionNoteVisible }).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByText(ar.app.applicants.reasonPrivateHint)).toBeTruthy();
+    fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), 'الخبرة أقل من المطلوب.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.applicants.reasonKeepPrivate }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/setApplicationStatus')).toEqual({
+        applicationId: omar.id,
+        status: 'shortlisted',
+        decisionNote: 'الخبرة أقل من المطلوب.',
+        from: 'shortlisted',
+        shareReason: false,
+      }),
+    );
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.applicants.reasonKeptPrivate));
+  });
+
+  it('says a move the company has an admin approve was asked for, not made', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true, data: { reasonKept: true, pendingApproval: true } });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible }));
+    fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), 'سبب.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.applicants.reasonKeepPrivate }));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.rules.declineAsked));
+  });
+
+  it('says so when an unticked reason could not be kept, the move standing', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true, data: { reasonKept: false } });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible }));
+    fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), 'سبب داخلي.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.applicants.reasonKeepPrivate }));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.applicants.reasonNotKept));
+  });
+
   it('does not send a blank reason', async () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
-    expect(await screen.findByText(ar.employer.decisionNoteVisible)).toBeTruthy();
+    expect(await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible })).toBeTruthy();
     expect(screen.getByText(ar.employer.decisionNoteHint)).toBeTruthy();
     fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), '   ');
     expect(screen.getByRole('button', { name: ar.employer.decisionNoteSend }).props.accessibilityState).toMatchObject({
@@ -524,7 +586,7 @@ describe("a listing's applicants", () => {
     expect(server.asked(`/api/cv/${sara.id}`)).toHaveLength(1);
     expect(screen.getByText(ar.employer.noCv)).toBeTruthy();
 
-    fireEvent.press(screen.getByRole('button', { name: `${ar.employer.whatsappCandidate}: سارة عادل` }));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.contact.whatsappTo.replace('{name}', 'سارة عادل') }));
     expect(openURL.mock.calls[0]?.[0]).toMatch(/^https:\/\/wa\.me\/201001234567\?text=.+/);
     expect(decodeURIComponent(String(openURL.mock.calls[0]?.[0]).split('text=')[1])).toContain('سارة عادل');
     openURL.mockRestore();
@@ -620,7 +682,7 @@ describe("a listing's applicants", () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     const header = await screen.findByRole('header', { name: 'نورا سليم' });
     expect(screen.getAllByText(ar.applicationStatus.withdrawn).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('button', { name: `${ar.employer.whatsappCandidate}: نورا سليم` })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.app.contact.whatsappTo.replace('{name}', 'نورا سليم') })).toBeNull();
     expect(screen.queryByRole('button', { name: `${ar.app.replies.open}: نورا سليم` })).toBeNull();
     expect(screen.queryByRole('button', { name: `${ar.employer.downloadCv}: نورا سليم` })).toBeNull();
     expect(screen.queryByText(ar.employer.noCv)).toBeNull();
@@ -1020,5 +1082,188 @@ describe('a suspended company', () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
     expect(await screen.findByText(ar.employer.applicantsSuspendedTitle)).toBeTruthy();
     await notStamped();
+  });
+});
+
+describe('interviews', () => {
+  const invite = (overrides: Partial<InterviewInviteRow> = {}): InterviewInviteRow => ({
+    id: 'b0000000-0000-4000-8000-000000000001',
+    application_id: omar.id,
+    starts_at: '2099-11-02T09:00:00Z',
+    minutes: 30,
+    mode: 'office',
+    place: 'التجمع الخامس، مبنى ٣',
+    note: null,
+    status: 'proposed',
+    counter_starts_at: null,
+    created_by: USER_ID,
+    created_at: '2026-10-29T10:00:00Z',
+    updated_at: '2026-10-29T10:00:00Z',
+    ...overrides,
+  });
+
+  it('invites from the card, at a Cairo time, the stage said to move', async () => {
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.interview.invite}: عمر حسن` }));
+    expect(await screen.findByText(ar.app.interview.stageHint)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.interview.send }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/inviteToInterview')).toBeDefined());
+    const sent = input('/api/mobile/v1/actions/inviteToInterview') as { applicationId: string; startsAt: string; minutes: number; mode: string };
+    expect(sent).toMatchObject({ applicationId: omar.id, minutes: 30, mode: 'office' });
+    // Tomorrow at eleven, Cairo's wall clock, with Cairo's offset.
+    expect(sent.startsAt).toMatch(/^\d{4}-\d{2}-\d{2}T11:00:00\+0[23]:00$/);
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.interview.sent));
+  });
+
+  it("draws the standing invitation, and accepts the candidate's other time", async () => {
+    interviews = [invite({ status: 'counter', counter_starts_at: '2099-11-03T10:00:00Z' })];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByTestId('interview-line')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.interview.acceptCounter }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/acceptProposedTime')).toEqual({ id: interviews[0]?.id }));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.interview.agreed));
+  });
+
+  it('says a refused time in words', async () => {
+    server.on('POST /api/mobile/v1/actions/inviteToInterview', { ok: false, error: 'time_not_allowed' });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.interview.invite}: عمر حسن` }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.interview.send }));
+    expect(await screen.findByText(ar.app.interview.timeNotAllowed)).toBeTruthy();
+  });
+});
+
+describe('several applicants at once', () => {
+  const choose = async () => {
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.bulk.select }));
+    fireEvent.press(screen.getByRole('checkbox', { name: ar.app.bulk.pick.replace('{name}', 'سارة عادل') }));
+    fireEvent.press(screen.getByRole('checkbox', { name: ar.app.bulk.pick.replace('{name}', 'عمر حسن') }));
+  };
+
+  it('moves the chosen ones, each from the stage its card showed', async () => {
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    await choose();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.move }));
+    fireEvent.press(await screen.findByRole('radio', { name: ar.applicationStatus.interview }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/setApplicationStatuses')).toEqual({
+        items: [
+          { applicationId: sara.id, from: 'new' },
+          { applicationId: omar.id, from: 'shortlisted' },
+        ],
+        status: 'interview',
+        decisionNote: null,
+      }),
+    );
+  });
+
+  it("declines with a reason the employer keeps from them, when the tick is off", async () => {
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    await choose();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.decline }));
+    fireEvent.press(await screen.findByRole('radio', { name: ar.app.bulk.reason_filled }));
+    fireEvent.press(screen.getByTestId('bulk-reason-tick'));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.declineSend }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/setApplicationStatuses')).toMatchObject({
+        status: 'rejected',
+        decisionNote: ar.app.bulk.reason_filled,
+        shareReason: false,
+      }),
+    );
+  });
+
+  it('writes one message to all of them, by email, the send keyed once', async () => {
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    await choose();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.message }));
+    fireEvent.changeText(await screen.findByLabelText(ar.app.bulk.messageField), 'نشكرك على اهتمامك، وسنتواصل معك قريبًا.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.messageSend }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/messageApplicants')).toBeDefined());
+    const sent = input('/api/mobile/v1/actions/messageApplicants') as { applicationIds: string[]; message: string; key: string };
+    expect(sent.applicationIds).toEqual([sara.id, omar.id]);
+    expect(sent.key).toMatch(/^[0-9a-f-]{36}$/);
+  });
+});
+
+describe('saved replies kept on the account', () => {
+  const reply = (overrides: Partial<SavedReplyRow>): SavedReplyRow => ({
+    id: 'c0000000-0000-4000-8000-000000000001',
+    company_id: ownedCompany.id,
+    person_id: null,
+    title: null,
+    body: 'أهلًا {first_name}، نود مقابلتك بخصوص {job}.',
+    channel: 'whatsapp',
+    version: 1,
+    created_by: USER_ID,
+    created_at: '2026-10-29T10:00:00Z',
+    updated_at: '2026-10-29T10:00:00Z',
+    ...overrides,
+  });
+  const open = async () => {
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.replies.open}: سارة عادل` }));
+  };
+
+  it("offers the team's and one's own, and sends a WhatsApp one with the applicant's words put in", async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue();
+    replies = [reply({}), reply({ id: 'c0000000-0000-4000-8000-000000000002', person_id: USER_ID, body: 'شكرًا {name}' })];
+    await open();
+    expect(await screen.findByText(ar.app.replies.team)).toBeTruthy();
+    expect(screen.getByText(ar.app.replies.own)).toBeTruthy();
+    fireEvent.press(screen.getAllByRole('button', { name: ar.app.replies.send })[1]);
+    const url = decodeURIComponent(String(openURL.mock.calls[0]?.[0]));
+    expect(url).toContain('أهلًا سارة، نود مقابلتك بخصوص مستشار مبيعات.');
+    openURL.mockRestore();
+  });
+
+  it('sends an email one through the website, which fills it', async () => {
+    replies = [reply({ channel: 'email', body: 'نشكرك {first_name} على اهتمامك.' })];
+    await open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.replies.sendEmail }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/messageApplicants')).toMatchObject({ applicationIds: [sara.id], message: 'نشكرك {first_name} على اهتمامك.' }),
+    );
+  });
+
+  it('keeps a new one on the account, and says which words it does not know', async () => {
+    await open();
+    fireEvent.changeText(await screen.findByLabelText(ar.app.replies.new), 'موعدنا {day}');
+    server.on('POST /api/mobile/v1/actions/saveReply', { ok: false, error: 'unknown_variable', fieldErrors: { body: '{day}' } });
+    fireEvent.press(screen.getByRole('button', { name: ar.app.replies.keep }));
+    expect(await screen.findByText(ar.app.replies.unknownVariable.replace('{words}', '{day}'))).toBeTruthy();
+    expect(input('/api/mobile/v1/actions/saveReply')).toEqual({ body: 'موعدنا {day}', channel: 'whatsapp', teamWide: false });
+  });
+
+  it("moves the replies kept on this phone to the account, once", async () => {
+    savedReplies.replace(USER_ID, [{ id: 'l1', text: 'رد قديم على الهاتف' }]);
+    await open();
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.replies.moveLocal }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveReply')).toEqual({ body: 'رد قديم على الهاتف', channel: 'whatsapp', teamWide: false }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.replies.moveLocal })).toBeNull());
+  });
+});
+
+describe('what the company knows of a candidate', () => {
+  it('says they applied before, how the latest ended, and the notes the whole team keeps about them', async () => {
+    candidateHistory = [
+      { for_application: sara.id, application_id: 'a0000000-0000-4000-8000-0000000000aa', job_title_ar: 'مدير مبيعات', job_title_en: null, status: 'rejected', created_at: '2026-03-01T10:00:00Z' },
+    ];
+    candidateNotes = [{ for_application: sara.id, id: 1, author_id: USER_ID, body: 'تحدثنا معها في مارس.', created_at: '2026-03-02T10:00:00Z' }];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByTestId('candidate-history')).toBeTruthy();
+    expect(screen.getByText(ar.app.candidateFile.historyLast.replace('{job}', 'مدير مبيعات').replace('{status}', ar.applicationStatus.rejected))).toBeTruthy();
+    expect(screen.getByText('تحدثنا معها في مارس.')).toBeTruthy();
+  });
+
+  it('keeps a note about the person through the website, keyed once', async () => {
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const fields = await screen.findAllByLabelText(ar.app.candidateFile.notesField);
+    fireEvent.changeText(fields[0], 'متاحة من أول الشهر.');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.app.candidateFile.notesAdd })[0]);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/addCandidateNote')).toBeDefined());
+    const sent = input('/api/mobile/v1/actions/addCandidateNote') as { applicationId: string; body: string; idempotencyKey: string };
+    expect(sent.body).toBe('متاحة من أول الشهر.');
+    expect(sent.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

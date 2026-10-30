@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLocale, useTranslations } from 'use-intl';
-import { Archive, BriefcaseBusiness, Building2, Eye, MapPin, Pencil, Plus, RotateCcw, Users } from '~/components/ui/lucide';
+import { BriefcaseBusiness, ChartColumn, Building2, Eye, MapPin, Pencil, Plus, Users } from '~/components/ui/lucide';
 import { formatDate, formatNumber } from '@/lib/format';
 import { displayJobStatus, jobIsLive } from '@/lib/job-state';
 import { localized } from '@/lib/locale';
@@ -15,7 +14,6 @@ import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { PageFooter } from '~/components/ui/page-footer';
-import { SendForward } from '~/components/ui/icons';
 import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { Illustration } from '~/components/ui/illustration';
 import { EmptyState, ErrorState, SkeletonScreen } from '~/components/ui/states';
@@ -23,19 +21,17 @@ import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import {
   flattenListings,
-  TransitionRefused,
   useMyListings,
-  useTransitionJob,
   type ConsoleListing,
 } from '~/features/employer/listings';
 import { useTabList } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
-import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space } from '~/theme/tokens';
 import { useNextPage } from '~/lib/use-next-page';
+import { StatusActions } from '~/components/employer/status-actions';
 
 const STATUS_VARIANT: Record<JobStatus, 'default' | 'success' | 'warning' | 'destructive'> = {
   draft: 'default',
@@ -233,6 +229,17 @@ function ListingRow({ listing }: { listing: ConsoleListing }) {
           icon={<Pencil size={16} color={colors.foreground} />}
           onPress={() => router.push(`/employer/jobs/${listing.id}/edit` as never)}
         />
+        {/* How it is doing, and the repost once it has ended (ListingStats). */}
+        {listing.status === 'draft' ? null : (
+          <Button
+            label={t('app.listingStats.open')}
+            accessibilityLabel={`${t('app.listingStats.open')}: ${title}`}
+            variant="ghost"
+            size="sm"
+            icon={<ChartColumn size={16} color={colors.foreground} />}
+            onPress={() => router.push(`/employer/jobs/${listing.id}/stats` as never)}
+          />
+        )}
       </View>
       <StatusActions jobId={listing.id} status={shown} title={title} />
     </Card>
@@ -250,92 +257,3 @@ function Meta({ icon, children }: { icon?: React.ReactNode; children: React.Reac
   );
 }
 
-const REFUSAL_COPY = {
-  post_cap: 'postCapBlocked',
-  invalid_transition: 'listingMoved',
-  standing: 'standingBlocked',
-  company_suspended: 'companySuspendedBlocked',
-} as const;
-
-/**
- * Only the moves an employer may make, by the status the page shows: close a
- * live listing, submit a draft or a rejected one, reopen one that ended —
- * which goes back through review and starts thirty days afresh, as the hint
- * beside it says.
- */
-function StatusActions({ jobId, status, title }: { jobId: string; status: JobStatus; title: string }) {
-  const t = useTranslations();
-  const { colors } = useTheme();
-  const move = useTransitionJob();
-  const [error, setError] = useState<string | null>(null);
-
-  const go = (next: 'pending_review' | 'closed') => {
-    setError(null);
-    move.mutate(
-      { jobId, status: next },
-      {
-        onError: (failure) => {
-          if (failure instanceof ApiError && failure.status === 0) return setError(t('app.offline.body'));
-          const reason = failure instanceof TransitionRefused ? failure.reason : 'failed';
-          setError(reason === 'failed' ? t('common.errorBody') : t(`employer.${REFUSAL_COPY[reason]}`));
-        },
-      },
-    );
-  };
-
-  let action: React.ReactNode = null;
-  if (status === 'active') {
-    action = (
-      <Button
-        label={t('employer.closeJob')}
-        accessibilityLabel={`${t('employer.closeJob')}: ${title}`}
-        variant="ghost"
-        size="sm"
-        icon={<Archive size={16} color={colors.destructive} />}
-        loading={move.isPending}
-        onPress={() => go('closed')}
-      />
-    );
-  } else if (status === 'draft' || status === 'rejected') {
-    action = (
-      <Button
-        label={t('employer.submitForReview')}
-        accessibilityLabel={`${t('employer.submitForReview')}: ${title}`}
-        variant="secondary"
-        size="sm"
-        icon={<SendForward size={16} color={colors.primary} />}
-        loading={move.isPending}
-        onPress={() => go('pending_review')}
-      />
-    );
-  } else if (status === 'expired' || status === 'closed') {
-    action = (
-      <View style={{ gap: space[1], alignItems: 'flex-start' }}>
-        <Button
-          label={t('employer.reopenJob')}
-          accessibilityLabel={`${t('employer.reopenJob')}: ${title}`}
-          variant="secondary"
-          size="sm"
-          icon={<RotateCcw size={16} color={colors.success} />}
-          loading={move.isPending}
-          onPress={() => go('pending_review')}
-        />
-        <Text variant="caption" tone="mutedForeground">
-          {t('employer.reopenHint')}
-        </Text>
-      </View>
-    );
-  }
-  if (!action) return null;
-
-  return (
-    <View style={{ gap: space[1], alignItems: 'flex-start' }}>
-      {action}
-      {error ? (
-        <Text variant="small" tone="destructive" accessibilityRole="alert">
-          {error}
-        </Text>
-      ) : null}
-    </View>
-  );
-}

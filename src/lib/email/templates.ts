@@ -35,11 +35,15 @@ export const TEMPLATES = {
   company_verified: 'transactional',
   company_verification_needed: 'transactional',
   company_verification_revoked: 'transactional',
+  // Who owns the company changed (Phase B 07c): both people are told, whatever their switches.
+  company_ownership_transferred: 'transactional',
 
   new_application: 'preference',
   applicant_digest: 'preference',
   application_status: 'preference',
   application_rejected: 'preference',
+  // A message a company wrote to its applicants (Phase B 01): under the same switch as their status mail.
+  company_message: 'preference',
   job_approved: 'preference',
   job_rejected: 'preference',
   job_expiring: 'preference',

@@ -1,37 +1,50 @@
 import { useTranslations } from 'use-intl';
 import type { JobRow } from '@/lib/supabase/database.types';
-import { formatEgp, formatRate } from '@/lib/format';
+import { formatRate } from '@/lib/format';
+import { useMoney } from '~/features/money';
 import { markupTags } from '~/i18n/rich';
 
 type Pay = Pick<JobRow, 'basic_salary_min' | 'basic_salary_max' | 'commission_type' | 'commission_value'>;
 
+export type SalaryText = {
+  /**
+   * The basic salary's figures, without the currency — "12,000 – 18,000",
+   * "من 12,000" — or the website's words when there is none: "commission
+   * only", "no basic salary".
+   */
+  figures: string;
+  /** «ج.م / شهر» beside the figures; null when there are no figures. */
+  unit: string | null;
+  /** The whole of it in one line, with its currency: "12,000 – 18,000 ج.م", or the words. */
+  amount: string;
+};
+
 /**
- * What a listing pays, in the website's own words (compensation.tsx): a range,
- * "from", "up to", or "commission only"; and the commission when it is a stated
- * percentage. Numbers are isolated left to right inside the Arabic sentence,
- * so a range still reads low to high in the sentence's own direction.
+ * What a listing pays, as the website says it (compensation.tsx): a range,
+ * "from", "up to", or "commission only"; and the commission when it is a
+ * stated percentage. Amounts carry their currency (features/money.ts); a
+ * range is one left-to-right run, low to high.
+ *
+ * The commission is said only where the listing's terms are: the listing
+ * itself, the wizard, editing it, and the admin's review.
  */
 export function useCompensationText() {
   const t = useTranslations('compensation');
   const tCommission = useTranslations('commissionType');
+  const money = useMoney();
 
   return {
-    salary(job: Pay, locale: string): { amount: string; perMonth: string | null } {
+    salary(job: Pay): SalaryText {
       const { basic_salary_min: min, basic_salary_max: max } = job;
+      const figures = money.figures(min, max);
+      const amount = money.pay(min, max);
       // As the website's: "commission only", unless the listing also says
       // there is no commission.
-      if (min == null && max == null) {
-        return { amount: t(job.commission_type === 'none' ? 'noBasicSalary' : 'commissionOnly'), perMonth: null };
+      if (figures === null || amount === null) {
+        const words = t(job.commission_type === 'none' ? 'noBasicSalary' : 'commissionOnly');
+        return { figures: words, unit: null, amount: words };
       }
-
-      const amount =
-        min != null && max != null
-          ? t.markup('salaryRange', { min: formatEgp(min, locale), max: formatEgp(max, locale), ...markupTags })
-          : min != null
-            ? t.markup('salaryFrom', { min: formatEgp(min, locale), ...markupTags })
-            : t.markup('salaryUpTo', { max: formatEgp(max as number, locale), ...markupTags });
-
-      return { amount, perMonth: t('perMonth') };
+      return { figures, unit: money.perMonth, amount };
     },
 
     commission(job: Pay, locale: string): string {
