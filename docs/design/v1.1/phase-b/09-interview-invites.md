@@ -5,6 +5,36 @@ company invites a candidate to an interview at a time. The candidate sees
 it, and can accept or propose another time. Today's interviews show on the
 employer's Home.
 
+## Built (2026-10-30)
+
+- **Database:** migrations 372 (the two notification kinds) and 373 (the
+  `interview_invites` table, its policies, `answer_interview()`, and the
+  bell for both sides). Both kinds are pushed under the applications switch.
+  Test: `supabase/tests/interviews.test.mjs`.
+- **Website actions:** `inviteToInterview`, `cancelInterview`,
+  `acceptProposedTime` and `answerInterview`, all in the mobile contract.
+  - One invitation stands per application, so a new one replaces the old.
+    That is how the company changes the time.
+  - An invitation moves the application to «مقابلة» if it was before that
+    stage, which sends the stage's existing email.
+- **App, company side:**
+  - «دعوة لمقابلة» on the applicant card opens a sheet with a day, a time in
+    Cairo time, the duration, the mode, the place and a note.
+  - The standing invitation shows when, how and its status, with «اعتمد
+    الموعد المقترح», «غيّر الموعد» and «ألغِ الدعوة».
+  - Home lists «مقابلات اليوم» with names and times.
+- **App, candidate side:** the invitation sits on the application, with
+  «أقبل الموعد», «أقترح موعدًا آخر» and «أعتذر», and then the answer given.
+- **Notifications:** bell and push wording on the website and in the app.
+- **Analytics:** `interview_invited` and `interview_answered`.
+
+Not built yet:
+- A dedicated invitation email. The candidate gets the bell, the push, and
+  the stage email.
+- The reminder two hours before.
+- Interview screens on the website, beyond the bell.
+- Calendar export (decided: later).
+
 ## What exists
 
 `interview` is a stage (`ApplicationStatus`). Moving an applicant there
