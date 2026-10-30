@@ -407,6 +407,17 @@ export type InterviewInviteRow = {
   updated_at: string;
 };
 
+/** A company's note about a person who applied to it (migration 375), read on every application they send it. */
+export type CompanyCandidateNoteRow = {
+  id: number;
+  company_id: string;
+  candidate_id: string;
+  author_id: string | null;
+  body: string;
+  idempotency_key: string | null;
+  created_at: string;
+};
+
 /** A reply a company keeps (migration 374): the team's (person_id null) or one person's own. */
 export type SavedReplyRow = {
   id: string;
@@ -1400,6 +1411,10 @@ export type Database = {
         ApplicationNoteRow,
         Insertable<ApplicationNoteRow, 'application_id' | 'body'>
       >;
+      company_candidate_notes: Table<
+        CompanyCandidateNoteRow,
+        Insertable<CompanyCandidateNoteRow, 'company_id' | 'candidate_id' | 'body'>
+      >;
       saved_replies: Table<SavedReplyRow, Insertable<SavedReplyRow, 'company_id' | 'body'>>;
       interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
       /**
@@ -1609,6 +1624,22 @@ export type Database = {
        * how many, the share it opened (0–1), the median days to a first
        * answer. No row under five applications; no median under three answered.
        */
+      /** Migration 375: the notes about each card's candidate, and their other applications to this company. Under RLS. */
+      candidate_notes_for: {
+        Args: { p_application_ids: string[] };
+        Returns: { for_application: string; id: number; author_id: string | null; body: string; created_at: string }[];
+      };
+      candidate_history_for: {
+        Args: { p_application_ids: string[] };
+        Returns: {
+          for_application: string;
+          application_id: string;
+          job_title_ar: string;
+          job_title_en: string | null;
+          status: ApplicationStatus;
+          created_at: string;
+        }[];
+      };
       /** The candidate's answer to an invitation still waiting on them (migration 373). */
       answer_interview: {
         Args: { p_id: string; p_answer: 'accepted' | 'declined' | 'counter'; p_counter?: string | null };

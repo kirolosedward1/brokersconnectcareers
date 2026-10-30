@@ -343,6 +343,9 @@ export type MobileActions = {
     input: { applicationIds: string[]; message: string; key: string };
     output: ActionResult<{ sent: number; skipped: number }>;
   };
+  /** Migration 375: a note about the person, read on every application they send the company. */
+  addCandidateNote: { input: { applicationId: string; body: string; idempotencyKey?: string }; output: ActionResult<{ id: number }> };
+  deleteCandidateNote: { input: { id: number }; output: ActionResult };
   /** Migration 374: a reply of one's own, or the team's (admins); WhatsApp or email. */
   saveReply: {
     input: { id?: string; version?: number; title?: Nullable<string>; body: string; channel: 'whatsapp' | 'email'; teamWide: boolean };

@@ -525,6 +525,65 @@ export async function messageApplicants(input: unknown): Promise<ActionResult<{ 
   return { ok: true, data: { sent: reachable.length, skipped: parsed.data.applicationIds.length - reachable.length } };
 }
 
+const candidateNoteSchema = z.object({
+  applicationId: z.string().uuid(),
+  body: z.string().trim().min(1).max(2000),
+  idempotencyKey: z.string().uuid().optional(),
+});
+
+/**
+ * A note about the person (migration 375, Phase B 02): written on one of
+ * their applications, read on every application they send the company, by
+ * the whole company (decided), never by them. The person and the company
+ * come from the application, read under RLS, so the client never names
+ * either; the policy decides whether it may be written at all.
+ */
+export async function addCandidateNote(input: unknown): Promise<ActionResult<{ id: number }>> {
+  const parsed = candidateNoteSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: application } = await supabase
+    .from('applications')
+    .select('candidate_id, job:jobs (company_id)')
+    .eq('id', parsed.data.applicationId)
+    .maybeSingle();
+  const row = application as unknown as { candidate_id: string; job: { company_id: string } | null } | null;
+  if (!row?.job) return { ok: false, error: 'forbidden' };
+
+  const body = clean(parsed.data.body, true);
+  if (!body) return { ok: false, error: 'invalid' };
+  const note = { company_id: row.job.company_id, candidate_id: row.candidate_id, author_id: user.id, body };
+  const key = parsed.data.idempotencyKey;
+  const { data, error } = await insertOnce(
+    key,
+    (withKey) =>
+      supabase
+        .from('company_candidate_notes')
+        .insert({ ...note, ...(withKey ? { idempotency_key: key } : {}) })
+        .select('id')
+        .single(),
+    () =>
+      supabase.from('company_candidate_notes').select('id').eq('company_id', note.company_id).eq('idempotency_key', key!).maybeSingle(),
+  );
+  if (error || !data) return refused('notes', error ?? {}, { application: parsed.data.applicationId });
+  return { ok: true, data: { id: (data as { id: number }).id } };
+}
+
+export async function deleteCandidateNote(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ id: z.number().int().positive() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('company_candidate_notes').delete().eq('id', parsed.data.id).select('id');
+  if (error) return refused('notes', error, { note: parsed.data.id });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  return { ok: true };
+}
+
 const noteSchema = z.object({
   applicationId: z.string().uuid(),
   body: z.string().trim().min(1).max(2000),
