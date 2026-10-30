@@ -827,5 +827,33 @@
     "timeNotAllowed": "Choose a time in the next ninety days.",
     "closed": "The invitation changed meanwhile. Refresh the page.",
     "todayTitle": "Interviews today"
+  },
+  "bulk": {
+    "select": "Select",
+    "done": "Done selecting",
+    "selectAll": "Select all",
+    "pick": "Select {name}",
+    "selected": "Selected: <v>{count}</v>",
+    "move": "Move to…",
+    "moveTitle": "Move the selected to",
+    "message": "Email message",
+    "messageTitle": "Email the selected",
+    "messageHint": "It reaches each applicant's email with the role's name. Whoever withdrew does not get it.",
+    "messageField": "Message",
+    "messageSend": "Send",
+    "decline": "Decline",
+    "declineTitle": "Decline the selected",
+    "reason": "Reason",
+    "reason_experience": "Less experience than this role needs.",
+    "reason_area": "The work area does not suit the role.",
+    "reason_track": "The track does not suit the role.",
+    "reason_filled": "The position has been filled.",
+    "reason_other": "Another reason",
+    "declineNote": "Details (optional)",
+    "declineSend": "Decline the selected",
+    "result": "Moved <v>{moved}</v>.",
+    "resultSome": "Moved <v>{moved}</v>; colleagues moved <v>{already}</v> first; <v>{failed}</v> failed.",
+    "messageResult": "The message was sent to <v>{sent}</v>.",
+    "rateLimited": "Too many sends in a short time. Try again shortly."
   }
 }

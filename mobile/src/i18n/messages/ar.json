@@ -827,5 +827,33 @@
     "timeNotAllowed": "اختر موعدًا قادمًا خلال تسعين يومًا.",
     "closed": "تغيّرت الدعوة في هذه الأثناء. حدّث الصفحة.",
     "todayTitle": "مقابلات اليوم"
+  },
+  "bulk": {
+    "select": "تحديد",
+    "done": "إنهاء التحديد",
+    "selectAll": "تحديد الكل",
+    "pick": "تحديد {name}",
+    "selected": "المحددون: <v>{count}</v>",
+    "move": "نقل إلى…",
+    "moveTitle": "نقل المحددين إلى",
+    "message": "رسالة بالبريد",
+    "messageTitle": "رسالة بالبريد إلى المحددين",
+    "messageHint": "تصل إلى بريد كل متقدم مع اسم الوظيفة. من سحب طلبه لا تصله.",
+    "messageField": "الرسالة",
+    "messageSend": "أرسل",
+    "decline": "اعتذار",
+    "declineTitle": "الاعتذار للمحددين",
+    "reason": "السبب",
+    "reason_experience": "الخبرة أقل من المطلوب لهذا الدور.",
+    "reason_area": "منطقة العمل لا تناسب الدور.",
+    "reason_track": "المسار لا يناسب الدور.",
+    "reason_filled": "شُغلت الوظيفة.",
+    "reason_other": "سبب آخر",
+    "declineNote": "تفاصيل (اختياري)",
+    "declineSend": "اعتذر للمحددين",
+    "result": "نُقل <v>{moved}</v>.",
+    "resultSome": "نُقل <v>{moved}</v>، وحرّك زملاؤك <v>{already}</v> قبلك، وتعذّر <v>{failed}</v>.",
+    "messageResult": "أُرسلت الرسالة إلى <v>{sent}</v>.",
+    "rateLimited": "أرسلت كثيرًا في وقت قصير. حاول بعد قليل."
   }
 }

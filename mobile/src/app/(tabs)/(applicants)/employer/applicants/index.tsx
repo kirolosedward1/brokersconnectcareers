@@ -1,3 +1,4 @@
+import { BulkBar, PickBox } from '~/components/employer/bulk-bar';
 import { useInterviewsFor } from '~/features/interviews/interviews';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
@@ -83,6 +84,22 @@ export default function InboxScreen() {
   // Each review begins afresh, at its first applicant: one started again as
   // the last was still sliding away was the same sheet, at the step it ended on.
   const [reviews, setReviews] = useState(0);
+  // Select mode (Phase B 01): the applicants chosen, by id; withdrawn ones cannot be.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const pickable = (rows ?? []).filter((row) => row.status !== 'withdrawn');
+  const chosen = pickable.filter((row) => picked.has(row.id));
+  const toggle = (id: string) =>
+    setPicked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const stopSelecting = () => {
+    setSelecting(false);
+    setPicked(new Set());
+  };
 
   const header = (
     <Stack.Screen options={{ title: t('employer.allApplicants'), headerRight: bell }} />
@@ -115,7 +132,8 @@ export default function InboxScreen() {
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[4] }}
+        // Room under the last card for the select bar, while it shows.
+        contentContainerStyle={{ padding: gutter, paddingBottom: selecting ? space[12] * 4 : space[10], gap: space[4] }}
         refreshControl={<RefreshControl {...pull} tintColor={colors.primary} />}
       >
         <View style={{ gap: space[2] }}>
@@ -237,21 +255,47 @@ export default function InboxScreen() {
           </View>
         ) : (
           <>
-            {/* One at a time, the moves at the foot of the screen (applicant-review.tsx). */}
-            <Button
-              label={t('app.review.start')}
-              variant="secondary"
-              icon={<Layers size={16} color={colors.secondaryForeground} />}
-              onPress={() => {
-                setQueue(rows.map((row) => row.id));
-                setReviews((count) => count + 1);
-                review.show();
-              }}
-            />
+            {/* One at a time, the moves at the foot of the screen (applicant-review.tsx); or several at once (bulk-bar.tsx). */}
+            {selecting ? (
+              <View style={{ flexDirection: 'row', gap: space[2] }}>
+                <Button
+                  label={t('app.bulk.selectAll')}
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setPicked(new Set(pickable.map((row) => row.id)))}
+                />
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+                <View style={{ flexGrow: 1 }}>
+                  <Button
+                    label={t('app.review.start')}
+                    variant="secondary"
+                    icon={<Layers size={16} color={colors.secondaryForeground} />}
+                    onPress={() => {
+                      setQueue(rows.map((row) => row.id));
+                      setReviews((count) => count + 1);
+                      review.show();
+                    }}
+                  />
+                </View>
+                {pickable.length > 1 ? (
+                  <Button label={t('app.bulk.select')} variant="outline" onPress={() => setSelecting(true)} />
+                ) : null}
+              </View>
+            )}
             {rows.map((row) => {
               const jobTitle = row.job ? localized(locale, row.job.title_ar, row.job.title_en) : '';
               return (
                 <View key={row.id} style={{ gap: space[1] }}>
+                  {selecting && row.status !== 'withdrawn' ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+                      <PickBox name={row.candidate?.full_name ?? '—'} selected={picked.has(row.id)} onToggle={() => toggle(row.id)} />
+                      <Text variant="small" style={{ flex: 1 }}>
+                        {row.candidate?.full_name ?? '—'}
+                      </Text>
+                    </View>
+                  ) : null}
                   {row.job ? (
                     <Pressable
                       accessibilityRole="link"
@@ -312,6 +356,7 @@ export default function InboxScreen() {
       {header}
       {reviewSheet}
       {body}
+      {selecting && rows?.length ? <BulkBar selected={chosen} onDone={stopSelecting} /> : null}
     </>
   );
 }

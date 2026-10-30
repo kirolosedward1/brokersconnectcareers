@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Check, Download, Eye, FileX2, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
+import { Download, FileX2, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
 import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
@@ -12,6 +12,7 @@ import type { ApplicationNoteRow, ApplicationStatus, InterviewInviteRow } from '
 import { CompanyInterview } from '~/components/interviews/interview-panels';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { toast } from '~/components/feedback/toast';
+import { ReasonTick } from '~/components/employer/reason-tick';
 import { ContactButtons } from '~/components/ui/contact-buttons';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
 import { SavedRepliesSheet } from '~/components/employer/saved-replies';
@@ -35,7 +36,7 @@ import { ApiError } from '~/lib/api';
 import { useSheet } from '~/lib/use-sheet';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { corner, hitTarget, space } from '~/theme/tokens';
+import { space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
 import { useMoney } from '~/features/money';
 
@@ -420,36 +421,7 @@ export function ApplicantCard({
             {t('employer.decisionNote')}
           </Text>
           {/* The employer decides whether the candidate reads it (v1.1 Phase B). */}
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: shareReason }}
-            accessibilityHint={shareReason ? t('employer.decisionNoteHint') : t('app.applicants.reasonPrivateHint')}
-            onPress={() => setShareReason((current) => !current)}
-            hitSlop={6}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: hitTarget }}
-          >
-            <View
-              style={{
-                width: 22,
-                height: 22,
-                ...corner('md'),
-                borderWidth: 1.5,
-                borderColor: shareReason ? colors.primary : colors.input,
-                backgroundColor: shareReason ? colors.primary : colors.card,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {shareReason ? <Check size={14} color={colors.primaryForeground} /> : null}
-            </View>
-            <Eye size={14} color={shareReason ? colors.primary : colors.mutedForeground} accessible={false} />
-            <Text variant="small" tone={shareReason ? 'primary' : 'mutedForeground'} weight="medium">
-              {t('employer.decisionNoteVisible')}
-            </Text>
-          </Pressable>
-          <Text variant="caption" tone="mutedForeground">
-            {shareReason ? t('employer.decisionNoteHint') : t('app.applicants.reasonPrivateHint')}
-          </Text>
+          <ReasonTick shared={shareReason} onChange={setShareReason} testID="reason-tick" />
           <TextField
             tone="brand"
             value={reason}

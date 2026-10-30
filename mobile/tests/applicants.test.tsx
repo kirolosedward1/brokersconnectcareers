@@ -153,6 +153,8 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/inviteToInterview', { ok: true, data: { id: 'iv-1' } });
   server.on('POST /api/mobile/v1/actions/acceptProposedTime', { ok: true });
   server.on('POST /api/mobile/v1/actions/cancelInterview', { ok: true });
+  server.on('POST /api/mobile/v1/actions/setApplicationStatuses', { ok: true, data: { moved: 2, movedAlready: 0, failed: 0, reasonsNotKept: 0 } });
+  server.on('POST /api/mobile/v1/actions/messageApplicants', { ok: true, data: { sent: 2, skipped: 0 } });
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
   server.on('POST /api/mobile/v1/actions/markApplicantsSeen', { ok: true });
   server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true });
@@ -1105,5 +1107,58 @@ describe('interviews', () => {
     fireEvent.press(await screen.findByRole('button', { name: `${ar.app.interview.invite}: عمر حسن` }));
     fireEvent.press(await screen.findByRole('button', { name: ar.app.interview.send }));
     expect(await screen.findByText(ar.app.interview.timeNotAllowed)).toBeTruthy();
+  });
+});
+
+describe('several applicants at once', () => {
+  const choose = async () => {
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.bulk.select }));
+    fireEvent.press(screen.getByRole('checkbox', { name: ar.app.bulk.pick.replace('{name}', 'سارة عادل') }));
+    fireEvent.press(screen.getByRole('checkbox', { name: ar.app.bulk.pick.replace('{name}', 'عمر حسن') }));
+  };
+
+  it('moves the chosen ones, each from the stage its card showed', async () => {
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    await choose();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.move }));
+    fireEvent.press(await screen.findByRole('radio', { name: ar.applicationStatus.interview }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/setApplicationStatuses')).toEqual({
+        items: [
+          { applicationId: sara.id, from: 'new' },
+          { applicationId: omar.id, from: 'shortlisted' },
+        ],
+        status: 'interview',
+        decisionNote: null,
+      }),
+    );
+  });
+
+  it("declines with a reason the employer keeps from them, when the tick is off", async () => {
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    await choose();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.decline }));
+    fireEvent.press(await screen.findByRole('radio', { name: ar.app.bulk.reason_filled }));
+    fireEvent.press(screen.getByTestId('bulk-reason-tick'));
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.declineSend }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/setApplicationStatuses')).toMatchObject({
+        status: 'rejected',
+        decisionNote: ar.app.bulk.reason_filled,
+        shareReason: false,
+      }),
+    );
+  });
+
+  it('writes one message to all of them, by email, the send keyed once', async () => {
+    await renderRouter(app, { initialUrl: '/employer/applicants' });
+    await choose();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.message }));
+    fireEvent.changeText(await screen.findByLabelText(ar.app.bulk.messageField), 'نشكرك على اهتمامك، وسنتواصل معك قريبًا.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.bulk.messageSend }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/messageApplicants')).toBeDefined());
+    const sent = input('/api/mobile/v1/actions/messageApplicants') as { applicationIds: string[]; message: string; key: string };
+    expect(sent.applicationIds).toEqual([sara.id, omar.id]);
+    expect(sent.key).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

@@ -1,24 +1,17 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslations } from 'use-intl';
 import type { InterviewMode } from '@/lib/supabase/database.types';
 import { toast } from '~/components/feedback/toast';
 import { Button } from '~/components/ui/button';
 import { Field } from '~/components/ui/field';
-import { KeyboardRoom } from '~/components/ui/keyboard-room';
-import { X } from '~/components/ui/lucide';
+import { FormSheet } from '~/components/ui/form-sheet';
 import { Segmented } from '~/components/ui/segmented';
-import { useSheetFence } from '~/components/ui/sheet-fence';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import { cairoInstant, nextCairoDays } from '~/features/interviews/cairo-time';
 import { InterviewRefused, useInterviewActions } from '~/features/interviews/interviews';
 import { markupTags } from '~/i18n/rich';
-import { appDirection } from '~/lib/direction';
 import { ApiError } from '~/lib/api';
-import { useTheme } from '~/theme/provider';
-import { gutter, hitTarget, space } from '~/theme/tokens';
 import { InterviewTimeFields } from './interview-fields';
 
 /** Which of the catalogue's sentences a refused interview step says. */
@@ -27,57 +20,6 @@ export function interviewFailure(failure: unknown) {
   if (failure instanceof InterviewRefused && failure.reason === 'time_not_allowed') return 'app.interview.timeNotAllowed' as const;
   if (failure instanceof InterviewRefused && failure.reason === 'closed') return 'app.interview.closed' as const;
   return 'common.errorBody' as const;
-}
-
-function Sheet({
-  visible,
-  onClose,
-  onDismiss,
-  title,
-  busy,
-  children,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  onDismiss?: () => void;
-  title: string;
-  busy: boolean;
-  children: React.ReactNode;
-}) {
-  const t = useTranslations();
-  const fence = useSheetFence();
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal={!busy} onRequestClose={onClose} onDismiss={onDismiss}>
-      <KeyboardRoom>
-        <View style={{ flex: 1, direction: appDirection, backgroundColor: colors.background }} {...fence}>
-          <View style={styles.header}>
-            <Text weight="semibold" accessibilityRole="header" style={{ flexShrink: 1 }}>
-              {title}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('common.close')}
-              onPress={onClose}
-              hitSlop={8}
-              style={{ minWidth: hitTarget, minHeight: hitTarget, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <X size={22} color={colors.foreground} />
-            </Pressable>
-          </View>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
-            keyboardDismissMode="interactive"
-            contentContainerStyle={{ padding: gutter, gap: space[4], paddingBottom: insets.bottom + space[6] }}
-          >
-            {children}
-          </ScrollView>
-        </View>
-      </KeyboardRoom>
-    </Modal>
-  );
 }
 
 const MODES: InterviewMode[] = ['office', 'phone', 'video'];
@@ -135,7 +77,7 @@ export function InviteSheet({
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} onDismiss={onDismiss} title={t('app.interview.inviteTitle', { name })} busy={invite.isPending}>
+    <FormSheet visible={visible} onClose={onClose} onDismiss={onDismiss} title={t('app.interview.inviteTitle', { name })} busy={invite.isPending}>
       <InterviewTimeFields now={now} day={day} time={time} onDay={setDay} onTime={setTime} />
       <Field label={t('app.interview.duration')}>
         <Segmented
@@ -188,7 +130,7 @@ export function InviteSheet({
         </Text>
       ) : null}
       <Button label={t('app.interview.send')} size="lg" loading={invite.isPending} onPress={send} />
-    </Sheet>
+    </FormSheet>
   );
 }
 
@@ -225,7 +167,7 @@ export function CounterSheet({
     );
   };
   return (
-    <Sheet visible={visible} onClose={onClose} onDismiss={onDismiss} title={t('app.interview.counterTitle')} busy={answer.isPending}>
+    <FormSheet visible={visible} onClose={onClose} onDismiss={onDismiss} title={t('app.interview.counterTitle')} busy={answer.isPending}>
       <InterviewTimeFields now={now} day={day} time={time} onDay={setDay} onTime={setTime} />
       {error ? (
         <Text variant="small" tone="destructive" accessibilityRole="alert">
@@ -233,16 +175,6 @@ export function CounterSheet({
         </Text>
       ) : null}
       <Button label={t('app.interview.counterSend')} size="lg" loading={answer.isPending} onPress={send} />
-    </Sheet>
+    </FormSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: gutter,
-    paddingVertical: space[2],
-  },
-});
