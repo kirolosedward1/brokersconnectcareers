@@ -298,15 +298,17 @@ export function useSaveJob() {
       const result = await callAction('saveJob', input).catch(async (error: unknown) => {
         // An edit with no answer may be in. A new listing needs no such look:
         // its idempotency key makes the one sent again the same listing.
-        if (edit && !refusedAtTheDoor(error) && (await storedAsSent(edit))) return { ok: true as const, data: { id: edit.id } };
+        if (edit && !refusedAtTheDoor(error) && (await storedAsSent(edit))) return { ok: true as const, data: { id: edit.id, pendingApproval: false } };
         if (!edit && input.idempotencyKey && !refusedAtTheDoor(error)) unanswered.current.add(input.idempotencyKey);
         throw error;
       });
       if (!result.ok) {
-        if (result.error === 'stale' && edit && (await storedAsSent(edit))) return edit.id;
+        if (result.error === 'stale' && edit && (await storedAsSent(edit))) return { id: edit.id, pendingApproval: false };
         throw new JobSaveRefused(result.error, result.fieldErrors);
       }
       const id = result.data?.id ?? null;
+      // Saved, but a live listing's new pay waits for an admin (migration 380).
+      const pendingApproval = result.data?.pendingApproval === true;
       // A new listing sent again with the key of a save that had no answer is
       // answered with that save's listing, as that save left it: a draft, when
       // this one is "submit for review", or with the words since changed. What
@@ -319,7 +321,7 @@ export function useSaveJob() {
           if (!again.ok) throw new JobSaveRefused(again.error, again.fieldErrors);
         }
       }
-      return id;
+      return { id, pendingApproval };
     },
     // Not waited for: the wizard closes on its own save, and while every
     // employer screen was read again first, the edited listing came back at its

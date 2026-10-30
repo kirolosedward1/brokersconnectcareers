@@ -128,7 +128,7 @@ type Item = { applicationId: string; from: ApplicationStatus };
 
 function useResultToast() {
   const t = useTranslations();
-  return (counts: { moved: number; movedAlready: number; failed: number; reasonsNotKept: number }) => {
+  return (counts: { moved: number; movedAlready: number; failed: number; reasonsNotKept: number; pendingApproval?: number }) => {
     const clean = !counts.movedAlready && !counts.failed;
     toast.show({
       message: clean
@@ -137,6 +137,8 @@ function useResultToast() {
       tone: clean ? 'success' : 'default',
     });
     if (counts.reasonsNotKept) toast.show({ message: t('app.applicants.reasonNotKept'), tone: 'destructive' });
+    // Declines an admin approves here (migration 380): asked for, not made.
+    if (counts.pendingApproval) toast.show({ message: t.markup('app.rules.declinesAsked', { count: counts.pendingApproval, ...markupTags }), tone: 'default' });
   };
 }
 

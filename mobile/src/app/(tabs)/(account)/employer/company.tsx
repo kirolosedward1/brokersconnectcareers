@@ -8,7 +8,9 @@ import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { CompanyForm } from '~/components/employer/company-form';
 import { LogoControls } from '~/components/employer/logo-controls';
 import { HiringSettings } from '~/components/employer/hiring-settings';
+import { CompanyMfaNotice } from '~/components/employer/mfa-required';
 import { OwnershipSettings } from '~/components/employer/ownership-settings';
+import { RulesSettings } from '~/components/employer/rules-settings';
 import { TeamSettings } from '~/components/employer/team-settings';
 import { VerificationPanel } from '~/components/employer/verification-panel';
 import { SignedOut } from '~/components/navigation/signed-out';
@@ -18,11 +20,13 @@ import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import { useCompanyHiring } from '~/features/companies/hiring';
 import { useCompanyClosure } from '~/features/employer/closure';
+import { useApprovalRequests, useCompanyRules } from '~/features/employer/rules';
 import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
-import { Compass, History } from '~/components/ui/lucide';
+import { Compass, History, ShieldCheck } from '~/components/ui/lucide';
+import { Num } from '~/components/ui/num';
 import { SettingsGroup, SettingsRow } from '~/components/ui/settings-list';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 
@@ -45,6 +49,8 @@ export default function CompanyScreen() {
   const company = viewer?.company ?? null;
   const hiring = useCompanyHiring(company?.id ?? null).data ?? null;
   const closure = useCompanyClosure(company?.id ?? null).data ?? null;
+  const rules = useCompanyRules().data ?? null;
+  const pendingApprovals = (useApprovalRequests().data ?? []).filter((request) => request.status === 'pending').length;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
   const scroll = useRef<ScrollViewInstance>(null);
 
@@ -70,6 +76,7 @@ export default function CompanyScreen() {
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10], gap: space[6] }}
       >
         <Text tone="mutedForeground">{t('employer.companyLede')}</Text>
+        <CompanyMfaNotice />
         {company && isAdmin ? (
           <LogoControls
             companyId={company.id}
@@ -85,6 +92,7 @@ export default function CompanyScreen() {
         ) : null}
         {company && isAdmin && hiring ? <HiringSettings key={company.id} companyId={company.id} hiring={hiring} /> : null}
         {company && page.data ? <TeamSettings members={page.data.team} canManage={isAdmin} /> : null}
+        {company && isAdmin && rules ? <RulesSettings key={company.id} rules={rules} /> : null}
         {company && isAdmin && page.data && closure ? (
           <OwnershipSettings
             companyName={company.name_ar}
@@ -95,6 +103,14 @@ export default function CompanyScreen() {
         ) : null}
         {company && page.data ? (
           <SettingsGroup>
+            <SettingsRow
+              icon={<ShieldCheck size={18} color={colors.foreground} />}
+              label={t('app.rules.queueRow')}
+              hint={t('app.rules.queueRowHint')}
+              value={pendingApprovals ? <Num value={pendingApprovals} variant="small" tone="mutedForeground" /> : undefined}
+              onPress={() => router.navigate('/employer/approvals' as never)}
+              testID="approvals-row"
+            />
             <SettingsRow
               icon={<History size={18} color={colors.foreground} />}
               label={t('app.activity.title')}

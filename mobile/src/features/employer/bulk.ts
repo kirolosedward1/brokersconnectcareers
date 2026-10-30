@@ -36,7 +36,7 @@ export function useBulkMove() {
         ...(input.shareReason === false ? { shareReason: false } : {}),
       });
       if (!result.ok) throw new BulkRefused(result.error);
-      return result.data ?? { moved: 0, movedAlready: 0, failed: 0, reasonsNotKept: 0 };
+      return { pendingApproval: 0, ...(result.data ?? { moved: 0, movedAlready: 0, failed: 0, reasonsNotKept: 0 }) };
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['employer'] });

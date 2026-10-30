@@ -28,6 +28,9 @@ import { Text } from '~/components/ui/text';
 import { flattenListings, useMyListings, type ConsoleListing } from '~/features/employer/listings';
 import { useEmployerSummary, useEmployerTrend } from '~/features/employer/overview';
 import { useTodaysInterviews } from '~/features/interviews/interviews';
+import { useApprovalRequests } from '~/features/employer/rules';
+import { useCompanyPage } from '~/features/employer/company';
+import { CompanyMfaNotice } from '~/components/employer/mfa-required';
 import { markupTags } from '~/i18n/rich';
 import { useTabList } from '~/features/tab-bar';
 import { noAnswer } from '~/lib/api';
@@ -74,6 +77,10 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
   // When Home was opened: what "today" and "within the week" are measured from.
   const [now] = useState(() => Date.now());
   const today = useTodaysInterviews(Boolean(s?.has_company), now);
+  // What waits for an admin; a member who is not one sees no row (the policy gives them only their own asks).
+  const approvals = useApprovalRequests().data ?? [];
+  const companyAdmin = useCompanyPage({ enabled: Boolean(s?.has_company) }).data?.isAdmin ?? false;
+  const waiting = companyAdmin ? approvals.filter((request) => request.status === 'pending').length : 0;
   const clock = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' });
 
   // The spinner is the pull's alone: a push about a new applicant reads the
@@ -165,6 +172,10 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
       .filter((row) => jobIsLive(row) && row.expires_at && new Date(row.expires_at).getTime() - now < 7 * 86_400_000)
       .sort((a, b) => String(a.expires_at).localeCompare(String(b.expires_at)))[0];
     const queue: QueueEntry[] = [
+      // Declines and pay changes a colleague asked an admin for (migration 380).
+      ...(waiting > 0
+        ? [{ key: 'approvals', count: waiting, title: t('app.rules.queueRow'), body: t('app.rules.queueRowHint'), cta: t('app.employerHome.review'), strong: true, href: '/employer/approvals' }]
+        : []),
       ...(s.applicants_unseen > 0
         ? [{ key: 'unseen', count: s.applicants_unseen, title: t('app.employerHome.unseen'), body: t('app.employerHome.unseenBody'), cta: t('app.employerHome.review'), strong: true, href: '/employer/applicants?stage=new' }]
         : []),
@@ -208,6 +219,7 @@ export function EmployerHome({ profile, company }: { profile: ProfileRow | null;
 
     body = (
       <>
+        <CompanyMfaNotice />
         {nextShown ? (
           <NextAction
             kind={nextShown.kind}

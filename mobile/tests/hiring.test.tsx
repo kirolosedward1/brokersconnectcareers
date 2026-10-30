@@ -6,6 +6,8 @@ import { CompanyContact, PausedNotice } from '~/components/companies/hiring-noti
 import { RecordRow } from '~/components/applications/cleared-applications';
 import { HiringSettings } from '~/components/employer/hiring-settings';
 import { OwnershipSettings } from '~/components/employer/ownership-settings';
+import { RulesSettings } from '~/components/employer/rules-settings';
+import { RequestCard } from '../src/app/(tabs)/(account)/employer/approvals';
 import { dayRuns, isHiringNow, type CompanyHiring } from '~/features/companies/hiring';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { LRI, PDI } from '~/i18n/rich';
@@ -189,5 +191,51 @@ describe('RecordRow', () => {
   it('draws at the largest text size', () => {
     mockWindow.fontScale = 3.571;
     expect(render(row).toJSON()).toMatchSnapshot();
+  });
+});
+
+describe('RulesSettings and RequestCard', () => {
+  const view = (
+    <Providers>
+      <RulesSettings
+        rules={{ approveDecline: true, approvePayChange: false, spendCeilingMonthEgp: 5000, requireMfa: false, cvAdminsOnly: true, mfaSatisfied: true }}
+      />
+      <RequestCard
+        canDecide
+        request={{
+          id: 'r1',
+          company_id: 'c',
+          kind: 'decline',
+          subject_id: 'a1',
+          payload: {},
+          requested_by: 'm',
+          status: 'pending',
+          decided_by: null,
+          decided_at: null,
+          note: null,
+          created_at: '2026-10-30T09:00:00Z',
+          candidateName: 'سارة عادل',
+          jobTitleAr: 'مستشار مبيعات',
+          jobTitleEn: null,
+          currentStatus: 'shortlisted',
+        }}
+      />
+    </Providers>
+  );
+
+  it('opens on the stored rules', () => {
+    render(view);
+    expect(screen.getByTestId('rule-decline').props.value).toBe(true);
+    expect(screen.getByTestId('rule-pay').props.value).toBe(false);
+    expect(screen.getByLabelText(ar.app.rules.ceiling).props.value).toBe('5000');
+  });
+
+  it('draws right to left', () => {
+    expect(render(view).toJSON()).toMatchSnapshot();
+  });
+
+  it('draws at the largest text size', () => {
+    mockWindow.fontScale = 3.571;
+    expect(render(view).toJSON()).toMatchSnapshot();
   });
 });

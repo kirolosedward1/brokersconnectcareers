@@ -149,6 +149,11 @@ export function ApplicantCard({
       { applicationId: applicant.id, status: next, decisionNote, from, ...(share ? {} : { shareReason: false }) },
       {
         onSuccess: (result) => {
+          // Not moved: an admin approves declines here (migration 380), and has been asked.
+          if (result.pendingApproval) {
+            toast.show({ message: t('app.rules.declineAsked'), tone: 'default' });
+            return;
+          }
           if (share) return;
           setReason('');
           toast.show(

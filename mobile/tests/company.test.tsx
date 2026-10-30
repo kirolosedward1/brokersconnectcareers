@@ -16,6 +16,7 @@ import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as ActivityScreen from '../src/app/(tabs)/(account)/employer/activity';
+import * as ApprovalsScreen from '../src/app/(tabs)/(account)/employer/approvals';
 import * as BillingScreen from '../src/app/(tabs)/(account)/employer/billing';
 import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
 import { DeclaredTabs } from './declared-tabs';
@@ -230,6 +231,7 @@ const app = {
   '(tabs)/(account)/employer/company': CompanyScreen,
   '(tabs)/(account)/employer/billing': BillingScreen,
   '(tabs)/(account)/employer/activity': ActivityScreen,
+  '(tabs)/(account)/employer/approvals': ApprovalsScreen,
 };
 
 // The company's profile read, not the hiring or closure columns read on their own (migrations 378, 379).
@@ -690,6 +692,103 @@ describe("the team's activity", () => {
     await renderRouter(app, { initialUrl: '/employer/activity' });
     expect(await screen.findByText(ar.app.activity.emptyTitle)).toBeTruthy();
     expect(screen.queryByRole('button', { name: ar.app.activity.export })).toBeNull();
+  });
+});
+
+describe("the team's rules and what waits for an admin", () => {
+  const rules = {
+    company_id: 'x',
+    approve_decline: false,
+    approve_pay_change: false,
+    spend_ceiling_month_egp: null,
+    require_mfa: false,
+    cv_admins_only: false,
+    mfa_satisfied: true,
+  };
+
+  it('saves the rules an admin turns on, the ceiling in Western digits', async () => {
+    server.on('POST /rest/v1/rpc/company_rules', [rules]);
+    server.on('POST /api/mobile/v1/actions/saveCompanyRules', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent(await screen.findByTestId('rule-decline'), 'valueChange', true);
+    fireEvent(screen.getByTestId('rule-cv'), 'valueChange', true);
+    fireEvent.changeText(screen.getByLabelText(ar.app.rules.ceiling), '٥٠٠٠');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.rules.save }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/saveCompanyRules')).toEqual({
+        approveDecline: true,
+        approvePayChange: false,
+        requireMfa: false,
+        cvAdminsOnly: true,
+        spendCeilingMonthEgp: 5000,
+      }),
+    );
+  });
+
+  it('says a second factor must be used before it is required of the team', async () => {
+    server.on('POST /rest/v1/rpc/company_rules', [rules]);
+    server.on('POST /api/mobile/v1/actions/saveCompanyRules', { ok: false, error: 'mfa_required' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent(await screen.findByTestId('rule-mfa'), 'valueChange', true);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.rules.save }));
+    expect(await screen.findByText(ar.app.rules.mfaFirst)).toBeTruthy();
+  });
+
+  it('tells a member the company requires a second factor they have not used, and the way through', async () => {
+    server.on('POST /rest/v1/rpc/company_rules', [{ ...rules, require_mfa: true, mfa_satisfied: false }]);
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByText(ar.app.rules.mfaShutTitle)).toBeTruthy();
+  });
+
+  it("lets an admin approve a colleague's decline, made as them", async () => {
+    server.on('GET /rest/v1/company_approval_requests', [
+      {
+        id: 'r1',
+        company_id: 'x',
+        kind: 'decline',
+        subject_id: 'a1',
+        payload: { from: 'shortlisted' },
+        requested_by: RECRUITER,
+        status: 'pending',
+        decided_by: null,
+        decided_at: null,
+        note: null,
+        created_at: '2026-10-30T09:00:00Z',
+      },
+    ]);
+    server.on('GET /rest/v1/applications', [
+      { id: 'a1', status: 'shortlisted', candidate: { full_name: 'سارة عادل' }, job: { title_ar: 'مستشار مبيعات', title_en: null } },
+    ]);
+    server.on('POST /api/mobile/v1/actions/decideApprovalRequest', { ok: true, data: { outcome: 'approved' } });
+    await renderRouter(app, { initialUrl: '/employer/approvals' });
+    expect(await screen.findByText(ar.app.rules.queueLedeAdmin)).toBeTruthy();
+    expect(screen.getByText('سارة عادل · مستشار مبيعات')).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.rules.approve }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/decideApprovalRequest')).toEqual({ id: 'r1', approve: true }));
+  });
+
+  it('shows a recruiter their own asks, with nothing to decide', async () => {
+    role = 'recruiter';
+    server.on('GET /rest/v1/company_approval_requests', [
+      {
+        id: 'r2',
+        company_id: 'x',
+        kind: 'pay_change',
+        subject_id: 'j1',
+        payload: {},
+        requested_by: USER_ID,
+        status: 'refused',
+        decided_by: 'someone',
+        decided_at: '2026-10-30T10:00:00Z',
+        note: null,
+        created_at: '2026-10-30T09:00:00Z',
+      },
+    ]);
+    server.on('GET /rest/v1/jobs', [{ id: 'j1', title_ar: 'مستشار مبيعات', title_en: null }]);
+    await renderRouter(app, { initialUrl: '/employer/approvals' });
+    expect(await screen.findByText(ar.app.rules.queueLedeOwn)).toBeTruthy();
+    expect(screen.getByText(ar.app.rules.status_refused)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.rules.approve })).toBeNull();
   });
 });
 

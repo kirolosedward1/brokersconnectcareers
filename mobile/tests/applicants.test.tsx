@@ -334,6 +334,15 @@ describe("a listing's applicants", () => {
     await waitFor(() => expect(shownToast()?.message).toBe(ar.app.applicants.reasonKeptPrivate));
   });
 
+  it('says a move the company has an admin approve was asked for, not made', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true, data: { reasonKept: true, pendingApproval: true } });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible }));
+    fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), 'سبب.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.applicants.reasonKeepPrivate }));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.rules.declineAsked));
+  });
+
   it('says so when an unticked reason could not be kept, the move standing', async () => {
     server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true, data: { reasonKept: false } });
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });

@@ -6528,3 +6528,1997 @@ exports[`RecordRow draws right to left 1`] = `
   </View>
 </RNCSafeAreaProvider>
 `;
+
+exports[`RulesSettings and RequestCard draws at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 16,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        accessibilityRole="header"
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            undefined,
+          ]
+        }
+      >
+        قواعد الفريق
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        ما يحتاج موافقة مسؤول، وحدّ الإنفاق، والتحقق بخطوتين. تحفظ قاعدة البيانات هذه القواعد على الموقع والتطبيق معًا.
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "borderCurve": "continuous",
+            "borderRadius": 20,
+            "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E6E1D8",
+              "borderCurve": "continuous",
+              "borderRadius": 20,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "marginTop": -1,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    رفض المتقدمين بموافقة مسؤول
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    يُرسل رفض المجنّد إلى مسؤول ليوافق عليه قبل أن يصل إلى المتقدم
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="يُرسل رفض المجنّد إلى مسؤول ليوافق عليه قبل أن يصل إلى المتقدم"
+                  accessibilityLabel="رفض المتقدمين بموافقة مسؤول"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-decline"
+                  tintColor="#8B8578"
+                  value={true}
+                />
+              </View>
+            </View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    تغيير راتب إعلان منشور بموافقة مسؤول
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    يُحفظ باقي التعديل، وينتظر الراتب الجديد موافقة مسؤول
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="يُحفظ باقي التعديل، وينتظر الراتب الجديد موافقة مسؤول"
+                  accessibilityLabel="تغيير راتب إعلان منشور بموافقة مسؤول"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-pay"
+                  tintColor="#8B8578"
+                  value={false}
+                />
+              </View>
+            </View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    السير الذاتية للمسؤولين فقط
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    يرى المجنّدون الطلبات، ولا يفتح السيرة الذاتية إلا مسؤول
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="يرى المجنّدون الطلبات، ولا يفتح السيرة الذاتية إلا مسؤول"
+                  accessibilityLabel="السير الذاتية للمسؤولين فقط"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-cv"
+                  tintColor="#8B8578"
+                  value={true}
+                />
+              </View>
+            </View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    التحقق بخطوتين لكل الفريق
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    لا يرى من لم يستخدمه شيئًا من بيانات الشركة حتى يفعل
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="لا يرى من لم يستخدمه شيئًا من بيانات الشركة حتى يفعل"
+                  accessibilityLabel="التحقق بخطوتين لكل الفريق"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-mfa"
+                  tintColor="#8B8578"
+                  value={false}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        حدّ الإنفاق الشهري (جنيه)
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+           · اتركه فارغًا لعدم وضع حد. يُطبّق عند الشراء من الموقع.
+        </Text>
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#8B8578",
+            "borderCurve": "continuous",
+            "borderRadius": 14,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "gap": 8,
+            "minHeight": 50,
+            "outlineColor": "#16295A",
+            "outlineStyle": "solid",
+            "outlineWidth": 0,
+            "paddingHorizontal": 14,
+          }
+        }
+      >
+        <TextInput
+          accessibilityLabel="حدّ الإنفاق الشهري (جنيه)"
+          inputAccessoryViewID="keyboard-done"
+          keyboardAppearance="light"
+          keyboardType="number-pad"
+          onBlur={[Function]}
+          onChangeText={[Function]}
+          onFocus={[Function]}
+          placeholderTextColor="#5C6270"
+          returnKeyType="done"
+          selectionColor="#16295A"
+          style={
+            [
+              {
+                "color": "#121620",
+                "flex": 1,
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "fontSize": 16,
+                "minHeight": 44,
+                "minWidth": 0,
+                "paddingVertical": 0,
+                "textAlign": "left",
+                "writingDirection": "ltr",
+              },
+              undefined,
+            ]
+          }
+          value="5000"
+        />
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 12,
+        }
+      }
+    >
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={0}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#16295A",
+            "borderColor": "transparent",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 0,
+            "justifyContent": "center",
+            "minHeight": 48,
+            "opacity": 1,
+            "paddingHorizontal": 20,
+            "shadowColor": "#121620",
+            "shadowOffset": {
+              "height": 5,
+              "width": 0,
+            },
+            "shadowOpacity": 0.07,
+            "shadowRadius": 10,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "maxWidth": "100%",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 16,
+                  "lineHeight": 28,
+                },
+                {
+                  "color": "#FFFFFF",
+                  "flexShrink": 1,
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            حفظ القواعد
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 8,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "flexWrap": "wrap",
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            {
+              "flexShrink": 1,
+            },
+          ]
+        }
+      >
+        رفض متقدم
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FAEED6",
+            "borderColor": "transparent",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 0,
+            "flexDirection": "row",
+            "gap": 4,
+            "maxWidth": "100%",
+            "paddingHorizontal": 10,
+            "paddingVertical": 3,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 11,
+                "lineHeight": 16,
+              },
+              {
+                "color": "#8F5B0E",
+                "flexShrink": 1,
+              },
+            ]
+          }
+        >
+          بانتظار الموافقة
+        </Text>
+      </View>
+    </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 14,
+            "lineHeight": 22,
+          },
+          undefined,
+        ]
+      }
+    >
+      سارة عادل · مستشار مبيعات
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      30 أكتوبر، 11:00 ص
+    </Text>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={4}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#16295A",
+            "borderColor": "transparent",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 0,
+            "justifyContent": "center",
+            "minHeight": 36,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "maxWidth": "100%",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 14,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#FFFFFF",
+                  "flexShrink": 1,
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            موافقة
+          </Text>
+        </View>
+      </View>
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={4}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#E6E1D8",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 1,
+            "justifyContent": "center",
+            "minHeight": 36,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "maxWidth": "100%",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 14,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#121620",
+                  "flexShrink": 1,
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            رفض الطلب
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`RulesSettings and RequestCard draws right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 16,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        accessibilityRole="header"
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            undefined,
+          ]
+        }
+      >
+        قواعد الفريق
+      </Text>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        ما يحتاج موافقة مسؤول، وحدّ الإنفاق، والتحقق بخطوتين. تحفظ قاعدة البيانات هذه القواعد على الموقع والتطبيق معًا.
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "borderCurve": "continuous",
+            "borderRadius": 20,
+            "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E6E1D8",
+              "borderCurve": "continuous",
+              "borderRadius": 20,
+              "borderWidth": 1,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "marginTop": -1,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    رفض المتقدمين بموافقة مسؤول
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    يُرسل رفض المجنّد إلى مسؤول ليوافق عليه قبل أن يصل إلى المتقدم
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="يُرسل رفض المجنّد إلى مسؤول ليوافق عليه قبل أن يصل إلى المتقدم"
+                  accessibilityLabel="رفض المتقدمين بموافقة مسؤول"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-decline"
+                  tintColor="#8B8578"
+                  value={true}
+                />
+              </View>
+            </View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    تغيير راتب إعلان منشور بموافقة مسؤول
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    يُحفظ باقي التعديل، وينتظر الراتب الجديد موافقة مسؤول
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="يُحفظ باقي التعديل، وينتظر الراتب الجديد موافقة مسؤول"
+                  accessibilityLabel="تغيير راتب إعلان منشور بموافقة مسؤول"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-pay"
+                  tintColor="#8B8578"
+                  value={false}
+                />
+              </View>
+            </View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    السير الذاتية للمسؤولين فقط
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    يرى المجنّدون الطلبات، ولا يفتح السيرة الذاتية إلا مسؤول
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="يرى المجنّدون الطلبات، ولا يفتح السيرة الذاتية إلا مسؤول"
+                  accessibilityLabel="السير الذاتية للمسؤولين فقط"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-cv"
+                  tintColor="#8B8578"
+                  value={true}
+                />
+              </View>
+            </View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 54,
+                  "paddingStart": 16,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "alignSelf": "stretch",
+                    "borderTopColor": "#E6E1D8",
+                    "borderTopWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "paddingEnd": 16,
+                    "paddingVertical": 8,
+                  }
+                }
+              >
+                <View
+                  style={
+                    {
+                      "flex": 1,
+                      "gap": 2,
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#121620",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 16,
+                          "lineHeight": 28,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    التحقق بخطوتين لكل الفريق
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "color": "#5C6270",
+                          "fontFamily": "IBMPlexSansArabic_400Regular",
+                          "textAlign": "right",
+                        },
+                        {
+                          "fontSize": 12,
+                          "lineHeight": 18,
+                        },
+                        undefined,
+                      ]
+                    }
+                  >
+                    لا يرى من لم يستخدمه شيئًا من بيانات الشركة حتى يفعل
+                  </Text>
+                </View>
+                <RCTSwitch
+                  accessibilityHint="لا يرى من لم يستخدمه شيئًا من بيانات الشركة حتى يفعل"
+                  accessibilityLabel="التحقق بخطوتين لكل الفريق"
+                  accessibilityRole="switch"
+                  disabled={false}
+                  onChange={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  onTintColor="#16295A"
+                  style={
+                    {
+                      "alignSelf": "flex-start",
+                    }
+                  }
+                  testID="rule-mfa"
+                  tintColor="#8B8578"
+                  value={false}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 4,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_500Medium",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 14,
+              "lineHeight": 22,
+            },
+            undefined,
+          ]
+        }
+      >
+        حدّ الإنفاق الشهري (جنيه)
+        <Text
+          style={
+            [
+              {
+                "color": "#5C6270",
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+           · اتركه فارغًا لعدم وضع حد. يُطبّق عند الشراء من الموقع.
+        </Text>
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#8B8578",
+            "borderCurve": "continuous",
+            "borderRadius": 14,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "gap": 8,
+            "minHeight": 50,
+            "outlineColor": "#16295A",
+            "outlineStyle": "solid",
+            "outlineWidth": 0,
+            "paddingHorizontal": 14,
+          }
+        }
+      >
+        <TextInput
+          accessibilityLabel="حدّ الإنفاق الشهري (جنيه)"
+          inputAccessoryViewID="keyboard-done"
+          keyboardAppearance="light"
+          keyboardType="number-pad"
+          onBlur={[Function]}
+          onChangeText={[Function]}
+          onFocus={[Function]}
+          placeholderTextColor="#5C6270"
+          returnKeyType="done"
+          selectionColor="#16295A"
+          style={
+            [
+              {
+                "color": "#121620",
+                "flex": 1,
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "fontSize": 16,
+                "minHeight": 44,
+                "minWidth": 0,
+                "paddingVertical": 0,
+                "textAlign": "left",
+                "writingDirection": "ltr",
+              },
+              undefined,
+            ]
+          }
+          value="5000"
+        />
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 12,
+        }
+      }
+    >
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={0}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#16295A",
+            "borderColor": "transparent",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 0,
+            "justifyContent": "center",
+            "minHeight": 48,
+            "opacity": 1,
+            "paddingHorizontal": 20,
+            "shadowColor": "#121620",
+            "shadowOffset": {
+              "height": 5,
+              "width": 0,
+            },
+            "shadowOpacity": 0.07,
+            "shadowRadius": 10,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "maxWidth": "100%",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 16,
+                  "lineHeight": 28,
+                },
+                {
+                  "color": "#FFFFFF",
+                  "flexShrink": 1,
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            حفظ القواعد
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 8,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "flexWrap": "wrap",
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "color": "#121620",
+              "fontFamily": "IBMPlexSansArabic_600SemiBold",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 16,
+              "lineHeight": 28,
+            },
+            {
+              "flexShrink": 1,
+            },
+          ]
+        }
+      >
+        رفض متقدم
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "alignSelf": "flex-start",
+            "backgroundColor": "#FAEED6",
+            "borderColor": "transparent",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 0,
+            "flexDirection": "row",
+            "gap": 4,
+            "maxWidth": "100%",
+            "paddingHorizontal": 10,
+            "paddingVertical": 3,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 11,
+                "lineHeight": 16,
+              },
+              {
+                "color": "#8F5B0E",
+                "flexShrink": 1,
+              },
+            ]
+          }
+        >
+          بانتظار الموافقة
+        </Text>
+      </View>
+    </View>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 14,
+            "lineHeight": 22,
+          },
+          undefined,
+        ]
+      }
+    >
+      سارة عادل · مستشار مبيعات
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      30 أكتوبر، 11:00 ص
+    </Text>
+    <View
+      style={
+        {
+          "flexDirection": "row",
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={4}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#16295A",
+            "borderColor": "transparent",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 0,
+            "justifyContent": "center",
+            "minHeight": 36,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "maxWidth": "100%",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 14,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#FFFFFF",
+                  "flexShrink": 1,
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            موافقة
+          </Text>
+        </View>
+      </View>
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        hitSlop={4}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#E6E1D8",
+            "borderCurve": "continuous",
+            "borderRadius": 999,
+            "borderWidth": 1,
+            "justifyContent": "center",
+            "minHeight": 36,
+            "opacity": 1,
+            "paddingHorizontal": 16,
+            "transform": [
+              {
+                "scale": 1,
+              },
+            ],
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+              "maxWidth": "100%",
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 14,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#121620",
+                  "flexShrink": 1,
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            رفض الطلب
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;

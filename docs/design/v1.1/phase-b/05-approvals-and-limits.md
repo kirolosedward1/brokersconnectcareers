@@ -79,3 +79,57 @@ an `approvalRequests` read for the owner's queue. The employer Home queue
 
 1. Company-internal publish approval: **no**.
 2. Automatic sign-out after N days: **dropped**. There is no auto sign-out.
+
+## Built (2026-10-30)
+
+Migration 380, `a_company_sets_its_own_rules`. Test:
+`supabase/tests/company-rules.test.mjs`. Every rule is kept by the
+database, so the website and the app are held alike.
+
+- **`company_policies`** holds one row of rules per company. Admins write
+  it; every member reads it, even one a rule shuts out.
+  `company_rules()` answers the caller's company, and whether this session
+  meets a required second factor.
+- **Declines approved by an admin.**
+  - A non-admin member's move to «مرفوض» is refused with
+    `decline_needs_approval`.
+  - `setApplicationStatus` then writes a `company_approval_requests` row,
+    one waiting per applicant, and answers `pendingApproval`. The bulk
+    count says how many are waiting.
+- **Pay changes on a live listing approved by an admin.**
+  - A non-admin's change to any pay column of an active listing is refused
+    with `pay_change_needs_approval`.
+  - `saveJob` saves the rest of the edit, asks for the pay, and answers
+    `pendingApproval`.
+- **`decideApprovalRequest`.**
+  - The admin approves, and the thing is done now, as them. A decline goes
+    through the ordinary move (the candidate is told as usual). The pay is
+    written to the listing.
+  - If a colleague moved the applicant since, the request is marked
+    `expired` and nothing is done.
+- **Monthly spending ceiling.** `startCheckout` adds this Cairo month's paid
+  orders to the pack and refuses with `spend_ceiling` past the ceiling.
+  Whether a member may spend at all is 03's switch, so `approve_spend` was
+  not needed.
+- **A second factor for the whole team.**
+  - `owns_company()`, `is_company_admin()` and `owns_job()` answer false
+    for a member whose session is not aal2. Every policy built on them then
+    shows that member nothing.
+  - Turning it on is refused from a session that has not itself used a
+    second factor (`mfa_required_to_require`), so an admin cannot lock
+    themselves out.
+  - The app says why, on Home and the company page, with the way through
+    (verify a code, or set an authenticator up).
+- **CVs for admins only.** `may_read_application_cv()`; `/api/cv` answers
+  403 `cv_admins_only`.
+- **App:**
+  - «قواعد الفريق» on the company page, for admins.
+  - «طلبات الموافقة» (`/employer/approvals`): admins approve or refuse;
+    anybody else sees their own asks.
+  - The queue appears on Home for admins.
+  - A decline or a pay change that waits says so.
+- **Not built:**
+  - Publish approval and automatic sign-out (dropped, as decided).
+  - The website's settings page and queue come later. The website's own
+    forms show the generic line for the new refusals.
+

@@ -176,6 +176,7 @@ const TAB_OF_SECTION: readonly (readonly [prefix: string, owners: readonly TabNa
   ['/employer/company', ['account']],
   ['/employer/billing', ['account']],
   ['/employer/activity', ['account']],
+  ['/employer/approvals', ['account']],
   // The directory is the Consultants tab's own screen, and the Admin tab's
   // for an admin, whose bar has no Consultants tab; a consultant's page
   // opens in any tab.

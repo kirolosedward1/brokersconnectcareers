@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View, type ScrollViewInstance, type TextInputInstance } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
+import { toast } from '~/components/feedback/toast';
 import { Scale, TriangleAlert } from '~/components/ui/lucide';
 import { formatEgp, formatNumber } from '@/lib/format';
 import { localized } from '@/lib/locale';
@@ -202,8 +203,10 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
     setErrors({});
     save.mutate(toJobInput(values, { id: job?.id, version, idempotencyKey, submit: publish }), {
       // Closed once the guard has stood down (the effect above), not from here.
-      onSuccess: () => {
+      onSuccess: (result) => {
         kept.clear();
+        // Saved, but the live listing's new pay waits for an admin (migration 380).
+        if (result.pendingApproval) toast.show({ message: t('app.rules.payAsked'), tone: 'default' });
         setSaved(true);
       },
       onError: (failure) => {

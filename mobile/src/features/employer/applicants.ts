@@ -425,7 +425,7 @@ export function useSetApplicationStatus() {
       from: ApplicationStatus;
       /** Whether the candidate may read the reason; unticked, the website keeps it as the company's note. */
       shareReason?: boolean;
-    }): Promise<{ reasonKept: boolean }> => {
+    }): Promise<{ reasonKept: boolean; pendingApproval: boolean }> => {
       const result = await callAction('setApplicationStatus', {
         applicationId: input.applicationId,
         status: input.status,
@@ -436,12 +436,13 @@ export function useSetApplicationStatus() {
         // No answer: the move may be in, and only the answer lost. Said to be
         // offline over a card the re-read then showed moved, the employer
         // was told it had not happened when it had.
-        if (!refusedAtTheDoor(error) && (await moveLanded(input))) return { ok: true as const, data: { reasonKept: true } };
+        if (!refusedAtTheDoor(error) && (await moveLanded(input))) return { ok: true as const, data: { reasonKept: true, pendingApproval: false } };
         throw error;
       });
       if (!result.ok) throw result.error === 'moved_already' ? new MovedAlready() : new Error(result.error);
       // A website from before the tick answers with no data: it shared the reason, as it always did.
-      return { reasonKept: result.data?.reasonKept !== false };
+      // pendingApproval: the company has an admin approve declines (migration 380); the move waits.
+      return { reasonKept: result.data?.reasonKept !== false, pendingApproval: result.data?.pendingApproval === true };
     },
     onSuccess: (_result, input) => {
       if (input.shareReason === false) void queryClient.invalidateQueries({ queryKey: ['employer', 'notes'] });
