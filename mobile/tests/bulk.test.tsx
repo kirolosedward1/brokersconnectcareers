@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BulkBar, PickBox } from '~/components/employer/bulk-bar';
+import { CandidateFile } from '~/components/employer/candidate-file';
 import { ReasonTick } from '~/components/employer/reason-tick';
 import type { Applicant } from '~/features/employer/applicants';
 import { catalogues, I18nProvider } from '~/i18n/provider';
@@ -78,5 +79,38 @@ describe('the select bar', () => {
   it('draws at the largest text size', () => {
     mockWindow.fontScale = 3.571;
     expect(render(view()).toJSON()).toMatchSnapshot();
+  });
+});
+
+describe('what the company knows of a candidate, on the card', () => {
+  const file = (
+    <Providers>
+      <CandidateFile
+        applicationId="a1"
+        notes={[{ id: 1, author_id: 'u1', body: 'تحدثنا معها في مارس.', created_at: '2026-03-02T10:00:00Z' }]}
+        history={[
+          { application_id: 'a0', job_title_ar: 'مدير مبيعات', job_title_en: null, status: 'rejected', created_at: '2026-03-01T10:00:00Z' },
+          { application_id: 'a9', job_title_ar: 'مستشار', job_title_en: null, status: 'hired', created_at: '2025-01-01T10:00:00Z' },
+        ]}
+        authors={{ u1: 'أحمد سمير' }}
+        viewerId="u1"
+      />
+    </Providers>
+  );
+
+  it('opens the earlier applications on a tap', () => {
+    render(file);
+    expect(screen.queryByText(/مستشار ·/)).toBeNull();
+    fireEvent.press(screen.getByRole('button', { name: ar.app.candidateFile.historyShow }));
+    expect(screen.getByText(/مستشار ·/)).toBeTruthy();
+  });
+
+  it('draws right to left', () => {
+    expect(render(file).toJSON()).toMatchSnapshot();
+  });
+
+  it('draws at the largest text size', () => {
+    mockWindow.fontScale = 3.571;
+    expect(render(file).toJSON()).toMatchSnapshot();
   });
 });

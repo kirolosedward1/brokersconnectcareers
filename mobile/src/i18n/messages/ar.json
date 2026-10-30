@@ -868,5 +868,18 @@
     "resultSome": "نُقل <v>{moved}</v>، وحرّك زملاؤك <v>{already}</v> قبلك، وتعذّر <v>{failed}</v>.",
     "messageResult": "أُرسلت الرسالة إلى <v>{sent}</v>.",
     "rateLimited": "أرسلت كثيرًا في وقت قصير. حاول بعد قليل."
+  },
+  "candidateFile": {
+    "history": "تقدّم من قبل: <v>{count}</v>",
+    "historyLast": "آخرها «{job}»: {status}",
+    "historyShow": "اعرض الطلبات السابقة",
+    "historyHide": "أخفِ الطلبات السابقة",
+    "notesTitle": "عن المرشّح",
+    "notesHint": "يراها كل فريقك على كل طلب منه، ولا يراها المرشح.",
+    "notesField": "ملاحظة عن المرشّح",
+    "notesAdd": "احفظ الملاحظة",
+    "notesRemove": "احذف الملاحظة",
+    "notesBy": "{name} · {date}",
+    "formerColleague": "زميل سابق"
   }
 }

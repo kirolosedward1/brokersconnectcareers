@@ -1,3 +1,4 @@
+import { useCandidateFiles } from '~/features/employer/candidate-file';
 import { BulkBar, PickBox } from '~/components/employer/bulk-bar';
 import { useInterviewsFor } from '~/features/interviews/interviews';
 import { useState } from 'react';
@@ -65,6 +66,9 @@ export default function InboxScreen() {
   const notes = useApplicantNotes((rows ?? []).map((row) => row.id));
   const interviews = useInterviewsFor((rows ?? []).map((row) => row.id));
   const interviewOf = (id: string) => (interviews.data ? (interviews.data.get(id) ?? null) : undefined);
+  const files = useCandidateFiles((rows ?? []).map((row) => row.id));
+  const fileOf = (id: string) =>
+    files.data ? { notes: files.data.notes[id] ?? [], history: files.data.history[id] ?? [], authors: files.data.authors } : undefined;
   const context = useApplicantContext();
   // Nobody is told a suspended company opened their application: its
   // applicants are hidden from it (migration 349), whatever a read returns.
@@ -315,6 +319,7 @@ export default function InboxScreen() {
                     districtNames={context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
                     notes={notesOf(notes.data, row.id)}
                     interview={interviewOf(row.id)}
+                    candidateFile={fileOf(row.id)}
                     authors={notes.data?.authors ?? {}}
                     viewerId={context.viewerId}
                   />
@@ -346,6 +351,7 @@ export default function InboxScreen() {
         districtNamesOf={(row) => context.districtNames(row.candidate?.agent_profiles?.district_ids ?? [])}
         notesOf={(row) => notesOf(notes.data, row.id)}
         interviewOf={(row) => interviewOf(row.id)}
+        candidateFileOf={(row) => fileOf(row.id)}
         authors={notes.data?.authors ?? {}}
         viewerId={context.viewerId}
       />

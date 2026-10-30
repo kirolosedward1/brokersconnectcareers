@@ -10,6 +10,8 @@ import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { PIPELINE_STAGES, STAGE_TONE, WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
 import type { ApplicationNoteRow, ApplicationStatus, InterviewInviteRow } from '@/lib/supabase/database.types';
 import { CompanyInterview } from '~/components/interviews/interview-panels';
+import { CandidateFile } from '~/components/employer/candidate-file';
+import type { CandidateNote, EarlierApplication } from '~/features/employer/candidate-file';
 import { firstName } from '@/lib/replies';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
 import { toast } from '~/components/feedback/toast';
@@ -59,6 +61,7 @@ export function ApplicantCard({
   districtNames,
   notes,
   interview,
+  candidateFile,
   authors,
   viewerId,
   leaveTo = (go) => go(),
@@ -71,6 +74,8 @@ export function ApplicantCard({
   notes: ApplicationNoteRow[] | undefined;
   /** The standing interview invitation (migration 373): null for none, undefined until read. */
   interview?: InterviewInviteRow | null;
+  /** What the company knows of the person (migration 375); undefined until read. */
+  candidateFile?: { notes: CandidateNote[]; history: EarlierApplication[]; authors: Record<string, string> };
   authors: Record<string, string>;
   viewerId: string | null;
   /**
@@ -457,6 +462,17 @@ export function ApplicantCard({
           invite={interview}
           closed={withdrawn || status === 'rejected' || status === 'hired'}
           now={openedAt}
+        />
+      ) : null}
+
+      {candidateFile ? (
+        <CandidateFile
+          applicationId={applicant.id}
+          notes={candidateFile.notes}
+          history={candidateFile.history}
+          authors={candidateFile.authors}
+          viewerId={viewerId}
+          readOnly={withdrawn}
         />
       ) : null}
 

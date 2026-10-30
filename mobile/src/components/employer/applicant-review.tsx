@@ -27,6 +27,8 @@ type CardProps = {
   notesOf: (applicant: Applicant) => ApplicationNoteRow[] | undefined;
   /** The standing interview invitation: null for none, undefined until read. */
   interviewOf?: (applicant: Applicant) => InterviewInviteRow | null | undefined;
+  /** What the company knows of the person; undefined until read. */
+  candidateFileOf?: (applicant: Applicant) => React.ComponentProps<typeof ApplicantCard>['candidateFile'];
   authors: Record<string, string>;
   viewerId: string | null;
 };
@@ -188,6 +190,7 @@ export function ApplicantReview({
                 districtNames={card.districtNamesOf(applicant)}
                 notes={card.notesOf(applicant)}
                 interview={card.interviewOf?.(applicant)}
+                candidateFile={card.candidateFileOf?.(applicant)}
                 authors={card.authors}
                 viewerId={card.viewerId}
                 leaveTo={(go) => onClose(go)}

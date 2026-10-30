@@ -868,5 +868,18 @@
     "resultSome": "Moved <v>{moved}</v>; colleagues moved <v>{already}</v> first; <v>{failed}</v> failed.",
     "messageResult": "The message was sent to <v>{sent}</v>.",
     "rateLimited": "Too many sends in a short time. Try again shortly."
+  },
+  "candidateFile": {
+    "history": "Applied before: <v>{count}</v>",
+    "historyLast": "Latest “{job}”: {status}",
+    "historyShow": "Show earlier applications",
+    "historyHide": "Hide earlier applications",
+    "notesTitle": "About the candidate",
+    "notesHint": "Your whole team sees these on every application from them; the candidate does not.",
+    "notesField": "A note about the candidate",
+    "notesAdd": "Save the note",
+    "notesRemove": "Delete the note",
+    "notesBy": "{name} · {date}",
+    "formerColleague": "Former colleague"
   }
 }

@@ -132,6 +132,7 @@ export { default as UserRoundPlus } from 'lucide-react-native/icons/user-round-p
 export { default as UserRoundX } from 'lucide-react-native/icons/user-round-x';
 export { default as Users } from 'lucide-react-native/icons/users';
 export { default as UserX } from 'lucide-react-native/icons/user-x';
+export { default as UsersRound } from 'lucide-react-native/icons/users-round';
 export { default as WifiOff } from 'lucide-react-native/icons/wifi-off';
 export { default as X } from 'lucide-react-native/icons/x';
 export type { LucideIcon, LucideProps } from 'lucide-react-native';

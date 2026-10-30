@@ -119,6 +119,8 @@ const notes: ApplicationNoteRow[] = [
 let rows: Applicant[];
 let interviews: InterviewInviteRow[] = [];
 let replies: SavedReplyRow[] = [];
+let candidateNotes: unknown[] = [];
+let candidateHistory: unknown[] = [];
 let client: QueryClient;
 
 beforeAll(() => {
@@ -128,6 +130,8 @@ beforeAll(() => {
 beforeEach(async () => {
   interviews = [];
   replies = [];
+  candidateNotes = [];
+  candidateHistory = [];
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
   rows = [sara, omar];
   jest.mocked(WebBrowser.openBrowserAsync).mockClear();
@@ -159,6 +163,10 @@ beforeEach(async () => {
   server.on('POST /api/mobile/v1/actions/setApplicationStatuses', { ok: true, data: { moved: 2, movedAlready: 0, failed: 0, reasonsNotKept: 0 } });
   server.on('POST /api/mobile/v1/actions/messageApplicants', { ok: true, data: { sent: 2, skipped: 0 } });
   server.on('GET /rest/v1/saved_replies', () => replies);
+  server.on('POST /rest/v1/rpc/candidate_notes_for', () => candidateNotes);
+  server.on('POST /rest/v1/rpc/candidate_history_for', () => candidateHistory);
+  server.on('POST /api/mobile/v1/actions/addCandidateNote', { ok: true, data: { id: 9 } });
+  server.on('POST /api/mobile/v1/actions/deleteCandidateNote', { ok: true });
   server.on('POST /api/mobile/v1/actions/saveReply', { ok: true, data: { reply: null } });
   server.on('POST /api/mobile/v1/actions/deleteReply', { ok: true });
   server.on('GET /rest/v1/company_members', [{ user_id: USER_ID, profile: { full_name: 'أحمد سمير' } }]);
@@ -1224,5 +1232,29 @@ describe('saved replies kept on the account', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.app.replies.moveLocal }));
     await waitFor(() => expect(input('/api/mobile/v1/actions/saveReply')).toEqual({ body: 'رد قديم على الهاتف', channel: 'whatsapp', teamWide: false }));
     await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.replies.moveLocal })).toBeNull());
+  });
+});
+
+describe('what the company knows of a candidate', () => {
+  it('says they applied before, how the latest ended, and the notes the whole team keeps about them', async () => {
+    candidateHistory = [
+      { for_application: sara.id, application_id: 'a0000000-0000-4000-8000-0000000000aa', job_title_ar: 'مدير مبيعات', job_title_en: null, status: 'rejected', created_at: '2026-03-01T10:00:00Z' },
+    ];
+    candidateNotes = [{ for_application: sara.id, id: 1, author_id: USER_ID, body: 'تحدثنا معها في مارس.', created_at: '2026-03-02T10:00:00Z' }];
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    expect(await screen.findByTestId('candidate-history')).toBeTruthy();
+    expect(screen.getByText(ar.app.candidateFile.historyLast.replace('{job}', 'مدير مبيعات').replace('{status}', ar.applicationStatus.rejected))).toBeTruthy();
+    expect(screen.getByText('تحدثنا معها في مارس.')).toBeTruthy();
+  });
+
+  it('keeps a note about the person through the website, keyed once', async () => {
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const fields = await screen.findAllByLabelText(ar.app.candidateFile.notesField);
+    fireEvent.changeText(fields[0], 'متاحة من أول الشهر.');
+    fireEvent.press(screen.getAllByRole('button', { name: ar.app.candidateFile.notesAdd })[0]);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/addCandidateNote')).toBeDefined());
+    const sent = input('/api/mobile/v1/actions/addCandidateNote') as { applicationId: string; body: string; idempotencyKey: string };
+    expect(sent.body).toBe('متاحة من أول الشهر.');
+    expect(sent.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

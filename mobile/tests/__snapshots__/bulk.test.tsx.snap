@@ -1503,3 +1503,1713 @@ exports[`the select bar draws right to left 1`] = `
   </View>
 </RNCSafeAreaProvider>
 `;
+
+exports[`what the company knows of a candidate, on the card draws at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "gap": 12,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#F0EDE7",
+          "borderCurve": "continuous",
+          "borderRadius": 14,
+          "gap": 6,
+          "padding": 12,
+        }
+      }
+      testID="candidate-history"
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <RNSVGSvgView
+          align="xMidYMid"
+          aria-hidden="true"
+          bbHeight={16}
+          bbWidth={16}
+          className="lucide lucide-rotate-ccw-clock lucide-history"
+          fill="none"
+          focusable={false}
+          height={16}
+          meetOrSlice={0}
+          minX={0}
+          minY={0}
+          stroke="#5C6270"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          style={
+            [
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 16,
+                "width": 16,
+              },
+            ]
+          }
+          vbHeight={24}
+          vbWidth={24}
+          width={16}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <RNSVGGroup
+            fill={null}
+            propList={
+              [
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+                "strokeLinejoin",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4284244592,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeLinejoin={1}
+            strokeWidth={2}
+          >
+            <RNSVGPath
+              d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGPath
+              d="M3 3v5h5"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGPath
+              d="M12 7v5l4 2"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+          </RNSVGGroup>
+        </RNSVGSvgView>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          تقدّم من قبل: ⁦2⁩
+        </Text>
+      </View>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        آخرها «مدير مبيعات»: غير مناسب
+      </Text>
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": false,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "justifyContent": "center",
+            "minHeight": 36,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#16295A",
+                "fontFamily": "IBMPlexSansArabic_500Medium",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          اعرض الطلبات السابقة
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <RNSVGSvgView
+          align="xMidYMid"
+          aria-hidden="true"
+          bbHeight={16}
+          bbWidth={16}
+          className="lucide lucide-users-round lucide-users-2"
+          fill="none"
+          focusable={false}
+          height={16}
+          meetOrSlice={0}
+          minX={0}
+          minY={0}
+          stroke="#5C6270"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          style={
+            [
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 16,
+                "width": 16,
+              },
+            ]
+          }
+          vbHeight={24}
+          vbWidth={24}
+          width={16}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <RNSVGGroup
+            fill={null}
+            propList={
+              [
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+                "strokeLinejoin",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4284244592,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeLinejoin={1}
+            strokeWidth={2}
+          >
+            <RNSVGPath
+              d="M18 21a8 8 0 0 0-16 0"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGCircle
+              cx="10"
+              cy="8"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              r="5"
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGPath
+              d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+          </RNSVGGroup>
+        </RNSVGSvgView>
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              undefined,
+            ]
+          }
+        >
+          عن المرشّح
+        </Text>
+      </View>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        يراها كل فريقك على كل طلب منه، ولا يراها المرشح.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 2,
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 14,
+                  "lineHeight": 22,
+                },
+                undefined,
+              ]
+            }
+          >
+            تحدثنا معها في مارس.
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                undefined,
+              ]
+            }
+          >
+            أحمد سمير · 2 مارس 2026
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="احذف الملاحظة"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={8}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "justifyContent": "center",
+              "minHeight": 44,
+              "minWidth": 44,
+            }
+          }
+        >
+          <RNSVGSvgView
+            align="xMidYMid"
+            aria-hidden="true"
+            bbHeight={16}
+            bbWidth={16}
+            className="lucide lucide-trash lucide-trash-2"
+            fill="none"
+            focusable={false}
+            height={16}
+            meetOrSlice={0}
+            minX={0}
+            minY={0}
+            stroke="#B5372C"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            style={
+              [
+                {
+                  "backgroundColor": "transparent",
+                  "borderWidth": 0,
+                },
+                {
+                  "flex": 0,
+                  "height": 16,
+                  "width": 16,
+                },
+              ]
+            }
+            vbHeight={24}
+            vbWidth={24}
+            width={16}
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <RNSVGGroup
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4290066220,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            >
+              <RNSVGPath
+                d="M10 11v6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M14 11v6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M3 6h18"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+            </RNSVGGroup>
+          </RNSVGSvgView>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#8B8578",
+            "borderCurve": "continuous",
+            "borderRadius": 14,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "gap": 8,
+            "minHeight": 50,
+            "outlineColor": "#16295A",
+            "outlineStyle": "solid",
+            "outlineWidth": 0,
+            "paddingHorizontal": 14,
+          }
+        }
+      >
+        <TextInput
+          accessibilityLabel="ملاحظة عن المرشّح"
+          keyboardAppearance="light"
+          maxLength={2000}
+          multiline={true}
+          onBlur={[Function]}
+          onChangeText={[Function]}
+          onFocus={[Function]}
+          placeholder="ملاحظة عن المرشّح"
+          placeholderTextColor="#5C6270"
+          selectionColor="#16295A"
+          style={
+            [
+              {
+                "color": "#121620",
+                "flex": 1,
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "fontSize": 16,
+                "minHeight": 44,
+                "minWidth": 0,
+                "paddingVertical": 0,
+                "textAlign": "right",
+                "writingDirection": undefined,
+              },
+              {
+                "minHeight": 56,
+                "textAlignVertical": "top",
+              },
+            ]
+          }
+          value=""
+        />
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": true,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={4}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E6E1D8",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 1,
+              "justifyContent": "center",
+              "minHeight": 36,
+              "opacity": 0.45,
+              "paddingHorizontal": 16,
+              "transform": [
+                {
+                  "scale": 1,
+                },
+              ],
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+                "maxWidth": "100%",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              احفظ الملاحظة
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`what the company knows of a candidate, on the card draws right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "gap": 12,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#F0EDE7",
+          "borderCurve": "continuous",
+          "borderRadius": 14,
+          "gap": 6,
+          "padding": 12,
+        }
+      }
+      testID="candidate-history"
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <RNSVGSvgView
+          align="xMidYMid"
+          aria-hidden="true"
+          bbHeight={16}
+          bbWidth={16}
+          className="lucide lucide-rotate-ccw-clock lucide-history"
+          fill="none"
+          focusable={false}
+          height={16}
+          meetOrSlice={0}
+          minX={0}
+          minY={0}
+          stroke="#5C6270"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          style={
+            [
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 16,
+                "width": 16,
+              },
+            ]
+          }
+          vbHeight={24}
+          vbWidth={24}
+          width={16}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <RNSVGGroup
+            fill={null}
+            propList={
+              [
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+                "strokeLinejoin",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4284244592,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeLinejoin={1}
+            strokeWidth={2}
+          >
+            <RNSVGPath
+              d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGPath
+              d="M3 3v5h5"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGPath
+              d="M12 7v5l4 2"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+          </RNSVGGroup>
+        </RNSVGSvgView>
+        <Text
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          تقدّم من قبل: ⁦2⁩
+        </Text>
+      </View>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        آخرها «مدير مبيعات»: غير مناسب
+      </Text>
+      <View
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": false,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "justifyContent": "center",
+            "minHeight": 36,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "color": "#16295A",
+                "fontFamily": "IBMPlexSansArabic_500Medium",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 12,
+                "lineHeight": 18,
+              },
+              undefined,
+            ]
+          }
+        >
+          اعرض الطلبات السابقة
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <RNSVGSvgView
+          align="xMidYMid"
+          aria-hidden="true"
+          bbHeight={16}
+          bbWidth={16}
+          className="lucide lucide-users-round lucide-users-2"
+          fill="none"
+          focusable={false}
+          height={16}
+          meetOrSlice={0}
+          minX={0}
+          minY={0}
+          stroke="#5C6270"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          style={
+            [
+              {
+                "backgroundColor": "transparent",
+                "borderWidth": 0,
+              },
+              {
+                "flex": 0,
+                "height": 16,
+                "width": 16,
+              },
+            ]
+          }
+          vbHeight={24}
+          vbWidth={24}
+          width={16}
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <RNSVGGroup
+            fill={null}
+            propList={
+              [
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "strokeLinecap",
+                "strokeLinejoin",
+              ]
+            }
+            stroke={
+              {
+                "payload": 4284244592,
+                "type": 0,
+              }
+            }
+            strokeLinecap={1}
+            strokeLinejoin={1}
+            strokeWidth={2}
+          >
+            <RNSVGPath
+              d="M18 21a8 8 0 0 0-16 0"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGCircle
+              cx="10"
+              cy="8"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              r="5"
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+            <RNSVGPath
+              d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4284244592,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            />
+          </RNSVGGroup>
+        </RNSVGSvgView>
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "color": "#121620",
+                "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                "textAlign": "right",
+              },
+              {
+                "fontSize": 14,
+                "lineHeight": 22,
+              },
+              undefined,
+            ]
+          }
+        >
+          عن المرشّح
+        </Text>
+      </View>
+      <Text
+        style={
+          [
+            {
+              "color": "#5C6270",
+              "fontFamily": "IBMPlexSansArabic_400Regular",
+              "textAlign": "right",
+            },
+            {
+              "fontSize": 12,
+              "lineHeight": 18,
+            },
+            undefined,
+          ]
+        }
+      >
+        يراها كل فريقك على كل طلب منه، ولا يراها المرشح.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 2,
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "color": "#121620",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 14,
+                  "lineHeight": 22,
+                },
+                undefined,
+              ]
+            }
+          >
+            تحدثنا معها في مارس.
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "color": "#5C6270",
+                  "fontFamily": "IBMPlexSansArabic_400Regular",
+                  "textAlign": "right",
+                },
+                {
+                  "fontSize": 12,
+                  "lineHeight": 18,
+                },
+                undefined,
+              ]
+            }
+          >
+            أحمد سمير · 2 مارس 2026
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="احذف الملاحظة"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={8}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "justifyContent": "center",
+              "minHeight": 44,
+              "minWidth": 44,
+            }
+          }
+        >
+          <RNSVGSvgView
+            align="xMidYMid"
+            aria-hidden="true"
+            bbHeight={16}
+            bbWidth={16}
+            className="lucide lucide-trash lucide-trash-2"
+            fill="none"
+            focusable={false}
+            height={16}
+            meetOrSlice={0}
+            minX={0}
+            minY={0}
+            stroke="#B5372C"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            style={
+              [
+                {
+                  "backgroundColor": "transparent",
+                  "borderWidth": 0,
+                },
+                {
+                  "flex": 0,
+                  "height": 16,
+                  "width": 16,
+                },
+              ]
+            }
+            vbHeight={24}
+            vbWidth={24}
+            width={16}
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <RNSVGGroup
+              fill={null}
+              propList={
+                [
+                  "fill",
+                  "stroke",
+                  "strokeWidth",
+                  "strokeLinecap",
+                  "strokeLinejoin",
+                ]
+              }
+              stroke={
+                {
+                  "payload": 4290066220,
+                  "type": 0,
+                }
+              }
+              strokeLinecap={1}
+              strokeLinejoin={1}
+              strokeWidth={2}
+            >
+              <RNSVGPath
+                d="M10 11v6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M14 11v6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M3 6h18"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+              <RNSVGPath
+                d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4290066220,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              />
+            </RNSVGGroup>
+          </RNSVGSvgView>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#8B8578",
+            "borderCurve": "continuous",
+            "borderRadius": 14,
+            "borderWidth": 1,
+            "flexDirection": "row",
+            "gap": 8,
+            "minHeight": 50,
+            "outlineColor": "#16295A",
+            "outlineStyle": "solid",
+            "outlineWidth": 0,
+            "paddingHorizontal": 14,
+          }
+        }
+      >
+        <TextInput
+          accessibilityLabel="ملاحظة عن المرشّح"
+          keyboardAppearance="light"
+          maxLength={2000}
+          multiline={true}
+          onBlur={[Function]}
+          onChangeText={[Function]}
+          onFocus={[Function]}
+          placeholder="ملاحظة عن المرشّح"
+          placeholderTextColor="#5C6270"
+          selectionColor="#16295A"
+          style={
+            [
+              {
+                "color": "#121620",
+                "flex": 1,
+                "fontFamily": "IBMPlexSansArabic_400Regular",
+                "fontSize": 16,
+                "minHeight": 44,
+                "minWidth": 0,
+                "paddingVertical": 0,
+                "textAlign": "right",
+                "writingDirection": undefined,
+              },
+              {
+                "minHeight": 56,
+                "textAlignVertical": "top",
+              },
+            ]
+          }
+          value=""
+        />
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "flex-start",
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": true,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          hitSlop={4}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E6E1D8",
+              "borderCurve": "continuous",
+              "borderRadius": 999,
+              "borderWidth": 1,
+              "justifyContent": "center",
+              "minHeight": 36,
+              "opacity": 0.45,
+              "paddingHorizontal": 16,
+              "transform": [
+                {
+                  "scale": 1,
+                },
+              ],
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+                "maxWidth": "100%",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "color": "#121620",
+                    "fontFamily": "IBMPlexSansArabic_600SemiBold",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#121620",
+                    "flexShrink": 1,
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              احفظ الملاحظة
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+</RNCSafeAreaProvider>
+`;
