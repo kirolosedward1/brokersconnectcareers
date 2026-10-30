@@ -420,6 +420,28 @@ describe("the company's page, for a company admin", () => {
     expect(ImagePicker.launchCameraAsync).not.toHaveBeenCalled();
   });
 
+  it('keeps a team to five, the owner included, and says why nobody more can be added', async () => {
+    server.on('GET /rest/v1/company_members', () =>
+      [USER_ID, RECRUITER, 'r3', 'r4', 'r5'].map((id, index) => ({
+        user_id: id.length > 2 ? id : `0b000000-0000-4000-8000-00000000000${index}`,
+        role: index === 0 ? role : 'recruiter',
+        created_at: `2026-09-0${index + 1}T10:00:00Z`,
+        profile: { full_name: `عضو ${index}` },
+      })),
+    );
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByText(ar.employer.teamFull)).toBeTruthy();
+    expect(screen.queryByLabelText(ar.employer.teamEmail)).toBeNull();
+  });
+
+  it('says the team is full when the website refuses a sixth', async () => {
+    server.on('POST /api/mobile/v1/actions/addCompanyMember', { ok: false, error: 'team_full' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.employer.teamEmail), 'mona@example.com');
+    fireEvent.press(screen.getByRole('button', { name: ar.employer.teamAdd }));
+    expect(await screen.findByText(ar.employer.teamFull)).toBeTruthy();
+  });
+
   it("adds a colleague, says the website's word when it cannot, and takes one off after asking", async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await renderRouter(app, { initialUrl: '/employer/company' });

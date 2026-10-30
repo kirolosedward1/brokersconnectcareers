@@ -267,8 +267,11 @@ export function useUploadDocument(companyId: string) {
   });
 }
 
+/** The most people on a company's team, the owner included — the database's own cap (migration 371). */
+export const TEAM_MAX = 5;
+
 /** The team refusals the website has words for; anything else is the generic line. */
-export type MemberRefusal = 'no_account' | 'already_member' | 'rate_limited' | 'invalid_email' | 'failed';
+export type MemberRefusal = 'no_account' | 'already_member' | 'rate_limited' | 'team_full' | 'invalid_email' | 'failed';
 
 export class MemberRefused extends Error {
   constructor(readonly reason: MemberRefusal) {
@@ -297,7 +300,9 @@ export function useAddMember() {
               ? 'no_account'
               : result.error === 'already_member'
                 ? 'already_member'
-                : // The website's schema refused the address itself.
+                : result.error === 'team_full'
+                  ? 'team_full'
+                  : // The website's schema refused the address itself.
                   result.error === 'invalid'
                   ? 'invalid_email'
                   : 'failed';

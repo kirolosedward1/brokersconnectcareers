@@ -290,9 +290,40 @@ describe("a listing's applicants", () => {
     );
   });
 
+  it('keeps the reason from the candidate when the employer unticks it, as an internal note', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true, data: { reasonKept: true } });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    const tick = await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible });
+    expect(tick.props.accessibilityState).toMatchObject({ checked: true });
+    fireEvent.press(tick);
+    expect(screen.getByRole('checkbox', { name: ar.employer.decisionNoteVisible }).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByText(ar.app.applicants.reasonPrivateHint)).toBeTruthy();
+    fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), 'الخبرة أقل من المطلوب.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.applicants.reasonKeepPrivate }));
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/setApplicationStatus')).toEqual({
+        applicationId: omar.id,
+        status: 'shortlisted',
+        decisionNote: 'الخبرة أقل من المطلوب.',
+        from: 'shortlisted',
+        shareReason: false,
+      }),
+    );
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.applicants.reasonKeptPrivate));
+  });
+
+  it('says so when an unticked reason could not be kept, the move standing', async () => {
+    server.on('POST /api/mobile/v1/actions/setApplicationStatus', { ok: true, data: { reasonKept: false } });
+    await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
+    fireEvent.press(await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible }));
+    fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), 'سبب داخلي.');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.applicants.reasonKeepPrivate }));
+    await waitFor(() => expect(shownToast()?.message).toBe(ar.app.applicants.reasonNotKept));
+  });
+
   it('does not send a blank reason', async () => {
     await renderRouter(app, { initialUrl: `/employer/jobs/${JOB_ID}/applicants` });
-    expect(await screen.findByText(ar.employer.decisionNoteVisible)).toBeTruthy();
+    expect(await screen.findByRole('checkbox', { name: ar.employer.decisionNoteVisible })).toBeTruthy();
     expect(screen.getByText(ar.employer.decisionNoteHint)).toBeTruthy();
     fireEvent.changeText(screen.getByDisplayValue('مقابلة يوم الخميس.'), '   ');
     expect(screen.getByRole('button', { name: ar.employer.decisionNoteSend }).props.accessibilityState).toMatchObject({

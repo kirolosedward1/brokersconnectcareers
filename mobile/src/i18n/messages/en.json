@@ -299,7 +299,11 @@
   "applicants": {
     "cvLimit": "You have opened a lot of CVs this hour. Try again shortly.",
     "rejectConfirm": "Turn this applicant down?",
-    "empty": "No applicants yet"
+    "empty": "No applicants yet",
+    "reasonPrivateHint": "The applicant will not see it. It is kept as an internal note for your team on this application.",
+    "reasonKeepPrivate": "Save as an internal note",
+    "reasonKeptPrivate": "The reason is kept as an internal note; the applicant will not see it.",
+    "reasonNotKept": "The application moved, but the reason could not be kept as a note. Add it from the notes."
   },
   "push": {
     "title": "Notifications on this phone",
@@ -772,5 +776,8 @@
     "range7": "<v>7</v> days",
     "range30": "<v>30</v> days",
     "range90": "<v>90</v> days"
+  },
+  "team": {
+    "count": "Team: <v>{count}</v> of <v>{max}</v>"
   }
 }

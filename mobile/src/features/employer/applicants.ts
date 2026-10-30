@@ -402,7 +402,7 @@ export class MovedAlready extends Error {
  * the reason as the website stores it (clean, or nothing). A read that fails
  * is "not known to be".
  */
-async function moveLanded(input: { applicationId: string; status: ApplicationStatus; decisionNote: string }) {
+async function moveLanded(input: { applicationId: string; status: ApplicationStatus; decisionNote: string; shareReason?: boolean }) {
   const { data, error } = await supabase
     .from('applications')
     .select('status, decision_note')
@@ -410,26 +410,41 @@ async function moveLanded(input: { applicationId: string; status: ApplicationSta
     .maybeSingle();
   if (error || !data) return false;
   const row = data as { status: ApplicationStatus; decision_note: string | null };
-  return row.status === input.status && (row.decision_note ?? null) === (clean(input.decisionNote.trim(), true) || null);
+  // A reason kept from the candidate is not on the row at all.
+  const expected = input.shareReason === false ? null : clean(input.decisionNote.trim(), true) || null;
+  return row.status === input.status && (row.decision_note ?? null) === expected;
 }
 
 export function useSetApplicationStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { applicationId: string; status: ApplicationStatus; decisionNote: string; from: ApplicationStatus }) => {
+    mutationFn: async (input: {
+      applicationId: string;
+      status: ApplicationStatus;
+      decisionNote: string;
+      from: ApplicationStatus;
+      /** Whether the candidate may read the reason; unticked, the website keeps it as the company's note. */
+      shareReason?: boolean;
+    }): Promise<{ reasonKept: boolean }> => {
       const result = await callAction('setApplicationStatus', {
         applicationId: input.applicationId,
         status: input.status,
         decisionNote: input.decisionNote.trim() || null,
         from: input.from,
+        ...(input.shareReason === false ? { shareReason: false } : {}),
       }).catch(async (error: unknown) => {
         // No answer: the move may be in, and only the answer lost. Said to be
         // offline over a card the re-read then showed moved, the employer
         // was told it had not happened when it had.
-        if (!refusedAtTheDoor(error) && (await moveLanded(input))) return { ok: true as const };
+        if (!refusedAtTheDoor(error) && (await moveLanded(input))) return { ok: true as const, data: { reasonKept: true } };
         throw error;
       });
       if (!result.ok) throw result.error === 'moved_already' ? new MovedAlready() : new Error(result.error);
+      // A website from before the tick answers with no data: it shared the reason, as it always did.
+      return { reasonKept: result.data?.reasonKept !== false };
+    },
+    onSuccess: (_result, input) => {
+      if (input.shareReason === false) void queryClient.invalidateQueries({ queryKey: ['employer', 'notes'] });
     },
     // The stages are read again before the move counts as settled, so the card
     // then shows what is stored (a colleague's move included). The overview's

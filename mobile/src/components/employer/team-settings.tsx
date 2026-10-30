@@ -11,8 +11,9 @@ import { Field } from '~/components/ui/field';
 import { Select } from '~/components/ui/select';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
-import { MemberRefused, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
+import { MemberRefused, TEAM_MAX, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
 import { EMAIL_SHAPE } from '~/lib/email-shape';
+import { markupTags } from '~/i18n/rich';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
@@ -22,6 +23,7 @@ const REFUSAL_COPY = {
   no_account: 'teamNoAccount',
   already_member: 'teamAlreadyMember',
   rate_limited: 'teamRateLimited',
+  team_full: 'teamFull',
 } as const;
 
 /**
@@ -40,6 +42,7 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<CompanyMemberRole>('recruiter');
   const [error, setError] = useState<string | null>(null);
+  const full = members.length >= TEAM_MAX;
 
   const submit = () => {
     const address = email.trim();
@@ -97,6 +100,9 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
         <Text variant="small" tone="mutedForeground">
           {t('employer.teamBody')}
         </Text>
+        <Text variant="small" weight="medium" testID="team-count">
+          {t.markup('app.team.count', { count: members.length, max: TEAM_MAX, ...markupTags })}
+        </Text>
       </View>
 
       {members.map((member) => {
@@ -140,7 +146,14 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
         );
       })}
 
-      {canManage ? (
+      {/* Five at most, the owner included (migration 371): a full team adds nobody until one leaves. */}
+      {canManage && full ? (
+        <View style={{ paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
+          <Text variant="small" tone="mutedForeground">
+            {t('employer.teamFull')}
+          </Text>
+        </View>
+      ) : canManage ? (
         <View style={{ gap: space[3], paddingTop: space[4], borderTopWidth: 1, borderTopColor: colors.border }}>
           <Field label={t('employer.teamEmail')}>
             <TextField

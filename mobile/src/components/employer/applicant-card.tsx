@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Download, Eye, FileX2, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
+import { Check, Download, Eye, FileX2, MessageSquareText, UserRoundCheck, UserRoundX } from '~/components/ui/lucide';
 import { formatDate, formatList } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import { clean } from '@/lib/security/sanitize';
@@ -10,6 +10,7 @@ import { canBrowseAgentDirectory } from '@/lib/permissions';
 import { PIPELINE_STAGES, STAGE_TONE, WITHDRAWN_BADGE, WITHDRAWN_TEXT_DARK } from '@/lib/application-stages';
 import type { ApplicationNoteRow, ApplicationStatus } from '@/lib/supabase/database.types';
 import { employerOpener, whatsappLink } from '@/lib/whatsapp';
+import { toast } from '~/components/feedback/toast';
 import { ContactButtons } from '~/components/ui/contact-buttons';
 import { ApplicantNotes } from '~/components/employer/applicant-notes';
 import { SavedRepliesSheet } from '~/components/employer/saved-replies';
@@ -33,7 +34,7 @@ import { ApiError } from '~/lib/api';
 import { useSheet } from '~/lib/use-sheet';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { corner, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
 import { useMoney } from '~/features/money';
 
@@ -93,6 +94,8 @@ export function ApplicantCard({
   // The reason being typed follows the stored one for as long as nobody has typed in it.
   const [reasonFrom, setReasonFrom] = useState(storedReason);
   const [reason, setReason] = useState(storedReason);
+  // Whether the candidate may read the reason (the employer's tick; on, as before it existed).
+  const [shareReason, setShareReason] = useState(true);
   if (storedReason !== reasonFrom) {
     if (reason === reasonFrom) setReason(storedReason);
     setReasonFrom(storedReason);
@@ -124,12 +127,23 @@ export function ApplicantCard({
 
   const save = (next: ApplicationStatus, decisionNote: string, restoreBox?: string) => {
     const from = status;
-    setPending({ status: next, reason: decisionNote });
+    // Kept from the candidate, the reason leaves the row (it becomes a note), so the box empties with it.
+    const share = shareReason || !decisionNote.trim();
+    setPending({ status: next, reason: share ? decisionNote : '' });
     setConflict(false);
     setFailed(null);
     move.mutate(
-      { applicationId: applicant.id, status: next, decisionNote, from },
+      { applicationId: applicant.id, status: next, decisionNote, from, ...(share ? {} : { shareReason: false }) },
       {
+        onSuccess: (result) => {
+          if (share) return;
+          setReason('');
+          toast.show(
+            result.reasonKept
+              ? { message: t('app.applicants.reasonKeptPrivate'), tone: 'success' }
+              : { message: t('app.applicants.reasonNotKept'), tone: 'destructive' },
+          );
+        },
         // Settled once the stages have been read again (the hook waits for that), so what shows next is stored.
         onSettled: () => setPending(null),
         // What they typed stays in the box, and the card says it was not
@@ -393,28 +407,49 @@ export function ApplicantCard({
         </Text>
       ) : null}
 
-      {/* Once there is a decision: the candidate reads it. The eye says so. */}
+      {/* Once there is a decision: its reason, which the candidate reads only when the tick says so. */}
       {status !== 'new' ? (
         <View style={{ gap: space[2], paddingTop: space[3], borderTopWidth: 1, borderTopColor: colors.border }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2] }}>
-            <Text variant="small" weight="medium">
-              {t('employer.decisionNote')}
+          <Text variant="small" weight="medium">
+            {t('employer.decisionNote')}
+          </Text>
+          {/* The employer decides whether the candidate reads it (v1.1 Phase B). */}
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: shareReason }}
+            accessibilityHint={shareReason ? t('employer.decisionNoteHint') : t('app.applicants.reasonPrivateHint')}
+            onPress={() => setShareReason((current) => !current)}
+            hitSlop={6}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space[2], minHeight: hitTarget }}
+          >
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                ...corner('md'),
+                borderWidth: 1.5,
+                borderColor: shareReason ? colors.primary : colors.input,
+                backgroundColor: shareReason ? colors.primary : colors.card,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {shareReason ? <Check size={14} color={colors.primaryForeground} /> : null}
+            </View>
+            <Eye size={14} color={shareReason ? colors.primary : colors.mutedForeground} accessible={false} />
+            <Text variant="small" tone={shareReason ? 'primary' : 'mutedForeground'} weight="medium">
+              {t('employer.decisionNoteVisible')}
             </Text>
-            <Badge
-              variant="primary"
-              icon={<Eye size={12} color={colors.primary} accessible={false} />}
-              label={t('employer.decisionNoteVisible')}
-            />
-          </View>
+          </Pressable>
           <Text variant="caption" tone="mutedForeground">
-            {t('employer.decisionNoteHint')}
+            {shareReason ? t('employer.decisionNoteHint') : t('app.applicants.reasonPrivateHint')}
           </Text>
           <TextField
             tone="brand"
             value={reason}
             onChangeText={setReason}
             accessibilityLabel={t('employer.decisionNote')}
-            accessibilityHint={t('employer.decisionNoteHint')}
+            accessibilityHint={shareReason ? t('employer.decisionNoteHint') : t('app.applicants.reasonPrivateHint')}
             placeholder={t('employer.decisionNotePlaceholder')}
             multiline
             maxLength={500}
@@ -422,11 +457,11 @@ export function ApplicantCard({
           />
           <View style={{ alignItems: 'flex-start' }}>
             <Button
-              label={t('employer.decisionNoteSend')}
+              label={shareReason ? t('employer.decisionNoteSend') : t('app.applicants.reasonKeepPrivate')}
               variant="outline"
               size="sm"
               loading={move.isPending}
-              disabled={!reason.trim() || reason.trim() === savedReason.trim()}
+              disabled={!reason.trim() || (shareReason && reason.trim() === savedReason.trim())}
               onPress={() => save(status, reason)}
             />
           </View>
