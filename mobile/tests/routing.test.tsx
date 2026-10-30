@@ -88,6 +88,7 @@ const tree = {
   '(tabs)/(account)/account/profile/preview': screen('preview'),
   '(tabs)/(account)/employer/company': screen('company'),
   '(tabs)/(account)/employer/billing': screen('billing'),
+  '(tabs)/(account)/employer/activity': screen('activity'),
   '(auth)/sign-in/index': screen('sign-in'),
   '+not-found': screen('missing'),
 };
@@ -213,6 +214,7 @@ describe("an employer's tab bar", () => {
     // The company and its billing are kept in the Account tab, with the account under them.
     ['https://www.brokersconnect.net/employer/company', ['(tabs)', '(account)', 'employer', 'company']],
     ['https://www.brokersconnect.net/employer/billing', ['(tabs)', '(account)', 'employer', 'billing']],
+    ['https://www.brokersconnect.net/employer/activity', ['(tabs)', '(account)', 'employer', 'activity']],
     // No board for an employer: a listing opens at home, the board itself is home.
     ['https://www.brokersconnect.net/jobs/sales-a1b2', ['(tabs)', '(home)', 'jobs', '[slug]']],
     ['https://www.brokersconnect.net/jobs?track=primary', ['(tabs)', '(home)']],

@@ -1,5 +1,193 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`ActivityEntry draws at the largest text size 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 4,
+        },
+      ]
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#121620",
+            "fontFamily": "IBMPlexSansArabic_600SemiBold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 16,
+            "lineHeight": 28,
+          },
+          undefined,
+        ]
+      }
+    >
+      نقل متقدمًا إلى «مقابلة»
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 14,
+            "lineHeight": 22,
+          },
+          undefined,
+        ]
+      }
+    >
+      سارة عادل · مستشار مبيعات
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      منى عادل · 30 أكتوبر، 1:04 م
+    </Text>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
+exports[`ActivityEntry draws right to left 1`] = `
+<RNCSafeAreaProvider
+  onInsetsChange={[Function]}
+  style={
+    [
+      {
+        "flex": 1,
+      },
+      undefined,
+    ]
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "padding": 16,
+          "shadowColor": "#121620",
+          "shadowOffset": {
+            "height": 5,
+            "width": 0,
+          },
+          "shadowOpacity": 0.07,
+          "shadowRadius": 10,
+        },
+        {
+          "gap": 4,
+        },
+      ]
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "color": "#121620",
+            "fontFamily": "IBMPlexSansArabic_600SemiBold",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 16,
+            "lineHeight": 28,
+          },
+          undefined,
+        ]
+      }
+    >
+      نقل متقدمًا إلى «مقابلة»
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 14,
+            "lineHeight": 22,
+          },
+          undefined,
+        ]
+      }
+    >
+      سارة عادل · مستشار مبيعات
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "color": "#5C6270",
+            "fontFamily": "IBMPlexSansArabic_400Regular",
+            "textAlign": "right",
+          },
+          {
+            "fontSize": 12,
+            "lineHeight": 18,
+          },
+          undefined,
+        ]
+      }
+    >
+      منى عادل · 30 أكتوبر، 1:04 م
+    </Text>
+  </View>
+</RNCSafeAreaProvider>
+`;
+
 exports[`TeamSettings switches draws at the largest text size 1`] = `
 <RNCSafeAreaProvider
   onInsetsChange={[Function]}

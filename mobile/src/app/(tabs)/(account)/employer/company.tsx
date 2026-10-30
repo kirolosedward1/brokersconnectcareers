@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { RefreshControl, ScrollView, type ScrollViewInstance } from 'react-native';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'use-intl';
 import { localized } from '@/lib/locale';
@@ -18,7 +18,8 @@ import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
 import { gutter, space } from '~/theme/tokens';
-import { Compass } from '~/components/ui/lucide';
+import { Compass, History } from '~/components/ui/lucide';
+import { SettingsGroup, SettingsRow } from '~/components/ui/settings-list';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 
 /**
@@ -77,6 +78,17 @@ export default function CompanyScreen() {
           <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
         ) : null}
         {company && page.data ? <TeamSettings members={page.data.team} canManage={isAdmin} /> : null}
+        {company && page.data ? (
+          <SettingsGroup>
+            <SettingsRow
+              icon={<History size={18} color={colors.foreground} />}
+              label={t('app.activity.title')}
+              hint={isAdmin ? t('app.activity.rowHintAll') : t('app.activity.rowHintOwn')}
+              onPress={() => router.navigate('/employer/activity' as never)}
+              testID="team-activity"
+            />
+          </SettingsGroup>
+        ) : null}
       </ScrollView>
     );
   }

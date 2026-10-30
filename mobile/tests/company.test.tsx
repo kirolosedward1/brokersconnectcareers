@@ -5,15 +5,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import { ImageManipulator } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import type { CompanyDocumentRow, CompanyRow, OrderRow, ProfileRow } from '@/lib/supabase/database.types';
+import type { CompanyActivityRow, CompanyDocumentRow, CompanyRow, OrderRow, ProfileRow } from '@/lib/supabase/database.types';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { rememberActor } from '~/lib/last-actor';
 import { useEmployerSummary } from '~/features/employer/overview';
 import { SessionProvider, useSession } from '~/lib/session';
 import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
+import * as ActivityScreen from '../src/app/(tabs)/(account)/employer/activity';
 import * as BillingScreen from '../src/app/(tabs)/(account)/employer/billing';
 import * as CompanyScreen from '../src/app/(tabs)/(account)/employer/company';
 import { DeclaredTabs } from './declared-tabs';
@@ -58,19 +60,31 @@ jest.mock('expo-image-manipulator', () => {
   return { ImageManipulator: { manipulate: jest.fn(() => context) }, SaveFormat: { JPEG: 'jpeg', PNG: 'png' } };
 });
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
+const mockWritten: Record<string, string> = {};
 jest.mock('expo-file-system', () => ({
+  Paths: { cache: 'file:///cache' },
   // As expo-file-system's File: a name, a type from the extension, and its own bytes.
   File: jest.fn().mockImplementation((...parts: string[]) => {
-    const name = parts.join('/').split('/').at(-1) ?? '';
+    const uri = parts.join('/');
+    const name = uri.split('/').at(-1) ?? '';
     return {
+      uri,
       name,
       type: name.endsWith('.png') ? 'image/png' : '',
       size: 120_000,
       arrayBuffer: async () => new ArrayBuffer(4096),
       bytes: async () => new TextEncoder().encode(`the bytes of ${name}`),
+      exists: false,
+      create: jest.fn(),
+      delete: jest.fn(),
+      write: async (content: string) => {
+        await Promise.resolve();
+        mockWritten[uri] = content;
+      },
     };
   }),
 }));
+jest.mock('expo-sharing', () => ({ shareAsync: jest.fn(async () => {}) }));
 
 
 const ar = catalogues.ar;
@@ -85,6 +99,25 @@ let company: CompanyRow | null;
 /** The chooser's answer for a paper: 0 camera, 1 photo library, 2 a file, 3 cancel. */
 let paperFrom = 2;
 let role: 'admin' | 'recruiter';
+let activity: CompanyActivityRow[];
+const happened = (id: number, row: Partial<CompanyActivityRow>): CompanyActivityRow => ({
+  id,
+  at: '2026-10-30T11:04:00Z',
+  actor_id: RECRUITER,
+  actor_name: 'منى عادل',
+  kind: 'note_added',
+  job_id: null,
+  job_title_ar: null,
+  job_title_en: null,
+  application_id: null,
+  candidate_name: null,
+  subject_user_id: null,
+  subject_name: null,
+  agent_id: null,
+  agent_name: null,
+  detail: {},
+  ...row,
+});
 let documents: CompanyDocumentRow[];
 
 beforeAll(() => {
@@ -95,6 +128,11 @@ beforeAll(() => {
 beforeEach(async () => {
   company = { ...baseCompany };
   role = 'admin';
+  activity = [
+    happened(3, { kind: 'application_moved', candidate_name: 'سارة عادل', job_title_ar: 'مستشار مبيعات', detail: { from: 'new', to: 'shortlisted' } }),
+    happened(2, { kind: 'order_paid', actor_id: null, actor_name: null, detail: { pack: 'bulk', credits: 5 } }),
+    happened(1, { kind: 'contact_revealed', actor_id: USER_ID, actor_name: 'أحمد سمير', agent_name: '=HYPERLINK("x")' }),
+  ];
   documents = [
     {
       id: 'd1',
@@ -140,6 +178,7 @@ beforeEach(async () => {
   server.on('GET /rest/v1/monthly_free_post_grants', []);
   server.on('POST /rest/v1/rpc/employer_summary', { jobs_live: 0 });
   server.on('POST /api/mobile/v1/actions/claimMonthlyFreePost', { ok: true, data: { claimed: true } });
+  server.on('POST /rest/v1/rpc/company_activity_page', () => activity);
 
   await supabase.auth.signOut({ scope: 'local' });
   await AsyncStorage.clear();
@@ -182,6 +221,7 @@ const app = {
   '(tabs)/_layout': () => <DeclaredTabs routes={app} />,
   '(tabs)/(account)/employer/company': CompanyScreen,
   '(tabs)/(account)/employer/billing': BillingScreen,
+  '(tabs)/(account)/employer/activity': ActivityScreen,
 };
 
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: Record<string, unknown> } | undefined)?.input;
@@ -526,6 +566,56 @@ describe("the company's page, for a recruiter", () => {
     expect(screen.queryByLabelText(ar.companies.nameAr) === null).toBe(true);
     expect(screen.queryByText(ar.employer.verification) === null).toBe(true);
     expect(screen.queryByLabelText(ar.employer.teamEmail) === null).toBe(true);
+  });
+});
+
+describe("the team's activity", () => {
+  const rpcBody = (index: number) => server.asked('/rest/v1/rpc/company_activity_page')[index]?.body as Record<string, unknown> | undefined;
+
+  it('opens from the company page, and says each thing done, about whom, by whom', async () => {
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByTestId('team-activity'));
+    expect(await screen.findByText(ar.app.activity.ledeAll)).toBeTruthy();
+    expect(await screen.findByText(ar.app.activity.applicationMoved.replace('{to}', ar.applicationStatus.shortlisted))).toBeTruthy();
+    expect(screen.getByText('سارة عادل · مستشار مبيعات')).toBeTruthy();
+    // A payment the provider confirmed was nobody's doing.
+    expect(screen.getByText(new RegExp(`^${ar.app.activity.automatic} · `))).toBeTruthy();
+    expect(screen.getByText(ar.app.activity.contactRevealed)).toBeTruthy();
+  });
+
+  it("lets an admin narrow it to one member, which the database is asked for", async () => {
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    fireEvent.press(await screen.findByRole('radio', { name: 'أحمد سمير' }));
+    await waitFor(() => expect(rpcBody(1)).toMatchObject({ p_member: USER_ID, p_before: null }));
+  });
+
+  it('shares the six months as a spreadsheet Excel reads, with nothing in it that runs', async () => {
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.activity.export }));
+    await waitFor(() => expect(Sharing.shareAsync).toHaveBeenCalled());
+    const [uri, options] = jest.mocked(Sharing.shareAsync).mock.calls.at(-1)!;
+    expect(options).toMatchObject({ mimeType: 'text/csv' });
+    const csv = mockWritten[uri]!;
+    expect(csv.startsWith('\uFEFF' + ar.app.activity.csvWhen)).toBe(true);
+    expect(csv).toContain('2026-10-30 13:04');
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    // The file is asked for in large pages, not the screen's fifty.
+    expect(server.asked('/rest/v1/rpc/company_activity_page').some((ask) => (ask.body as { p_limit?: number }).p_limit === 500)).toBe(true);
+  });
+
+  it('tells a recruiter it is their own, and offers no one else', async () => {
+    role = 'recruiter';
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    expect(await screen.findByText(ar.app.activity.ledeOwn)).toBeTruthy();
+    expect(screen.queryByRole('radio', { name: ar.app.activity.everyone })).toBeNull();
+    expect(rpcBody(0)).toMatchObject({ p_member: null });
+  });
+
+  it('says there is nothing yet when nothing has been done', async () => {
+    activity = [];
+    await renderRouter(app, { initialUrl: '/employer/activity' });
+    expect(await screen.findByText(ar.app.activity.emptyTitle)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.app.activity.export })).toBeNull();
   });
 });
 
