@@ -3,6 +3,34 @@
 Board: **PipelineBulk**. On the applicant inbox: select several, then move
 them to a stage, send one saved reply to all, or decline with a reason.
 
+## Built (2026-10-30)
+
+- **No migration was needed.** `setApplicationStatuses` makes up to fifty
+  moves, each one exactly as `setApplicationStatus` makes a single move:
+  - compared and swapped on the stage its card showed;
+  - the reason shared or kept by the same tick;
+  - the candidate told as a single move tells them.
+
+  It answers with counts: moved, moved first by a colleague, failed, and
+  reasons that could not be kept. Rate limit: 30 batches an hour per person.
+- **The reasons** are the decided list. Each is a sentence in the catalogue
+  (`app.bulk.reason_*`), followed by any details. "Another reason" is the
+  details alone. The sentence is the decision note when the tick is on, and
+  the team's note when it is off.
+- **One reply to many, by email only:** `messageApplicants` sends a new
+  `company_message` email to each of the company's own applicants who has not
+  withdrawn. It goes through the event bus (`COMPANY_MESSAGE_SENT`), under the
+  status-email switch. The send is keyed once per message, so a retry sends
+  nothing twice. It is not retryable from the outbox, because the words are
+  kept nowhere else. Rate limit: 300 a day per person.
+- **App:** «تحديد» in the inbox opens select mode, with a tick per applicant
+  (withdrawn ones excluded) and «تحديد الكل». A bar at the foot offers «نقل
+  إلى…», «رسالة بالبريد» and «اعتذار». The decline sheet has the reason, the
+  details and the same tick as the card (`ReasonTick`).
+
+The `set_application_statuses` database function and the `reason_key` column
+sketched below were not needed and were not built.
+
 ## What exists
 
 - `setApplicationStatus` (website action) moves **one** application. It
