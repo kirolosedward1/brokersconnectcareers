@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import type { TextStyle } from 'react-native';
 import { useLocale } from 'use-intl';
 import { formatNumber } from '@/lib/format';
+import { toNumerals, useAppPreferences } from '~/features/preferences/app-preferences';
 import { isolate } from '~/i18n/rich';
 import { Text } from './text';
 
@@ -51,15 +52,16 @@ type Props = Omit<ComponentProps<typeof Text>, 'children'> & NumOptions & { valu
  * Every number the app draws on its own or inside a sentence — a count, a
  * percentage, a time, a price, a range. Left to right and isolated, so the
  * Arabic around it never reorders its digits or pulls its sign away; set in
- * tabular figures; and, being a Text, it starts where the line starts, so on
+ * tabular figures, in the digits chosen under Appearance; and, being a Text, it starts where the line starts, so on
  * its own it sits at the right in Arabic. Inside another Text it is a run of
  * that line.
  */
 export function Num({ value, signed, percent, style, ...props }: Props) {
   const locale = useLocale();
+  const { numerals } = useAppPreferences();
   return (
     <Text {...props} style={[NUM_STYLE, style]}>
-      {isolate(numText(value, locale, { signed, percent }))}
+      {isolate(toNumerals(numText(value, locale, { signed, percent }), numerals, locale))}
     </Text>
   );
 }

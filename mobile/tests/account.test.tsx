@@ -16,6 +16,10 @@ import { supabase } from '~/lib/supabase';
 import { ThemeProvider } from '~/theme/provider';
 import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as EmailsScreen from '../src/app/(tabs)/(account)/account/emails';
+import * as AppearanceScreen from '../src/app/(tabs)/(account)/account/appearance';
+import * as PrivacyScreen from '../src/app/(tabs)/(account)/account/privacy';
+import * as SupportScreen from '../src/app/(tabs)/(account)/account/support';
+import * as AvailabilityScreen from '../src/app/(tabs)/(account)/account/availability';
 import * as SecurityScreen from '../src/app/(tabs)/(account)/account/security';
 import { authSession, authUser, mobileConfig, profile, totpFactor, USER_ID, type AuthUser } from './auth-fixtures';
 import { phoneFormData, sentBody } from './multipart';
@@ -198,6 +202,10 @@ const app = {
   '(tabs)/(account)/account/index': AccountScreen,
   '(tabs)/(account)/account/security': SecurityScreen,
   '(tabs)/(account)/account/emails': EmailsScreen,
+  '(tabs)/(account)/account/appearance': AppearanceScreen,
+  '(tabs)/(account)/account/privacy': PrivacyScreen,
+  '(tabs)/(account)/account/support': SupportScreen,
+  '(tabs)/(account)/account/availability': AvailabilityScreen,
 };
 
 const bodyOf = (path: string, index = 0) => server.asked(path)[index]?.body;
@@ -309,11 +317,11 @@ describe('the photo', () => {
 });
 
 describe('signing in and security', () => {
-  it('keeps deleting the account at its foot, off the Account tab itself', async () => {
+  it('offers deleting the account at the foot of the Account tab, as the board draws it, and of security', async () => {
     await signIn();
     const result = await renderRouter(app, { initialUrl: '/account' });
     expect(await screen.findByText(ar.app.account.security)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: ar.account.deleteTitle })).toBeNull();
+    expect(screen.getByRole('button', { name: ar.app.account.deleteAccount })).toBeTruthy();
 
     result.unmount();
 
@@ -619,9 +627,10 @@ describe('the appearance', () => {
   it('is one choice of three: radio buttons in a group named for what they set', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/account' });
+    fireEvent.press(await screen.findByRole('button', { name: new RegExp(ar.app.account.appearanceRow) }));
 
-    expect((await screen.findByLabelText(ar.app.account.appearance)).props.accessibilityRole).toBe('radiogroup');
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    expect((await screen.findByLabelText(ar.app.appearance.theme)).props.accessibilityRole).toBe('radiogroup');
+    expect(screen.getAllByRole('radio')).toHaveLength(5);
     fireEvent.press(screen.getByRole('radio', { name: ar.theme.dark }));
     await waitFor(() =>
       expect(screen.getByRole('radio', { name: ar.theme.dark }).props.accessibilityState).toMatchObject({ checked: true }),
@@ -649,9 +658,9 @@ describe('a profile that could not be read', () => {
 describe('a copy of the data', () => {
   it("is the website's export, handed to the share sheet", async () => {
     await signIn();
-    await renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account/privacy' });
 
-    fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
+    fireEvent.press(await screen.findByRole('button', { name: new RegExp(ar.account.exportCta) }));
 
     await waitFor(() => expect(Sharing.shareAsync).toHaveBeenCalled());
     const [uri, options] = jest.mocked(Sharing.shareAsync).mock.calls[0];
@@ -668,9 +677,9 @@ describe('a copy of the data', () => {
   it('says when the day’s copies are used up', async () => {
     server.on('GET /api/account/export', { status: 429, body: { error: 'rate_limited', retryAfterSeconds: 3600 } });
     await signIn();
-    await renderRouter(app, { initialUrl: '/account' });
+    await renderRouter(app, { initialUrl: '/account/privacy' });
 
-    fireEvent.press(await screen.findByRole('button', { name: ar.account.exportCta }));
+    fireEvent.press(await screen.findByRole('button', { name: new RegExp(ar.account.exportCta) }));
     await waitFor(() => expect(shownToast()?.message).toBe(ar.app.account.exportLimit));
     expect(Alert.alert).not.toHaveBeenCalled();
     expect(Sharing.shareAsync).not.toHaveBeenCalled();

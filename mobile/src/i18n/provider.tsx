@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { IntlProvider } from 'use-intl';
 import { intlFormats } from '@/lib/format';
 import { defaultLocale, type Locale } from '@/lib/locale';
+import { useAppPreferences } from '~/features/preferences/app-preferences';
 import { setDrawnLocale } from '~/lib/direction';
 import { loadIntlLocale } from '~/lib/intl-polyfills';
 import webAr from '../../../messages/ar.json';
@@ -37,10 +38,14 @@ export function I18nProvider({ locale = defaultLocale, children }: { locale?: Lo
   // The Intl polyfills carry the app's opening language only; another one's
   // dates and numbers are loaded the first time the app is drawn in it.
   loadIntlLocale(locale);
+  // The in-sentence number tag writes the digits chosen under Appearance; a
+  // new catalogue object when they change redraws every sentence in them.
+  const { numerals } = useAppPreferences();
+  const messages = useMemo(() => ({ ...catalogues[locale], numerals }), [locale, numerals]);
   return (
     <IntlProvider
       locale={locale}
-      messages={catalogues[locale]}
+      messages={messages}
       formats={intlFormats}
       timeZone={TIME_ZONE}
       onError={(error) => {

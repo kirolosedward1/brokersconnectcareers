@@ -1,0 +1,961 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`the settings rows draws at the largest text size, the value under the name 1`] = `
+<View
+  style={
+    {
+      "gap": 8,
+    }
+  }
+>
+  <Text
+    accessibilityRole="header"
+    style={
+      [
+        {
+          "color": "#5C6270",
+          "fontFamily": "IBMPlexSansArabic_600SemiBold",
+          "textAlign": "right",
+        },
+        {
+          "fontSize": 11,
+          "lineHeight": 16,
+        },
+        {
+          "paddingHorizontal": 4,
+        },
+      ]
+    }
+  >
+    التطبيق
+  </Text>
+  <View
+    style={
+      {
+        "borderCurve": "continuous",
+        "borderRadius": 20,
+        "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "overflow": "hidden",
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "marginTop": -1,
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "transparent",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 54,
+              "paddingStart": 16,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "alignSelf": "stretch",
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 1,
+                "flex": 1,
+                "flexDirection": "row",
+                "gap": 12,
+                "paddingEnd": 16,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "flex": 1,
+                    "gap": 2,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "color": "#121620",
+                        "fontFamily": "IBMPlexSansArabic_400Regular",
+                        "textAlign": "right",
+                      },
+                      {
+                        "fontSize": 16,
+                        "lineHeight": 28,
+                      },
+                      undefined,
+                    ]
+                  }
+                >
+                  المظهر
+                </Text>
+              </View>
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#5C6270",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 22,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                حسب النظام
+              </Text>
+            </View>
+            <RNSVGSvgView
+              align="xMidYMid"
+              aria-hidden="true"
+              bbHeight={18}
+              bbWidth={18}
+              className="lucide lucide-chevron-left"
+              fill="none"
+              focusable={false}
+              height={18}
+              meetOrSlice={0}
+              minX={0}
+              minY={0}
+              stroke="#5C6270"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                [
+                  {
+                    "backgroundColor": "transparent",
+                    "borderWidth": 0,
+                  },
+                  {
+                    "flex": 0,
+                    "height": 18,
+                    "width": 18,
+                  },
+                ]
+              }
+              vbHeight={24}
+              vbWidth={24}
+              width={18}
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <RNSVGGroup
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4284244592,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              >
+                <RNSVGPath
+                  d="m15 18-6-6 6-6"
+                  fill={null}
+                  propList={
+                    [
+                      "fill",
+                      "stroke",
+                      "strokeWidth",
+                      "strokeLinecap",
+                      "strokeLinejoin",
+                    ]
+                  }
+                  stroke={
+                    {
+                      "payload": 4284244592,
+                      "type": 0,
+                    }
+                  }
+                  strokeLinecap={1}
+                  strokeLinejoin={1}
+                  strokeWidth={2}
+                />
+              </RNSVGGroup>
+            </RNSVGSvgView>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 54,
+              "paddingStart": 16,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "alignSelf": "stretch",
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 1,
+                "flex": 1,
+                "flexDirection": "row",
+                "gap": 12,
+                "paddingEnd": 16,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 16,
+                      "lineHeight": 28,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                اهتزاز عند اللمس
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#5C6270",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 12,
+                      "lineHeight": 18,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                يبقى متوقفًا إن أوقفت الاهتزاز من إعدادات الجهاز.
+              </Text>
+            </View>
+            <RCTSwitch
+              accessibilityHint="يبقى متوقفًا إن أوقفت الاهتزاز من إعدادات الجهاز."
+              accessibilityLabel="اهتزاز عند اللمس"
+              accessibilityRole="switch"
+              disabled={false}
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#16295A"
+              style={
+                {
+                  "alignSelf": "flex-start",
+                }
+              }
+              tintColor="#8B8578"
+              value={true}
+            />
+          </View>
+        </View>
+        <View
+          accessibilityLabel="مخفي تمامًا. لا يظهر ملفك في الدليل إطلاقًا — ولا حتى لشركتك الحالية."
+          accessibilityRole="radio"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": true,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "transparent",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 54,
+              "paddingStart": 16,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "alignSelf": "stretch",
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 1,
+                "flex": 1,
+                "flexDirection": "row",
+                "gap": 12,
+                "paddingEnd": 16,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 16,
+                      "lineHeight": 28,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                مخفي تمامًا
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#5C6270",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 12,
+                      "lineHeight": 18,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                لا يظهر ملفك في الدليل إطلاقًا — ولا حتى لشركتك الحالية.
+              </Text>
+            </View>
+            <View
+              style={
+                {
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#16295A",
+                  "borderCurve": "continuous",
+                  "borderRadius": 999,
+                  "borderWidth": 7,
+                  "height": 22,
+                  "width": 22,
+                }
+              }
+            />
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+  <Text
+    style={
+      [
+        {
+          "color": "#5C6270",
+          "fontFamily": "IBMPlexSansArabic_400Regular",
+          "textAlign": "right",
+        },
+        {
+          "fontSize": 12,
+          "lineHeight": 18,
+        },
+        {
+          "paddingHorizontal": 4,
+        },
+      ]
+    }
+  >
+    تتغير طريقة كتابة الأرقام على الشاشة فقط، أما الأرقام نفسها فلا تتغير.
+  </Text>
+</View>
+`;
+
+exports[`the settings rows draws right to left 1`] = `
+<View
+  style={
+    {
+      "gap": 8,
+    }
+  }
+>
+  <Text
+    accessibilityRole="header"
+    style={
+      [
+        {
+          "color": "#5C6270",
+          "fontFamily": "IBMPlexSansArabic_600SemiBold",
+          "textAlign": "right",
+        },
+        {
+          "fontSize": 11,
+          "lineHeight": 16,
+        },
+        {
+          "paddingHorizontal": 4,
+        },
+      ]
+    }
+  >
+    التطبيق
+  </Text>
+  <View
+    style={
+      {
+        "borderCurve": "continuous",
+        "borderRadius": 20,
+        "boxShadow": "0px 1px 2px rgba(18, 22, 32, 0.04), 0px 6px 20px rgba(18, 22, 32, 0.06)",
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderColor": "#E6E1D8",
+          "borderCurve": "continuous",
+          "borderRadius": 20,
+          "borderWidth": 1,
+          "overflow": "hidden",
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "marginTop": -1,
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "transparent",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 54,
+              "paddingStart": 16,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "alignSelf": "stretch",
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 1,
+                "flex": 1,
+                "flexDirection": "row",
+                "gap": 12,
+                "paddingEnd": 16,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 16,
+                      "lineHeight": 28,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                المظهر
+              </Text>
+            </View>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "color": "#5C6270",
+                    "fontFamily": "IBMPlexSansArabic_400Regular",
+                    "textAlign": "right",
+                  },
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "maxWidth": "45%",
+                  },
+                ]
+              }
+            >
+              حسب النظام
+            </Text>
+            <RNSVGSvgView
+              align="xMidYMid"
+              aria-hidden="true"
+              bbHeight={18}
+              bbWidth={18}
+              className="lucide lucide-chevron-left"
+              fill="none"
+              focusable={false}
+              height={18}
+              meetOrSlice={0}
+              minX={0}
+              minY={0}
+              stroke="#5C6270"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              style={
+                [
+                  {
+                    "backgroundColor": "transparent",
+                    "borderWidth": 0,
+                  },
+                  {
+                    "flex": 0,
+                    "height": 18,
+                    "width": 18,
+                  },
+                ]
+              }
+              vbHeight={24}
+              vbWidth={24}
+              width={18}
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <RNSVGGroup
+                fill={null}
+                propList={
+                  [
+                    "fill",
+                    "stroke",
+                    "strokeWidth",
+                    "strokeLinecap",
+                    "strokeLinejoin",
+                  ]
+                }
+                stroke={
+                  {
+                    "payload": 4284244592,
+                    "type": 0,
+                  }
+                }
+                strokeLinecap={1}
+                strokeLinejoin={1}
+                strokeWidth={2}
+              >
+                <RNSVGPath
+                  d="m15 18-6-6 6-6"
+                  fill={null}
+                  propList={
+                    [
+                      "fill",
+                      "stroke",
+                      "strokeWidth",
+                      "strokeLinecap",
+                      "strokeLinejoin",
+                    ]
+                  }
+                  stroke={
+                    {
+                      "payload": 4284244592,
+                      "type": 0,
+                    }
+                  }
+                  strokeLinecap={1}
+                  strokeLinejoin={1}
+                  strokeWidth={2}
+                />
+              </RNSVGGroup>
+            </RNSVGSvgView>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 54,
+              "paddingStart": 16,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "alignSelf": "stretch",
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 1,
+                "flex": 1,
+                "flexDirection": "row",
+                "gap": 12,
+                "paddingEnd": 16,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 16,
+                      "lineHeight": 28,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                اهتزاز عند اللمس
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#5C6270",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 12,
+                      "lineHeight": 18,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                يبقى متوقفًا إن أوقفت الاهتزاز من إعدادات الجهاز.
+              </Text>
+            </View>
+            <RCTSwitch
+              accessibilityHint="يبقى متوقفًا إن أوقفت الاهتزاز من إعدادات الجهاز."
+              accessibilityLabel="اهتزاز عند اللمس"
+              accessibilityRole="switch"
+              disabled={false}
+              onChange={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              onTintColor="#16295A"
+              style={
+                {
+                  "alignSelf": "flex-start",
+                }
+              }
+              tintColor="#8B8578"
+              value={true}
+            />
+          </View>
+        </View>
+        <View
+          accessibilityLabel="مخفي تمامًا. لا يظهر ملفك في الدليل إطلاقًا — ولا حتى لشركتك الحالية."
+          accessibilityRole="radio"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": true,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "backgroundColor": "transparent",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 54,
+              "paddingStart": 16,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "alignSelf": "stretch",
+                "borderTopColor": "#E6E1D8",
+                "borderTopWidth": 1,
+                "flex": 1,
+                "flexDirection": "row",
+                "gap": 12,
+                "paddingEnd": 16,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#121620",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 16,
+                      "lineHeight": 28,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                مخفي تمامًا
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "color": "#5C6270",
+                      "fontFamily": "IBMPlexSansArabic_400Regular",
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontSize": 12,
+                      "lineHeight": 18,
+                    },
+                    undefined,
+                  ]
+                }
+              >
+                لا يظهر ملفك في الدليل إطلاقًا — ولا حتى لشركتك الحالية.
+              </Text>
+            </View>
+            <View
+              style={
+                {
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#16295A",
+                  "borderCurve": "continuous",
+                  "borderRadius": 999,
+                  "borderWidth": 7,
+                  "height": 22,
+                  "width": 22,
+                }
+              }
+            />
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+  <Text
+    style={
+      [
+        {
+          "color": "#5C6270",
+          "fontFamily": "IBMPlexSansArabic_400Regular",
+          "textAlign": "right",
+        },
+        {
+          "fontSize": 12,
+          "lineHeight": 18,
+        },
+        {
+          "paddingHorizontal": 4,
+        },
+      ]
+    }
+  >
+    تتغير طريقة كتابة الأرقام على الشاشة فقط، أما الأرقام نفسها فلا تتغير.
+  </Text>
+</View>
+`;

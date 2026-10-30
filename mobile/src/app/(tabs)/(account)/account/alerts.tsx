@@ -10,6 +10,8 @@ import { Text } from '~/components/ui/text';
 import { usePushControls } from '~/features/push/controls';
 import { pushAvailable, usePushState } from '~/features/push/device';
 import { pushPreferencesOf, useSavePushPreferences, type PushPreferences } from '~/features/push/preferences';
+import { useSaveEmailPreferences, type EmailPreferences } from '~/features/account/settings';
+import { useStoredFields } from '~/lib/use-stored-fields';
 import { useSession } from '~/lib/session';
 import { useScreenRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
@@ -130,7 +132,18 @@ export default function AlertsScreen() {
           </Notice>
         ) : null}
 
-        {on && preferences ? <Kinds employer={employer} initial={preferences} /> : null}
+        <Kinds
+          employer={employer}
+          initial={preferences}
+          pushOn={on}
+          email={{
+            notify_applications: viewer.profile.notify_applications,
+            notify_status: viewer.profile.notify_status,
+            notify_digest: viewer.profile.notify_digest,
+            notify_applicant_digest: viewer.profile.notify_applicant_digest,
+            notify_profile_nudge: viewer.profile.notify_profile_nudge,
+          }}
+        />
 
         {turnOn.isError ? (
           <Text variant="small" tone="destructive" accessibilityRole="alert">
@@ -149,20 +162,49 @@ export default function AlertsScreen() {
 
 const KINDS = ['push_job_alerts', 'push_applications', 'push_account', 'push_quiet_hours'] as const;
 
+/** A kind of message, and where it is said: on the phone (a push), by email — or always, and not a choice. */
+type MatrixRow = {
+  key: string;
+  label: string;
+  hint: string;
+  phone: keyof PushPreferences | null;
+  email: keyof EmailPreferences | 'always' | null;
+  /** What VoiceOver calls the email switch: the email's own name (/account/emails). */
+  emailLabel?: string;
+};
+
 /**
- * Which kinds reach the phones, and quiet hours: saved as each is flipped —
- * that switch alone — and put back if the website refuses, as the email
- * switches are. New listings are a candidate's only — an employer has no
- * saved searches.
+ * Each kind of message and each way it can come (v1.1): a row a kind, a
+ * column for the phone and one for email — the same switches as the push
+ * preferences (migration 335) and the website's email switches, saved as
+ * each is flipped and put back if the website refuses. The account and its
+ * security are always emailed. The phone's column only while pushes are on
+ * for this phone; the quiet night under them, the phone's alone; and one
+ * card that sets the recommended way.
  */
-function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferences }) {
+function Kinds({
+  employer,
+  initial,
+  pushOn,
+  email: storedEmail,
+}: {
+  employer: boolean;
+  initial: PushPreferences | null;
+  pushOn: boolean;
+  email: EmailPreferences;
+}) {
   const t = useTranslations('app.push');
+  const tAccount = useTranslations('account');
   const tCommon = useTranslations('common');
   const tApp = useTranslations('app.toast');
   const { colors, shadow } = useTheme();
   const save = useSavePushPreferences();
+  const saveEmail = useSaveEmailPreferences();
+  const emails = useStoredFields(storedEmail);
   const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState(false);
+  const phoneShown = pushOn && Boolean(initial);
+  const base = initial ?? ({} as PushPreferences);
 
   // A switch shows the saved value as last read — a change made on another
   // phone, a read still on its way when this opened — except one flipped
@@ -172,17 +214,17 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
   const [flipped, setFlipped] = useState<Partial<Record<keyof PushPreferences, { value: boolean; saving: boolean }>>>(
     {},
   );
-  const [seen, setSeen] = useState(initial);
-  if (KINDS.some((kind) => seen[kind] !== initial[kind])) {
+  const [seen, setSeen] = useState(base);
+  if (KINDS.some((kind) => seen[kind] !== base[kind])) {
     // A read newer than the saves that are done: they give way to it.
-    setSeen(initial);
+    setSeen(base);
     setFlipped((current) => {
       const next = { ...current };
       for (const kind of KINDS) if (next[kind] && !next[kind].saving) delete next[kind];
       return next;
     });
   }
-  const shown = (key: keyof PushPreferences) => flipped[key]?.value ?? initial[key];
+  const shown = (key: keyof PushPreferences) => flipped[key]?.value ?? base[key];
   const settle = (key: keyof PushPreferences, done: boolean) =>
     setFlipped((current) => {
       const next = { ...current };
@@ -192,16 +234,10 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
       return next;
     });
 
-  const rows: { key: keyof PushPreferences; label: string; hint: string }[] = [
-    ...(employer ? [] : [{ key: 'push_job_alerts' as const, label: t('jobAlerts'), hint: t('jobAlertsHint') }]),
-    employer
-      ? { key: 'push_applications', label: t('applicationsEmployer'), hint: t('applicationsEmployerHint') }
-      : { key: 'push_applications', label: t('applicationsCandidate'), hint: t('applicationsCandidateHint') },
-    employer
-      ? { key: 'push_account', label: t('accountEmployer'), hint: t('accountEmployerHint') }
-      : { key: 'push_account', label: t('accountCandidate'), hint: t('accountCandidateHint') },
-    { key: 'push_quiet_hours', label: t('quiet'), hint: t.markup('quietHint', markupTags) },
-  ];
+  const said = () => {
+    setSaved(true);
+    toast.show({ message: tApp('changesSaved'), tone: 'success' });
+  };
 
   const flip = (key: keyof PushPreferences) => {
     const value = !shown(key);
@@ -213,8 +249,7 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
       {
         onSuccess: () => {
           settle(key, true);
-          setSaved(true);
-          toast.show({ message: tApp('changesSaved'), tone: 'success' });
+          said();
         },
         onError: () => {
           settle(key, false);
@@ -224,47 +259,195 @@ function Kinds({ employer, initial }: { employer: boolean; initial: PushPreferen
     );
   };
 
+  const flipEmail = (key: keyof EmailPreferences) => {
+    const next = { ...emails.fields, [key]: !emails.fields[key] };
+    emails.set({ [key]: next[key] });
+    setSaved(false);
+    setFailed(false);
+    saveEmail.mutate(next, {
+      onSuccess: () => {
+        emails.saved(next);
+        said();
+      },
+      onError: () => {
+        emails.set({ [key]: emails.fields[key] });
+        setFailed(true);
+      },
+    });
+  };
+
+  // The way the product suggests: every kind on, both ways, and the night quiet.
+  const recommended = () => {
+    setSaved(false);
+    setFailed(false);
+    const push: Partial<PushPreferences> = phoneShown
+      ? { push_applications: true, push_account: true, push_quiet_hours: true, ...(employer ? {} : { push_job_alerts: true }) }
+      : {};
+    const mail: EmailPreferences = {
+      ...emails.fields,
+      notify_status: true,
+      ...(employer ? { notify_applications: true, notify_applicant_digest: true } : { notify_digest: true }),
+    };
+    emails.set(mail);
+    const both = [
+      Object.keys(push).length ? new Promise<void>((resolve, reject) => save.mutate(push, { onSuccess: () => resolve(), onError: reject })) : Promise.resolve(),
+      new Promise<void>((resolve, reject) => saveEmail.mutate(mail, { onSuccess: () => resolve(), onError: reject })),
+    ];
+    Promise.all(both)
+      .then(() => {
+        emails.saved(mail);
+        said();
+      })
+      .catch(() => {
+        emails.set(storedEmail);
+        setFailed(true);
+      });
+  };
+
+  const rows: MatrixRow[] = employer
+    ? [
+        { key: 'applications', label: t('applicationsEmployer'), hint: t('applicationsEmployerHint'), phone: 'push_applications', email: 'notify_applications', emailLabel: tAccount('notifyApplications') },
+        { key: 'digest', label: tAccount('notifyApplicantDigest'), hint: tAccount('notifyApplicantDigestHint'), phone: null, email: 'notify_applicant_digest', emailLabel: tAccount('notifyApplicantDigest') },
+        { key: 'status', label: tAccount('notifyStatus'), hint: tAccount('notifyStatusHint'), phone: null, email: 'notify_status', emailLabel: tAccount('notifyStatus') },
+        { key: 'account', label: t('accountEmployer'), hint: t('accountEmployerHint'), phone: 'push_account', email: 'always' },
+      ]
+    : [
+        { key: 'jobs', label: t('jobAlerts'), hint: t('jobAlertsHint'), phone: 'push_job_alerts', email: 'notify_digest', emailLabel: tAccount('notifyDigest') },
+        { key: 'applications', label: t('applicationsCandidate'), hint: t('applicationsCandidateHint'), phone: 'push_applications', email: 'notify_status', emailLabel: tAccount('notifyStatus') },
+        ...(typeof storedEmail.notify_profile_nudge === 'boolean'
+          ? [{ key: 'nudge', label: tAccount('notifyProfileNudge'), hint: tAccount('notifyProfileNudgeHint'), phone: null, email: 'notify_profile_nudge' as const, emailLabel: tAccount('notifyProfileNudge') }]
+          : []),
+        { key: 'account', label: t('accountCandidate'), hint: t('accountCandidateHint'), phone: 'push_account', email: 'always' },
+      ];
+
+  const card = {
+    ...corner('xl'),
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderColor: colors.border,
+    boxShadow: shadow.card,
+    backgroundColor: colors.card,
+  } as const;
+
   return (
     <View style={{ gap: space[3] }}>
+      {/* The recommended way, in one tap. */}
+      <View style={[card, { padding: space[4], gap: space[2], borderColor: colors.champagne }]}>
+        <Text weight="semibold">{t('recommendedTitle')}</Text>
+        <Text variant="small" tone="mutedForeground">
+          {t('recommendedBody')}
+        </Text>
+        <View style={{ alignItems: 'flex-start' }}>
+          <Button label={t('recommendedApply')} size="sm" variant="outline" disabled={save.isPending || saveEmail.isPending} onPress={recommended} />
+        </View>
+      </View>
+
       <View style={{ gap: 2, marginTop: space[2] }}>
         <Text weight="semibold" accessibilityRole="header">
-          {t('kindsTitle')}
+          {t('matrixTitle')}
         </Text>
         <Text variant="small" tone="mutedForeground">
           {t('kindsBody')}
         </Text>
       </View>
-      {rows.map((row) => (
-        <View
-          key={row.key}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: space[3],
-            padding: space[4],
-            ...corner('xl'),
-            borderWidth: StyleSheet.hairlineWidth * 2,
-            borderColor: colors.border,
-            boxShadow: shadow.card,
-            backgroundColor: colors.card,
-          }}
-        >
+      <View style={card}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: space[4], paddingTop: space[3], gap: space[3] }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View style={{ flex: 1 }} />
+          <Text variant="caption" weight="semibold" tone="mutedForeground" style={{ width: 56, textAlign: 'center' }}>
+            {t('channelPhone')}
+          </Text>
+          <Text variant="caption" weight="semibold" tone="mutedForeground" style={{ width: 56, textAlign: 'center' }}>
+            {t('channelEmail')}
+          </Text>
+        </View>
+        {rows.map((row, index) => (
+          <View
+            key={row.key}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space[3],
+              padding: space[4],
+              borderTopWidth: index ? StyleSheet.hairlineWidth * 2 : 0,
+              borderTopColor: colors.border,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text weight="medium">{row.label}</Text>
+              <Text variant="caption" tone="mutedForeground">
+                {row.hint}
+              </Text>
+            </View>
+            <View style={{ width: 56, alignItems: 'center' }}>
+              {row.phone && phoneShown ? (
+                <Switch
+                  value={shown(row.phone)}
+                  onValueChange={() => flip(row.phone as keyof PushPreferences)}
+                  disabled={save.isPending}
+                  accessibilityLabel={row.label}
+                  accessibilityHint={row.hint}
+                  trackColor={{ true: colors.primary, false: colors.input }}
+                />
+              ) : (
+                <Text variant="caption" tone="mutedForeground" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  —
+                </Text>
+              )}
+            </View>
+            <View style={{ width: 56, alignItems: 'center' }}>
+              {row.email === 'always' ? (
+                <Text variant="caption" weight="semibold" tone="success" accessibilityLabel={t('alwaysEmailed')}>
+                  {t('always')}
+                </Text>
+              ) : row.email ? (
+                <Switch
+                  value={Boolean(emails.fields[row.email])}
+                  onValueChange={() => flipEmail(row.email as keyof EmailPreferences)}
+                  disabled={saveEmail.isPending}
+                  accessibilityLabel={row.emailLabel ?? row.label}
+                  accessibilityHint={t('channelEmail')}
+                  trackColor={{ true: colors.primary, false: colors.input }}
+                />
+              ) : (
+                <Text variant="caption" tone="mutedForeground" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  —
+                </Text>
+              )}
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* The night kept quiet: the phone's alone. */}
+      {phoneShown ? (
+        <View style={[card, { flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[4] }]}>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text weight="medium">{row.label}</Text>
+            <Text weight="medium">{t('quiet')}</Text>
             <Text variant="small" tone="mutedForeground">
-              {row.hint}
+              {t.markup('quietHint', markupTags)}
             </Text>
           </View>
           <Switch
-            value={shown(row.key)}
-            onValueChange={() => flip(row.key)}
+            value={shown('push_quiet_hours')}
+            onValueChange={() => flip('push_quiet_hours')}
             disabled={save.isPending}
-            accessibilityLabel={row.label}
-            accessibilityHint={row.hint}
+            accessibilityLabel={t('quiet')}
+            accessibilityHint={t.markup('quietHint', markupTags)}
             trackColor={{ true: colors.primary, false: colors.input }}
           />
         </View>
-      ))}
+      ) : null}
+
+      {/* What iOS keeps for each phone: its sound, its badge, what the lock screen shows. */}
+      <View style={[card, { padding: space[4], gap: space[2] }]}>
+        <Text weight="semibold">{t('moreTitle')}</Text>
+        <Text variant="small" tone="mutedForeground">
+          {t('moreBody')}
+        </Text>
+        <View style={{ alignItems: 'flex-start' }}>
+          <Button label={t('moreSettings')} size="sm" variant="ghost" onPress={() => Linking.openSettings().catch(() => {})} />
+        </View>
+      </View>
+
       {saved ? (
         <Text variant="small" tone="success" accessibilityLiveRegion="polite">
           {tCommon('saveSuccess')}

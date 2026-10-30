@@ -285,7 +285,7 @@ describe('what to hear about', () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
     await renderRouter(app, { initialUrl: '/account/alerts' });
 
-    expect(await screen.findByText(ar.app.push.kindsTitle)).toBeTruthy();
+    expect(await screen.findByText(ar.app.push.matrixTitle)).toBeTruthy();
     expect(screen.getByLabelText(ar.app.push.jobAlerts).props.value).toBe(true);
     expect(screen.getByLabelText(ar.app.push.applicationsCandidate).props.value).toBe(true);
     expect(screen.getByLabelText(ar.app.push.accountCandidate).props.value).toBe(true);
@@ -401,22 +401,26 @@ describe('what to hear about', () => {
     expect(screen.queryByLabelText(ar.app.push.jobAlerts)).toBeNull();
   });
 
-  it('offers nothing while the database does not have the switches yet', async () => {
+  it('offers no phone switches while the database does not have them yet', async () => {
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(granted as never);
     await renderRouter(app, { initialUrl: '/account/alerts' });
 
     await screen.findByLabelText(ar.app.push.switch);
     await waitFor(() => expect(registered()).toHaveLength(1));
-    expect(screen.queryByText(ar.app.push.kindsTitle)).toBeNull();
+    // No phone switches without the database's: the emails' column still works.
+    expect(screen.queryByLabelText(ar.app.push.jobAlerts)).toBeNull();
+    expect(screen.queryByLabelText(ar.app.push.quiet)).toBeNull();
   });
 
-  it('offers nothing while pushes are off on this phone', async () => {
+  it('offers no phone switches while pushes are off on this phone, and the emails still', async () => {
     me = { ...profile, ...chosen };
     jest.mocked(Notifications.getPermissionsAsync).mockResolvedValue(denied as never);
     await renderRouter(app, { initialUrl: '/account/alerts' });
 
     expect(await screen.findByText(ar.app.push.denied)).toBeTruthy();
-    expect(screen.queryByText(ar.app.push.kindsTitle)).toBeNull();
+    // Nothing for the phone while it says no; email is its own.
+    expect(screen.queryByLabelText(ar.app.push.jobAlerts)).toBeNull();
+    expect(screen.getByLabelText(ar.account.notifyDigest)).toBeTruthy();
   });
 });
 

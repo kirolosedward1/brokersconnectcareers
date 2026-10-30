@@ -28,6 +28,10 @@ import * as CompanyScreen from '../src/app/(tabs)/(home,jobs,companies,applicati
 import * as AccountScreen from '../src/app/(tabs)/(account)/account/index';
 import * as DeleteAccountScreen from '../src/app/(tabs)/(account)/account/delete';
 import * as LicensesScreen from '../src/app/(tabs)/(account)/account/licenses';
+import * as AppearanceScreen from '../src/app/(tabs)/(account)/account/appearance';
+import * as PrivacyScreen from '../src/app/(tabs)/(account)/account/privacy';
+import * as SupportScreen from '../src/app/(tabs)/(account)/account/support';
+import * as AvailabilityScreen from '../src/app/(tabs)/(account)/account/availability';
 import * as ConfirmScreen from '../src/app/auth/confirm';
 import * as CallbackScreen from '../src/app/auth/callback';
 import * as MfaScreen from '../src/app/mfa';
@@ -214,6 +218,10 @@ const app = {
   '(tabs)/(account)/account/index': AccountScreen,
   '(tabs)/(account)/account/delete': DeleteAccountScreen,
   '(tabs)/(account)/account/licenses': LicensesScreen,
+  '(tabs)/(account)/account/appearance': AppearanceScreen,
+  '(tabs)/(account)/account/privacy': PrivacyScreen,
+  '(tabs)/(account)/account/support': SupportScreen,
+  '(tabs)/(account)/account/availability': AvailabilityScreen,
   '(auth)/_layout': AuthLayout,
   '(auth)/sign-in/index': SignInScreen,
   '(auth)/sign-in/forgot': ForgotScreen,
@@ -295,13 +303,14 @@ describe('the Account tab', () => {
     // Alert.alert is the suite's own stand-in (above).
     jest.mocked(Alert.alert).mockClear();
     await renderRouter(app, { initialUrl: '/account' });
-    await press(ar.app.account.contact);
+    await press(ar.app.account.support);
+    await press(ar.app.support.email);
     expect(open).toHaveBeenCalledWith('mailto:help@brokersconnect.net');
     expect(screen.queryByText('help@brokersconnect.net')).toBeNull();
     expect(Alert.alert).not.toHaveBeenCalled();
 
     open.mockRejectedValue(new Error('no mail app'));
-    await press(ar.app.account.contact);
+    await press(ar.app.support.email);
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith(ar.app.account.contact, 'help@brokersconnect.net'));
     open.mockRestore();
   });

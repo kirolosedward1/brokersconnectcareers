@@ -86,6 +86,7 @@ export { default as MessageSquareReply } from 'lucide-react-native/icons/message
 export { default as MessageSquareText } from 'lucide-react-native/icons/message-square-text';
 export { default as MoveHorizontal } from 'lucide-react-native/icons/move-horizontal';
 export { default as NotebookPen } from 'lucide-react-native/icons/notebook-pen';
+export { default as Palette } from 'lucide-react-native/icons/palette';
 export { default as Paperclip } from 'lucide-react-native/icons/paperclip';
 export { default as Pencil } from 'lucide-react-native/icons/pencil';
 export { default as Phone } from 'lucide-react-native/icons/phone';

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { AccessibilityInfo } from 'react-native';
+import { useAppPreferences } from '~/features/preferences/app-preferences';
 
 /**
  * Whether the phone asks for reduced motion (Settings → Accessibility →
@@ -30,6 +31,14 @@ function subscribe(listener: () => void) {
   };
 }
 
-export function useReduceMotion(): boolean {
+/** The phone's own setting alone: the app's switch shows it, and cannot turn it off. */
+export function usePhoneReduceMotion(): boolean {
   return useSyncExternalStore(subscribe, () => reduced);
+}
+
+/** The phone's setting, or the app's own (Account → Appearance) when that asks for less. */
+export function useReduceMotion(): boolean {
+  const phone = usePhoneReduceMotion();
+  const { reduceMotion } = useAppPreferences();
+  return phone || reduceMotion;
 }

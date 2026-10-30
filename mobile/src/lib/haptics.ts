@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
+import { appPreferences } from '~/features/preferences/app-preferences';
 
 /**
  * The few taps the phone gives back, kept few: a click for choosing one of
@@ -9,23 +10,31 @@ import * as Haptics from 'expo-haptics';
  * out of sight under the keyboard, and the button alone seemed to do nothing.
  * iOS stays silent when its System Haptics setting is off, and a phone
  * without a Taptic Engine simply does nothing; nothing here can fail a press.
+ * Nor does the app when its own switch is off (Account → Appearance).
  */
+const on = () => appPreferences().haptics;
+
 export const haptic = {
   /** A light tap: something kept or applied (a job saved, filters applied). */
   tap() {
+    if (!on()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
   },
   selection() {
+    if (!on()) return;
     Haptics.selectionAsync().catch(() => {});
   },
   success() {
+    if (!on()) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   },
   /** Asked for something it cannot do (a limit reached): a warning, not an error. */
   warning() {
+    if (!on()) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
   },
   error() {
+    if (!on()) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
   },
 };
