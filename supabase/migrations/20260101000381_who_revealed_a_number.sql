@@ -18,6 +18,8 @@
 --
 -- rollback: drop function if exists public.my_company_revealed(text), public.my_contact_reveals(int);
 -- safety: additive — two read-only functions.
+-- safety: ships-with-code — two new read functions called only by new app code, which treats an
+--   error as "nothing to say"; either order leaves running code as it is.
 -- =============================================================================
 
 create or replace function public.my_company_revealed(p_handle text)

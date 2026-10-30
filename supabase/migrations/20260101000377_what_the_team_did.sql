@@ -41,6 +41,8 @@
 --           drop table if exists company_activity;
 -- safety: additive — the triggers only insert into a new table, and one
 --         that cannot insert is caught, so the change it records still commits.
+-- safety: ships-with-code — the triggers only write the new table and swallow their own errors, so
+--   every write the running code makes still commits; the reader is new code only.
 -- =============================================================================
 
 create table if not exists company_activity (

@@ -16,6 +16,8 @@
 -- rollback: drop table if exists saved_replies;
 -- safety: additive — a new table; the app's local replies are offered for
 -- upload, and stay on the phone until they are.
+-- safety: ships-with-code — a new table used only by actions and reads added in this branch: code
+--   first, those answer an error until it runs and nothing that exists today changes; migration first, nothing uses it yet.
 -- =============================================================================
 
 create table if not exists saved_replies (

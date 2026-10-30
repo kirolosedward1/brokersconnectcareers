@@ -26,6 +26,11 @@
 --           alter table companies drop constraint companies_reply_hours_shape, drop constraint companies_contact_whatsapp_e164,
 --             drop column hiring_status, drop column paused_until, drop column contact_whatsapp, drop column reply_hours;
 -- safety: additive — every company starts open, with no number and no hours.
+-- safety: ships-with-code — every company starts open, and only the new action pauses one, so the
+--   new refusal on applications cannot meet code that does not know it.
+-- safety: constraint — both checks are on columns this file adds, null on every row.
+-- safety: grant, revoke-anon — company_is_hiring() is for anyone who reads a listing, signed out
+--   included: a boolean read off columns the public company row already shows.
 -- =============================================================================
 
 alter table companies

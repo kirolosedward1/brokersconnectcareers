@@ -19,15 +19,15 @@
 -- Tested in supabase/tests/interviews.test.mjs.
 --
 -- rollback: drop function if exists public.answer_interview(uuid, text, timestamptz);
---           revoke execute on function public.on_interview_changed() from public, anon, authenticated;
-
-drop trigger if exists interview_invites_90_notify on interview_invites;
+--           drop trigger if exists interview_invites_90_notify on interview_invites;
 --           drop function if exists public.on_interview_changed();
 --           drop table if exists interview_invites;
 --           restate push_category() from migration 335
 --           (the notification kinds are migration 372's and stay)
 -- safety: additive — a new table and its functions. A build that does not
 -- know the kinds (372) shows the bell's generic line for them.
+-- safety: ships-with-code — a new table used only by actions and screens added in this branch:
+--   code first, those answer an error and nothing existing changes; migration first, nobody uses it yet.
 -- =============================================================================
 
 create table if not exists interview_invites (

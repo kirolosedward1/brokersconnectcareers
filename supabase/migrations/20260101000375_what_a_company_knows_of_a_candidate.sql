@@ -24,6 +24,8 @@
 --           drop function if exists public.candidate_notes_for(uuid[]);
 --           drop table if exists company_candidate_notes;
 -- safety: additive — a new table and two read functions under RLS.
+-- safety: ships-with-code — a new table and functions used only by code added in this branch: code
+--   first, those reads answer an error until it runs and nothing that exists today changes; migration first, nothing uses them yet.
 -- =============================================================================
 
 create table if not exists company_candidate_notes (

@@ -16,6 +16,8 @@
 -- rollback: drop trigger if exists company_members_20_team_cap on company_members;
 --           drop function if exists public.company_team_cap();
 -- safety: additive — a new trigger on insert only. Existing rows are untouched.
+-- safety: ships-with-code — code first: no sixth member is refused yet; migration first: older
+--   code shows its generic error for team_full, which only a sixth member can meet.
 -- =============================================================================
 
 create or replace function public.company_team_cap()

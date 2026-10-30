@@ -25,6 +25,8 @@
 --           drop function if exists public.member_can(uuid, text);
 --           alter table company_members drop column can_post, drop column can_reveal, drop column can_spend;
 -- safety: additive — defaults keep every member's powers as they were.
+-- safety: ships-with-code — the defaults keep every member able to do what they did; a switch can
+--   be turned off only by the new action, so reveal_agent_contact's new refusal cannot meet old code.
 -- =============================================================================
 
 alter table company_members

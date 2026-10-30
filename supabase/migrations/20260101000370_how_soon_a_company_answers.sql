@@ -25,6 +25,10 @@
 -- rollback: drop function if exists public.company_response_stats(uuid);
 -- safety: additive — a new function, no table or policy changes. An app that
 -- asks before this lands gets "function not found" and shows no line.
+-- safety: ships-with-code — only the app reads this function, and it treats an error as "no line";
+--   the website does not call it, so either order leaves every running page as it is.
+-- safety: grant, revoke-anon — meant for everyone who can read a listing, signed out included:
+--   three aggregates over 180 days, nothing under five applications, never a row (schema.test lists it).
 -- =============================================================================
 
 create or replace function public.company_response_stats(p_company_id uuid)

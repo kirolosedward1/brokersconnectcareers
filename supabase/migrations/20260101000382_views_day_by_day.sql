@@ -14,6 +14,8 @@
 --
 -- rollback: restate increment_job_view() from migration 3; drop table if exists job_view_days;
 -- safety: additive — the total is counted exactly as before; a day's row is one more write beside it.
+-- safety: ships-with-code — increment_job_view keeps its name and arguments and counts the total
+--   as before; the stats screen reads the new table and draws no daily views when it is missing.
 -- =============================================================================
 
 create table if not exists job_view_days (

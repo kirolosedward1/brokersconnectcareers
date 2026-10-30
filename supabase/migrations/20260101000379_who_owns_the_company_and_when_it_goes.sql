@@ -48,6 +48,12 @@
 --           restate company_activity's kind check from migration 377.
 -- safety: additive — nothing changes for a company until its owner asks. jobs_40_bump_version
 --         is off only for the one backfill statement, inside this file's transaction.
+-- safety: ships-with-code — the restated guard and company_suspended() answer as before until an
+--   owner uses the new functions, which only new code calls; jobs.ended_at is stamped by trigger.
+-- safety: drop — jobs_40_bump_version is off for the one backfill statement only, inside this
+--   file's transaction, as migrations 347 and 365 do; no other session sees it off.
+-- safety: constraint — company_activity is migration 377's, in this same branch; its rows hold only
+--   the kinds both checks allow, and the new check only adds three.
 -- =============================================================================
 
 alter table companies

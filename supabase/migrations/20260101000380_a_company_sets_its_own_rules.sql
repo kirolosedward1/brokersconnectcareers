@@ -36,6 +36,8 @@
 --           drop table if exists company_approval_requests, company_policies;
 -- safety: additive — every rule is off until a company's admin turns it on; the restated
 --         helpers answer exactly as before for a company without require_mfa.
+-- safety: ships-with-code — every rule is off until the new action turns it on, and the restated
+--   helpers answer exactly as before for a company with no rules, so old code meets no new refusal.
 -- =============================================================================
 
 create table if not exists company_policies (
