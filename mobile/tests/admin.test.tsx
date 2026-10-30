@@ -777,7 +777,8 @@ describe('the overview', () => {
       act(() => router.navigate('/admin'));
       await screen.findByText(ar.app.admin.overview.sections);
     }
-  });
+    // Thirteen screens opened in turn: about four seconds alone, past Jest's five on a busy CI runner.
+  }, 20_000);
 
   it('lists the owners asking to leave while there are any, and closes a request through the website', async () => {
     server.on('GET /rest/v1/support_requests', (url: URL) => {
