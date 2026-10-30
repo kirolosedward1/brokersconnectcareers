@@ -2,6 +2,20 @@
 
 Boards: **TeamRoles**, **TeamInvite**, **MemberDetail**.
 
+## Decided and built
+
+**A team is at most five people, the owner included.** Migration 371
+(`company_team_cap`) refuses a sixth member with `team_full`, whichever door
+adds them. It locks the company row while counting. A team already larger
+keeps everybody. `addCompanyMember` answers `team_full`, the website's form
+and the app say so, and the app shows «الفريق: N من 5» and replaces the add
+form with that sentence when the team is full. Test:
+`supabase/tests/team-cap.test.mjs`.
+
+Reveals keep today's limits (per person per hour and day, per company per
+day). There is no monthly balance and no per-member cap. The rest of this
+doc (permissions per member, listing scopes) still waits for approval.
+
 ## What exists
 
 - A company has one owner (`companies.owner_id`) and members in
@@ -75,4 +89,6 @@ from 04).
 
 1. Columns as permissions, or named roles (`viewer`, `recruiter`, `manager`)?
    Recommended: columns.
-2. Reveal caps per member, or a company-paid balance (see 08)?
+2. ~~Reveal caps per member, or a paid balance?~~ Decided: neither. The
+   team is capped at five instead, and reveals keep their hourly and daily
+   limits.

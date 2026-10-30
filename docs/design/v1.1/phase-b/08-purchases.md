@@ -13,7 +13,15 @@ Boards: **Plans**, **PromoteListing**, **Checkout**, **Orders**,
   post for a verified company, and orders. Its own comment says "nothing is
   sold in the app".
 
-## The App Store question comes first
+## Decided: no in-app purchases
+
+Buying stays on the website. The app keeps its read-only billing screen
+(balance, free post, orders) and offers no purchase inside the app. Whether
+it may point people to the website for buying follows the App Store rules
+for each storefront. Until those are read, it does not. Options 2 and 3
+below are kept for the record only.
+
+## The App Store question (for the record)
 
 Selling posting credits or promotion inside an iOS app falls under App
 Review Guidelines section 3.1 (in-app purchase, and the rules for linking to
@@ -62,5 +70,5 @@ Nothing is proposed until they are.
 
 ## Decisions needed
 
-1. Which option, after reading section 3.1 as it stands.
-2. Whether subscriptions are wanted at all.
+1. ~~Which option?~~ Decided: option 1, no in-app purchases.
+2. Whether subscriptions are wanted at all (on the website).

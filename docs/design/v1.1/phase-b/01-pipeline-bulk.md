@@ -45,12 +45,20 @@ additive.
 
 ### Decline reasons
 
+**Decided:** the employer chooses, with a tick, whether the candidate sees
+the reason. This is built for the single move: `setApplicationStatus`
+takes `shareReason`, and absent means yes. Unticked, the reason is not
+written to `decision_note` (the candidate's row) but kept as the company's
+note on the application (`application_notes`, migration 58). The answer
+says `reasonKept: false` if that note could not be written; the move
+stands either way. The app's applicant card has the tick. The website's
+card still shares, as before. Bulk declines will send the same flag for the
+whole batch.
+
 A short fixed list, stored as a key on the event (`application_events.reason_key`,
 a new nullable text column with a check constraint). Proposed keys:
-`experience`, `area`, `track`, `filled`, `other`. The candidate's email says
-the reason only when the company chooses "send the reason". **Decision
-needed:** do candidates see the reason at all? Today they see a stage change
-and no reason.
+`experience`, `area`, `track`, `filled`, `other`. The candidate sees the
+reason only when the tick is on.
 
 ### Website action
 
@@ -87,5 +95,5 @@ new event in the website vocabulary, written in its own commit.
 
 ## Decisions needed
 
-1. Do candidates see the decline reason? Is the list above right?
+1. Is the reasons list above right? (Visibility is decided: the tick.)
 2. Is the saved-reply bulk send email-only, as recommended?

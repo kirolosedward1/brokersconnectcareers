@@ -2,8 +2,20 @@
 
 The v1.1 brief says Phase B items must not be faked in the UI. Each one gets
 a design doc here first, with the migration and the server actions it needs.
-After approval it gets built, one PR per doc. **Nothing in this folder is
-built yet.**
+After approval it gets built, one PR per doc. Only the two decisions
+marked **built** below are built. Everything else is still a proposal.
+
+## Decisions taken (review of 2026-10-30)
+
+1. **No in-app purchases.** Buying stays on the website. The app shows
+   balances and orders only (08).
+2. **No company-internal publish approval.** Platform moderation is the only
+   gate before a listing goes live (05).
+3. **A team is at most five people, the owner included.** Built:
+   migration 371 (03).
+4. **The employer decides whether the candidate sees a decline reason**,
+   with a tick. Built for the single move. Bulk moves (01) will use the same
+   tick (01).
 
 Each doc follows the same shape: the boards it serves, what the platform
 already has, the proposed schema (migration sketch with rollback and safety
@@ -18,14 +30,14 @@ when a doc is approved. The last one taken in this branch is 370
 
 | # | Doc | Boards | Needs a product decision? |
 |---|-----|--------|---------------------------|
-| 01 | [Bulk actions in the pipeline](01-pipeline-bulk.md) | PipelineBulk | Decline reasons list |
+| 01 | [Bulk actions in the pipeline](01-pipeline-bulk.md) | PipelineBulk | Reason visibility decided (tick); reasons list open |
 | 02 | [Shared candidate notes and «تقدّم من قبل»](02-shared-notes-and-history.md) | CandidateHistory, ApplicantReview | Note visibility across listings |
-| 03 | [Team roles, scopes and caps](03-team-roles.md) | TeamRoles, TeamInvite, MemberDetail | Role list; reveal caps vs today's limits |
+| 03 | [Team roles, scopes and caps](03-team-roles.md) | TeamRoles, TeamInvite, MemberDetail | Team cap decided and built (5); permissions open |
 | 04 | [Team activity log and export](04-team-activity.md) | TeamActivity | Retention period |
-| 05 | [Approvals and limits](05-approvals-and-limits.md) | ApprovalsLimits | Which actions need approval |
+| 05 | [Approvals and limits](05-approvals-and-limits.md) | ApprovalsLimits | Publish approval dropped; the rest open |
 | 06 | [Shared saved replies](06-saved-replies.md) | SavedReplies | Variables, channels |
 | 07 | [Company account](07-company-account.md) | CompanyAccount, CompanySettings | Grace periods, ownership transfer rules |
-| 08 | [Packs, promotion, checkout, orders, subscriptions](08-purchases.md) | Plans, PromoteListing, Checkout, Orders, Subscription | **App Store rules; subscription tiers not approved** |
+| 08 | [Packs, promotion, checkout, orders, subscriptions](08-purchases.md) | Plans, PromoteListing, Checkout, Orders, Subscription | **Decided: no in-app purchases** |
 | 09 | [Interview invites](09-interview-invites.md) | EmployerHome (interviews today), ApplicationDetail | Calendar, reminders |
 | 10 | [Gaps found while building Phase A](10-gaps-from-phase-a.md) | Alerts, NotificationPrefs, EmployerNotifPrefs, Privacy, Availability, Support, ListingStats, RevealConfirm, OnbCompany1–3, Appearance | Several, listed per gap |
 

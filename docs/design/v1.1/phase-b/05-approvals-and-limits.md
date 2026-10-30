@@ -23,7 +23,6 @@ admins may download CVs.
 ```sql
 create table company_policies (
   company_id          uuid primary key references companies(id) on delete cascade,
-  approve_publish     boolean not null default false,
   approve_pay_change  boolean not null default false,
   approve_decline     boolean not null default false,
   approve_spend       boolean not null default false,
@@ -55,11 +54,8 @@ them. Requests are readable by the requester and by the owner and admins.
 
 ### Enforcement
 
-- `approve_publish`: when a non-admin submits a listing, it goes to a new
-  job status `awaiting_company` instead of `pending_review`. The approval
-  moves it on to `pending_review`. This needs the job status enum and its
-  transition trigger extended, which touches the website's listing pages
-  and moderation queue. **This is the largest change in Phase B.**
+- ~~`approve_publish`~~: **dropped (decided).** Platform moderation is the
+  only gate before publishing, and the column is removed from the sketch.
 - `approve_pay_change`: `saveJob` refuses a pay change by a non-admin on a
   live listing and writes a request instead.
 - `approve_decline`: decline moves (single and bulk, 01) write requests.
@@ -81,6 +77,5 @@ an `approvalRequests` read for the owner's queue. The employer Home queue
 
 ## Decisions needed
 
-1. Is a company-internal publish approval wanted, given platform moderation
-   already exists? It doubles the wait.
+1. ~~Company-internal publish approval?~~ Decided: no.
 2. Drop `session_days`?

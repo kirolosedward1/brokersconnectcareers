@@ -86,7 +86,7 @@ it.
 Built in A5: the confirmation, who it is recorded under, and the same-day
 rule. Missing: the monthly balance («الرصيد بعد الكشف 7 من 20») and
 «كشف سابق». Reveals are limited per hour and day, not counted against a
-balance. A balance is 03 (per-member caps) or 08 (paid). The company
+balance, and that is decided: no balance. The company
 cannot read the ledger. A definer `my_company_revealed(agent_id)` returning
 the last reveal date would back «كشف سابق».
 
