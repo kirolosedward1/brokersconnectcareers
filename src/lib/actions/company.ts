@@ -609,6 +609,52 @@ export async function setApplicationPurge(input: unknown): Promise<ActionResult>
   return { ok: true };
 }
 
+const branchSchema = z.object({
+  id: z.number().int().positive().optional(),
+  nameAr: z.string().trim().min(1).max(80),
+  nameEn: z.string().trim().max(80).optional().nullable(),
+  districtId: z.number().int().positive().nullable(),
+});
+
+/**
+ * One of the company's places (migration 383, Phase B 07b): a name and a
+ * district. An admin's, under the branches' policies; twenty at most.
+ */
+export async function saveBranch(input: unknown): Promise<ActionResult<{ id: number }>> {
+  const parsed = branchSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc('my_company_id');
+  if (!companyId) return { ok: false, error: 'no_company' };
+  const nameAr = clean(parsed.data.nameAr);
+  if (!nameAr) return { ok: false, error: 'invalid', fieldErrors: { nameAr: 'required' } };
+  const row = {
+    name_ar: nameAr,
+    name_en: clean(parsed.data.nameEn) || null,
+    district_id: parsed.data.districtId,
+  };
+  const query = parsed.data.id
+    ? supabase.from('company_branches').update(row).eq('id', parsed.data.id).eq('company_id', companyId)
+    : supabase.from('company_branches').insert({ company_id: companyId, ...row });
+  const { data, error } = await query.select('id');
+  if (error?.message.includes('branch_cap')) return { ok: false, error: 'branch_cap' };
+  if (error) return refused('company', error, { company: companyId });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true, data: { id: data[0]!.id } };
+}
+
+export async function deleteBranch(input: unknown): Promise<ActionResult> {
+  const parsed = z.object({ id: z.number().int().positive() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('company_branches').delete().eq('id', parsed.data.id).select('id');
+  if (error) return refused('company', error, { branch: parsed.data.id });
+  if (!data?.length) return { ok: false, error: 'forbidden' };
+  revalidatePath('/employer/company');
+  return { ok: true };
+}
+
 export async function removeCompanyMember(userId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc('my_company_id');

@@ -147,6 +147,8 @@ export type JobInput = {
   descriptionEn?: Nullable<string>;
   requirementsAr?: Nullable<string>;
   developerIds: number[];
+  /** The company's branch (migration 383); null for none, absent to leave it as it is. */
+  branchId?: number | null;
   version?: number;
   /** Made once per form and repeated on every retry, so a retry cannot post twice. */
   idempotencyKey?: string;
@@ -356,6 +358,8 @@ export type MobileActions = {
     input: { id: string; approve: boolean; note?: string | null };
     output: ActionResult<{ outcome: 'approved' | 'refused' | 'expired' }>;
   };
+  saveBranch: { input: { id?: number; nameAr: string; nameEn?: string | null; districtId: number | null }; output: ActionResult<{ id: number }> };
+  deleteBranch: { input: { id: number }; output: ActionResult };
   transferCompanyOwnership: { input: { userId: string }; output: ActionResult };
   requestCompanyDeletion: { input: { confirmName: string }; output: ActionResult };
   cancelCompanyDeletion: { input: Record<string, never>; output: ActionResult };

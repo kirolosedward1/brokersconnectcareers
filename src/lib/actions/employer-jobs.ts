@@ -47,6 +47,11 @@ const jobSchema = z
     descriptionEn: z.string().trim().max(8000).optional().nullable(),
     requirementsAr: z.string().trim().max(4000).optional().nullable(),
     developerIds: z.array(z.coerce.number().int().positive()).max(30),
+    /**
+     * The company's branch (migration 383), or null for none. Absent leaves it
+     * as it is: the website's form does not send one.
+     */
+    branchId: z.coerce.number().int().positive().nullable().optional(),
     /** The version the form was built from; absent when creating. */
     version: z.coerce.number().int().positive().optional(),
     /**
@@ -173,6 +178,8 @@ export async function saveJob(input: unknown): Promise<ActionResult<{ id: string
     description_ar: description.value,
     description_en: descriptionEn.value || null,
     requirements_ar: requirements.value || null,
+    // Only when the form sends it (migration 383): the website's form does not.
+    ...(value.branchId !== undefined ? { branch_id: value.branchId } : {}),
   } as const;
 
   let jobId = value.id;
@@ -466,6 +473,8 @@ export async function transitionJob(input: unknown): Promise<ActionResult> {
  * the other end of a refused write is not always the employer.
  */
 function mapJobError(message: string): string {
+  // A branch of another company (migration 383): the form offered only the company's own.
+  if (message.includes('branch_not_of_company')) return 'invalid';
   if (message.includes('unverified_company_post_cap')) return 'post_cap';
   if (message.includes('job status cannot go from')) return 'invalid_transition';
   // Restricted or suspended: nothing new goes in front of a moderator

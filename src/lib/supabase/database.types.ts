@@ -220,6 +220,16 @@ export type CompanyMemberRow = Timestamped & {
   can_spend?: boolean;
 };
 
+/** Migration 383: one of a company's places — a name and a district. */
+export type CompanyBranchRow = {
+  id: number;
+  company_id: string;
+  name_ar: string;
+  name_en: string | null;
+  district_id: number | null;
+  created_at: string;
+};
+
 /** Migration 380: the rules a company sets for its own team. */
 export type CompanyPolicyRow = {
   company_id: string;
@@ -298,6 +308,8 @@ export type CompanyActivityRow = {
 export type JobRow = Timestamped & {
   id: string;
   company_id: string;
+  /** Migration 383: the company's branch this listing is for, when it names one. */
+  branch_id?: number | null;
   title_ar: string;
   title_en: string | null;
   slug: string;
@@ -1518,6 +1530,7 @@ export type Database = {
       application_records: Table<ApplicationRecordRow, never>;
       /** Migration 382: a listing's views per Cairo day, written by increment_job_view(). */
       job_view_days: Table<{ job_id: string; day: string; views: number }, never>;
+      company_branches: Table<CompanyBranchRow, Insertable<CompanyBranchRow, 'company_id' | 'name_ar'>>;
       company_policies: Table<CompanyPolicyRow, Insertable<CompanyPolicyRow, 'company_id'>>;
       company_approval_requests: Table<ApprovalRequestRow, Insertable<ApprovalRequestRow, 'company_id' | 'kind' | 'subject_id'>>;
       interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
