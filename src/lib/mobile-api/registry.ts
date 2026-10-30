@@ -1,3 +1,4 @@
+import { acceptProposedTime, answerInterview, cancelInterview, inviteToInterview } from '@/lib/actions/interviews';
 import 'server-only';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
@@ -224,6 +225,11 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
 
   // Employer: applicants
   setApplicationStatus: { run: (input) => setApplicationStatus(input) },
+  inviteToInterview: { run: (input) => inviteToInterview(input) },
+  cancelInterview: { run: (input) => cancelInterview(input) },
+  acceptProposedTime: { run: (input) => acceptProposedTime(input) },
+  // Candidate: the answer to an invitation
+  answerInterview: { run: (input) => answerInterview(input) },
   addApplicationNote: { run: (input) => addApplicationNote(input) },
   deleteApplicationNote: {
     run: positional(z.number().int().positive(), 'id', deleteApplicationNote),

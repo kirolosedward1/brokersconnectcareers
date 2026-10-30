@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/format';
 import { localized } from '@/lib/locale';
 import type { NotificationKind, NotificationRow } from '@/lib/supabase/database.types';
 
@@ -46,6 +47,8 @@ const KNOWN: Record<NotificationKind, true> = {
   appeal_decided: true,
   new_jobs: true,
   company_verification_revoked: true,
+  interview_invited: true,
+  interview_answered: true,
 };
 
 /**
@@ -107,6 +110,17 @@ export function notificationTitle(
     if (payload.source === 'follow' && subject) return t('notifications.newJobsCompany', { subject, count });
     if (payload.source === 'search' && payload.label) return t('notifications.newJobsSearch', { subject: payload.label, count });
     return t('notifications.newJobsMany', { count });
+  }
+  // An interview says when, in Cairo time (formatDateTime's own zone).
+  if (kind === 'interview_invited' && payload.starts_at) {
+    return t('notifications.interviewInvited', { subject, when: formatDateTime(payload.starts_at, locale) });
+  }
+  if (kind === 'interview_answered' && payload.answer) {
+    const when = payload.starts_at ? formatDateTime(payload.starts_at, locale) : '';
+    const name = payload.name ?? '';
+    if (payload.answer === 'accepted') return t('notifications.interviewAccepted', { name, subject, when });
+    if (payload.answer === 'declined') return t('notifications.interviewDeclined', { name, subject });
+    return t('notifications.interviewCounter', { name, subject, when });
   }
   return isKnownNotificationKind(kind) ? t(`notifications.${kind}`, { subject }) : t('notifications.generic');
 }

@@ -42,8 +42,12 @@ report.section('which switch a kind answers to');
   const kinds = (await db.query(`select unnest(enum_range(null::notification_kind))::text as kind`)).rows.map((row) => row.kind);
   const category = async (kind) => (await one(`select public.push_category('${kind}') as c`)).c;
   report.check('the new listings are job alerts', (await category('new_jobs')) === 'job_alerts');
-  const applications = ['application_submitted', 'application_received', 'application_withdrawn', 'application_moved'];
-  report.check('the four application events are applications',
+  const applications = [
+    'application_submitted', 'application_received', 'application_withdrawn', 'application_moved',
+    // Migration 373: an interview invitation and its answer are part of the application.
+    'interview_invited', 'interview_answered',
+  ];
+  report.check('the application events, interviews included, are applications',
     (await Promise.all(applications.map(category))).every((c) => c === 'applications'));
   const rest = kinds.filter((kind) => kind !== 'new_jobs' && !applications.includes(kind));
   report.check(`every other kind (${rest.length}) is the account's`,

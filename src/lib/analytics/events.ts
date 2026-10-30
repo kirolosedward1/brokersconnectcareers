@@ -131,6 +131,10 @@ export const EVENTS = {
    * on that listing: the end of employer post → first applicant opened.
    */
   applicant_opened: { props: { first: bool() }, metric: true },
+  /** A company invited an applicant to an interview (migration 373). */
+  interview_invited: { props: {}, metric: true },
+  /** The candidate answered an invitation. */
+  interview_answered: { props: { answer: oneOf(['accepted', 'declined', 'counter'] as const) }, metric: true },
 
   // — Consultant directory --------------------------------------------------
   directory_viewed: { props: { role, access: oneOf(['full', 'anonymous'] as const) }, metric: true },
@@ -249,6 +253,8 @@ export function metricDimension(event: AnalyticsEvent, props: Record<string, unk
       return String(props.percent);
     case 'applicant_opened':
       return props.first ? 'first' : 'again';
+    case 'interview_answered':
+      return String(props.answer);
     default:
       return '';
   }

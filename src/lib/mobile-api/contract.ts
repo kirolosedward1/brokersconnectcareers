@@ -14,6 +14,7 @@ import type {
   CommissionType,
   CompanyType,
   EmploymentType,
+  InterviewMode,
   ExperienceBand,
   HeadcountBand,
   JobTrack,
@@ -325,6 +326,26 @@ export type MobileActions = {
     };
     /** reasonKept: false when an unshared reason could not be kept as a note (the move itself stands). */
     output: ActionResult<{ reasonKept: boolean }>;
+  };
+  /** Migration 373. Times are ISO instants with an offset; shown in Cairo time. One invitation stands per application. */
+  inviteToInterview: {
+    input: {
+      applicationId: string;
+      startsAt: string;
+      minutes: number;
+      mode: InterviewMode;
+      place?: Nullable<string>;
+      note?: Nullable<string>;
+    };
+    output: ActionResult<{ id: string }>;
+  };
+  cancelInterview: { input: { id: string }; output: ActionResult };
+  /** The company agrees to the candidate's proposed time. */
+  acceptProposedTime: { input: { id: string }; output: ActionResult };
+  /** The candidate's answer; counterStartsAt with 'counter'. */
+  answerInterview: {
+    input: { id: string; answer: 'accepted' | 'declined' | 'counter'; counterStartsAt?: Nullable<string> };
+    output: ActionResult;
   };
   addApplicationNote: {
     /** idempotencyKey: made once per composer, so a retry finds the note rather than writing it twice. */

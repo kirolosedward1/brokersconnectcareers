@@ -375,7 +375,11 @@ export type NotificationKind =
   // and followed companies (/api/cron/new-jobs).
   | 'new_jobs'
   // Migration 348: a moderator took a company's verification away.
-  | 'company_verification_revoked';
+  | 'company_verification_revoked'
+  // Migrations 372–373: an interview invitation (to the candidate) and the
+  // candidate's answer (to the company's members).
+  | 'interview_invited'
+  | 'interview_answered';
 
 /**
  * The payload holds data, never a rendered sentence — the site is read in two
@@ -383,6 +387,26 @@ export type NotificationKind =
  * forever. Every field is optional because it is a snapshot of whatever the
  * event had to hand.
  */
+export type InterviewMode = 'office' | 'phone' | 'video';
+export type InterviewStatus = 'proposed' | 'accepted' | 'declined' | 'counter' | 'cancelled';
+
+/** An interview a company invited a candidate to (migration 373). Times are instants, shown in Cairo time. */
+export type InterviewInviteRow = {
+  id: string;
+  application_id: string;
+  starts_at: string;
+  minutes: number;
+  mode: InterviewMode;
+  place: string | null;
+  note: string | null;
+  status: InterviewStatus;
+  /** The candidate's proposed time, while status is 'counter'. */
+  counter_starts_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type NotificationRow = {
   id: string;
   user_id: string;
@@ -416,6 +440,13 @@ export type NotificationRow = {
     source?: 'follow' | 'search' | 'mixed';
     /** new_jobs: the saved search's own name, when one search found them. */
     label?: string;
+    /** interview_invited / interview_answered: when (the proposed time, for a counter), how, and which invitation. */
+    starts_at?: string;
+    mode?: InterviewMode;
+    interview_id?: string;
+    /** interview_answered: the candidate's name and answer. */
+    name?: string;
+    answer?: 'accepted' | 'declined' | 'counter';
   };
   href: string | null;
   read_at: string | null;
@@ -1355,6 +1386,7 @@ export type Database = {
         ApplicationNoteRow,
         Insertable<ApplicationNoteRow, 'application_id' | 'body'>
       >;
+      interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
       /**
        * No Insertable worth naming: nothing in the app writes one. Every row
        * comes from a trigger, and the table has no insert policy on purpose —
@@ -1562,6 +1594,11 @@ export type Database = {
        * how many, the share it opened (0–1), the median days to a first
        * answer. No row under five applications; no median under three answered.
        */
+      /** The candidate's answer to an invitation still waiting on them (migration 373). */
+      answer_interview: {
+        Args: { p_id: string; p_answer: 'accepted' | 'declined' | 'counter'; p_counter?: string | null };
+        Returns: 'ok' | 'not_found' | 'closed' | 'invalid';
+      };
       company_response_stats: {
         Args: { p_company_id: string };
         Returns: { sample: number; open_rate: number | string; median_days: number | string | null }[];

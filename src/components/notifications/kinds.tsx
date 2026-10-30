@@ -4,6 +4,7 @@ import {
   Ban,
   Bell,
   Briefcase,
+  CalendarCheck,
   CalendarClock,
   CalendarX2,
   CirclePause,
@@ -56,6 +57,8 @@ const ICONS: Record<NotificationKind, React.ComponentType<{ className?: string }
   appeal_decided: Scale,
   new_jobs: Briefcase,
   company_verification_revoked: BadgeX,
+  interview_invited: CalendarClock,
+  interview_answered: CalendarCheck,
 };
 
 const TONES: Record<NotificationKind, string> = {
@@ -83,6 +86,8 @@ const TONES: Record<NotificationKind, string> = {
   appeal_decided: 'bg-primary/10 text-primary',
   new_jobs: 'bg-primary/10 text-primary',
   company_verification_revoked: 'bg-destructive-muted text-destructive',
+  interview_invited: 'bg-primary/10 text-primary',
+  interview_answered: 'bg-primary/10 text-primary',
 };
 
 export function notificationIcon(kind: string) {
