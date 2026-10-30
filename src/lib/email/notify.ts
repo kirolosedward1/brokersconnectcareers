@@ -1,3 +1,4 @@
+import { fillReply, firstName } from '@/lib/replies';
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AgentVisibility, ApplicationStatus, JobStatus } from '@/lib/supabase/database.types';
@@ -716,9 +717,20 @@ export async function notifyCandidateOfCompanyMessage(applicationId: string, mes
     const to = await recipient(admin, application.candidate_id, 'notify_status');
     if (!to) return 'skipped';
 
-    const t = copyFor(to.locale).companyMessage;
+    const c = copyFor(to.locale);
+    const t = c.companyMessage;
     const title = localized(to.locale, job.title_ar, job.title_en);
     const company = job.company ? localized(to.locale, job.company.name_ar, job.company.name_en) : '';
+    // A saved reply's words (src/lib/replies.ts), filled for this applicant.
+    const { data: person } = await admin.from('profiles').select('full_name').eq('id', application.candidate_id).maybeSingle();
+    const fullName = (person as { full_name?: string } | null)?.full_name ?? '';
+    const words = fillReply(message, {
+      name: fullName,
+      first_name: firstName(fullName),
+      job: title,
+      company,
+      stage: (c.status as Record<string, string>)[application.status] ?? '',
+    });
 
     return deliver({
       template: 'company_message',
@@ -733,7 +745,7 @@ export async function notifyCandidateOfCompanyMessage(applicationId: string, mes
         heading: t.heading,
         blocks: [
           { kind: 'text', value: t.body(title, company) },
-          { kind: 'text', value: message },
+          { kind: 'text', value: words },
           { kind: 'facts', rows: [[t.labelJob, title], [t.labelCompany, company]] },
           { kind: 'button', label: t.cta, href: `${env.siteUrl}/dashboard/applications` },
         ],

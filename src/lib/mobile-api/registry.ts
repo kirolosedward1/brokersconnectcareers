@@ -1,3 +1,4 @@
+import { deleteReply, saveReply } from '@/lib/actions/replies';
 import { acceptProposedTime, answerInterview, cancelInterview, inviteToInterview } from '@/lib/actions/interviews';
 import 'server-only';
 import { z } from 'zod';
@@ -229,6 +230,8 @@ export const REGISTRY: { [N in MobileActionName]: Entry<N> } = {
   setApplicationStatus: { run: (input) => setApplicationStatus(input) },
   setApplicationStatuses: { run: (input) => setApplicationStatuses(input) },
   messageApplicants: { run: (input) => messageApplicants(input) },
+  saveReply: { run: (input) => saveReply(input) },
+  deleteReply: { run: (input) => deleteReply(input) },
   inviteToInterview: { run: (input) => inviteToInterview(input) },
   cancelInterview: { run: (input) => cancelInterview(input) },
   acceptProposedTime: { run: (input) => acceptProposedTime(input) },

@@ -407,6 +407,20 @@ export type InterviewInviteRow = {
   updated_at: string;
 };
 
+/** A reply a company keeps (migration 374): the team's (person_id null) or one person's own. */
+export type SavedReplyRow = {
+  id: string;
+  company_id: string;
+  person_id: string | null;
+  title: string | null;
+  body: string;
+  channel: 'whatsapp' | 'email';
+  version: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type NotificationRow = {
   id: string;
   user_id: string;
@@ -1386,6 +1400,7 @@ export type Database = {
         ApplicationNoteRow,
         Insertable<ApplicationNoteRow, 'application_id' | 'body'>
       >;
+      saved_replies: Table<SavedReplyRow, Insertable<SavedReplyRow, 'company_id' | 'body'>>;
       interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
       /**
        * No Insertable worth naming: nothing in the app writes one. Every row

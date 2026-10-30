@@ -15,6 +15,7 @@ import type {
   CompanyType,
   EmploymentType,
   InterviewMode,
+  SavedReplyRow,
   ExperienceBand,
   HeadcountBand,
   JobTrack,
@@ -342,6 +343,12 @@ export type MobileActions = {
     input: { applicationIds: string[]; message: string; key: string };
     output: ActionResult<{ sent: number; skipped: number }>;
   };
+  /** Migration 374: a reply of one's own, or the team's (admins); WhatsApp or email. */
+  saveReply: {
+    input: { id?: string; version?: number; title?: Nullable<string>; body: string; channel: 'whatsapp' | 'email'; teamWide: boolean };
+    output: ActionResult<{ reply: SavedReplyRow }>;
+  };
+  deleteReply: { input: { id: string }; output: ActionResult };
   /** Migration 373. Times are ISO instants with an offset; shown in Cairo time. One invitation stands per application. */
   inviteToInterview: {
     input: {
