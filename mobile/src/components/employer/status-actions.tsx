@@ -38,6 +38,8 @@ export function StatusActions({ jobId, status, title }: { jobId: string; status:
         onError: (failure) => {
           if (failure instanceof ApiError && failure.status === 0) return setError(t('app.offline.body'));
           const reason = failure instanceof TransitionRefused ? failure.reason : 'failed';
+          // The company keeps this member from posting (migration 376).
+          if (reason === 'not_permitted') return setError(t('app.team.notPermittedPost'));
           setError(reason === 'failed' ? t('common.errorBody') : t(`employer.${REFUSAL_COPY[reason]}`));
         },
       },

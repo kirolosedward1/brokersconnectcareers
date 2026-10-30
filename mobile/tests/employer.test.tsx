@@ -417,4 +417,15 @@ describe("a listing's performance", () => {
       expect(server.asked('/api/mobile/v1/actions/transitionJob')[0]?.body).toMatchObject({ input: { jobId: ended.id, status: 'pending_review' } }),
     );
   });
+
+  it('says the company keeps this member from posting when a repost is refused for it', async () => {
+    const ended = listing({ status: 'expired', expires_at: '2026-09-30T10:00:00Z' });
+    listings = [ended];
+    server.on('GET /rest/v1/applications', []);
+    server.on('POST /api/mobile/v1/actions/transitionJob', { ok: false, error: 'not_permitted' });
+    await signIn();
+    await renderRouter(app, { initialUrl: `/employer/jobs/${ended.id}/stats` });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.employer.reopenJob}: مستشار مبيعات` }));
+    expect(await screen.findByText(ar.app.team.notPermittedPost)).toBeTruthy();
+  });
 });

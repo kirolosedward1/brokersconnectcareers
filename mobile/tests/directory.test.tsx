@@ -519,6 +519,13 @@ describe("a consultant's page", () => {
     fireEvent.press(screen.getByRole('button', { name: ar.agents.revealContact }));
     fireEvent.press(await screen.findByRole('button', { name: ar.app.reveal.confirm }));
     expect(await screen.findByText(ar.agents.revealLocked)).toBeTruthy();
+
+    // The company keeps this member from revealing numbers (Phase B 03).
+    server.on('POST /api/mobile/v1/actions/revealAgentContact', { ok: false, error: 'not_permitted' });
+    await waitFor(() => expect(screen.getByRole('button', { name: ar.agents.revealContact }).props.accessibilityState?.busy).toBe(false));
+    fireEvent.press(screen.getByRole('button', { name: ar.agents.revealContact }));
+    fireEvent.press(await screen.findByRole('button', { name: ar.app.reveal.confirm }));
+    expect(await screen.findByText(ar.app.team.notPermittedReveal)).toBeTruthy();
   });
 
   it('keeps the consultant from the page, and puts the button back when the website refuses', async () => {

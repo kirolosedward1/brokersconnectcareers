@@ -24,7 +24,10 @@ import { CV_UPLOAD_TIMEOUT_MS, readCvBytes } from '~/features/cv/files';
  * the website's browser code sends them, and the action checks what arrived.
  */
 
-export type TeamMember = { userId: string; name: string | null; role: CompanyMemberRole; isOwner: boolean };
+/** What a member may do (migration 376): the owner may always do all three, whatever the row says. */
+export type MemberPermissions = { canPost: boolean; canReveal: boolean; canSpend: boolean };
+
+export type TeamMember = { userId: string; name: string | null; role: CompanyMemberRole; isOwner: boolean } & MemberPermissions;
 
 export type CompanyPage = {
   documents: CompanyDocumentRow[];
@@ -56,7 +59,8 @@ export function useCompanyPage({ enabled = true }: { enabled?: boolean } = {}) {
         supabase.from('company_documents').select('*').eq('company_id', id).order('created_at', { ascending: false }),
         supabase
           .from('company_members')
-          .select('user_id, role, created_at, profile:profiles (full_name)')
+          // Every column, so a server from before the switches (migration 376) still answers: they read as on.
+          .select('*, profile:profiles (full_name)')
           .eq('company_id', id)
           .order('created_at', { ascending: true }),
       ]);
@@ -64,6 +68,9 @@ export function useCompanyPage({ enabled = true }: { enabled?: boolean } = {}) {
       const rows = (roster.data ?? []) as unknown as {
         user_id: string;
         role: CompanyMemberRole;
+        can_post?: boolean;
+        can_reveal?: boolean;
+        can_spend?: boolean;
         profile: { full_name: string } | null;
       }[];
       return {
@@ -74,6 +81,9 @@ export function useCompanyPage({ enabled = true }: { enabled?: boolean } = {}) {
           name: row.profile?.full_name ?? null,
           role: row.role,
           isOwner: row.user_id === company?.owner_id,
+          canPost: row.can_post ?? true,
+          canReveal: row.can_reveal ?? true,
+          canSpend: row.can_spend ?? row.role === 'admin',
         })),
         isAdmin: rows.some((row) => row.user_id === userId && row.role === 'admin'),
       };
@@ -330,6 +340,42 @@ export function useRemoveMember() {
         void queryClient.invalidateQueries({ queryKey: ['employer'] });
       }
     },
+  });
+}
+
+/**
+ * Turn a member's switches (decided: switches rather than more roles). The
+ * roster shows the new ones at once and takes them back if the website
+ * refuses; an admin's own session is what the database checks.
+ */
+export function useMemberPermissions() {
+  const queryClient = useQueryClient();
+  const company = useCompany();
+  const key = ['employer', 'company', company?.id ?? null];
+  return useMutation({
+    mutationFn: async (input: { userId: string } & MemberPermissions) => {
+      const result = await callAction('updateMemberPermissions', input);
+      if (!result.ok) throw new Error(result.error);
+    },
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const before = queryClient.getQueryData<CompanyPage>(key);
+      if (before) {
+        queryClient.setQueryData<CompanyPage>(key, {
+          ...before,
+          team: before.team.map((member) =>
+            member.userId === input.userId
+              ? { ...member, canPost: input.canPost, canReveal: input.canReveal, canSpend: input.canSpend }
+              : member,
+          ),
+        });
+      }
+      return { before };
+    },
+    onError: (_, __, context) => {
+      if (context?.before) queryClient.setQueryData(key, context.before);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 }
 

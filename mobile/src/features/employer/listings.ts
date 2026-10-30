@@ -96,7 +96,7 @@ export function flattenListings(pages: ListingsPage[] | undefined): ConsoleListi
 }
 
 /** The refusals the website names, each with its own words; anything else is the generic line. */
-export type TransitionRefusal = 'post_cap' | 'invalid_transition' | 'standing' | 'company_suspended' | 'failed';
+export type TransitionRefusal = 'post_cap' | 'invalid_transition' | 'standing' | 'company_suspended' | 'not_permitted' | 'failed';
 
 export class TransitionRefused extends Error {
   constructor(readonly reason: TransitionRefusal) {
@@ -105,7 +105,7 @@ export class TransitionRefused extends Error {
   }
 }
 
-const NAMED: readonly TransitionRefusal[] = ['post_cap', 'invalid_transition', 'standing', 'company_suspended'];
+const NAMED: readonly TransitionRefusal[] = ['post_cap', 'invalid_transition', 'standing', 'company_suspended', 'not_permitted'];
 
 /**
  * Close, submit or reopen a listing — the website's transitionJob, which only

@@ -218,6 +218,8 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
           return refuse(t(actor?.profile?.approval_status === 'pending' ? 'employer.pendingBody' : 'employer.standingBlocked'));
         }
         if (reason === 'company_suspended') return refuse(t('employer.companySuspendedBlocked'));
+        // The company keeps this member from posting (migration 376).
+        if (reason === 'not_permitted') return refuse(t('app.team.notPermittedPost'));
         if (reason === 'post_cap' || reason === 'post_rate_limit') {
           return refuse(t(reason === 'post_cap' ? 'employer.postCapBlocked' : 'employer.postRateLimited'), 3);
         }

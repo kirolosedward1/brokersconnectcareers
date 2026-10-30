@@ -57,6 +57,7 @@ export function ContactReveal({ handle, hasCv, name, detail }: { handle: string;
             return setMessage(t('agents.revealRateLimited', { minutes }));
           }
           if (failure instanceof RevealRefused && failure.reason === 'locked') return setMessage(t('agents.revealLocked'));
+          if (failure instanceof RevealRefused && failure.reason === 'not_permitted') return setMessage(t('app.team.notPermittedReveal'));
           setMessage(t('common.errorBody'));
         },
       },

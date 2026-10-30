@@ -791,7 +791,21 @@
     "range90": "<v>90</v> days"
   },
   "team": {
-    "count": "Team: <v>{count}</v> of <v>{max}</v>"
+    "count": "Team: <v>{count}</v> of <v>{max}</v>",
+    "permissions": "What they may do",
+    "permissionsFor": "What {name} may do",
+    "permissionsFooter": "The company's owner may always do all of this. A change takes effect at once.",
+    "post": "Post jobs",
+    "postHint": "Send listings for review and reopen them",
+    "reveal": "Reveal broker numbers",
+    "revealHint": "Use the company's allowance to reveal a broker's number",
+    "spend": "Buy and pay",
+    "spendHint": "Buy a plan or credit in the company's name",
+    "noPost": "Doesn't post jobs",
+    "noReveal": "Doesn't reveal numbers",
+    "noSpend": "Doesn't buy",
+    "notPermittedPost": "Your company doesn't allow you to post jobs. Ask an admin on your team.",
+    "notPermittedReveal": "Your company doesn't allow you to reveal numbers. Ask an admin on your team."
   },
   "interview": {
     "invite": "Invite to interview",

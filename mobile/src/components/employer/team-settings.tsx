@@ -1,23 +1,34 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { ShieldCheck, UserPlus, UserRound, X } from '~/components/ui/lucide';
+import { Briefcase, HandCoins, Phone, ShieldCheck, SlidersHorizontal, UserPlus, UserRound, X } from '~/components/ui/lucide';
 import type { CompanyMemberRole } from '@/lib/supabase/database.types';
 import { Avatar } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Field } from '~/components/ui/field';
+import { FormSheet } from '~/components/ui/form-sheet';
 import { Select } from '~/components/ui/select';
+import { SettingsGroup, SwitchRow } from '~/components/ui/settings-list';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
-import { MemberRefused, TEAM_MAX, useAddMember, useRemoveMember, type TeamMember } from '~/features/employer/company';
+import {
+  MemberRefused,
+  TEAM_MAX,
+  useAddMember,
+  useMemberPermissions,
+  useRemoveMember,
+  type MemberPermissions,
+  type TeamMember,
+} from '~/features/employer/company';
 import { EMAIL_SHAPE } from '~/lib/email-shape';
 import { markupTags } from '~/i18n/rich';
 import { useLargeText } from '~/theme/large-text';
 import { useTheme } from '~/theme/provider';
 import { corner, hitTarget, space } from '~/theme/tokens';
 import { dialog } from '~/lib/dialog';
+import { useSheet } from '~/lib/use-sheet';
 
 const REFUSAL_COPY = {
   no_account: 'teamNoAccount',
@@ -32,6 +43,10 @@ const REFUSAL_COPY = {
  * company admin, adding a colleague who already has an account (the hint says
  * what "admin" grants at the moment it is chosen) and taking one off, after
  * asking. A recruiter sees the roster and who can change it.
+ *
+ * Under each name, what the company keeps that person from doing (migration
+ * 376); an admin turns it with the switches beside anyone but the owner, who
+ * may always do everything.
  */
 export function TeamSettings({ members, canManage }: { members: TeamMember[]; canManage: boolean }) {
   const t = useTranslations();
@@ -39,6 +54,8 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
   const large = useLargeText();
   const add = useAddMember();
   const remove = useRemoveMember();
+  const permissionsSheet = useSheet();
+  const [editing, setEditing] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<CompanyMemberRole>('recruiter');
   const [error, setError] = useState<string | null>(null);
@@ -128,10 +145,24 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
               <Text variant="caption" tone="mutedForeground">
                 {member.role === 'admin' ? t('employer.teamRoleAdmin') : t('employer.teamRoleRecruiter')}
               </Text>
+              {member.isOwner ? null : <Withheld member={member} />}
             </View>
             {member.isOwner ? (
               <Badge variant="primary" label={t('employer.teamOwner')} icon={<ShieldCheck size={12} color={colors.primary} />} />
             ) : canManage ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${t('app.team.permissions')}: ${name}`}
+                onPress={() => {
+                  setEditing(member.userId);
+                  permissionsSheet.show();
+                }}
+                style={{ width: hitTarget, height: hitTarget, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <SlidersHorizontal size={18} color={colors.mutedForeground} />
+              </Pressable>
+            ) : null}
+            {!member.isOwner && canManage ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${t('employer.teamRemove')}: ${name}`}
@@ -211,6 +242,101 @@ export function TeamSettings({ members, canManage }: { members: TeamMember[]; ca
           {error}
         </Text>
       ) : null}
+      {permissionsSheet.mounted ? (
+        <PermissionsSheet
+          visible={permissionsSheet.open}
+          onClose={() => permissionsSheet.hide()}
+          onDismiss={permissionsSheet.onDismiss}
+          // Read from the roster each time, so a switch shows its new place at once.
+          member={members.find((member) => member.userId === editing) ?? null}
+        />
+      ) : null}
     </Card>
+  );
+}
+
+/** What the company keeps this member from doing, in a line under the role; nothing when they may do it all. */
+function Withheld({ member }: { member: TeamMember }) {
+  const t = useTranslations();
+  const off = [
+    member.canPost ? null : t('app.team.noPost'),
+    member.canReveal ? null : t('app.team.noReveal'),
+    member.canSpend ? null : t('app.team.noSpend'),
+  ].filter(Boolean);
+  if (!off.length) return null;
+  return (
+    <Text variant="caption" tone="mutedForeground" testID={`team-withheld-${member.userId}`}>
+      {off.join(' · ')}
+    </Text>
+  );
+}
+
+/**
+ * A member's three switches. Each applies as it is turned, as a phone's
+ * settings do; the roster shows it at once and puts it back, with a line
+ * saying so, if the website refuses.
+ */
+function PermissionsSheet({
+  visible,
+  onClose,
+  onDismiss,
+  member,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onDismiss: () => void;
+  member: TeamMember | null;
+}) {
+  const t = useTranslations();
+  const { colors } = useTheme();
+  const change = useMemberPermissions();
+  const [error, setError] = useState<string | null>(null);
+  const name = member?.name ?? '—';
+
+  const turn = (patch: Partial<MemberPermissions>) => {
+    if (!member) return;
+    setError(null);
+    change.mutate(
+      { userId: member.userId, canPost: member.canPost, canReveal: member.canReveal, canSpend: member.canSpend, ...patch },
+      { onError: () => setError(t('common.errorBody')) },
+    );
+  };
+
+  return (
+    <FormSheet visible={visible} onClose={onClose} onDismiss={onDismiss} title={t('app.team.permissionsFor', { name })} busy={false}>
+      {member ? (
+        <SettingsGroup footer={t('app.team.permissionsFooter')}>
+          <SwitchRow
+            icon={<Briefcase size={18} color={colors.foreground} />}
+            label={t('app.team.post')}
+            hint={t('app.team.postHint')}
+            value={member.canPost}
+            onChange={(value) => turn({ canPost: value })}
+            testID="permission-post"
+          />
+          <SwitchRow
+            icon={<Phone size={18} color={colors.foreground} />}
+            label={t('app.team.reveal')}
+            hint={t('app.team.revealHint')}
+            value={member.canReveal}
+            onChange={(value) => turn({ canReveal: value })}
+            testID="permission-reveal"
+          />
+          <SwitchRow
+            icon={<HandCoins size={18} color={colors.foreground} />}
+            label={t('app.team.spend')}
+            hint={t('app.team.spendHint')}
+            value={member.canSpend}
+            onChange={(value) => turn({ canSpend: value })}
+            testID="permission-spend"
+          />
+        </SettingsGroup>
+      ) : null}
+      {error ? (
+        <Text variant="small" tone="destructive" accessibilityRole="alert">
+          {error}
+        </Text>
+      ) : null}
+    </FormSheet>
   );
 }

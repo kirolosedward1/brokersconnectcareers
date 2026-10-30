@@ -434,6 +434,23 @@ describe("the company's page, for a company admin", () => {
     expect(screen.queryByLabelText(ar.employer.teamEmail)).toBeNull();
   });
 
+  it("turns a member's switch at once, sends all three, and puts it back when the website refuses", async () => {
+    server.on('POST /api/mobile/v1/actions/updateMemberPermissions', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.press(await screen.findByRole('button', { name: `${ar.app.team.permissions}: —` }));
+    fireEvent(await screen.findByTestId('permission-reveal'), 'valueChange', false);
+    await waitFor(() =>
+      expect(input('/api/mobile/v1/actions/updateMemberPermissions')).toEqual({ userId: RECRUITER, canPost: true, canReveal: false, canSpend: false }),
+    );
+    // The owner has no switches: they may always do everything.
+    expect(screen.queryByRole('button', { name: `${ar.app.team.permissions}: أحمد سمير` })).toBeNull();
+
+    server.on('POST /api/mobile/v1/actions/updateMemberPermissions', { ok: false, error: 'forbidden' });
+    fireEvent(screen.getByTestId('permission-post'), 'valueChange', false);
+    expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('permission-post').props.value).toBe(true));
+  });
+
   it('says the team is full when the website refuses a sixth', async () => {
     server.on('POST /api/mobile/v1/actions/addCompanyMember', { ok: false, error: 'team_full' });
     await renderRouter(app, { initialUrl: '/employer/company' });

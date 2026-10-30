@@ -13,8 +13,39 @@ form with that sentence when the team is full. Test:
 `supabase/tests/team-cap.test.mjs`.
 
 Reveals keep today's limits (per person per hour and day, per company per
-day). There is no monthly balance and no per-member cap. The rest of this
-doc (permissions per member, listing scopes) still waits for approval.
+day). There is no monthly balance and no per-member cap.
+
+## Built (2026-10-30): switches per member
+
+- **Migration 376, `what_each_member_may_do`.**
+  - Adds `can_post`, `can_reveal` and `can_spend` to `company_members`.
+    Posting and revealing default to on; spending is on for admins and off
+    for recruiters, as only admins could buy before.
+  - `member_can(company, permission)` answers for the caller. The owner may
+    always do all three, whatever their row says.
+  - `reveal_agent_contact` (restated from 304) refuses with a new status,
+    `not_permitted`, before counting anything.
+  - Test: `supabase/tests/member-permissions.test.mjs`.
+- **Website actions:**
+  - `saveJob` checks `post`. `transitionJob` checks it when the listing goes
+    to review (submitting and reopening).
+  - `startCheckout` checks `spend`.
+  - `revealAgentContact` answers `not_permitted`.
+  - New `updateMemberPermissions({ userId, canPost, canReveal, canSpend })`
+    is for admins, and never changes the owner.
+  - `addCompanyMember` gives a new admin `can_spend`.
+- **App:**
+  - Under each member on the team card, a line says what the company keeps
+    them from doing.
+  - An admin opens a sheet of three switches for anyone but the owner. Each
+    switch applies as it is turned, and is put back if the website refuses.
+  - The job wizard, the listing's status actions and the contact reveal say
+    «لا تسمح لك شركتك…» when refused.
+- **Not built:**
+  - Listing scopes, branches and the per-member reveal cap: the allowance
+    follows the company's plan (decision 3), which waits for 08.
+  - The switches on the website's team page come later, with the decline
+    tick.
 
 ## What exists
 
