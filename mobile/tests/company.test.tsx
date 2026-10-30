@@ -224,6 +224,8 @@ const app = {
   '(tabs)/(account)/employer/activity': ActivityScreen,
 };
 
+// The company's profile read, not its hiring settings (read on their own, migration 378).
+const profileReads = () => server.asked('/rest/v1/companies').filter((request) => !request.url.searchParams.get('select')?.includes('hiring_status'));
 const input = (path: string, index = 0) => (server.asked(path)[index]?.body as { input: Record<string, unknown> } | undefined)?.input;
 
 function answerAlert(alert: jest.SpyInstance, label: string) {
@@ -294,7 +296,7 @@ describe("the company's page, for a company admin", () => {
     fireEvent.press(screen.getByRole('button', { name: `${ar.employer.uploadDoc}: ${ar.employer.taxCard}` }));
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/recordCompanyDocument')).toHaveLength(1));
     // Read again at version 5; the form is the one it was.
-    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(3));
+    await waitFor(() => expect(profileReads()).toHaveLength(3));
     expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
 
     fireEvent.press(screen.getByRole('button', { name: ar.common.save }));
@@ -302,7 +304,7 @@ describe("the company's page, for a company admin", () => {
     expect([4, 5]).toContain(input('/api/mobile/v1/actions/saveCompany')?.version);
     // Its own save coming back at version 6 leaves the form, and the word that it saved, where they are.
     expect(await screen.findByText(ar.common.saveSuccess)).toBeTruthy();
-    await waitFor(() => expect(server.asked('/rest/v1/companies')).toHaveLength(4));
+    await waitFor(() => expect(profileReads()).toHaveLength(4));
     await waitFor(() => expect(screen.getByText(ar.common.saveSuccess)).toBeTruthy());
     expect(screen.getByLabelText(ar.companies.aboutAr).props.value).toBe(typed);
   });
@@ -489,6 +491,33 @@ describe("the company's page, for a company admin", () => {
     fireEvent(screen.getByTestId('permission-post'), 'valueChange', false);
     expect(await screen.findByText(ar.common.errorBody)).toBeTruthy();
     await waitFor(() => expect(screen.getByTestId('permission-post').props.value).toBe(true));
+  });
+
+  it('pauses hiring for a week, with a number and reply hours, in one save', async () => {
+    server.on('POST /api/mobile/v1/actions/saveCompanyHiring', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent(await screen.findByTestId('hiring-open'), 'valueChange', false);
+    fireEvent.press(await screen.findByRole('radio', { name: ar.app.hiring.untilWeek }));
+    fireEvent.changeText(screen.getByLabelText(ar.app.hiring.whatsapp), '01055500123');
+    fireEvent(screen.getByTestId('hiring-hours'), 'valueChange', true);
+    fireEvent.press(screen.getByRole('button', { name: ar.app.hiring.save }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveCompanyHiring')).toBeTruthy());
+    const sent = input('/api/mobile/v1/actions/saveCompanyHiring')!;
+    expect(sent).toMatchObject({
+      hiringStatus: 'paused',
+      contactWhatsapp: '01055500123',
+      replyHours: { days: [0, 1, 2, 3, 4], from: '10:00', to: '18:00' },
+    });
+    expect(sent.pausedUntil).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(await screen.findByText(ar.app.hiring.saved)).toBeTruthy();
+  });
+
+  it("says the website's word for a number it refuses", async () => {
+    server.on('POST /api/mobile/v1/actions/saveCompanyHiring', { ok: false, error: 'invalid', fieldErrors: { contactWhatsapp: 'invalidPhone' } });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.app.hiring.whatsapp), '123');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.hiring.save }));
+    expect(await screen.findByText(ar.validation.invalidPhone)).toBeTruthy();
   });
 
   it('says the team is full when the website refuses a sixth', async () => {
@@ -691,7 +720,7 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
 
     expect(await screen.findByText('2')).toBeTruthy();
-    const select = server.asked('/rest/v1/companies')[0]?.url.searchParams.get('select') ?? '';
+    const select = profileReads()[0]?.url.searchParams.get('select') ?? '';
     expect(select.includes('post_credits')).toBe(false);
     expect(select.includes('owner_id')).toBe(false);
     expect(select.includes('suspended_at')).toBe(false);
@@ -706,7 +735,7 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
 
     expect(await screen.findByText('2')).toBeTruthy();
-    const selects = server.asked('/rest/v1/companies').map((request) => request.url.searchParams.get('select') ?? '');
+    const selects = profileReads().map((request) => request.url.searchParams.get('select') ?? '');
     expect(selects.some((select) => select.includes('post_credits'))).toBe(true);
   });
 
@@ -719,7 +748,7 @@ describe('billing', () => {
     renderRouter(app, { initialUrl: '/employer/billing' });
 
     expect(await screen.findByText('2')).toBeTruthy();
-    const selects = server.asked('/rest/v1/companies').map((request) => request.url.searchParams.get('select') ?? '');
+    const selects = profileReads().map((request) => request.url.searchParams.get('select') ?? '');
     expect(selects.some((select) => select.includes('post_credits'))).toBe(true);
   });
 

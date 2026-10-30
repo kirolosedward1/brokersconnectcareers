@@ -550,9 +550,36 @@ describe('the form', () => {
     fireEvent.press(await screen.findByRole('button', { name: ar.apply.submit }));
     expect(await screen.findByText(ar.apply.rateLimit)).toBeTruthy();
   });
+
+  it('says the company paused hiring while the form was open, and keeps nothing of it', async () => {
+    server.on('POST /api/mobile/v1/actions/applyToJob', { ok: false, error: 'company_paused' });
+    await signedIn();
+    await renderRouter(app, { initialUrl: APPLY });
+    await openForm();
+
+    fireEvent.press(await screen.findByRole('button', { name: ar.apply.submit }));
+    expect(await screen.findByText(ar.apply.companyPaused)).toBeTruthy();
+  });
 });
 
 describe('who gets the form', () => {
+  it('tells a candidate a paused company takes no application, and until when, instead of the button', async () => {
+    server.on('GET /rest/v1/companies', [{ hiring_status: 'paused', paused_until: '2099-01-10', contact_whatsapp: null, reply_hours: null }]);
+    await signedIn();
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    expect(await screen.findByText(ar.app.hiring.pausedTitle)).toBeTruthy();
+    expect(screen.getByText(/2099/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: ar.jobs.apply })).toBeNull();
+  });
+
+  it('offers the button again once the day the company named has passed', async () => {
+    server.on('GET /rest/v1/companies', [{ hiring_status: 'paused', paused_until: '2020-01-10', contact_whatsapp: null, reply_hours: null }]);
+    await signedIn();
+    await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    expect(await screen.findByRole('button', { name: ar.jobs.apply })).toBeTruthy();
+    expect(screen.queryByText(ar.app.hiring.pausedTitle)).toBeNull();
+  });
+
   it('tells a candidate who has applied already, instead of a second form', async () => {
     server.on('GET /rest/v1/applications', [{ id: 'a-1', created_at: '2026-09-20T10:00:00Z' }]);
     await signedIn();

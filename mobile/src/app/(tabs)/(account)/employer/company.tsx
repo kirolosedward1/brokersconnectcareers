@@ -7,6 +7,7 @@ import { localized } from '@/lib/locale';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { CompanyForm } from '~/components/employer/company-form';
 import { LogoControls } from '~/components/employer/logo-controls';
+import { HiringSettings } from '~/components/employer/hiring-settings';
 import { TeamSettings } from '~/components/employer/team-settings';
 import { VerificationPanel } from '~/components/employer/verification-panel';
 import { SignedOut } from '~/components/navigation/signed-out';
@@ -14,6 +15,7 @@ import { ViewerPending } from '~/components/navigation/viewer-pending';
 import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
+import { useCompanyHiring } from '~/features/companies/hiring';
 import { useCompanyPage } from '~/features/employer/company';
 import { useSession } from '~/lib/session';
 import { useTheme } from '~/theme/provider';
@@ -39,6 +41,7 @@ export default function CompanyScreen() {
   const page = useCompanyPage();
   const pull = usePullRefresh(() => Promise.all([page.refetch(), queryClient.invalidateQueries({ queryKey: ['viewer'] })]));
   const company = viewer?.company ?? null;
+  const hiring = useCompanyHiring(company?.id ?? null).data ?? null;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
   const scroll = useRef<ScrollViewInstance>(null);
 
@@ -77,6 +80,7 @@ export default function CompanyScreen() {
         {company && isAdmin ? (
           <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
         ) : null}
+        {company && isAdmin && hiring ? <HiringSettings key={company.id} companyId={company.id} hiring={hiring} /> : null}
         {company && page.data ? <TeamSettings members={page.data.team} canManage={isAdmin} /> : null}
         {company && page.data ? (
           <SettingsGroup>

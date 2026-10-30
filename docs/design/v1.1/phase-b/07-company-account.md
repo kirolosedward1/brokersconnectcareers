@@ -91,3 +91,33 @@ applications, and deserve a design doc of their own.
 1. Deletion grace period: **14 days**.
 2. Candidates **keep a record** of applications a company purged.
 3. Ownership transfer only **to an existing team member**.
+
+## Built (2026-10-30): 7a, hiring status, contact and reply hours
+
+- **Migration 378, `a_company_says_when_it_hires`.**
+  - New columns on `companies`: `hiring_status` (open or paused),
+    `paused_until`, `contact_whatsapp` (international form) and
+    `reply_hours` (`{days, from, to}`, Cairo time, 0 being Sunday). Each has
+    a shape check.
+  - `company_is_hiring()` reads a pause as over once its day has passed in
+    Cairo. Nothing has to run on that day.
+  - A trigger on applications refuses with `company_paused`, so every door
+    is refused alike.
+  - Test: `supabase/tests/company-hiring.test.mjs`.
+- **Website:**
+  - New `saveCompanyHiring` action, for company admins, under the update
+    policy.
+  - `applyToJob` answers `company_paused`, and the website's apply form says
+    `apply.companyPaused`.
+  - The website's company page and settings for this come later. Its shared
+    public column list is unchanged, so code that ships before the migration
+    still reads.
+- **App:**
+  - A paused company's listing says so, and until when, in place of Apply,
+    and the pinned bar is not offered.
+  - The company page shows the notice, the reply hours («ترد عادةً الأحد–الخميس،
+    من 10:00 إلى 18:00 بتوقيت القاهرة») and a WhatsApp button.
+  - The admin's «التوظيف والتواصل» card on the company page sets all of it:
+    pause until turned back on, or for a week, two weeks or a month.
+  - The app reads these columns directly. A failed read means open.
+

@@ -15,6 +15,8 @@ import { Button } from '~/components/ui/button';
 import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states';
 import { Text } from '~/components/ui/text';
 import { useCompany } from '~/features/companies/queries';
+import { useCompanyHiring } from '~/features/companies/hiring';
+import { CompanyContact, PausedNotice } from '~/components/companies/hiring-notice';
 import { useShrinkingTabBar } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
@@ -36,6 +38,7 @@ export default function CompanyScreen() {
   const offersFollow = useOffersFollow();
   const { colors, shadow } = useTheme();
   const page = useCompany(slug);
+  const hiring = useCompanyHiring(page.data?.company.id ?? null).data ?? null;
   const pull = usePullRefresh(() => page.refetch());
   const hasBoard = useHasBoard();
   const shrink = useShrinkingTabBar();
@@ -130,8 +133,12 @@ export default function CompanyScreen() {
           ) : null}
         </View>
 
+        {hiring && !hiring.open ? <PausedNotice hiring={hiring} /> : null}
+
         {/* Tell me when this brokerage posts — a candidate's, or the way into an account. */}
         <FollowCompanyButton slug={company.slug} label={name} />
+
+        {hiring ? <CompanyContact name={name} hiring={hiring} /> : null}
 
         {about ? (
           <View style={{ gap: space[2] }}>

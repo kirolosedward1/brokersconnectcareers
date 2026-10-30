@@ -51,6 +51,8 @@ import { useHiddenJobs, withoutHiddenJobs } from '~/features/moderation/hidden-j
 import { shareJobLink } from '~/features/jobs/share';
 import { useShrinkingTabBar } from '~/features/tab-bar';
 import { callAction } from '~/lib/api';
+import { PausedNotice } from '~/components/companies/hiring-notice';
+import { useCompanyHiring } from '~/features/companies/hiring';
 import { useSession } from '~/lib/session';
 import { useHasBoard } from '~/lib/use-tabs';
 import { useToBoard } from '~/features/jobs/to-board';
@@ -111,6 +113,9 @@ export function JobDetail({
   const role = viewer?.profile?.role;
   const canApply = !role || role === 'candidate';
   const applied = useAppliedJobIds([job.id]).has(job.id);
+  // A company that paused hiring takes no application (migration 378); its listing says so.
+  const hiring = useCompanyHiring(job.company.id).data ?? null;
+  const paused = hiring !== null && !hiring.open;
   const hasBoard = useHasBoard();
   const toBoard = useToBoard();
   // Like it, and not already applied to: those are done with, as Home's suggestions leave them out.
@@ -146,7 +151,7 @@ export function JobDetail({
   };
   const toApplications = () => router.navigate('/dashboard/applications');
   // What is pinned at the foot once the step has scrolled away: Apply, or the application already sent.
-  const pinnable = open && canApply && (applied || !(isCandidate(actor) && !isApproved(actor)));
+  const pinnable = open && canApply && (applied || (!paused && !(isCandidate(actor) && !isApproved(actor))));
   // Where the step's foot is in the page, and whether the page is scrolled past it.
   const [stepEnd, setStepEnd] = useState<number | null>(null);
   const [pastStep, setPastStep] = useState(false);
@@ -318,6 +323,8 @@ export function JobDetail({
               </Text>
               <Button label={tApply('viewApplications')} variant="outline" onPress={toApplications} />
             </Card>
+          ) : paused && hiring ? (
+            <PausedNotice hiring={hiring} />
           ) : isCandidate(actor) && !isApproved(actor) ? (
             // The database would refuse the application; say why before the form.
             <Card style={{ gap: space[1] }}>

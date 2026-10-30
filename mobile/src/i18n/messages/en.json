@@ -925,5 +925,31 @@
     "csvWho": "Member",
     "csvWhat": "What happened",
     "csvAbout": "About"
+  },
+  "hiring": {
+    "pausedTitle": "This company isn't taking new applications right now",
+    "pausedUntil": "It has paused hiring and opens again after {date}. You can save the listing and come back to it.",
+    "pausedOpenEnded": "It has paused hiring for now. Its listings are still up, and you can save them and come back.",
+    "replyHours": "Usually replies {days}, <v>{from}</v> to <v>{to}</v> Cairo time",
+    "daySeparator": ", ",
+    "contactTitle": "Contacting the company",
+    "settingsTitle": "Hiring and contact",
+    "settingsBody": "Pause new applications without closing your listings, and tell applicants how and when you reply.",
+    "open": "Taking new applications",
+    "openHint": "While paused, listings stay up and no new application is accepted",
+    "until": "Until",
+    "untilOpenEnded": "Until I turn it back on",
+    "untilWeek": "A week",
+    "untilTwoWeeks": "Two weeks",
+    "untilMonth": "A month",
+    "whatsapp": "WhatsApp number for applicants",
+    "whatsappHint": "Shown on the company page. Leave it empty to hide it.",
+    "hoursOn": "Set reply hours",
+    "days": "Reply days",
+    "from": "From",
+    "to": "To",
+    "hoursOrder": "Reply hours must end after they start.",
+    "save": "Save hiring settings",
+    "saved": "Saved"
   }
 }

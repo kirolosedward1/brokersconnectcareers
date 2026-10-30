@@ -501,10 +501,12 @@ function ApplyForm({
           }
           const reason = failure instanceof ApplyRefused ? failure.reason : 'failed';
           // Nothing this form holds can be sent to this listing now, so nothing is kept of it.
-          if (reason === 'already_applied' || reason === 'not_open') kept.clear();
+          if (reason === 'already_applied' || reason === 'not_open' || reason === 'company_paused') kept.clear();
           if (reason === 'already_applied') return showErrors({ form: t('apply.alreadyApplied') });
           if (reason === 'rate_limit') return showErrors({ form: t('apply.rateLimit') });
           if (reason === 'not_open') return showErrors({ form: t('apply.notOpen') });
+          // The company paused hiring while the form was open (migration 378).
+          if (reason === 'company_paused') return showErrors({ form: t('apply.companyPaused') });
           if (reason === 'fileTooLarge' || reason === 'fileType') return showErrors({ cv: t(`validation.${reason}`) });
           if (reason === 'upload' || reason === 'invalid_cv_path') {
             // What went wrong underneath is for the crash report; the reader is told what to do.
