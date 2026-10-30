@@ -1516,6 +1516,8 @@ export type Database = {
       >;
       saved_replies: Table<SavedReplyRow, Insertable<SavedReplyRow, 'company_id' | 'body'>>;
       application_records: Table<ApplicationRecordRow, never>;
+      /** Migration 382: a listing's views per Cairo day, written by increment_job_view(). */
+      job_view_days: Table<{ job_id: string; day: string; views: number }, never>;
       company_policies: Table<CompanyPolicyRow, Insertable<CompanyPolicyRow, 'company_id'>>;
       company_approval_requests: Table<ApprovalRequestRow, Insertable<ApprovalRequestRow, 'company_id' | 'kind' | 'subject_id'>>;
       interview_invites: Table<InterviewInviteRow, Insertable<InterviewInviteRow, 'application_id' | 'starts_at' | 'mode'>>;
@@ -1743,6 +1745,12 @@ export type Database = {
           status: ApplicationStatus;
           created_at: string;
         }[];
+      };
+      /** Migration 381: when the caller's company last revealed this consultant, and a consultant's own reveal log. */
+      my_company_revealed: { Args: { p_handle: string }; Returns: string | null };
+      my_contact_reveals: {
+        Args: { p_limit?: number };
+        Returns: { revealed_at: string; company_name_ar: string | null; company_name_en: string | null; company_slug: string | null }[];
       };
       /** Migration 380: the rules the caller's company sets, and whether a required second factor is met. */
       company_rules: {
