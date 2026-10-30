@@ -9,7 +9,7 @@ import { AdminGate, auditLabel, SectionTitle } from '~/components/admin/kit';
 import { MailOffBanner } from '~/components/admin/mail-banner';
 import { StandingNotice } from '~/components/dashboard/standing-notice';
 import { StatStrip, type StatCell } from '~/components/dashboard/stat-strip';
-import { TrendBars } from '~/components/dashboard/trend-bars';
+import { StackedBars } from '~/components/dashboard/stacked-bars';
 import { useHeaderBell } from '~/components/notifications/header-bell';
 import { Button } from '~/components/ui/button';
 import { ForwardChevron } from '~/components/ui/icons';
@@ -437,12 +437,14 @@ function DeletionRequests({ query }: { query: ReturnType<typeof useDeletionReque
 }
 
 /**
- * Thirty days of the platform's activity (admin_trend) — the website's one
- * chart of three lines, as three bars-per-day cards at phone width, in the
- * website's order: applications, listings published, new accounts.
+ * The platform's activity (admin_trend, 180 days since migration 369) — the
+ * website's one chart of three lines, as the Admin board stacks it at phone
+ * width: applications, listings published and new accounts, a day to a bar,
+ * over a week, a month or a quarter, with a tap for any day's figures.
  */
 function Trend({ query }: { query: ReturnType<typeof useAdminTrend> }) {
   const t = useTranslations();
+  const { colors } = useTheme();
   if (query.isError && !query.data) {
     return (
       <View style={{ gap: space[2] }}>
@@ -454,24 +456,18 @@ function Trend({ query }: { query: ReturnType<typeof useAdminTrend> }) {
     );
   }
   if (!query.data) return null;
-  const days = query.data.days.map((day) => day.d);
-  const series = [
-    { key: 'applications', label: t('dashboard.statApplications'), values: query.data.days.map((day) => day.applications) },
-    { key: 'published', label: t('dashboard.trendPublished'), values: query.data.days.map((day) => day.published) },
-    { key: 'signups', label: t('dashboard.trendSignups'), values: query.data.days.map((day) => day.signups) },
-  ];
   return (
-    <View style={{ gap: space[2] }}>
-      <View style={{ gap: 2, paddingHorizontal: space[1] }}>
-        <SectionTitle>{t('dashboard.trendActivityTitle')}</SectionTitle>
-        <Text variant="caption" tone="mutedForeground">
-          {t('dashboard.trendActivityHint')}
-        </Text>
-      </View>
-      {series.map((line) => (
-        <TrendBars key={line.key} title={line.label} days={days} values={line.values} empty={t('dashboard.trendEmpty')} totalLabel={line.label} />
-      ))}
-    </View>
+    <StackedBars
+      title={t('dashboard.trendActivityTitle')}
+      hint={t('dashboard.trendActivityHint')}
+      days={query.data.days.map((day) => day.d)}
+      series={[
+        { key: 'applications', label: t('dashboard.statApplications'), color: colors.chart1, values: query.data.days.map((day) => day.applications) },
+        { key: 'published', label: t('dashboard.trendPublished'), color: colors.chart2, values: query.data.days.map((day) => day.published) },
+        { key: 'signups', label: t('dashboard.trendSignups'), color: colors.chart3, values: query.data.days.map((day) => day.signups) },
+      ]}
+      empty={t('dashboard.trendEmpty')}
+    />
   );
 }
 

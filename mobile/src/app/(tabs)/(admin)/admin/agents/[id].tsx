@@ -144,7 +144,7 @@ function Profile({ id }: { id: string | undefined }) {
               </View>
               {report.detail ? (
                 <Text variant="small" tone="mutedForeground">
-                  {report.detail}
+                  {`«${report.detail.trim()}»`}
                 </Text>
               ) : null}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[1] }}>

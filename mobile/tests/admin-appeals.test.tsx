@@ -59,7 +59,7 @@ const openAppeal: Row = {
   subject_type: 'job',
   subject_id: JOB_ID,
   appellant_id: APPELLANT,
-  message: 'الإعلان اترفض بس كل البيانات فيه صحيحة.',
+  message: 'رُفض الإعلان مع أن كل بياناته صحيحة.',
   decision_snapshot: { status: 'rejected', note: 'الراتب مش واضح', label_ar: 'مستشار مبيعات', label_en: null },
   status: 'open',
   decided_by: null,
@@ -75,7 +75,7 @@ const decidedAppeal: Row = {
   id: DECIDED_APPEAL,
   subject_type: 'account',
   subject_id: APPELLANT,
-  message: 'حسابي اتوقف من غير سبب.',
+  message: 'أُوقف حسابي دون سبب.',
   decision_snapshot: { status: 'rejected', label_ar: 'أحمد سمير' },
   status: 'upheld',
   decided_by: USER_ID,
@@ -186,7 +186,7 @@ describe('the appeals', () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/appeals' });
 
-    expect(await screen.findByText(openAppeal.message)).toBeTruthy();
+    expect(await screen.findByText(`«${openAppeal.message}»`)).toBeTruthy();
     const asked = lastRead()!;
     expect(asked.get('status')).toBe('eq.open');
     expect(asked.get('order')).toBe('created_at.asc,id.asc');
@@ -207,10 +207,10 @@ describe('the appeals', () => {
   it('reads the answered ones newest answer first, with the outcome, who answered and the note — and no lever', async () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/appeals' });
-    await screen.findByText(openAppeal.message);
+    await screen.findByText(`«${openAppeal.message}»`);
 
     fireEvent.press(screen.getByRole('radio', { name: ar.admin.appealView.decided }));
-    expect(await screen.findByText(decidedAppeal.message)).toBeTruthy();
+    expect(await screen.findByText(`«${decidedAppeal.message}»`)).toBeTruthy();
     const asked = lastRead()!;
     expect(asked.get('status')).toBe('neq.open');
     expect(asked.get('order')).toBe('decided_at.desc,id.asc');
@@ -227,7 +227,7 @@ describe('the appeals', () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/appeals?status=decided' });
 
-    expect(await screen.findByText(decidedAppeal.message)).toBeTruthy();
+    expect(await screen.findByText(`«${decidedAppeal.message}»`)).toBeTruthy();
     expect(lastRead()!.get('status')).toBe('neq.open');
     expect(screen.getByRole('radio', { name: ar.admin.appealView.decided }).props.accessibilityState).toMatchObject({ checked: true });
   });
@@ -249,7 +249,7 @@ describe('the appeals', () => {
     await signIn();
     await renderRouter(app, { initialUrl: '/admin/appeals' });
 
-    expect(await screen.findByText('اعتراض 0')).toBeTruthy();
+    expect(await screen.findByText('«اعتراض 0»')).toBeTruthy();
     await act(async () => screen.UNSAFE_getByType(FlashList).props.onEndReached());
     await waitFor(() => expect(pages).toEqual(['0:20', '20:20']));
     // Twenty-five of twenty-five: the end is the end.
@@ -269,7 +269,7 @@ describe('the appeals', () => {
   it('opens what the appeal is about, and the appellant', async () => {
     await signIn();
     const result = await renderRouter(app, { initialUrl: '/admin/appeals' });
-    await screen.findByText(openAppeal.message);
+    await screen.findByText(`«${openAppeal.message}»`);
 
     fireEvent.press(screen.getByText('مستشار مبيعات'));
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/jobs/${JOB_ID}`));

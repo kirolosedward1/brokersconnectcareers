@@ -613,11 +613,8 @@ function ReportLine({ report, withLevers }: { report: AdminReportDetail; withLev
         {report.status === 'investigating' ? <Badge variant="warning" label={t('admin.reportStatus.investigating')} /> : null}
         {report.abusive ? <Badge variant="warning" label={t('admin.badFaith')} /> : null}
       </View>
-      {report.detail ? (
-        <Text variant="small" tone="mutedForeground">
-          {report.detail}
-        </Text>
-      ) : null}
+      {/* The reporter's own words, quoted as theirs (the AdminReports board). */}
+      {report.detail ? <Text variant="small">{`«${report.detail.trim()}»`}</Text> : null}
 
       {report.source === 'system' ? (
         <Text variant="caption" tone="mutedForeground">

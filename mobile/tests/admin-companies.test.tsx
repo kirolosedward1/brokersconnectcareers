@@ -128,7 +128,7 @@ beforeEach(async () => {
     headers: { 'content-range': '0-0/7' },
   });
   server.on('GET /rest/v1/reports', [
-    { id: 'r1', reason: 'suspicious_company', detail: 'العنوان مش موجود.', status: 'open', created_at: '2026-10-20T10:00:00Z', reporter: { id: OTHER_USER, full_name: 'منى علي' } },
+    { id: 'r1', reason: 'suspicious_company', detail: 'العنوان غير موجود.', status: 'open', created_at: '2026-10-20T10:00:00Z', reporter: { id: OTHER_USER, full_name: 'منى علي' } },
   ]);
   server.on('HEAD /rest/v1/reports', { body: null, headers: { 'content-range': '*/2' } });
   server.on('GET /rest/v1/company_moderation', () => []);
@@ -347,7 +347,7 @@ describe("a company's page", () => {
     expect(screen.getByText(ar.admin.flag.whatsapp_link, { exact: false })).toBeTruthy();
     expect(screen.getByText(/مكرر.*3/)).toBeTruthy();
     // The reports about it, each reporter a tap from their file.
-    expect(screen.getByText('العنوان مش موجود.')).toBeTruthy();
+    expect(screen.getByText('«العنوان غير موجود.»')).toBeTruthy();
 
     fireEvent.press(screen.getByRole('link', { name: 'مستشار مبيعات' }));
     await waitFor(() => expect(result.getPathname()).toBe(`/admin/jobs/${JOB_ID}`));

@@ -551,7 +551,7 @@ function ReportCard({ report }: { report: CompanyReport }) {
       </View>
       {report.detail ? (
         <Text variant="small" tone="mutedForeground">
-          {report.detail}
+          {`«${report.detail.trim()}»`}
         </Text>
       ) : null}
       <Text variant="caption" tone="mutedForeground">

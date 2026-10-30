@@ -196,7 +196,7 @@ function AppealCard({ row }: { row: Appeal }) {
           </Text>
         )}
         <Text variant="small" selectable>
-          {row.message}
+          {`«${row.message.trim()}»`}
         </Text>
       </View>
 

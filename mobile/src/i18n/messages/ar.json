@@ -767,5 +767,10 @@
     "allListings": "كل الإعلانات",
     "listingLine": "المقاعد: <v>{seats}</v> · المتقدمون: <v>{applicants}</v>",
     "live": "الإعلانات المنشورة: <v>{count}</v>"
+  },
+  "chart": {
+    "range7": "<v>7</v> أيام",
+    "range30": "<v>30</v> يومًا",
+    "range90": "<v>90</v> يومًا"
   }
 }

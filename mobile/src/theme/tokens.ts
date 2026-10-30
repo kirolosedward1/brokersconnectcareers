@@ -40,6 +40,10 @@ export const palette = {
     /** WhatsApp's own green, for the one button that opens it (rule 8), with an ink that reads on it (8:1; white is 2:1). */
     whatsapp: '#25D366',
     whatsappForeground: '#052E16',
+    /** The stacked activity chart's three series, in their order (Admin board): navy, champagne, cyan. */
+    chart1: '#16295A',
+    chart2: '#A27A3B',
+    chart3: '#5CE1E6',
     warning: '#8F5B0E',
     warningMuted: '#FAEED6',
     destructive: '#B5372C',
@@ -82,6 +86,9 @@ export const palette = {
     successMuted: '#11281B',
     whatsapp: '#25D366',
     whatsappForeground: '#052E16',
+    chart1: '#D8BC86',
+    chart2: '#5CE1E6',
+    chart3: '#8FA3D9',
     warning: '#E2B05A',
     warningMuted: '#33270E',
     destructive: '#F27468',

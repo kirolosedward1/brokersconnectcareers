@@ -767,5 +767,10 @@
     "allListings": "All listings",
     "listingLine": "Seats: <v>{seats}</v> · Applicants: <v>{applicants}</v>",
     "live": "Published listings: <v>{count}</v>"
+  },
+  "chart": {
+    "range7": "<v>7</v> days",
+    "range30": "<v>30</v> days",
+    "range90": "<v>90</v> days"
   }
 }
