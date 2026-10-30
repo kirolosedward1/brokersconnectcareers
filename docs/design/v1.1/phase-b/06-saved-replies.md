@@ -2,6 +2,33 @@
 
 Board: **SavedReplies**.
 
+## Built (2026-10-30)
+
+- **Migration 374, `saved_replies`.**
+  - A reply belongs to the whole team (`person_id` null) or to one person.
+  - Its channel is WhatsApp or email.
+  - Any member reads the team's replies and their own.
+  - Anyone writes their own; only an admin writes the team's.
+  - Test: `supabase/tests/saved-replies.test.mjs`.
+- **Website actions:** `saveReply` (an edit is matched on its version) and
+  `deleteReply`. Limits: 50 team replies, and 30 of their own for each person.
+- **Variables:** `{name}`, `{first_name}`, `{job}`, `{company}` and
+  `{stage}`, kept in `src/lib/replies.ts`, which the website and the app
+  share. A reply with anything else in braces is refused, with the unknown
+  words named. The phone fills WhatsApp replies; the email fills email
+  replies per applicant.
+- **App:**
+  - The replies sheet shows the team's replies and the person's own.
+  - A WhatsApp reply opens WhatsApp. An email reply is sent through
+    `messageApplicants`.
+  - A new reply chooses its channel. Admins can also make it the whole team's.
+  - Replies still on the phone are offered once, «انقلها إلى حسابي», and
+    cleared once kept.
+  - The bulk email sheet offers the saved email replies.
+
+The column is named `person_id`, not `owner_id` as sketched below, so it
+cannot be mistaken for the company owner. Reordering replies is not built.
+
 ## What exists
 
 Saved replies live **on the phone**, per person
