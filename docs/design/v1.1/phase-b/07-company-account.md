@@ -181,6 +181,30 @@ records the closure decision.
     for the name), or cancels while it goes.
   - A closed company says so.
 
-Not built from 07: 7b (branches) and default screening questions, which
-need their own design doc.
+Not built from 07: default screening questions, which need their own design
+doc.
+
+## Built (2026-10-30): 7b, branches
+
+Migration 383, `a_company_in_more_than_one_place`. Test:
+`supabase/tests/company-branches.test.mjs`.
+
+- **`company_branches`.** Each branch has a name and a district. A company
+  has at most twenty (`branch_cap`). Everyone reads them; the company's
+  admins write them. `companies.district_id` stays the head office.
+- **`jobs.branch_id`.** A listing may name only a branch of its own company
+  (`branch_not_of_company`). If the branch is removed, its listings keep
+  their district and lose the branch.
+- **Website:**
+  - `saveBranch` and `deleteBranch` actions.
+  - `saveJob` takes `branchId`, and writes it only when sent, so the
+    website's own form leaves it as it is.
+- **App:**
+  - «الفروع» on the company page: admins add and remove branches; anyone
+    else reads them.
+  - The company's public page lists them.
+  - The job wizard offers the company's branches; choosing one sets the
+    listing's district to the branch's.
+- **Not built:** listing scopes per branch (03) and per-branch filters on
+  the website's board.
 

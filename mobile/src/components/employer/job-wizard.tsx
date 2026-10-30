@@ -43,6 +43,7 @@ import {
   type Problem,
 } from '~/features/employer/job-form';
 import { useDevelopers, useDistricts } from '~/features/taxonomy';
+import { useBranches } from '~/features/employer/branches';
 import { markupTags } from '~/i18n/rich';
 import { ApiError } from '~/lib/api';
 import { useSession } from '~/lib/session';
@@ -87,6 +88,7 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
   const locale = useLocale();
   const { colors } = useTheme();
   const districts = useDistricts().data ?? [];
+  const branches = useBranches(useSession().viewer?.company?.id ?? null).data ?? [];
   const developers = useDevelopers().data ?? [];
   const save = useSaveJob();
   const { actor } = useSession();
@@ -413,6 +415,22 @@ export function JobWizard({ job, developerIds }: { job: JobRow | null; developer
               onChange={(value) => value != null && set('districtId')(value)}
             />
           </Field>
+          {/* The company's branch, when it lists any (migration 383): choosing one sets the district to it. */}
+          {branches.length ? (
+            <Field label={t('app.branches.forListing')} hint={t('app.branches.forListingHint')}>
+              <Select
+                label={t('app.branches.forListing')}
+                value={values.branchId ?? null}
+                placeholder={t('app.branches.none')}
+                options={branches.map((branch) => ({ value: branch.id, label: localized(locale, branch.name_ar, branch.name_en) }))}
+                onChange={(value) => {
+                  set('branchId')(value);
+                  const chosen = branches.find((branch) => branch.id === value);
+                  if (chosen?.district_id) set('districtId')(chosen.district_id);
+                }}
+              />
+            </Field>
+          ) : null}
           <Field ref={inView.place('seats')} label={t('jobForm.seats')} hint={t('jobForm.seatsHint')} error={errors.seats}>
             <TextField
               value={values.seats}

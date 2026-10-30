@@ -792,6 +792,36 @@ describe("the team's rules and what waits for an admin", () => {
   });
 });
 
+describe("the company's branches", () => {
+  it('adds a branch with its district, and removes one after asking', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    server.on('GET /rest/v1/company_branches', [
+      { id: 3, company_id: baseCompany.id, name_ar: 'فرع التجمع', name_en: null, district_id: newCairo.id, created_at: '2026-10-01T10:00:00Z', district: { name_ar: newCairo.name_ar, name_en: newCairo.name_en } },
+    ]);
+    server.on('POST /api/mobile/v1/actions/saveBranch', { ok: true, data: { id: 4 } });
+    server.on('POST /api/mobile/v1/actions/deleteBranch', { ok: true });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    expect(await screen.findByText('فرع التجمع')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText(ar.app.branches.name), 'فرع زايد');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.branches.add }));
+    await waitFor(() => expect(input('/api/mobile/v1/actions/saveBranch')).toEqual({ nameAr: 'فرع زايد', districtId: null }));
+
+    fireEvent.press(screen.getByRole('button', { name: `${ar.app.branches.remove}: فرع التجمع` }));
+    expect(server.asked('/api/mobile/v1/actions/deleteBranch')).toHaveLength(0);
+    answerAlert(alert, ar.app.branches.remove);
+    await waitFor(() => expect(input('/api/mobile/v1/actions/deleteBranch')).toEqual({ id: 3 }));
+  });
+
+  it('says when the company has as many branches as it may', async () => {
+    server.on('GET /rest/v1/company_branches', []);
+    server.on('POST /api/mobile/v1/actions/saveBranch', { ok: false, error: 'branch_cap' });
+    await renderRouter(app, { initialUrl: '/employer/company' });
+    fireEvent.changeText(await screen.findByLabelText(ar.app.branches.name), 'فرع');
+    fireEvent.press(screen.getByRole('button', { name: ar.app.branches.add }));
+    expect(await screen.findByText(ar.app.branches.full)).toBeTruthy();
+  });
+});
+
 describe('a company that could not be read', () => {
   it('is never offered the form that makes one, which would overwrite it', async () => {
     // The membership call drops; it is a POST, so nothing retries it underneath.

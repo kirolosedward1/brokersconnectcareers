@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CompanyContact, PausedNotice } from '~/components/companies/hiring-notice';
 import { RecordRow } from '~/components/applications/cleared-applications';
 import { RevealLogList } from '~/components/directory/reveal-log';
+import { BranchSettings } from '~/components/employer/branch-settings';
+import { BranchList } from '~/components/companies/branch-list';
 import { HiringSettings } from '~/components/employer/hiring-settings';
 import { OwnershipSettings } from '~/components/employer/ownership-settings';
 import { RulesSettings } from '~/components/employer/rules-settings';
@@ -258,6 +260,34 @@ describe('RevealLogList', () => {
   it('says when no company has', () => {
     render(empty);
     expect(screen.getByText(ar.app.privacy.revealLogEmpty)).toBeTruthy();
+  });
+
+  it('draws right to left', () => {
+    expect(render(view).toJSON()).toMatchSnapshot();
+  });
+
+  it('draws at the largest text size', () => {
+    mockWindow.fontScale = 3.571;
+    expect(render(view).toJSON()).toMatchSnapshot();
+  });
+});
+
+describe('BranchSettings and BranchList', () => {
+  const branches = [
+    { id: 1, company_id: 'c', name_ar: 'فرع التجمع', name_en: null, district_id: 5, created_at: '2026-10-01T10:00:00Z', district: { name_ar: 'التجمع الخامس', name_en: 'Fifth Settlement' } },
+    { id: 2, company_id: 'c', name_ar: 'فرع زايد', name_en: null, district_id: null, created_at: '2026-10-02T10:00:00Z', district: null },
+  ];
+  const view = (
+    <Providers>
+      <BranchSettings companyId="c" branches={branches} canManage />
+      <BranchList branches={branches} />
+    </Providers>
+  );
+
+  it('lists each branch with its district', () => {
+    render(view);
+    expect(screen.getByText('فرع التجمع · التجمع الخامس')).toBeTruthy();
+    expect(screen.getByRole('button', { name: `${ar.app.branches.remove}: فرع زايد` })).toBeTruthy();
   });
 
   it('draws right to left', () => {

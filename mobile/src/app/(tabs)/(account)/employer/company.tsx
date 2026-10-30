@@ -7,6 +7,7 @@ import { localized } from '@/lib/locale';
 import { canAccessEmployerArea, isSuspended } from '@/lib/permissions';
 import { CompanyForm } from '~/components/employer/company-form';
 import { LogoControls } from '~/components/employer/logo-controls';
+import { BranchSettings } from '~/components/employer/branch-settings';
 import { HiringSettings } from '~/components/employer/hiring-settings';
 import { CompanyMfaNotice } from '~/components/employer/mfa-required';
 import { OwnershipSettings } from '~/components/employer/ownership-settings';
@@ -19,6 +20,7 @@ import { EmptyState, ErrorState, LoadingState } from '~/components/ui/states';
 import { SuspendedState } from '~/components/ui/suspended-state';
 import { Text } from '~/components/ui/text';
 import { useCompanyHiring } from '~/features/companies/hiring';
+import { useBranches } from '~/features/employer/branches';
 import { useCompanyClosure } from '~/features/employer/closure';
 import { useApprovalRequests, useCompanyRules } from '~/features/employer/rules';
 import { useCompanyPage } from '~/features/employer/company';
@@ -50,6 +52,7 @@ export default function CompanyScreen() {
   const hiring = useCompanyHiring(company?.id ?? null).data ?? null;
   const closure = useCompanyClosure(company?.id ?? null).data ?? null;
   const rules = useCompanyRules().data ?? null;
+  const branches = useBranches(company?.id ?? null).data ?? null;
   const pendingApprovals = (useApprovalRequests().data ?? []).filter((request) => request.status === 'pending').length;
   const header = <Stack.Screen options={{ title: t('employer.company') }} />;
   const scroll = useRef<ScrollViewInstance>(null);
@@ -91,6 +94,7 @@ export default function CompanyScreen() {
           <VerificationPanel companyId={company.id} status={company.verification_status} documents={page.data?.documents ?? []} />
         ) : null}
         {company && isAdmin && hiring ? <HiringSettings key={company.id} companyId={company.id} hiring={hiring} /> : null}
+        {company && branches ? <BranchSettings companyId={company.id} branches={branches} canManage={isAdmin} /> : null}
         {company && page.data ? <TeamSettings members={page.data.team} canManage={isAdmin} /> : null}
         {company && isAdmin && rules ? <RulesSettings key={company.id} rules={rules} /> : null}
         {company && isAdmin && page.data && closure ? (

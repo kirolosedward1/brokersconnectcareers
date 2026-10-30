@@ -46,6 +46,11 @@ export type JobValues = {
   descriptionEn: string;
   requirementsAr: string;
   developerIds: number[];
+  /**
+   * The company's branch (migration 383), or null for none. Absent on a draft
+   * kept on the phone before branches, and then left as the listing has it.
+   */
+  branchId?: number | null;
 };
 
 /** The website's defaults for a new listing, and a stored one as the form shows it. */
@@ -72,6 +77,7 @@ export function initialValues(job: JobRow | null, developerIds: number[], firstD
     descriptionEn: job?.description_en ?? '',
     requirementsAr: job?.requirements_ar ?? '',
     developerIds,
+    branchId: job?.branch_id ?? null,
   };
 }
 
@@ -171,6 +177,7 @@ export function toJobInput(
     descriptionEn: orNull(values.descriptionEn),
     requirementsAr: orNull(values.requirementsAr),
     developerIds: values.developerIds,
+    ...(values.branchId !== undefined ? { branchId: values.branchId } : {}),
     submit: extras.submit,
   };
 }

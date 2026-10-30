@@ -16,6 +16,8 @@ import { ErrorState, LoadingState, NotFoundState } from '~/components/ui/states'
 import { Text } from '~/components/ui/text';
 import { useCompany } from '~/features/companies/queries';
 import { useCompanyHiring } from '~/features/companies/hiring';
+import { useBranches } from '~/features/employer/branches';
+import { BranchList } from '~/components/companies/branch-list';
 import { CompanyContact, PausedNotice } from '~/components/companies/hiring-notice';
 import { useShrinkingTabBar } from '~/features/tab-bar';
 import { markupTags } from '~/i18n/rich';
@@ -39,6 +41,7 @@ export default function CompanyScreen() {
   const { colors, shadow } = useTheme();
   const page = useCompany(slug);
   const hiring = useCompanyHiring(page.data?.company.id ?? null).data ?? null;
+  const branches = useBranches(page.data?.company.id ?? null).data ?? null;
   const pull = usePullRefresh(() => page.refetch());
   const hasBoard = useHasBoard();
   const shrink = useShrinkingTabBar();
@@ -139,6 +142,8 @@ export default function CompanyScreen() {
         <FollowCompanyButton slug={company.slug} label={name} />
 
         {hiring ? <CompanyContact name={name} hiring={hiring} /> : null}
+
+        {branches?.length ? <BranchList branches={branches} /> : null}
 
         {about ? (
           <View style={{ gap: space[2] }}>

@@ -1039,5 +1039,19 @@
     "approve": "Approve",
     "refuse": "Refuse",
     "expired": "Things changed since the request, so nothing was done."
+  },
+  "branches": {
+    "title": "Branches",
+    "body": "The company's places besides its head office. Each listing can say which branch it is for.",
+    "name": "Branch name",
+    "district": "District",
+    "districtNone": "No district",
+    "add": "Add a branch",
+    "remove": "Remove branch",
+    "full": "The company has the most branches allowed. Remove one to add another.",
+    "forListing": "Branch",
+    "forListingHint": "Choosing a branch sets the district to its own",
+    "none": "No branch",
+    "publicTitle": "Branches"
   }
 }
