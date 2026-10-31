@@ -958,7 +958,7 @@ export async function loadLedger(options) {
   const url = process.env.TARGET_DATABASE_URL;
   if (url) {
     const { default: pg } = await import('pg');
-    const client = new pg.Client({ connectionString: url, ssl: url.includes('supabase.') ? { rejectUnauthorized: false } : undefined });
+    const client = new pg.Client({ connectionString: url, ssl: databaseSsl(url) });
     await client.connect();
     const { rows } = await client.query('select version, name from supabase_migrations.schema_migrations order by version');
     await client.end();
@@ -1106,6 +1106,20 @@ async function ledger(options) {
 // apply
 // ---------------------------------------------------------------------------
 
+/**
+ * TLS for a database connection. With DATABASE_CA_CERT set (the PEM of the
+ * CA that signed the server's certificate: Supabase → Database → SSL
+ * Configuration → Download certificate), the server is verified against it,
+ * so a connection from a machine whose network is not trusted (a CI runner)
+ * cannot hand the password to an impostor. Without it a Supabase connection
+ * is encrypted but unverified, as it always was from a developer's computer.
+ */
+export function databaseSsl(url) {
+  const ca = process.env.DATABASE_CA_CERT;
+  if (ca) return { ca, rejectUnauthorized: true };
+  return url.includes('supabase.') ? { rejectUnauthorized: false } : undefined;
+}
+
 /** Held for the whole apply, so two cannot interleave on one database. */
 const APPLY_LOCK = 7_426_001;
 
@@ -1148,10 +1162,22 @@ async function apply(options) {
   const production = url.includes(PRODUCTION_REF);
 
   const { default: pg } = await import('pg');
-  const client = new pg.Client({ connectionString: url, ssl: url.includes('supabase.') ? { rejectUnauthorized: false } : undefined });
+  const client = new pg.Client({ connectionString: url, ssl: databaseSsl(url) });
   await client.connect();
 
   try {
+    // Taken before the ledger is read, so the plan is made by the one apply
+    // that will run it: one read before another apply had committed would
+    // otherwise replay steps that apply had just run.
+    if (options.execute) {
+      const { rows: lock } = await client.query('select pg_try_advisory_lock($1) as held', [APPLY_LOCK]);
+      if (!lock[0].held) {
+        console.error('\n  refused: another apply is running against this database.');
+        process.exitCode = 1;
+        return;
+      }
+    }
+
     const { rows } = await client.query('select version, name from supabase_migrations.schema_migrations order by version');
     const files = localFiles().filter((file) => NAME.test(file));
     const { drift } = reconcile(rows, files);
@@ -1182,13 +1208,6 @@ async function apply(options) {
     }
     if (production && options.confirm !== PRODUCTION_REF) {
       console.error(`\n  refused: this is production. Take a backup, then add --confirm ${PRODUCTION_REF}.`);
-      process.exitCode = 1;
-      return;
-    }
-
-    const { rows: lock } = await client.query('select pg_try_advisory_lock($1) as held', [APPLY_LOCK]);
-    if (!lock[0].held) {
-      console.error('\n  refused: another apply is running against this database.');
       process.exitCode = 1;
       return;
     }

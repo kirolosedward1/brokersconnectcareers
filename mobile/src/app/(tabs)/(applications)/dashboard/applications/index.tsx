@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useIsFocused } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
+import { Building2, ChevronDown, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate, formatRelativeDay } from '@/lib/format';
 import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
@@ -36,7 +36,7 @@ import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
-import { dialog } from '~/lib/dialog';
+import { ConfirmDialog } from '~/components/ui/confirm-dialog';
 import { toast } from '~/components/feedback/toast';
 import { useListMotion } from '~/components/motion/list-motion';
 
@@ -97,8 +97,6 @@ export default function ApplicationsScreen() {
           <RefreshControl {...pull} tintColor={colors.primary} />
         }
       >
-        <Text tone="mutedForeground">{t('dashboard.applicationsLede')}</Text>
-
         {/* Written with no connection, waiting to go (features/apply/queue.ts). */}
         <QueuedApplications />
 
@@ -206,6 +204,9 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   // One read for the whole list (the query is shared): this application's invitation, if any.
   const invite = useMyInterviews().data?.get(application.id) ?? null;
   const [openedAt] = useState(() => Date.now());
+  const [asking, setAsking] = useState(false);
+  // The four steps, folded under the status until asked for (owner's call, 31 Oct: half the height).
+  const [expanded, setExpanded] = useState(false);
 
   const job = application.job;
   if (!job) return null;
@@ -216,23 +217,28 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const quiet = daysWithoutAnswer(application);
   const quietStrip = quiet !== null && quiet >= QUIET_DAYS && canWithdraw(application.status);
 
-  const confirmWithdraw = () => {
-    dialog.alert(t('myApplications.withdrawTitle', { title }), t('myApplications.withdrawBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('dashboard.withdraw'),
-        style: 'destructive',
-        onPress: () => {
-          setFailed(null);
-          withdraw.mutate(application.id, {
-            onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
-            onError: (error) =>
-              setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
-          });
-        },
-      },
-    ]);
+  // Asked in the app's own direction, not iOS's alert, which an English iPhone lays out left to right.
+  const confirmWithdraw = () => setAsking(true);
+  const withdrawNow = () => {
+    setAsking(false);
+    setFailed(null);
+    withdraw.mutate(application.id, {
+      onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
+      onError: (error) => setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
+    });
   };
+  const withdrawQuestion = (
+    <ConfirmDialog
+      visible={asking}
+      title={t('myApplications.withdrawTitle', { title })}
+      message={t('myApplications.withdrawBody')}
+      cancelLabel={t('common.cancel')}
+      confirmLabel={t('dashboard.withdraw')}
+      destructive
+      onCancel={() => setAsking(false)}
+      onConfirm={withdrawNow}
+    />
+  );
 
   return (
     <View
@@ -270,12 +276,22 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
         {application.status === 'withdrawn' ? (
           <Badge label={t('applicationStatus.withdrawn')} />
         ) : (
-          <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            accessibilityLabel={`${t(`applicationStatus.${application.status}`)}. ${expanded ? t('app.applications.hideSteps') : t('app.applications.showSteps')}`}
+            onPress={() => setExpanded(!expanded)}
+            hitSlop={8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space[1], minHeight: 32 }}
+          >
+            <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+            <ChevronDown size={16} color={colors.mutedForeground} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
+          </Pressable>
         )}
       </View>
 
-      {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
-      <ApplicationTimeline application={application} />
+      {/* Where it stands: sent, seen by the company, shortlisted, the decision — opened from the status. */}
+      {expanded ? <ApplicationTimeline application={application} /> : null}
 
       {/* An interview the company invited them to, and their answer (migration 373). */}
       {invite && application.status !== 'withdrawn' ? <CandidateInterview invite={invite} now={openedAt} /> : null}
@@ -349,6 +365,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
           {failed === 'unavailable' ? t('myApplications.withdrawUnavailable') : t('common.errorBody')}
         </Text>
       ) : null}
+      {withdrawQuestion}
     </View>
   );
 }

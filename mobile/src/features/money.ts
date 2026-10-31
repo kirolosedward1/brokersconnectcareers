@@ -9,7 +9,8 @@ import { isolate, markupTags } from '~/i18n/rich';
  *
  * The website's catalogue says «جنيه» in its own sentences; the app's
  * figures and cards use the short mark, from its own strings (`app.money`).
- * A range is one left-to-right run, low to high, as a number is (Num).
+ * A range in Arabic reads right to left, the smaller number at the right,
+ * each number its own left-to-right run (owner's call, 31 Oct).
  */
 export function useMoney() {
   const t = useTranslations('app.money');

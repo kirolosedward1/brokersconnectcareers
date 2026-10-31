@@ -29,6 +29,7 @@ import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
+import { SideRow } from '~/components/ui/side-row';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { SearchField } from '~/components/ui/search-field';
 import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
@@ -436,7 +437,8 @@ function BoardHeader({
   const tAll = useTranslations();
 
   return (
-    <View style={{ gap: space[3], marginBottom: space[4] }}>
+    // Closer together, so the first cards come up sooner (owner's call, 31 Oct).
+    <View style={{ gap: space[2], marginBottom: space[3] }}>
       <SearchField
         inputRef={searchRef}
         value={filters.q}
@@ -492,7 +494,8 @@ function BoardHeader({
       ) : null}
 
       {active.length ? (
-        <View accessibilityLabel={t('filters')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+        // One row that slides sideways, out to the screen's edges, the first chip at the right (owner's call, 31 Oct).
+        <SideRow label={t('filters')} bleed={gutter}>
           {active.map((filter) => {
             const label = labelFor(filter);
             return (
@@ -516,7 +519,7 @@ function BoardHeader({
               onPress={() => apply(company || !first ? { ...EMPTY_FILTERS, companySlug: filters.companySlug } : EMPTY_FILTERS)}
             />
           ) : null}
-        </View>
+        </SideRow>
       ) : null}
 
       {/* Paid placement pins above every sort (the website's board says the

@@ -494,7 +494,7 @@ open_app account
 see 4-account 'سجّل الدخول إلى حسابك'
 in_header 4-account 'حسابي'
 open_app sign-in
-see 5-sign-in 'مرحبًا بعودتك'
+see 5-sign-in 'أهلًا بعودتك'
 
 # Back to Expo Go's own home, and the app opened again from there: the other case.
 xcrun simctl terminate "$udid" host.exp.Exponent > /dev/null 2>&1 || true

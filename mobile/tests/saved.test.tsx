@@ -349,8 +349,10 @@ describe('saved searches and follows', () => {
     await waitFor(() =>
       expect(bodyOf('/api/mobile/v1/actions/followCompany')).toEqual({ input: { slug: 'nile-brokers', label: 'نايل بروكرز' } }),
     );
-    expect(await screen.findByRole('button', { name: ar.companies.following })).toBeTruthy();
-    expect(screen.getByText(ar.companies.followingHint)).toBeTruthy();
+    const following = await screen.findByRole('button', { name: ar.companies.following });
+    // What following does is said to VoiceOver; the words under the button are gone.
+    expect(following.props.accessibilityHint).toBe(ar.companies.followingHint);
+    expect(screen.queryByText(ar.companies.followingHint)).toBeNull();
   });
 
   it('says why a follow did not happen, and shows it did not', async () => {

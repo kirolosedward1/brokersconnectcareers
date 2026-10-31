@@ -38,7 +38,7 @@ export default function CompanyScreen() {
   const locale = useLocale();
   const t = useTranslations('companies');
   const offersFollow = useOffersFollow();
-  const { colors, shadow } = useTheme();
+  const { colors } = useTheme();
   const page = useCompany(slug);
   const hiring = useCompanyHiring(page.data?.company.id ?? null).data ?? null;
   const branches = useBranches(page.data?.company.id ?? null).data ?? null;
@@ -99,47 +99,37 @@ export default function CompanyScreen() {
                 </VerifiedMark>
               ) : null}
             </View>
+            {/* Tell me when this brokerage posts: beside the name, at the row's other end. */}
+            <FollowCompanyButton slug={company.slug} label={name} />
           </View>
           {/* Nothing to state, no card: an empty one read as something missing. */}
           {company.district || company.headcount_band || website ? (
-            <View
-              style={{
-                ...corner('xl'),
-                borderWidth: StyleSheet.hairlineWidth * 2,
-                borderColor: colors.border,
-                backgroundColor: colors.card,
-                boxShadow: shadow.card,
-                paddingHorizontal: space[4],
-                paddingVertical: space[2],
-              }}
-            >
+            // One line of facts under the name, no card (owner's call, 31 Oct); it wraps when it must.
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: space[4], rowGap: space[1] }}>
               {company.district ? (
-                <Fact icon={<MapPin size={15} color={colors.mutedForeground} />} label={t('location')}>
+                <InlineFact icon={<MapPin size={15} color={colors.mutedForeground} />} label={t('location')}>
                   {localized(locale, company.district.name_ar, company.district.name_en)}
-                </Fact>
+                </InlineFact>
               ) : null}
               {company.headcount_band ? (
-                <Fact icon={<Users size={15} color={colors.mutedForeground} />} label={t('headcount')}>
+                <InlineFact icon={<Users size={15} color={colors.mutedForeground} />} label={t('headcount')}>
                   {t(`headcountBand.${company.headcount_band}`)}
-                </Fact>
+                </InlineFact>
               ) : null}
               {website ? (
-                <Fact
+                <InlineFact
                   icon={<Globe size={15} color={colors.mutedForeground} />}
                   label={t('website')}
                   onPress={() => Linking.openURL(website).catch(() => {})}
                 >
                   {website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-                </Fact>
+                </InlineFact>
               ) : null}
             </View>
           ) : null}
         </View>
 
         {hiring && !hiring.open ? <PausedNotice hiring={hiring} /> : null}
-
-        {/* Tell me when this brokerage posts — a candidate's, or the way into an account. */}
-        <FollowCompanyButton slug={company.slug} label={name} />
 
         {hiring ? <CompanyContact name={name} hiring={hiring} /> : null}
 
@@ -201,37 +191,23 @@ export default function CompanyScreen() {
   );
 }
 
-function Fact({
-  icon,
-  label,
-  children,
-  onPress,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: string;
-  onPress?: () => void;
-}) {
-  // The value wraps under its label when the two do not fit side by side, at
-  // the larger text sizes: beside it, it was squeezed to nothing. The label is
-  // read as part of the value, once.
+/** A fact in the line under the name: its icon and its value; VoiceOver hears the label too. */
+function InlineFact({ icon, label, children, onPress }: { icon: React.ReactNode; label: string; children: string; onPress?: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space[3], rowGap: 2, minHeight: 40, paddingVertical: space[1] }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[1], minHeight: 28, flexShrink: 1 }}>
       {icon}
-      <Text variant="small" tone="mutedForeground" accessible={false} style={{ minWidth: 72, flexShrink: 1 }}>
-        {label}
-      </Text>
       <Text
         variant="small"
         weight="medium"
-        tone={onPress ? 'primary' : 'foreground'}
+        tone={onPress ? 'primary' : 'mutedForeground'}
         accessibilityLabel={`${label}: ${children}`}
         accessibilityRole={onPress ? 'link' : undefined}
         onPress={onPress}
-        style={{ flexGrow: 1, flexShrink: 1, flexBasis: 160 }}
+        style={{ flexShrink: 1 }}
       >
         {children}
       </Text>
     </View>
   );
 }
+

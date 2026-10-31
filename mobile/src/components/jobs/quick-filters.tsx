@@ -1,14 +1,14 @@
-import { View } from 'react-native';
 import { useLocale, useTranslations } from 'use-intl';
 import type { JobFilters } from '@/lib/job-filters';
 import { localized } from '@/lib/locale';
 import { Chip } from '~/components/ui/chip';
+import { SideRow } from '~/components/ui/side-row';
 import { Banknote, MapPin } from '~/components/ui/lucide';
 import { useBrowseCounts } from '~/features/browse/queries';
 import { toggled } from '~/features/jobs/filters';
 import { useDistricts } from '~/features/taxonomy';
 import { useTheme } from '~/theme/provider';
-import { space } from '~/theme/tokens';
+import { gutter } from '~/theme/tokens';
 
 /** How many of the busiest areas get a chip of their own. */
 const AREAS = 2;
@@ -19,8 +19,8 @@ const AREAS = 2;
  * live listings right now (the website's browse counts). Each is the same
  * filter the sheet sets, on or off, so its chip below and the sheet agree.
  *
- * Wrapped, not a sideways strip: a strip scrolled from the wrong end under the
- * app's right to left in Expo Go.
+ * One row that slides sideways (owner's call, 31 Oct), the first chip at the
+ * right on every phone (SideRow says how).
  */
 export function QuickFilters({ filters, apply }: { filters: JobFilters; apply: (next: JobFilters) => void }) {
   const t = useTranslations();
@@ -41,7 +41,7 @@ export function QuickFilters({ filters, apply }: { filters: JobFilters; apply: (
   const tint = (on: boolean) => (on ? colors.primaryForeground : colors.mutedForeground);
 
   return (
-    <View accessibilityLabel={t('app.jobs.quickFilters')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+    <SideRow label={t('app.jobs.quickFilters')} bleed={gutter}>
       <Chip
         label={t('filters.hasBasicSalaryYes')}
         selected={withSalary}
@@ -68,6 +68,6 @@ export function QuickFilters({ filters, apply }: { filters: JobFilters; apply: (
           />
         );
       })}
-    </View>
+    </SideRow>
   );
 }

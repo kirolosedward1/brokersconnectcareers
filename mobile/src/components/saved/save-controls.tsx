@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslations } from 'use-intl';
 import { BellOff, BellPlus, BellRing, Bookmark, BookmarkCheck, Check, CircleAlert } from '~/components/ui/lucide';
 import { canSaveJobs } from '@/lib/permissions';
 import { Pop } from '~/components/motion/pop';
 import { Button } from '~/components/ui/button';
+import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
 import { TextField } from '~/components/ui/text-field';
 import {
@@ -116,7 +117,7 @@ export function SaveJobIcon({ save }: { save: ReturnType<typeof useSaveJob> }) {
 }
 
 /** The listing page's labelled button, beside the way to apply. */
-export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) {
+export function SaveJobButton({ jobId, slug, compact = false }: { jobId: string; slug: string; compact?: boolean }) {
   const t = useTranslations('jobs');
   const { colors } = useTheme();
   const { session, viewer } = useSession();
@@ -124,6 +125,35 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
 
   if (session && viewer?.profile && !save.savable) return null;
   const signedIn = Boolean(session && viewer?.profile);
+  const onPress = () => (signedIn ? save.toggle() : signInThenReturn(`/jobs/${slug}`));
+
+  // The bookmark alone, as round as the Apply button beside it is tall (owner's call, 31 Oct).
+  if (compact) {
+    return (
+      <PressableScale
+        testID="save-job"
+        accessibilityRole="button"
+        accessibilityLabel={save.saved ? t('saved') : t('save')}
+        accessibilityState={{ selected: save.saved, busy: save.pending, disabled: save.pending }}
+        disabled={save.pending}
+        onPress={onPress}
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: save.saved ? colors.secondary : colors.card,
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: save.saved ? colors.primary : colors.border,
+        }}
+      >
+        <Pop key={jobId} trigger={save.saves}>
+          {save.saved ? <Bookmark size={22} color={colors.primary} fill={colors.primary} /> : <Bookmark size={22} color={colors.foreground} />}
+        </Pop>
+      </PressableScale>
+    );
+  }
 
   return (
     <Button
@@ -137,7 +167,7 @@ export function SaveJobButton({ jobId, slug }: { jobId: string; slug: string }) 
           {save.saved ? <Bookmark size={18} color={colors.primary} fill={colors.primary} /> : <Bookmark size={18} color={colors.foreground} />}
         </Pop>
       }
-      onPress={() => (signedIn ? save.toggle() : signInThenReturn(`/jobs/${slug}`))}
+      onPress={onPress}
     />
   );
 }
@@ -292,18 +322,18 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
   };
 
   return (
-    <View style={{ gap: space[1], alignItems: 'flex-start' }}>
+    <View style={{ gap: space[1], alignItems: 'flex-end', flexShrink: 0, maxWidth: '45%' }}>
       <Button
         label={following ? t('following') : t('follow')}
+        size="sm"
         variant={following ? 'secondary' : 'outline'}
         accessibilityState={{ selected: following, busy: toggle.isPending, disabled: toggle.isPending }}
+        // What following does, for VoiceOver: the words under the button are gone (owner's call, 31 Oct).
+        accessibilityHint={following ? t('followingHint') : t('followHint')}
         disabled={toggle.isPending}
         icon={following ? <BellRing size={16} color={colors.primary} /> : <BellPlus size={16} color={colors.foreground} />}
         onPress={onPress}
       />
-      <Text variant="caption" tone="mutedForeground">
-        {following ? t('followingHint') : t('followHint')}
-      </Text>
       {error ? (
         <Text variant="caption" tone="destructive" accessibilityRole="alert">
           {error}

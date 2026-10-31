@@ -73,6 +73,7 @@ export function SocialSignIn({
   onBusy,
   onOutcome,
   separator = true,
+  separatorLabel,
   children,
 }: {
   mode: 'sign-in' | 'sign-up';
@@ -81,9 +82,12 @@ export function SocialSignIn({
   /** Awaited: the buttons stay busy until whatever follows a sign-in has run. */
   onOutcome: (outcome: ProviderOutcome) => void | Promise<void>;
   separator?: boolean;
+  /** The words between the buttons and the form: the website's "or" unless the page says more. */
+  separatorLabel?: string;
   children?: ReactNode;
 }) {
   const t = useTranslations('auth');
+  const tApp = useTranslations('app.auth');
   const { scheme } = useTheme();
   const { apple, google } = useSocialProviders();
   if (!apple && !google && !children) return null;
@@ -115,7 +119,7 @@ export function SocialSignIn({
         ) : null}
         {google ? (
           <Button
-            label={mode === 'sign-up' ? t('signUpWithGoogle') : t('signInWithGoogle')}
+            label={mode === 'sign-up' ? t('signUpWithGoogle') : tApp('continueGoogle')}
             variant="outline"
             size="lg"
             icon={<GoogleMark />}
@@ -131,7 +135,7 @@ export function SocialSignIn({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Separator />
           <Text variant="caption" tone="mutedForeground">
-            {t('or')}
+            {separatorLabel ?? t('or')}
           </Text>
           <Separator />
         </View>

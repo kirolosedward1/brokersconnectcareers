@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, View, type AppStateStatus } from 'react-native';
 import { useTranslations } from 'use-intl';
-import { BrandLogo } from '~/components/brand/brand-logo';
+import { BrandMark } from '~/components/brand/brand-logo';
 import { Button } from '~/components/ui/button';
 import { Text } from '~/components/ui/text';
 import { lockOnReturn, markProven, proveOwner, useAppLockOn, useProvenFor } from '~/features/app-lock/lock';
@@ -102,7 +102,7 @@ export function AppLock() {
         { backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: gutter, gap: space[5] },
       ]}
     >
-      <BrandLogo size="hero" />
+      <BrandMark />
       {showLock ? (
         <>
           <View style={{ gap: space[2], alignItems: 'center' }}>

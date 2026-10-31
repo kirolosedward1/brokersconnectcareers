@@ -55,7 +55,8 @@
     "support": "المساعدة والدعم",
     "deleteAccount": "حذف الحساب",
     "completeness": "الملف مكتمل بنسبة <v>{percent}%</v>",
-    "appearanceRow": "المظهر"
+    "appearanceRow": "المظهر",
+    "legalRow": "الشروط، الخصوصية والتراخيص"
   },
   "jobs": {
     "loadMore": "تحميل المزيد",
@@ -118,7 +119,12 @@
       "strong": "قوية"
     },
     "strengthLabel": "قوة كلمة المرور: {level}",
-    "strengthHint": "أضف رقمًا أو رمزًا لتصبح أقوى."
+    "strengthHint": "أضف رقمًا أو رمزًا لتصبح أقوى.",
+    "welcomeBack": "أهلًا بعودتك",
+    "signInLede": "سجّل دخولك لتتابع طلباتك وتنبيهاتك.",
+    "orEmail": "أو بالبريد",
+    "forgotShort": "نسيتها؟",
+    "continueGoogle": "المتابعة بحساب Google"
   },
   "onboarding": {
     "choose": "اختر",
@@ -234,7 +240,7 @@
     "timelineNow": "الآن: {step}",
     "segmentsLabel": "اعرض الطلبات",
     "segmentAll": "الكل <v>{count}</v>",
-    "segmentNews": "فيها جديد <v>{count}</v>",
+    "segmentNews": "جديد <v>{count}</v>",
     "segmentInterviews": "مقابلات",
     "segmentEnded": "منتهية",
     "segmentEmpty": "لا طلبات هنا الآن.",
@@ -242,7 +248,9 @@
     "quietFor": "لم تردّ بعد منذ {days, plural, one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}}",
     "usuallyIn": "تردّ هذه الشركة عادةً خلال {days, plural, =0 {يوم} one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}}",
     "queuedTitle": "طلبك محفوظ وسيُرسل تلقائيًا",
-    "queuedCancel": "ألغِ"
+    "queuedCancel": "ألغِ",
+    "showSteps": "اعرض المراحل",
+    "hideSteps": "أخفِ المراحل"
   },
   "apply": {
     "pickCv": "اختر ملفًا",
@@ -253,13 +261,12 @@
     "screenTitle": "قدّم على الوظيفة",
     "editProfile": "تعديل الملف",
     "lastUsed": "آخر ما استخدمته",
-    "lastCv": "السيرة التي أرسلتها مع «{job}»",
+    "lastCv": "سيرتي الذاتية",
     "uploadNew": "ارفع سيرة ذاتية جديدة",
     "uploadHint": "PDF أو Word حتى <v>10</v> م.ب",
     "noCv": "من دون سيرة ذاتية",
     "noteCount": "<v>{count} / {max}</v>",
     "sharedWith": "تُشارك سيرتك ورقمك مع {company} لهذا الطلب فقط.",
-    "noFees": "بلا رسوم على المرشحين. يمكنك سحب طلبك في أي وقت.",
     "guestTitle": "أنشئ حسابًا بلمسة لإرسال الطلب",
     "guestEmail": "بريدك الإلكتروني",
     "guestEmailContinue": "تابع بالبريد الإلكتروني",
@@ -274,7 +281,11 @@
     "queuedBody": "لا يوجد اتصال الآن. سنرسل طلبك على «{title}» تلقائيًا حين يعود الاتصال، ونخبرك حين يصل.",
     "queuedSent": "وصل طلبك على «{title}».",
     "queuedFailed": "لم نستطع إرسال طلبك على «{title}». افتح الإعلان وحاول مرة أخرى.",
-    "serverFailed": "تعذّر إرسال الطلب. المشكلة من جهتنا لا منك، وما كتبته محفوظ. أعد المحاولة بعد قليل."
+    "serverFailed": "تعذّر إرسال الطلب. المشكلة من جهتنا لا منك، وما كتبته محفوظ. أعد المحاولة بعد قليل.",
+    "signInTitle": "سجّل الدخول للتقديم",
+    "signInBody": "التقديم على الوظائف من حسابك، لتتابع طلبك وتصلك ردود الشركة.",
+    "viewCv": "عرض",
+    "viewCvLabel": "اعرض السيرة الذاتية"
   },
   "profile": {
     "edit": "عدّل",
@@ -650,10 +661,10 @@
     "unit": "ج.م",
     "perMonth": "ج.م / شهر",
     "amount": "<v>{amount}</v> ج.م",
-    "range": "<v>{min} – {max}</v> ج.م",
+    "range": "⁧<v>{min}</v> – <v>{max}</v> ج.م⁩",
     "from": "من <v>{min}</v> ج.م",
     "upTo": "حتى <v>{max}</v> ج.م",
-    "rangeFigures": "<v>{min} – {max}</v>",
+    "rangeFigures": "⁧<v>{min}</v> – <v>{max}</v>⁩",
     "fromFigures": "من <v>{min}</v>",
     "upToFigures": "حتى <v>{max}</v>",
     "reference": "الأساسي في الإعلانات المشابهة بين <v>{low}</v> و<v>{high}</v> ج.م — حسب {count, plural, one {إعلان واحد منشور} two {إعلانين منشورين} few {<v>#</v> إعلانات منشورة} many {<v>#</v> إعلانًا منشورًا} other {<v>#</v> إعلان منشور}} في التخصص والمحافظة نفسيهما."
@@ -666,7 +677,9 @@
     "postedAgo": "نُشر {when}",
     "verifiedSince": "موثّقة منذ {when}",
     "respondsIn": "تردّ هذه الشركة خلال {days, plural, =0 {يوم} one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}} في المتوسط",
-    "opened": "فتحت <v>{percent}%</v> من الطلبات"
+    "opened": "فتحت <v>{percent}%</v> من الطلبات",
+    "readMore": "اقرأ المزيد",
+    "readLess": "عرض أقل"
   },
   "appearance": {
     "title": "المظهر",

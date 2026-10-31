@@ -14,7 +14,7 @@ import { router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
-import { BadgeCheck, Building2, CalendarClock, CalendarX2, Clock, Eye, MapPin, Share, Users } from '~/components/ui/lucide';
+import { BriefcaseBusiness, CalendarClock, CalendarX2, Clock, Eye, MapPin, Share, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber, formatRate, formatRelativeDay } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
@@ -25,6 +25,7 @@ import { CompanyLogo } from '~/components/companies/company-logo';
 import { HiddenNotice } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
 import { SavedJobNote } from '~/components/saved/note-sheet';
+import { FoldedText } from '~/components/ui/folded-text';
 import { SaveJobButton } from '~/components/saved/save-controls';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
@@ -95,7 +96,6 @@ export function JobDetail({
   const tExp = useTranslations('experienceBand');
   const tLanding = useTranslations('landing');
   const tApply = useTranslations('apply');
-  const tApp2 = useTranslations();
   const tComp = useTranslations('compensation');
   const tListing = useTranslations('app.listing');
   const large = useLargeText();
@@ -144,14 +144,20 @@ export function JobDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, job.slug]);
 
-  // Signed out too, the form opens: an account is made inside it (v1.1, guest apply).
+  // Applying is for an account: signed out, Apply is the sign-in sheet, which comes back to the form.
   const apply = () => {
     track('apply_clicked', { role: analyticsRole(actor, Boolean(session)) });
+    if (!session) {
+      router.push({ pathname: '/sign-in', params: { next: `/jobs/${job.slug}/apply` } });
+      return;
+    }
     router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } });
   };
   const toApplications = () => router.navigate('/dashboard/applications');
   // What is pinned at the foot once the step has scrolled away: Apply, or the application already sent.
   const pinnable = open && canApply && (applied || (!paused && !(isCandidate(actor) && !isApproved(actor))));
+  // The Apply button shows (the last branch of the next step below), so the bookmark sits beside it.
+  const applyOffered = open && canApply && !applied && !(paused && hiring) && !(isCandidate(actor) && !isApproved(actor));
   // Where the step's foot is in the page, and whether the page is scrolled past it.
   const [stepEnd, setStepEnd] = useState<number | null>(null);
   const [pastStep, setPastStep] = useState(false);
@@ -270,35 +276,32 @@ export function JobDetail({
             </View>
           </View>
 
-          <Text variant="screen" weight="bold" accessibilityRole="header">
+          {/* A size under the screen titles: a long title takes two lines, not four (owner's call, 31 Oct). */}
+          <Text variant="title" weight="bold" accessibilityRole="header">
             {title}
           </Text>
+        </View>
 
+        {/* Pay first, under the title (owner's call, 31 Oct); the facts and how fast the company answers after it. */}
+        <CompensationCard job={job} reference={reference} />
+
+        <View style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
             <Fact>{tTrack(job.track)}</Fact>
             <Fact>{tType(job.employment_type)}</Fact>
-            <Fact icon={<Users size={13} color={colors.mutedForeground} />}>{tExp(job.experience_band)}</Fact>
-            <Fact>{`${formatNumber(job.seats, locale)} ${t('seatsLabel', { count: job.seats })}`}</Fact>
+            {/* A span of years reads right to left, the fewer years at the right. */}
+            <Fact icon={<Users size={13} color={colors.mutedForeground} />}>{`${RLI}${tExp(job.experience_band)}${PDI}`}</Fact>
+            {/* The open seats as an icon and the number; VoiceOver hears the words. */}
+            <Fact
+              icon={<BriefcaseBusiness size={13} color={colors.mutedForeground} />}
+              accessibilityLabel={`${formatNumber(job.seats, locale)} ${t('seatsLabel', { count: job.seats })}`}
+            >
+              {formatNumber(job.seats, locale)}
+            </Fact>
           </View>
 
           <ResponseLine companyId={job.company.id} />
-
-          <Pressable
-            accessibilityRole="link"
-            onPress={() =>
-              router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
-            }
-            hitSlop={8}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[0.5], alignSelf: 'flex-start', minHeight: hitTarget, opacity: pressed ? 0.6 : 1 })}
-          >
-            <Text variant="small" weight="medium" tone="primary">
-              {tLanding('title', { track: tTrack(job.track), district: districtName })}
-            </Text>
-            <ForwardChevron size={14} color={colors.primary} />
-          </Pressable>
         </View>
-
-        <CompensationCard job={job} reference={reference} />
 
         {/* The next step. Applying arrives with sign-in; until then, and for
             anyone the button cannot work for, the page says what is true. */}
@@ -334,32 +337,33 @@ export function JobDetail({
               </Text>
             </Card>
           ) : (
-            <View style={{ gap: space[1.5] }}>
-              <Button
-                label={t('apply')}
-                size="lg"
-                icon={<SendForward size={18} color={colors.primaryForeground} />}
-                onPress={apply}
-              />
-              <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
-                {tApp2('app.apply.noFees')}
-              </Text>
+            // Apply, and the bookmark beside it as an icon (owner's call, 31 Oct).
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
+              <View style={{ flex: 1 }}>
+                <Button
+                  label={t('apply')}
+                  size="lg"
+                  icon={<SendForward size={18} color={colors.primaryForeground} />}
+                  onPress={apply}
+                />
+              </View>
+              <SaveJobButton jobId={job.id} slug={job.slug} compact />
             </View>
           )}
         </View>
 
-        {/* A bookmark is a candidate's; somebody signed out is sent to sign in. */}
-        <SaveJobButton jobId={job.id} slug={job.slug} />
+        {/* Where there is no Apply to sit beside, the bookmark keeps its own row; a candidate's, or the way to sign in. */}
+        {applyOffered ? null : <SaveJobButton jobId={job.id} slug={job.slug} />}
         {/* Saved, it carries the candidate's own note, kept on this phone. */}
         <SavedJobNote jobId={job.id} title={title} />
 
         <Section title={t('description')}>
-          <Text selectable>{description}</Text>
+          <FoldedText>{description}</FoldedText>
         </Section>
 
         {job.requirements_ar ? (
           <Section title={t('requirements')}>
-            <Text selectable>{job.requirements_ar}</Text>
+            <FoldedText>{job.requirements_ar}</FoldedText>
           </Section>
         ) : null}
 
@@ -395,39 +399,32 @@ export function JobDetail({
           </View>
         </View>
 
-        <Card style={{ gap: space[3], padding: space[5] }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-            <Building2 size={16} color={colors.mutedForeground} />
-            <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header">
-              {t('aboutCompany')}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} size="sm" />
-            <Text variant="headline" weight="semibold" style={{ flex: 1 }}>
+        {/* The company as one row, opening its page (owner's call, 31 Oct): what it says about itself is there. */}
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`${t('aboutCompany')}: ${companyName}`}
+          accessibilityHint={t('companyPage')}
+          onPress={() => router.push({ pathname: '/companies/[slug]', params: { slug: job.company.slug } })}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space[3],
+            padding: space[3],
+            ...corner('xl'),
+            borderWidth: StyleSheet.hairlineWidth * 2,
+            borderColor: colors.border,
+            backgroundColor: pressed ? colors.muted : colors.card,
+          })}
+        >
+          <CompanyLogo name={companyName} logoUrl={job.company.logo_url} size="sm" />
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+            <Text weight="semibold" numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
               {companyName}
             </Text>
+            {job.company.verification_status === 'verified' ? <VerifiedMark size={15} /> : null}
           </View>
-          {job.company.verification_status === 'verified' ? (
-            <View style={{ flexDirection: 'row', gap: space[2] }}>
-              <BadgeCheck size={16} color={colors.gold} style={{ marginTop: 4 }} />
-              <Text variant="small" tone="mutedForeground" style={{ flex: 1 }}>
-                {t('verifiedMeaning')}
-              </Text>
-            </View>
-          ) : null}
-          {job.company.about_ar || job.company.about_en ? (
-            <Text variant="small" tone="mutedForeground">
-              {localized(locale, job.company.about_ar, job.company.about_en)}
-            </Text>
-          ) : null}
-          <Button
-            label={t('companyPage')}
-            variant="outline"
-            icon={<Building2 size={16} color={colors.foreground} />}
-            onPress={() => router.push({ pathname: '/companies/[slug]', params: { slug: job.company.slug } })}
-          />
-        </Card>
+          <ForwardChevron size={16} color={colors.mutedForeground} />
+        </Pressable>
 
         {similarShown.length ? (
           <Section title={t('similarJobs')}>
@@ -438,6 +435,21 @@ export function JobDetail({
             </View>
           </Section>
         ) : null}
+
+        {/* More of the same kind, at the foot. */}
+        <Pressable
+          accessibilityRole="link"
+          onPress={() =>
+            router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
+          }
+          hitSlop={8}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[0.5], alignSelf: 'flex-start', minHeight: hitTarget, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text variant="small" weight="medium" tone="primary">
+            {tLanding('title', { track: tTrack(job.track), district: districtName })}
+          </Text>
+          <ForwardChevron size={14} color={colors.primary} />
+        </Pressable>
 
         <View style={{ alignItems: 'flex-start' }}>
           <ReportButton target="job" targetId={job.id} returnPath={`/jobs/${job.slug}`} label={t('report')} />
@@ -472,9 +484,6 @@ export function JobDetail({
                   <Button label={t('apply')} icon={<SendForward size={18} color={colors.primaryForeground} />} onPress={apply} />
                 </View>
               </View>
-              <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
-                {tApp2('app.apply.noFees')}
-              </Text>
             </View>
           )}
         </Appear>
@@ -525,15 +534,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 /** One fact about the role, as a quiet pill. */
-function Fact({ icon, children }: { icon?: React.ReactNode; children: string }) {
+function Fact({ icon, children, accessibilityLabel }: { icon?: React.ReactNode; children: string; accessibilityLabel?: string }) {
   const { colors } = useTheme();
   return (
     <View
+      accessible={accessibilityLabel ? true : undefined}
+      accessibilityLabel={accessibilityLabel}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         gap: space[1],
-        paddingHorizontal: space[3],
+        paddingHorizontal: space[2.5],
         paddingVertical: space[1],
         ...corner('full'),
         backgroundColor: colors.card,
@@ -548,6 +559,10 @@ function Fact({ icon, children }: { icon?: React.ReactNode; children: string }) 
     </View>
   );
 }
+
+/** A right-to-left isolate: a span like «1 – 3 سنوات» keeps its order inside a line of either direction. */
+const RLI = '\u2067';
+const PDI = '\u2069';
 
 const styles = StyleSheet.create({
   // At the foot of the screen, which ends above the tab bar's band: a hairline over it, the page's own colour.

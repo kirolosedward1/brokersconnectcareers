@@ -1,0 +1,106 @@
+# Applies to production the migrations it does not have yet, with the repo's
+# own tool (`pnpm db:apply`, scripts/release/migrations.mjs): it reads
+# production's ledger, matches it to the files here by name and runs only the
+# missing ones, each in one transaction with its ledger row, stopping at the
+# first failure (docs/disaster-recovery.md, "Never run supabase db push").
+#
+# By hand only: Actions → Apply migrations → Run workflow, on main.
+#
+#   execute unticked   the plan: what production is missing, applied to nothing
+#   execute ticked     the plan, then applied (--execute --confirm <ref>)
+#
+# Its own pull requests run the plan too, so a change to this file shows what
+# it would do before it can do it. Nothing else runs it: a merge applies
+# nothing by itself.
+#
+# It needs two repository secrets (Settings → Secrets and variables → Actions):
+#
+#   PRODUCTION_DATABASE_URL   Supabase → Connect → the session pooler's string
+#                             (…pooler.supabase.com:5432). Not the direct
+#                             connection, which is IPv6 only and out of reach of
+#                             GitHub's runners, nor the transaction pooler
+#                             (6543), which the tool refuses. DR_DATABASE_URL,
+#                             the nightly backup's, is used when that is the
+#                             one set.
+#   PRODUCTION_DATABASE_CA    the PEM of Supabase → Database → SSL
+#                             Configuration → Download certificate. The
+#                             connection is verified against it
+#                             (DATABASE_CA_CERT, databaseSsl() in
+#                             scripts/release/migrations.mjs): from a runner's
+#                             network, an unverified connection could hand the
+#                             database password to an impostor.
+#
+# Take a backup first (the DR backup workflow, or Supabase → Database →
+# Backups). Afterwards the ledger is printed, to check against the files.
+name: Apply migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: Apply them (unticked prints the plan only)
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - '.github/workflows/db-apply.yml'
+
+permissions:
+  contents: read
+
+# One apply at a time; the tool also holds an advisory lock on the database.
+concurrency:
+  group: db-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TARGET_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL || secrets.DR_DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.PRODUCTION_DATABASE_CA }}
+      EXECUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.execute }}
+    steps:
+      - name: Is there a database to reach
+        id: gate
+        run: |
+          missing=()
+          [ -n "$TARGET_DATABASE_URL" ] || missing+=(PRODUCTION_DATABASE_URL)
+          [ -n "$DATABASE_CA_CERT" ] || missing+=(PRODUCTION_DATABASE_CA)
+          if [ ${#missing[@]} -eq 0 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "::error::Missing from the repository's secrets: ${missing[*]}. Nothing was read or applied."
+            exit 1
+          else
+            echo "::notice::Missing from the repository's secrets: ${missing[*]}. The plan is skipped."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        if: steps.gate.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: The plan
+        if: steps.gate.outputs.run == 'true'
+        run: node scripts/release/migrations.mjs apply
+
+      - name: Apply
+        if: steps.gate.outputs.run == 'true' && env.EXECUTE == 'true'
+        run: node scripts/release/migrations.mjs apply --execute --confirm hiwdhicwsohbipxzazmb
+
+      - name: The ledger afterwards
+        if: always() && steps.gate.outputs.run == 'true' && env.EXECUTE == 'true'
+        run: node scripts/release/migrations.mjs ledger

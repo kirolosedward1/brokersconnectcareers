@@ -185,7 +185,7 @@ describe('the board', () => {
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
     expect(screen.getByText('نتيجة واحدة')).toBeTruthy();
     // The salary range as one left-to-right run, low to high, with ج.م a month beside it.
-    expect(screen.getByText('⁦10,000 – 15,000⁩')).toBeTruthy();
+    expect(screen.getByText('⁧⁦10,000⁩ – ⁦15,000⁩⁩')).toBeTruthy();
     expect(screen.getByText(` ${ar.app.money.perMonth}`)).toBeTruthy();
     // Nothing sponsored on the page, so nothing to explain about the order.
     expect(screen.queryByText(SPONSORED_FIRST)).toBeNull();
@@ -245,7 +245,7 @@ describe('the board', () => {
       'إعلان ممول',
       ar.jobs.closedShort,
       ar.companies.verified,
-      `⁦10,000 – 15,000⁩ ${ar.app.money.perMonth}`,
+      `⁧⁦10,000⁩ – ⁦15,000⁩⁩ ${ar.app.money.perMonth}`,
       ar.leadsSource.company_provided_short,
       ar.track.primary,
       // Three seats: the card's chip is the seats rather than the experience asked.

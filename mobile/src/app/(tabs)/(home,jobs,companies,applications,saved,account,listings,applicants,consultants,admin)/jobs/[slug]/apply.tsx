@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import {
   BadgeCheck,
   CalendarX2,
+  LogIn,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -50,7 +51,8 @@ import { ApplyRefused, useApplyContext, useApplyToJob, useNextRoles, type Attach
 import { applyQueue, offlineFailure } from '~/features/apply/queue';
 import { useAuthErrorText } from '~/features/auth/errors';
 import type { ProviderOutcome } from '~/features/auth/providers';
-import { pickCv, type PickedCv } from '~/features/cv/files';
+import { toast } from '~/components/feedback/toast';
+import { openOwnCv, pickCv, type PickedCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { useAgentProfile } from '~/features/profile/queries';
 import { useDistricts } from '~/features/taxonomy';
@@ -183,10 +185,31 @@ function Apply({ job }: { job: JobDetail }) {
     );
   }
 
+  // Applying is for an account (owner's call, 31 Oct): signed out, the way to sign in, and back here after.
+  if (!session) {
+    const next = `/jobs/${job.slug}/apply`;
+    return (
+      <EmptyState
+        icon={LogIn}
+        title={t('app.apply.signInTitle')}
+        body={t('app.apply.signInBody')}
+        action={
+          <View style={{ gap: space[2], alignItems: 'center' }}>
+            <Button label={t('nav.signIn')} onPress={() => router.push({ pathname: '/sign-in', params: { next } })} />
+            <Button
+              label={t('nav.signUp')}
+              variant="outline"
+              onPress={() => router.push({ pathname: '/sign-up', params: { role: 'candidate', next } })}
+            />
+          </View>
+        }
+      />
+    );
+  }
+
   let mode: Mode | null = null;
-  if (!session) mode = 'guest';
   // Signed up from inside the form a moment ago: the form stays while the account is read, and asks what it needs.
-  else if (held && (!viewer || (!viewer.profile && !viewer.profileUnreadable))) mode = 'newAccount';
+  if (held && (!viewer || (!viewer.profile && !viewer.profileUnreadable))) mode = 'newAccount';
 
   if (!mode) {
     if (!viewer?.profile) return <ViewerPending />;
@@ -543,11 +566,6 @@ function ApplyForm({
       onPress={() => void submit()}
     />
   );
-  const fees = (
-    <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
-      {t('app.apply.noFees')}
-    </Text>
-  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -657,12 +675,19 @@ function ApplyForm({
               <CvOption
                 selected={chosen.kind === 'last'}
                 onPress={() => setChoice({ kind: 'last' })}
-                title={t('app.apply.lastCv', { job: localized(locale, lastCv.jobTitleAr, lastCv.jobTitleEn) || title })}
+                // «سيرتي الذاتية»: the other listing is not named (owner's call, 31 Oct); the date under it says which.
+                title={t('app.apply.lastCv')}
                 hint={`${t('app.apply.lastUsed')} · ${formatDate(lastCv.sentAt, locale)}`}
+                viewPath={lastCv.path}
               />
             ) : null}
             {profileCv && profileCv !== lastCv?.path ? (
-              <CvOption selected={chosen.kind === 'profile'} onPress={() => setChoice({ kind: 'profile' })} title={t('app.apply.profileCv')} />
+              <CvOption
+                selected={chosen.kind === 'profile'}
+                onPress={() => setChoice({ kind: 'profile' })}
+                title={t('app.apply.profileCv')}
+                viewPath={profileCv}
+              />
             ) : null}
             {chosen.kind === 'file' ? <CvOption selected onPress={() => {}} title={chosen.file.name} file /> : null}
             <Pressable
@@ -764,12 +789,7 @@ function ApplyForm({
         <WhoSees />
 
         {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
-        {large ? (
-          <View style={{ gap: space[2] }}>
-            {sendButton}
-            {fees}
-          </View>
-        ) : null}
+        {large ? sendButton : null}
       </ScrollView>
       {/* The way to send it, held at the foot of the screen (v1.1); in the flow at the largest text sizes. */}
       {large ? null : (
@@ -785,7 +805,6 @@ function ApplyForm({
           }}
         >
           {sendButton}
-          {fees}
         </View>
       )}
     </View>
@@ -826,9 +845,33 @@ function ProfileSummary({ name, band, onEdit }: { name: string; band: Experience
 }
 
 /** One CV to send, as a radio: the one last used, the profile's, or a file just picked. */
-function CvOption({ selected, onPress, title, hint, file = false }: { selected: boolean; onPress: () => void; title: string; hint?: string; file?: boolean }) {
+function CvOption({
+  selected,
+  onPress,
+  title,
+  hint,
+  file = false,
+  viewPath,
+}: {
+  selected: boolean;
+  onPress: () => void;
+  title: string;
+  hint?: string;
+  file?: boolean;
+  /** A CV already in the bucket: «عرض» opens it to read (owner's call, 31 Oct). */
+  viewPath?: string;
+}) {
   const { colors } = useTheme();
   const large = useLargeText();
+  const t = useTranslations();
+  const [opening, setOpening] = useState(false);
+  const view = () => {
+    if (!viewPath || opening) return;
+    setOpening(true);
+    openOwnCv(viewPath)
+      .catch(() => toast.show({ message: t('common.errorBody'), tone: 'destructive' }))
+      .finally(() => setOpening(false));
+  };
   return (
     <Pressable
       accessibilityRole="radio"
@@ -859,6 +902,28 @@ function CvOption({ selected, onPress, title, hint, file = false }: { selected: 
           </Text>
         ) : null}
       </View>
+      {viewPath ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('app.apply.viewCvLabel')}
+          onPress={view}
+          disabled={opening}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space[1],
+            minHeight: hitTarget,
+            paddingHorizontal: space[2],
+            opacity: pressed || opening ? 0.6 : 1,
+          })}
+        >
+          <Eye size={16} color={colors.primary} />
+          <Text variant="small" weight="medium" tone="primary">
+            {t('app.apply.viewCv')}
+          </Text>
+        </Pressable>
+      ) : null}
       <View
         style={{
           width: 20,
@@ -947,6 +1012,7 @@ function Queued({ job }: { job: JobDetail }) {
 /** The confirmation: that it went, where to follow it, and what to look at next — and, for an account just made, the rest of onboarding. */
 function Sent({ job, newAccount }: { job: JobDetail; newAccount: boolean }) {
   const toBoard = useToBoard();
+  const large = useLargeText();
   const t = useTranslations();
   const { colors } = useTheme();
   const next = useNextRoles(job.id, true);
@@ -995,9 +1061,14 @@ function Sent({ job, newAccount }: { job: JobDetail; newAccount: boolean }) {
         </Card>
       ) : null}
 
-      <View style={{ gap: space[2] }}>
-        <Button label={t('apply.viewApplications')} variant={newAccount ? 'outline' : 'primary'} onPress={() => router.navigate('/dashboard/applications')} />
-        <Button label={t('nav.browseJobs')} variant="outline" onPress={toBoard} />
+      {/* Side by side (owner's call, 31 Oct); stacked again at the largest text sizes, where two would not fit a line. */}
+      <View style={{ flexDirection: large ? 'column' : 'row', gap: space[2] }}>
+        <View style={large ? null : { flex: 1 }}>
+          <Button label={t('apply.viewApplications')} variant={newAccount ? 'outline' : 'primary'} onPress={() => router.navigate('/dashboard/applications')} />
+        </View>
+        <View style={large ? null : { flex: 1 }}>
+          <Button label={t('nav.browseJobs')} variant="outline" onPress={toBoard} />
+        </View>
       </View>
 
       {/* The moment the reason to hear back is plain: the phone's question, until answered. */}

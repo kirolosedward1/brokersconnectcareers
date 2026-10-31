@@ -20,24 +20,16 @@ appId: net.brokersconnect.app
     centerElement: true
 - tapOn: "تسجيل الدخول"
 - extendedWaitUntil:
-    visible: "مرحبًا بعودتك"
+    visible: "أهلًا بعودتك"
     timeout: 30000
 - waitForAnimationToEnd
 - runFlow: checks.yaml
 
-# With a one-tap way offered, the email and password wait behind their own
-# button: opened as a person opens them.
-- runFlow:
-    when:
-      visible: "المتابعة بالبريد الإلكتروني"
-    commands:
-      - tapOn: "المتابعة بالبريد الإلكتروني"
-
-# The forgotten-password page, from the link under the password.
+# The forgotten-password page, from the link beside the password's label.
 - scrollUntilVisible:
-    element: "نسيت كلمة المرور؟"
+    element: "نسيتها؟"
     centerElement: true
-- tapOn: "نسيت كلمة المرور؟"
+- tapOn: "نسيتها؟"
 - extendedWaitUntil:
     visible: "اكتب بريدك وسنرسل لك رابطًا لتعيين كلمة مرور جديدة."
     timeout: 30000

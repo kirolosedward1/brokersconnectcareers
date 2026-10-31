@@ -52,6 +52,22 @@ function clientIds(): { web: string | null; ios: string | null; android: string 
   };
 }
 
+/**
+ * Whether this phone can ask Google itself. Every way in on an iPhone (the
+ * sheet in a build, the browser in Expo Go) needs the iOS client id; on
+ * Android the sheet needs the web client and the browser the Android one.
+ * Without it, sign-in goes through Supabase's own Google page
+ * (providers.ts, signInWithGoogleThroughSupabase).
+ */
+export function googleClientReady(
+  os: string = Platform.OS,
+  ids: { web: string | null; ios: string | null; android: string | null } = clientIds(),
+): boolean {
+  if (os === 'ios') return Boolean(ids.ios);
+  if (os === 'android') return Boolean(ids.web || ids.android);
+  return Boolean(ids.web);
+}
+
 function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

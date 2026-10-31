@@ -55,7 +55,8 @@
     "support": "Help and support",
     "deleteAccount": "Delete account",
     "completeness": "Profile <v>{percent}%</v> complete",
-    "appearanceRow": "Appearance"
+    "appearanceRow": "Appearance",
+    "legalRow": "Terms, privacy and licences"
   },
   "jobs": {
     "loadMore": "Load more",
@@ -118,7 +119,12 @@
       "strong": "strong"
     },
     "strengthLabel": "Password strength: {level}",
-    "strengthHint": "Add a number or a symbol to make it stronger."
+    "strengthHint": "Add a number or a symbol to make it stronger.",
+    "welcomeBack": "Welcome back",
+    "signInLede": "Sign in to follow your applications and alerts.",
+    "orEmail": "or with email",
+    "forgotShort": "Forgot it?",
+    "continueGoogle": "Continue with Google"
   },
   "onboarding": {
     "choose": "Choose",
@@ -234,7 +240,7 @@
     "timelineNow": "Now: {step}",
     "segmentsLabel": "Show applications",
     "segmentAll": "All <v>{count}</v>",
-    "segmentNews": "News <v>{count}</v>",
+    "segmentNews": "New <v>{count}</v>",
     "segmentInterviews": "Interviews",
     "segmentEnded": "Ended",
     "segmentEmpty": "No applications here right now.",
@@ -242,7 +248,9 @@
     "quietFor": "No answer for {days, plural, one {a day} other {<v>#</v> days}}",
     "usuallyIn": "this company usually answers within {days, plural, =0 {a day} one {a day} other {<v>#</v> days}}",
     "queuedTitle": "Saved, and sent automatically",
-    "queuedCancel": "Cancel"
+    "queuedCancel": "Cancel",
+    "showSteps": "Show the steps",
+    "hideSteps": "Hide the steps"
   },
   "apply": {
     "pickCv": "Choose a file",
@@ -253,13 +261,12 @@
     "screenTitle": "Apply for this job",
     "editProfile": "Edit profile",
     "lastUsed": "Last used",
-    "lastCv": "The CV you sent with “{job}”",
+    "lastCv": "My CV",
     "uploadNew": "Upload a new CV",
     "uploadHint": "PDF or Word, up to <v>10</v> MB",
     "noCv": "Without a CV",
     "noteCount": "<v>{count} / {max}</v>",
     "sharedWith": "Your CV and number go to {company} for this application only.",
-    "noFees": "Free for candidates. You can withdraw your application at any time.",
     "guestTitle": "Create an account in one tap to send it",
     "guestEmail": "Your email",
     "guestEmailContinue": "Continue with email",
@@ -274,7 +281,11 @@
     "queuedBody": "There is no connection right now. We will send your application for “{title}” as soon as there is, and tell you when it arrives.",
     "queuedSent": "Your application for “{title}” has arrived.",
     "queuedFailed": "We could not send your application for “{title}”. Open the listing and try again.",
-    "serverFailed": "The application could not be sent. The problem is on our side, not yours, and what you wrote is kept. Try again in a moment."
+    "serverFailed": "The application could not be sent. The problem is on our side, not yours, and what you wrote is kept. Try again in a moment.",
+    "signInTitle": "Sign in to apply",
+    "signInBody": "Applications are sent from your account, so you can follow yours and get the company's replies.",
+    "viewCv": "View",
+    "viewCvLabel": "View the CV"
   },
   "profile": {
     "edit": "Edit",
@@ -666,7 +677,9 @@
     "postedAgo": "Posted {when}",
     "verifiedSince": "Verified since {when}",
     "respondsIn": "This company answers within {days, plural, =0 {a day} one {a day} other {<v>#</v> days}} on average",
-    "opened": "Opened <v>{percent}%</v> of applications"
+    "opened": "Opened <v>{percent}%</v> of applications",
+    "readMore": "Read more",
+    "readLess": "Show less"
   },
   "appearance": {
     "title": "Appearance",

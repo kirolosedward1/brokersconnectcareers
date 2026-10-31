@@ -123,7 +123,6 @@ export function TrackDistrictLanding({ slug, track, districtSlug }: { slug: stri
           <Text variant="title" weight="semibold" accessibilityRole="header">
             {t('title', { track: trackName, district: districtName })}
           </Text>
-          <Text tone="mutedForeground">{t('subtitle', { track: trackName, district: districtName })}</Text>
           {/* Counted only once read: a failed read is not "no results". */}
           {board.data ? (
             <Text variant="small" tone="mutedForeground">

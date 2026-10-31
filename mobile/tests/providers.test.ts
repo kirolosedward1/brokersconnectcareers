@@ -46,3 +46,20 @@ describe('Google on an iPhone', () => {
     expect(offerGoogle({ google: false, apple: false, ios: true })).toBe(false);
   });
 });
+
+describe('Google without a client id', () => {
+  const { googleClientReady } = jest.requireActual<typeof import('~/features/auth/google')>('~/features/auth/google');
+  const none = { web: null, ios: null, android: null };
+
+  it('is offered where this phone has the id it asks Google with', () => {
+    expect(googleClientReady('ios')).toBe(true);
+    expect(googleClientReady('android')).toBe(true);
+  });
+
+  it('is not offered without it, where it could only fail', () => {
+    expect(googleClientReady('ios', none)).toBe(false);
+    expect(googleClientReady('ios', { ...none, web: 'w', android: 'a' })).toBe(false);
+    expect(googleClientReady('android', none)).toBe(false);
+    expect(googleClientReady('android', { ...none, android: 'a' })).toBe(true);
+  });
+});

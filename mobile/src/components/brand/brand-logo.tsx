@@ -101,3 +101,23 @@ export function Wordmark({ height, tint, testID }: { height: number; tint?: stri
     />
   );
 }
+
+/**
+ * The mark alone, without the name beside it: the cover the app switcher
+ * shows and the app lock (owner's call, 31 Oct: just the icon there). Read
+ * as the name by VoiceOver.
+ */
+export function BrandMark({ size = 72 }: { size?: number }) {
+  const t = useTranslations();
+  return (
+    <Image
+      testID="brand-mark"
+      source={LOGO_MARK}
+      contentFit="contain"
+      style={{ width: size, height: size }}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={t('meta.siteName')}
+    />
+  );
+}

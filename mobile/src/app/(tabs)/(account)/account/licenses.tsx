@@ -5,7 +5,11 @@ import * as WebBrowser from 'expo-web-browser';
 import { useTranslations } from 'use-intl';
 import notices from '@/lib/licenses/app.json';
 import { spdxUrl, type AssetNotice, type LicenseText, type Notices, type PackageNotice } from '@/lib/licenses/notices';
+import { SettingsGroup, SettingsRow } from '~/components/ui/settings-list';
+import { FileText, Lock } from '~/components/ui/lucide';
 import { Text, textAlignStart } from '~/components/ui/text';
+import { withAppMarker } from '~/lib/app-marker';
+import { env } from '~/lib/env';
 import { markupTags } from '~/i18n/rich';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, space, type Scheme } from '~/theme/tokens';
@@ -85,9 +89,24 @@ export default function LicensesScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ padding: gutter, paddingBottom: space[10] }}
         ListHeaderComponent={
-          <Text variant="small" tone="mutedForeground" style={{ color: licenceInk(scheme, colors.mutedForeground) }}>
-            {t('app.licenses.intro')}
-          </Text>
+          <View style={{ gap: space[4] }}>
+            {/* The policies first: Account has one row for this page and them (owner's call, 31 Oct). */}
+            <SettingsGroup>
+              <SettingsRow
+                icon={<Lock size={18} color={colors.primary} />}
+                label={t('footer.privacy')}
+                onPress={() => openSitePage('/privacy')}
+              />
+              <SettingsRow
+                icon={<FileText size={18} color={colors.primary} />}
+                label={t('footer.terms')}
+                onPress={() => openSitePage('/terms')}
+              />
+            </SettingsGroup>
+            <Text variant="small" tone="mutedForeground" style={{ color: licenceInk(scheme, colors.mutedForeground) }}>
+              {t('app.licenses.intro')}
+            </Text>
+          </View>
         }
       />
     </>
@@ -190,4 +209,9 @@ function FullText({ license }: { license: LicenseText }) {
       )}
     </View>
   );
+}
+
+/** A page of the website, in the in-app browser: the policies live there, in one copy. */
+function openSitePage(path: '/privacy' | '/terms') {
+  WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
 }

@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Appear } from '~/components/motion/appear';
 import { Num } from '~/components/ui/num';
 import { PressableScale } from '~/components/ui/pressable-scale';
@@ -27,31 +27,64 @@ export type CounterTile = {
 export function CounterTiles({ tiles, label }: { tiles: CounterTile[]; label: string }) {
   const { colors, lift } = useTheme();
   const large = useLargeText();
+  // At the accessibility sizes, a card each, two to a row; otherwise one slim card, the figures side by side (owner's call, 31 Oct).
+  if (large) {
+    return (
+      <View accessibilityLabel={label} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+        {tiles.map((tile, index) => (
+          <Appear key={tile.label} delay={index * motion.stagger} from="below" distance={8} style={{ flexGrow: 1, flexBasis: '45%' }}>
+            <PressableScale
+              accessibilityRole="link"
+              accessibilityLabel={`${tile.label}: ${tile.value}`}
+              onPress={tile.onPress}
+              style={({ pressed }) => ({
+                alignItems: 'center',
+                gap: space[0.5],
+                paddingVertical: space[3],
+                paddingHorizontal: space[1],
+                ...corner('xl'),
+                backgroundColor: pressed ? colors.muted : colors.card,
+                ...lift,
+              })}
+            >
+              <Num value={tile.value} variant="title" weight="bold" tone={tile.good ? 'success' : 'primary'} style={{ textAlign: 'center' }} />
+              <Text variant="label" tone="mutedForeground" style={{ textAlign: 'center' }}>
+                {tile.short}
+              </Text>
+            </PressableScale>
+          </Appear>
+        ))}
+      </View>
+    );
+  }
   return (
-    <View accessibilityLabel={label} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-      {tiles.map((tile, index) => (
-        <Appear key={tile.label} delay={index * motion.stagger} from="below" distance={8} style={{ flexGrow: 1, flexBasis: large ? '45%' : 0 }}>
+    <Appear from="below" distance={8}>
+      <View
+        accessibilityLabel={label}
+        style={{ flexDirection: 'row', ...corner('xl'), backgroundColor: colors.card, overflow: 'hidden', ...lift }}
+      >
+        {tiles.map((tile, index) => (
           <PressableScale
+            key={tile.label}
             accessibilityRole="link"
             accessibilityLabel={`${tile.label}: ${tile.value}`}
             onPress={tile.onPress}
             style={({ pressed }) => ({
+              flex: 1,
               alignItems: 'center',
-              gap: space[0.5],
-              paddingVertical: space[3],
-              paddingHorizontal: space[1],
-              ...corner('xl'),
-              backgroundColor: pressed ? colors.muted : colors.card,
-              ...lift,
+              paddingVertical: space[2],
+              backgroundColor: pressed ? colors.muted : 'transparent',
+              borderStartWidth: index === 0 ? 0 : StyleSheet.hairlineWidth * 2,
+              borderStartColor: colors.border,
             })}
           >
-            <Num value={tile.value} variant="title" weight="bold" tone={tile.good ? 'success' : 'primary'} style={{ textAlign: 'center' }} />
+            <Num value={tile.value} variant="headline" weight="bold" tone={tile.good ? 'success' : 'primary'} style={{ textAlign: 'center' }} />
             <Text variant="label" tone="mutedForeground" style={{ textAlign: 'center' }}>
               {tile.short}
             </Text>
           </PressableScale>
-        </Appear>
-      ))}
-    </View>
+        ))}
+      </View>
+    </Appear>
   );
 }
