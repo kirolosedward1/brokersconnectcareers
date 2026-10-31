@@ -317,7 +317,8 @@ describe('the listing card', () => {
     const app = cardApp(false);
     app.index = () => <JobCard job={{ ...listing, seats: 1, published_at: '2026-10-29T08:00:00Z' }} />;
     await renderRouter(app, { initialUrl: '/' });
-    expect(await screen.findByText(ar.experienceBand.junior_1_3)).toBeTruthy();
+    // Right to left, the fewer years at the right.
+    expect(await screen.findByText(`${RLI}${ar.experienceBand.junior_1_3}${PDI}`)).toBeTruthy();
     expect(screen.queryByText(ar.app.jobs.appliedChip)).toBeNull();
   });
 

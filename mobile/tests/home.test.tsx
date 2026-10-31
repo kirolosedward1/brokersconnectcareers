@@ -256,7 +256,7 @@ describe("a candidate's home", () => {
     expect(within(row()).getByText(ar.applicationStatus.shortlisted)).toBeTruthy();
   });
 
-  it("suggests roles on the candidate's own track and district first, says why, and leaves out one applied to", async () => {
+  it("suggests roles on the candidate's own track and district first, without a reason line, and leaves out one applied to", async () => {
     await signIn();
     await open();
 
@@ -265,7 +265,8 @@ describe("a candidate's home", () => {
       (node) => node.props.children,
     );
     expect(titles).toEqual([fitting.title_ar, elsewhere.title_ar]);
-    expect(screen.getByText(`${ar.dashboard.matchWhy} ${formatList([ar.track.primary, newCairo.name_ar, ar.dashboard.matchExperience], 'ar')}`)).toBeTruthy();
+    // The reason line under a suggestion is gone (owner's call, 31 Oct).
+    expect(screen.queryByText(ar.dashboard.matchWhy, { exact: false })).toBeNull();
     // Applied to already: in the applications above, not among the suggestions.
     expect(screen.getAllByText(applied.title_ar)).toHaveLength(1);
     expect(screen.queryByText(ar.dashboard.matchNudge) === null).toBe(true);
