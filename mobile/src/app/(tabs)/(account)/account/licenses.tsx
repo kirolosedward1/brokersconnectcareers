@@ -95,12 +95,12 @@ export default function LicensesScreen() {
               <SettingsRow
                 icon={<Lock size={18} color={colors.primary} />}
                 label={t('footer.privacy')}
-                onPress={() => WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}/privacy`)).catch(() => {})}
+                onPress={() => openSitePage('/privacy')}
               />
               <SettingsRow
                 icon={<FileText size={18} color={colors.primary} />}
                 label={t('footer.terms')}
-                onPress={() => WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}/terms`)).catch(() => {})}
+                onPress={() => openSitePage('/terms')}
               />
             </SettingsGroup>
             <Text variant="small" tone="mutedForeground" style={{ color: licenceInk(scheme, colors.mutedForeground) }}>
@@ -209,4 +209,9 @@ function FullText({ license }: { license: LicenseText }) {
       )}
     </View>
   );
+}
+
+/** A page of the website, in the in-app browser: the policies live there, in one copy. */
+function openSitePage(path: '/privacy' | '/terms') {
+  WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
 }

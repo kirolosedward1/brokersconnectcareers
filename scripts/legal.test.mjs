@@ -133,8 +133,13 @@ for (const href of [...SLUGS.map((slug) => `/${slug}`), '/licenses']) {
 check('the footer says who runs the site', footer.includes("t('operatedBy', { name: OPERATOR.name })"));
 check('the sitemap lists every document', read('src/app/sitemap.ts').includes('LEGAL_SLUGS.map('));
 const account = read('mobile/src/app/(tabs)/(account)/account/index.tsx');
-for (const target of ["openSitePage('/privacy')", "openSitePage('/terms')", "router.push('/account/licenses')", "t('footer.operatedBy'"]) {
+for (const target of ["router.push('/account/licenses')", "t('footer.operatedBy'"]) {
   check(`the app's Account tab has ${target}`, account.includes(target));
+}
+// Account's one «الشروط، الخصوصية والتراخيص» row opens the licences page, which opens with the policies.
+const legal = read('mobile/src/app/(tabs)/(account)/account/licenses.tsx');
+for (const target of ["openSitePage('/privacy')", "openSitePage('/terms')"]) {
+  check(`the app's terms, privacy and licences page has ${target}`, legal.includes(target));
 }
 
 console.log('— the way out the account-deletion page promises an unfinished account');
