@@ -29,6 +29,7 @@ import { SaveSearchButton } from '~/components/saved/save-controls';
 import { Button } from '~/components/ui/button';
 import { Card } from '~/components/ui/card';
 import { Chip } from '~/components/ui/chip';
+import { SideRow } from '~/components/ui/side-row';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { SearchField } from '~/components/ui/search-field';
 import { EmptyState, ErrorState, SkeletonList } from '~/components/ui/states';
@@ -493,15 +494,8 @@ function BoardHeader({
       ) : null}
 
       {active.length ? (
-        // One row that slides sideways, out to the screen's edges, rather than lines of chips (owner's call, 31 Oct).
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          accessibilityLabel={t('filters')}
-          style={{ marginHorizontal: -gutter, flexGrow: 0 }}
-          contentContainerStyle={{ gap: space[2], paddingHorizontal: gutter, alignItems: 'center' }}
-        >
+        // One row that slides sideways, out to the screen's edges, the first chip at the right (owner's call, 31 Oct).
+        <SideRow label={t('filters')} bleed={gutter}>
           {active.map((filter) => {
             const label = labelFor(filter);
             return (
@@ -525,7 +519,7 @@ function BoardHeader({
               onPress={() => apply(company || !first ? { ...EMPTY_FILTERS, companySlug: filters.companySlug } : EMPTY_FILTERS)}
             />
           ) : null}
-        </ScrollView>
+        </SideRow>
       ) : null}
 
       {/* Paid placement pins above every sort (the website's board says the
