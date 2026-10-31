@@ -282,7 +282,7 @@ describe('the Account tab', () => {
     await renderRouter(app, { initialUrl: '/account' });
     expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
     await press(ar.nav.signIn);
-    expect(await screen.findByText(ar.auth.signInTitle)).toBeTruthy();
+    expect(await screen.findByText(ar.app.auth.welcomeBack)).toBeTruthy();
   });
 
   it('keeps the policies, the licences and who runs the app one tap away, signed in or not', async () => {
@@ -385,7 +385,7 @@ describe('signing in with a password', () => {
     await press(ar.auth.signIn);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
-    expect(screen.queryByText(ar.auth.signInTitle)).toBeNull();
+    expect(screen.queryByText(ar.app.auth.welcomeBack)).toBeNull();
     expect(bodyOf('/auth/v1/token')).toMatchObject({ email: 'sara@example.com', password: PASSWORD });
   });
 
@@ -393,13 +393,13 @@ describe('signing in with a password', () => {
     await renderRouter(app, { initialUrl: '/welcome' });
     await press(ar.nav.signIn);
     // No one-tap way offered: no round buttons beside Sign in, and the form at once.
-    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.app.auth.continueGoogle })).toBeNull();
     await fillSignIn('sara@example.com', PASSWORD);
     await press(ar.auth.signIn);
 
     expect(await screen.findByText('home screen')).toBeTruthy();
     await waitFor(() => expect(screen.queryByTestId('welcome')).toBeNull());
-    expect(screen.queryByText(ar.auth.signInTitle)).toBeNull();
+    expect(screen.queryByText(ar.app.auth.welcomeBack)).toBeNull();
   });
 
   it('goes on to where the person was headed', async () => {
@@ -1122,7 +1122,7 @@ describe('one-tap sign-in', () => {
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
-    await press(ar.auth.signInWithGoogle);
+    await press(ar.app.auth.continueGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(GoogleSignin.configure).toHaveBeenCalledWith({
@@ -1152,7 +1152,7 @@ describe('one-tap sign-in', () => {
     });
     await renderRouter(app, { initialUrl: '/account' });
     await press(ar.nav.signIn);
-    await press(ar.auth.signInWithGoogle);
+    await press(ar.app.auth.continueGoogle);
 
     expect(await screen.findByText(profile.full_name)).toBeTruthy();
     expect(GoogleSignin.hasPlayServices).toHaveBeenCalledWith({ showPlayServicesUpdateDialog: true });
@@ -1169,12 +1169,12 @@ describe('one-tap sign-in', () => {
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     jest.mocked(GoogleSignin.signIn).mockResolvedValue({ type: 'cancelled', data: null });
     await renderRouter(app, { initialUrl: '/sign-in' });
-    await press(ar.auth.signInWithGoogle);
+    await press(ar.app.auth.continueGoogle);
     await waitFor(() => expect(GoogleSignin.signIn).toHaveBeenCalled());
     // The sheet is usable again, and says nothing went wrong — and the browser was not opened instead.
-    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle, disabled: false })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.app.auth.continueGoogle, disabled: false })).toBeTruthy();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
-    expect(screen.getByText(ar.auth.signInTitle)).toBeTruthy();
+    expect(screen.getByText(ar.app.auth.welcomeBack)).toBeTruthy();
     expect(AuthRequest).not.toHaveBeenCalled();
   });
 
@@ -1193,7 +1193,7 @@ describe('one-tap sign-in', () => {
       url: 'https://accounts.google.com/back',
     });
     await renderRouter(app, { initialUrl: '/sign-in' });
-    await press(ar.auth.signInWithGoogle);
+    await press(ar.app.auth.continueGoogle);
 
     expect(await screen.findByText('home screen')).toBeTruthy();
     expect(GoogleSignin.signIn).not.toHaveBeenCalled();
@@ -1222,9 +1222,9 @@ describe('one-tap sign-in', () => {
     const prompt = (AuthRequest as unknown as { promptAsync: jest.Mock }).promptAsync;
     prompt.mockResolvedValueOnce({ type: 'cancel' });
     await renderRouter(app, { initialUrl: '/sign-in' });
-    await press(ar.auth.signInWithGoogle);
+    await press(ar.app.auth.continueGoogle);
     await waitFor(() => expect(prompt).toHaveBeenCalled());
-    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle, disabled: false })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.app.auth.continueGoogle, disabled: false })).toBeTruthy();
     expect(screen.queryByText(ar.common.errorBody)).toBeNull();
     expect(server.asked('/auth/v1/token').filter((request) => request.url.searchParams.get('grant_type') === 'id_token')).toHaveLength(0);
   });
@@ -1271,63 +1271,51 @@ describe('one-tap sign-in, as App Review asks', () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: false } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    expect(await screen.findByText(ar.auth.signInTitle)).toBeTruthy();
+    expect(await screen.findByText(ar.app.auth.welcomeBack)).toBeTruthy();
     await waitFor(() => expect(server.asked('/api/mobile/v1/config').length).toBeGreaterThan(0));
     await act(async () => {
       await jest.advanceTimersByTimeAsync(100);
     });
-    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.app.auth.continueGoogle })).toBeNull();
   });
 
   it('offers both once Apple is on', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: ar.app.auth.continueGoogle })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeTruthy();
   });
 
-  it('keeps the email and password behind a button of their own beside them, and goes back to them', async () => {
+  it('shows the email and password on the page under the one-tap ways, as the board draws it', async () => {
     server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
-    expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
+    expect(await screen.findByRole('button', { name: ar.app.auth.continueGoogle })).toBeTruthy();
+    expect(screen.getByText(ar.app.auth.orEmail, { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText(ar.app.auth.welcomeBack)).toBeTruthy();
 
-    await press(ar.app.auth.continueWithEmail);
     await fillSignIn('sara@example.com', PASSWORD);
-    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
-
-    // The other ways are a tap away, and what was typed is still there on the way back.
-    await press(ar.app.auth.otherWays);
-    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
-    expect(screen.queryByLabelText(ar.auth.email)).toBeNull();
-    await press(ar.app.auth.continueWithEmail);
-    expect((await screen.findByLabelText(ar.auth.email)).props.value).toBe('sara@example.com');
-
     await press(ar.auth.signIn);
     expect(await screen.findByText('home screen')).toBeTruthy();
     expect(bodyOf('/auth/v1/token')).toMatchObject({ email: 'sara@example.com', password: PASSWORD });
   });
 
-  it('keeps the form someone is typing in when the config answers late with a one-tap way', async () => {
+  it('keeps what someone typed when the config answers late with a one-tap way', async () => {
     let online = false;
     server.on('GET /api/mobile/v1/config', () =>
       online ? mobileConfig({ providers: { google: true, apple: true } }) : { status: 503, body: { error: 'unavailable' } },
     );
     jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
     await renderRouter(app, { initialUrl: '/sign-in' });
-    // No one-tap way known: the form is the page.
     fireEvent.changeText(await screen.findByLabelText(ar.auth.email), 'sara@example.com');
 
     online = true;
     fireEvent.press(await screen.findByRole('button', { name: ar.app.auth.configRetry }));
     await waitFor(() => expect(screen.queryByRole('button', { name: ar.app.auth.configRetry })).toBeNull());
-    // Still the form, with what was typed; the one-tap ways a link away.
+    // The one-tap ways arrive above the form; what was typed stays.
+    expect(await screen.findByRole('button', { name: ar.app.auth.continueGoogle })).toBeTruthy();
     expect(screen.getByLabelText(ar.auth.email).props.value).toBe('sara@example.com');
-    expect(screen.queryByRole('button', { name: ar.auth.signInWithGoogle })).toBeNull();
-    await press(ar.app.auth.otherWays);
-    expect(await screen.findByRole('button', { name: ar.auth.signInWithGoogle })).toBeTruthy();
   });
 
   it('lets the welcome finish its own sign-in before anything else opens over it', async () => {

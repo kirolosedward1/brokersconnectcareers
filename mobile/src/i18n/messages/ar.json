@@ -118,7 +118,12 @@
       "strong": "قوية"
     },
     "strengthLabel": "قوة كلمة المرور: {level}",
-    "strengthHint": "أضف رقمًا أو رمزًا لتصبح أقوى."
+    "strengthHint": "أضف رقمًا أو رمزًا لتصبح أقوى.",
+    "welcomeBack": "أهلًا بعودتك",
+    "signInLede": "سجّل دخولك لتتابع طلباتك وتنبيهاتك.",
+    "orEmail": "أو بالبريد",
+    "forgotShort": "نسيتها؟",
+    "continueGoogle": "المتابعة بحساب Google"
   },
   "onboarding": {
     "choose": "اختر",

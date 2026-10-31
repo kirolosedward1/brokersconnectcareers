@@ -118,7 +118,12 @@
       "strong": "strong"
     },
     "strengthLabel": "Password strength: {level}",
-    "strengthHint": "Add a number or a symbol to make it stronger."
+    "strengthHint": "Add a number or a symbol to make it stronger.",
+    "welcomeBack": "Welcome back",
+    "signInLede": "Sign in to follow your applications and alerts.",
+    "orEmail": "or with email",
+    "forgotShort": "Forgot it?",
+    "continueGoogle": "Continue with Google"
   },
   "onboarding": {
     "choose": "Choose",

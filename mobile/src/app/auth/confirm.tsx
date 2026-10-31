@@ -149,7 +149,7 @@ export default function ConfirmLinkScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <AuthScroll bare>
           <View style={{ height: space[8] }} />
-          <AuthHeading title={t('app.offline.title')} body={t('app.offline.body')} />
+          <AuthHeading centred title={t('app.offline.title')} body={t('app.offline.body')} />
           <Button label={t('common.retry')} onPress={() => void verify()} />
           <Button label={t('common.close')} variant="ghost" onPress={() => close()} />
         </AuthScroll>
@@ -173,7 +173,7 @@ export default function ConfirmLinkScreen() {
           <Stack.Screen options={{ headerShown: false }} />
           <AuthScroll bare>
             <View style={{ height: space[8] }} />
-            <AuthHeading
+            <AuthHeading centred
               title={t('app.auth.linkUsedTitle')}
               body={
                 type === 'recovery'
@@ -202,7 +202,7 @@ export default function ConfirmLinkScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <AuthScroll bare>
           <View style={{ height: space[8] }} />
-          <AuthHeading title={t('common.error')} body={t('auth.linkExpired')} />
+          <AuthHeading centred title={t('common.error')} body={t('auth.linkExpired')} />
           <Button
             label={type === 'recovery' ? t('auth.sendResetLink') : t('nav.signIn')}
             onPress={() =>
@@ -224,7 +224,7 @@ export default function ConfirmLinkScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <AuthScroll bare>
           <View style={{ height: space[8] }} />
-          <AuthHeading
+          <AuthHeading centred
             title={t('app.auth.switchTitle')}
             body={t('app.auth.switchBody', { email: session?.user.email ?? '', other: other.user.email ?? '' })}
           />

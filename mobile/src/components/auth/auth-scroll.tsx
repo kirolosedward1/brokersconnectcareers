@@ -1,7 +1,6 @@
 import type { ReactNode, Ref } from 'react';
 import { Platform, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BrandLogo } from '~/components/brand/brand-logo';
 import { InlineLink } from '~/components/ui/inline-link';
 import { gutter, space } from '~/theme/tokens';
 import { Text } from '~/components/ui/text';
@@ -40,22 +39,21 @@ export function AuthScroll({ ref, children, bare = false }: { ref?: Ref<ScrollVi
 }
 
 /**
- * The page's heading and the sentence under it, under the website's logo —
- * as the website's own sign-in page has it — so a sheet that asks for a
- * password says whose it is. Centred over the page, a size under the app's
- * largest titles: a sheet's heading, not a page's.
+ * The page's heading and the sentence under it, as the v1.1 boards draw every
+ * sign-in page (SignIn, Forgot, NewPassword, MFA): the screen's own title,
+ * bold, where the line starts, and a muted sentence under it. The logo is the
+ * welcome's, not the form's. `centred` for a state that stands alone on the
+ * page (the Confirm board: the link was opened, or it failed).
  */
-export function AuthHeading({ title, body }: { title: string; body?: string | null }) {
+export function AuthHeading({ title, body, centred = false }: { title: string; body?: string | null; centred?: boolean }) {
+  const align = centred ? styles.centred : null;
   return (
     <View style={{ gap: space[1], width: '100%' }}>
-      <View style={{ marginBottom: space[3], alignItems: 'center' }}>
-        <BrandLogo size="form" />
-      </View>
-      <Text variant="title" weight="semibold" accessibilityRole="header" style={styles.centred}>
+      <Text variant="screen" weight="bold" accessibilityRole="header" style={align}>
         {title}
       </Text>
       {body ? (
-        <Text variant="small" tone="mutedForeground" style={styles.centred}>
+        <Text variant="small" tone="mutedForeground" style={align}>
           {body}
         </Text>
       ) : null}

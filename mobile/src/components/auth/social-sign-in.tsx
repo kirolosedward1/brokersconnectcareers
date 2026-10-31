@@ -5,6 +5,7 @@ import { SymbolView } from 'expo-symbols';
 import { useTranslations } from 'use-intl';
 import { useMobileConfig } from '~/features/config';
 import { appleAvailable, offerGoogle, signInWithApple, signInWithGoogle, type ProviderOutcome } from '~/features/auth/providers';
+import { googleClientReady } from '~/features/auth/google';
 import { Button } from '~/components/ui/button';
 import { PressableScale } from '~/components/ui/pressable-scale';
 import { Text } from '~/components/ui/text';
@@ -16,7 +17,8 @@ import { GoogleMark } from './google-mark';
  * Which one-tap sign-ins this phone is offered today: each only when the auth
  * server will accept it (/api/mobile/v1/config asks GoTrue, as the website's
  * pages do), Apple's only where it can work, and Google on an iPhone only
- * beside Apple (providers.ts, offerGoogle). `settled` once both the server and
+ * beside Apple (providers.ts, offerGoogle), and Google only once this build
+ * carries the client id it asks Google with (google.ts). `settled` once both the server and
  * the phone have answered: until then, what is not yet known is not offered.
  */
 export function useSocialProviders(): { apple: boolean; google: boolean; settled: boolean } {
@@ -34,7 +36,7 @@ export function useSocialProviders(): { apple: boolean; google: boolean; settled
   }, []);
 
   const apple = Boolean(config.data?.providers.apple) && appleHere === true;
-  const google = offerGoogle({ google: Boolean(config.data?.providers.google), apple, ios: Platform.OS === 'ios' });
+  const google = googleClientReady() && offerGoogle({ google: Boolean(config.data?.providers.google), apple, ios: Platform.OS === 'ios' });
   return { apple, google, settled: !config.isPending && appleHere !== null };
 }
 
@@ -73,6 +75,7 @@ export function SocialSignIn({
   onBusy,
   onOutcome,
   separator = true,
+  separatorLabel,
   children,
 }: {
   mode: 'sign-in' | 'sign-up';
@@ -81,9 +84,12 @@ export function SocialSignIn({
   /** Awaited: the buttons stay busy until whatever follows a sign-in has run. */
   onOutcome: (outcome: ProviderOutcome) => void | Promise<void>;
   separator?: boolean;
+  /** The words between the buttons and the form: the website's "or" unless the page says more. */
+  separatorLabel?: string;
   children?: ReactNode;
 }) {
   const t = useTranslations('auth');
+  const tApp = useTranslations('app.auth');
   const { scheme } = useTheme();
   const { apple, google } = useSocialProviders();
   if (!apple && !google && !children) return null;
@@ -115,7 +121,7 @@ export function SocialSignIn({
         ) : null}
         {google ? (
           <Button
-            label={mode === 'sign-up' ? t('signUpWithGoogle') : t('signInWithGoogle')}
+            label={mode === 'sign-up' ? t('signUpWithGoogle') : tApp('continueGoogle')}
             variant="outline"
             size="lg"
             icon={<GoogleMark />}
@@ -131,7 +137,7 @@ export function SocialSignIn({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Separator />
           <Text variant="caption" tone="mutedForeground">
-            {t('or')}
+            {separatorLabel ?? t('or')}
           </Text>
           <Separator />
         </View>
