@@ -575,7 +575,9 @@ describe('the applications', () => {
     await renderRouter(app, { initialUrl: '/dashboard/applications' });
 
     expect(await screen.findByText(ar.dashboard.applicationOpened)).toBeTruthy();
-    // The badge, and the timeline's last step.
+    // The badge alone; the steps open from it, the last of them the decision.
+    expect(screen.getAllByText(ar.applicationStatus.rejected)).toHaveLength(1);
+    fireEvent.press(screen.getByRole('button', { name: `${ar.applicationStatus.rejected}. ${ar.app.applications.showSteps}` }));
     expect(screen.getAllByText(ar.applicationStatus.rejected)).toHaveLength(2);
     expect(screen.getByText(ar.dashboard.decisionFromCompany)).toBeTruthy();
     expect(screen.getByText('نبحث عن خبرة أطول في السوق الأولي.')).toBeTruthy();

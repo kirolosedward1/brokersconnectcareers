@@ -55,7 +55,8 @@
     "support": "المساعدة والدعم",
     "deleteAccount": "حذف الحساب",
     "completeness": "الملف مكتمل بنسبة <v>{percent}%</v>",
-    "appearanceRow": "المظهر"
+    "appearanceRow": "المظهر",
+    "legalRow": "الشروط، الخصوصية والتراخيص"
   },
   "jobs": {
     "loadMore": "تحميل المزيد",
@@ -247,7 +248,9 @@
     "quietFor": "لم تردّ بعد منذ {days, plural, one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}}",
     "usuallyIn": "تردّ هذه الشركة عادةً خلال {days, plural, =0 {يوم} one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}}",
     "queuedTitle": "طلبك محفوظ وسيُرسل تلقائيًا",
-    "queuedCancel": "ألغِ"
+    "queuedCancel": "ألغِ",
+    "showSteps": "اعرض المراحل",
+    "hideSteps": "أخفِ المراحل"
   },
   "apply": {
     "pickCv": "اختر ملفًا",
@@ -674,7 +677,9 @@
     "postedAgo": "نُشر {when}",
     "verifiedSince": "موثّقة منذ {when}",
     "respondsIn": "تردّ هذه الشركة خلال {days, plural, =0 {يوم} one {يوم} two {يومين} few {<v>#</v> أيام} many {<v>#</v> يومًا} other {<v>#</v> يومًا}} في المتوسط",
-    "opened": "فتحت <v>{percent}%</v> من الطلبات"
+    "opened": "فتحت <v>{percent}%</v> من الطلبات",
+    "readMore": "اقرأ المزيد",
+    "readLess": "عرض أقل"
   },
   "appearance": {
     "title": "المظهر",

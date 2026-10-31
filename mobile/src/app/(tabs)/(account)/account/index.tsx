@@ -18,7 +18,6 @@ import {
   MailCheck,
   Palette,
   Receipt,
-  Scale,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -346,19 +345,10 @@ export default function AccountScreen() {
             an app: the policies a person agrees to, the notices owed to the
             software it is made of, and who runs it. */}
         <SettingsGroup title={t('footer.about')}>
-          <SettingsRow
-            icon={<Lock size={18} color={colors.primary} />}
-            label={t('footer.privacy')}
-            onPress={() => openSitePage('/privacy')}
-          />
+          {/* One row, as the Account board draws it (owner's call, 31 Oct): the policies and the licences are one page. */}
           <SettingsRow
             icon={<FileText size={18} color={colors.primary} />}
-            label={t('footer.terms')}
-            onPress={() => openSitePage('/terms')}
-          />
-          <SettingsRow
-            icon={<Scale size={18} color={colors.primary} />}
-            label={t('licenses.title')}
+            label={t('app.account.legalRow')}
             onPress={() => router.push('/account/licenses')}
           />
         </SettingsGroup>
@@ -390,7 +380,3 @@ export default function AccountScreen() {
   );
 }
 
-/** A page of the website, in the in-app browser: the policies live there, in one copy. */
-function openSitePage(path: '/privacy' | '/terms') {
-  WebBrowser.openBrowserAsync(withAppMarker(`${env.siteUrl}${path}`)).catch(() => {});
-}

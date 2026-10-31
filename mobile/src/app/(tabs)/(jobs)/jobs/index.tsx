@@ -436,7 +436,8 @@ function BoardHeader({
   const tAll = useTranslations();
 
   return (
-    <View style={{ gap: space[3], marginBottom: space[4] }}>
+    // Closer together, so the first cards come up sooner (owner's call, 31 Oct).
+    <View style={{ gap: space[2], marginBottom: space[3] }}>
       <SearchField
         inputRef={searchRef}
         value={filters.q}

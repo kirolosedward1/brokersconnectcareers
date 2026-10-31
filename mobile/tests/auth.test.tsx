@@ -291,12 +291,13 @@ describe('the Account tab', () => {
     expect(await screen.findByText(ar.app.account.signedOutTitle)).toBeTruthy();
     expect(screen.getByText(ar.footer.operatedBy.replace('{name}', 'Top Suite Digital Marketing'))).toBeTruthy();
 
+    // One row on Account (owner's call, 31 Oct): the policies sit at the top of the licences page.
+    await press(ar.app.account.legalRow);
+    expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
     await press(ar.footer.privacy);
     expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/privacy?app=1`);
     await press(ar.footer.terms);
     expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(`${SITE}/terms?app=1`);
-    await press(ar.licenses.title);
-    expect(await screen.findByText(ar.app.licenses.intro)).toBeTruthy();
   });
 
   it('writes to the address without showing it, and tells it when no mail app can', async () => {

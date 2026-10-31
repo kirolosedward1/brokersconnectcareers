@@ -214,8 +214,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
               style={{
                 alignItems: 'center',
                 gap: space[2],
-                paddingVertical: space[8],
-                paddingHorizontal: space[6],
+                paddingVertical: space[5],
+                paddingHorizontal: space[5],
                 ...corner('xl'),
                 borderWidth: StyleSheet.hairlineWidth * 2,
                 borderStyle: 'dashed',
@@ -234,7 +234,8 @@ export function CandidateHome({ profile }: { profile: ProfileRow | null }) {
             </View>
           ) : null}
 
-          {s ? (
+          {/* Four noughts say nothing: the counters wait for a first figure (owner's call, 31 Oct). */}
+          {s && s.applications_total + s.replies + s.saved_jobs + s.alerts_on > 0 ? (
             <CounterTiles
               label={t('dashboard.overview')}
               tiles={[

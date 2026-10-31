@@ -14,7 +14,7 @@ import { router, Stack } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useLocale, useTranslations } from 'use-intl';
 import { VerifiedMark } from '~/components/companies/verified-mark';
-import { BadgeCheck, BriefcaseBusiness, Building2, CalendarClock, CalendarX2, Clock, Eye, MapPin, Share, Users } from '~/components/ui/lucide';
+import { BriefcaseBusiness, CalendarClock, CalendarX2, Clock, Eye, MapPin, Share, Users } from '~/components/ui/lucide';
 import type { JobDetailResponse } from '@/lib/mobile-api/reads';
 import { formatDate, formatNumber, formatRate, formatRelativeDay } from '@/lib/format';
 import { jobIsLive } from '@/lib/job-state';
@@ -25,6 +25,7 @@ import { CompanyLogo } from '~/components/companies/company-logo';
 import { HiddenNotice } from '~/components/moderation/hide-company';
 import { ReportButton } from '~/components/moderation/report';
 import { SavedJobNote } from '~/components/saved/note-sheet';
+import { FoldedText } from '~/components/ui/folded-text';
 import { SaveJobButton } from '~/components/saved/save-controls';
 import { CompensationCard } from '~/components/jobs/compensation-card';
 import { JobCard } from '~/components/jobs/job-card';
@@ -279,7 +280,12 @@ export function JobDetail({
           <Text variant="title" weight="bold" accessibilityRole="header">
             {title}
           </Text>
+        </View>
 
+        {/* Pay first, under the title (owner's call, 31 Oct); the facts and how fast the company answers after it. */}
+        <CompensationCard job={job} reference={reference} />
+
+        <View style={{ gap: space[3] }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
             <Fact>{tTrack(job.track)}</Fact>
             <Fact>{tType(job.employment_type)}</Fact>
@@ -295,23 +301,7 @@ export function JobDetail({
           </View>
 
           <ResponseLine companyId={job.company.id} />
-
-          <Pressable
-            accessibilityRole="link"
-            onPress={() =>
-              router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
-            }
-            hitSlop={8}
-            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[0.5], alignSelf: 'flex-start', minHeight: hitTarget, opacity: pressed ? 0.6 : 1 })}
-          >
-            <Text variant="small" weight="medium" tone="primary">
-              {tLanding('title', { track: tTrack(job.track), district: districtName })}
-            </Text>
-            <ForwardChevron size={14} color={colors.primary} />
-          </Pressable>
         </View>
-
-        <CompensationCard job={job} reference={reference} />
 
         {/* The next step. Applying arrives with sign-in; until then, and for
             anyone the button cannot work for, the page says what is true. */}
@@ -368,12 +358,12 @@ export function JobDetail({
         <SavedJobNote jobId={job.id} title={title} />
 
         <Section title={t('description')}>
-          <Text selectable>{description}</Text>
+          <FoldedText>{description}</FoldedText>
         </Section>
 
         {job.requirements_ar ? (
           <Section title={t('requirements')}>
-            <Text selectable>{job.requirements_ar}</Text>
+            <FoldedText>{job.requirements_ar}</FoldedText>
           </Section>
         ) : null}
 
@@ -409,39 +399,32 @@ export function JobDetail({
           </View>
         </View>
 
-        <Card style={{ gap: space[3], padding: space[5] }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[2] }}>
-            <Building2 size={16} color={colors.mutedForeground} />
-            <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header">
-              {t('aboutCompany')}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space[3] }}>
-            <CompanyLogo name={companyName} logoUrl={job.company.logo_url} size="sm" />
-            <Text variant="headline" weight="semibold" style={{ flex: 1 }}>
+        {/* The company as one row, opening its page (owner's call, 31 Oct): what it says about itself is there. */}
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`${t('aboutCompany')}: ${companyName}`}
+          accessibilityHint={t('companyPage')}
+          onPress={() => router.push({ pathname: '/companies/[slug]', params: { slug: job.company.slug } })}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space[3],
+            padding: space[3],
+            ...corner('xl'),
+            borderWidth: StyleSheet.hairlineWidth * 2,
+            borderColor: colors.border,
+            backgroundColor: pressed ? colors.muted : colors.card,
+          })}
+        >
+          <CompanyLogo name={companyName} logoUrl={job.company.logo_url} size="sm" />
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space[1] }}>
+            <Text weight="semibold" numberOfLines={large ? undefined : 1} style={{ flexShrink: 1 }}>
               {companyName}
             </Text>
+            {job.company.verification_status === 'verified' ? <VerifiedMark size={15} /> : null}
           </View>
-          {job.company.verification_status === 'verified' ? (
-            <View style={{ flexDirection: 'row', gap: space[2] }}>
-              <BadgeCheck size={16} color={colors.gold} style={{ marginTop: 4 }} />
-              <Text variant="small" tone="mutedForeground" style={{ flex: 1 }}>
-                {t('verifiedMeaning')}
-              </Text>
-            </View>
-          ) : null}
-          {job.company.about_ar || job.company.about_en ? (
-            <Text variant="small" tone="mutedForeground">
-              {localized(locale, job.company.about_ar, job.company.about_en)}
-            </Text>
-          ) : null}
-          <Button
-            label={t('companyPage')}
-            variant="outline"
-            icon={<Building2 size={16} color={colors.foreground} />}
-            onPress={() => router.push({ pathname: '/companies/[slug]', params: { slug: job.company.slug } })}
-          />
-        </Card>
+          <ForwardChevron size={16} color={colors.mutedForeground} />
+        </Pressable>
 
         {similarShown.length ? (
           <Section title={t('similarJobs')}>
@@ -452,6 +435,21 @@ export function JobDetail({
             </View>
           </Section>
         ) : null}
+
+        {/* More of the same kind, at the foot. */}
+        <Pressable
+          accessibilityRole="link"
+          onPress={() =>
+            router.push({ pathname: '/jobs/[slug]', params: { slug: buildLandingSlug(job.track, job.district.slug) } })
+          }
+          hitSlop={8}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[0.5], alignSelf: 'flex-start', minHeight: hitTarget, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text variant="small" weight="medium" tone="primary">
+            {tLanding('title', { track: tTrack(job.track), district: districtName })}
+          </Text>
+          <ForwardChevron size={14} color={colors.primary} />
+        </Pressable>
 
         <View style={{ alignItems: 'flex-start' }}>
           <ReportButton target="job" targetId={job.id} returnPath={`/jobs/${job.slug}`} label={t('report')} />

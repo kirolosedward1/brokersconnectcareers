@@ -55,7 +55,8 @@
     "support": "Help and support",
     "deleteAccount": "Delete account",
     "completeness": "Profile <v>{percent}%</v> complete",
-    "appearanceRow": "Appearance"
+    "appearanceRow": "Appearance",
+    "legalRow": "Terms, privacy and licences"
   },
   "jobs": {
     "loadMore": "Load more",
@@ -247,7 +248,9 @@
     "quietFor": "No answer for {days, plural, one {a day} other {<v>#</v> days}}",
     "usuallyIn": "this company usually answers within {days, plural, =0 {a day} one {a day} other {<v>#</v> days}}",
     "queuedTitle": "Saved, and sent automatically",
-    "queuedCancel": "Cancel"
+    "queuedCancel": "Cancel",
+    "showSteps": "Show the steps",
+    "hideSteps": "Hide the steps"
   },
   "apply": {
     "pickCv": "Choose a file",
@@ -674,7 +677,9 @@
     "postedAgo": "Posted {when}",
     "verifiedSince": "Verified since {when}",
     "respondsIn": "This company answers within {days, plural, =0 {a day} one {a day} other {<v>#</v> days}} on average",
-    "opened": "Opened <v>{percent}%</v> of applications"
+    "opened": "Opened <v>{percent}%</v> of applications",
+    "readMore": "Read more",
+    "readLess": "Show less"
   },
   "appearance": {
     "title": "Appearance",

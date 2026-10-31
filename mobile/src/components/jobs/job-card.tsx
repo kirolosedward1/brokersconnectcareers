@@ -82,8 +82,9 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const chips = [
     { key: 'leads', label: t(`leadsSource.${job.leads_source}_short`), variant: companyLeads ? ('accent' as const) : ('default' as const) },
     { key: 'track', label: t(`track.${job.track}`), variant: 'default' as const },
-    { key: 'fit', label: seatsOrExperience, variant: 'default' as const },
   ];
+  // Two chips on the card (owner's call, 31 Oct: save space); the seats or years are on the listing, and VoiceOver hears them.
+  const fitLabel = seatsOrExperience;
 
   // One element to VoiceOver, so it says everything the card shows, in the
   // order it shows it: who and where, what it pays and who brings the
@@ -94,6 +95,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
     job.company.verification_status === 'verified' ? t('companies.verified') : null,
     salary.unit ? `${salary.figures} ${salary.unit}` : salary.figures,
     ...chips.map((chip) => chip.label),
+    fitLabel,
     job.is_featured ? t('jobs.featured') : null,
     closed ? t('jobs.closedShort') : null,
     applied ? t('app.jobs.appliedChip') : null,
@@ -137,7 +139,8 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const drawn = (onPress?: () => void) => (
     <Card
       onPress={onPress}
-      style={job.is_featured ? { borderColor: colors.champagne, borderWidth: 1 } : undefined}
+      // Tighter than a card's own padding: more listings to a screen (owner's call, 31 Oct).
+      style={job.is_featured ? { padding: space[3], borderColor: colors.champagne, borderWidth: 1 } : { padding: space[3] }}
       onLongPress={() => {
         haptic.tap();
         menu.show();
@@ -201,7 +204,7 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
         weight="semibold"
         tone={closed ? 'mutedForeground' : 'foreground'}
         numberOfLines={large ? undefined : 2}
-        style={{ marginTop: space[3] }}
+        style={{ marginTop: space[2] }}
       >
         {title}
       </Text>
@@ -211,19 +214,19 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
           its currency and the month beside it. Words where there is no basic
           ("commission only") are set smaller, muted. */}
       {salary.unit ? (
-        <Text variant="pay" style={[TABULAR, { marginTop: space[3] }]}>
-          <Text variant="pay" weight="bold" tone="primary">
+        <Text variant="title" style={[TABULAR, { marginTop: space[1] }]}>
+          <Text variant="title" weight="bold" tone="primary">
             {salary.figures}
           </Text>
           <Text variant="caption" weight="regular" tone="mutedForeground">{`  ${salary.unit}`}</Text>
         </Text>
       ) : (
-        <Text variant="headline" weight="semibold" tone="mutedForeground" style={{ marginTop: space[3] }}>
+        <Text variant="headline" weight="semibold" tone="mutedForeground" style={{ marginTop: space[1] }}>
           {salary.figures}
         </Text>
       )}
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1.5], marginTop: space[3] }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[1.5], marginTop: space[2] }}>
         {chips.map(({ key, label, variant }) => (
           <Badge key={key} size="md" variant={variant} label={label} />
         ))}

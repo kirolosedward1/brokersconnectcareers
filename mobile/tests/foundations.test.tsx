@@ -291,8 +291,9 @@ describe('the listing card', () => {
     for (const chip of [ar.leadsSource.company_provided_short, ar.track.primary, ar.app.jobs.appliedChip]) {
       expect(screen.getByText(chip)).toBeTruthy();
     }
-    // Three seats: the seats chip, not the experience asked.
-    expect(screen.getByText(`3 ${translate('jobs.seatsLabel', { count: 3 })}`)).toBeTruthy();
+    // Three seats: said to VoiceOver, no chip of their own (two chips on the card, owner's call, 31 Oct).
+    expect(screen.queryByText(`3 ${translate('jobs.seatsLabel', { count: 3 })}`)).toBeNull();
+    expect(screen.getByLabelText(new RegExp(`3 ${translate('jobs.seatsLabel', { count: 3 })}`))).toBeTruthy();
     expect(screen.queryByText(ar.experienceBand.junior_1_3)).toBeNull();
     expect(screen.queryByText(/1\.5/)).toBeNull();
     expect(screen.queryByText(new RegExp(ar.compensation.commission))).toBeNull();
@@ -310,15 +311,17 @@ describe('the listing card', () => {
     expect(screen.getByText(ar.jobs.featured)).toBeTruthy();
     // The figures in the pay size and the primary ink.
     const figures = screen.getByText(`${RLI}${LRI}10,000${PDI} – ${LRI}15,000${PDI}${PDI}`);
-    expect(StyleSheet.flatten(figures.props.style)).toEqual(expect.objectContaining({ fontSize: 26, lineHeight: 30 }));
+    // A size under what it was: tighter cards (owner's call, 31 Oct).
+    expect(StyleSheet.flatten(figures.props.style)).toEqual(expect.objectContaining({ fontSize: 20, lineHeight: 29 }));
   });
 
-  it('shows the experience asked when there is a single seat', async () => {
+  it('says the experience asked to VoiceOver when there is a single seat, without a chip for it', async () => {
     const app = cardApp(false);
     app.index = () => <JobCard job={{ ...listing, seats: 1, published_at: '2026-10-29T08:00:00Z' }} />;
     await renderRouter(app, { initialUrl: '/' });
-    // Right to left, the fewer years at the right.
-    expect(await screen.findByText(`${RLI}${ar.experienceBand.junior_1_3}${PDI}`)).toBeTruthy();
+    // Two chips on the card (owner's call, 31 Oct); the years are still said, right to left.
+    expect(await screen.findByLabelText(new RegExp(`${RLI}${ar.experienceBand.junior_1_3}${PDI}`))).toBeTruthy();
+    expect(screen.queryByText(`${RLI}${ar.experienceBand.junior_1_3}${PDI}`)).toBeNull();
     expect(screen.queryByText(ar.app.jobs.appliedChip)).toBeNull();
   });
 

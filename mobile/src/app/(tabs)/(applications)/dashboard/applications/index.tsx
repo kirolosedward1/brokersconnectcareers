@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { router, Stack, useIsFocused } from 'expo-router';
 import { useLocale, useTranslations } from 'use-intl';
-import { Building2, Eye, MapPin, UserRound } from '~/components/ui/lucide';
+import { Building2, ChevronDown, Eye, MapPin, UserRound } from '~/components/ui/lucide';
 import { formatDate, formatRelativeDay } from '@/lib/format';
 import { STAGE_TONE, canWithdraw } from '@/lib/application-stages';
 import type { ApplicationStatus } from '@/lib/supabase/database.types';
@@ -205,6 +205,8 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const invite = useMyInterviews().data?.get(application.id) ?? null;
   const [openedAt] = useState(() => Date.now());
   const [asking, setAsking] = useState(false);
+  // The four steps, folded under the status until asked for (owner's call, 31 Oct: half the height).
+  const [expanded, setExpanded] = useState(false);
 
   const job = application.job;
   if (!job) return null;
@@ -274,12 +276,22 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
         {application.status === 'withdrawn' ? (
           <Badge label={t('applicationStatus.withdrawn')} />
         ) : (
-          <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            accessibilityLabel={`${t(`applicationStatus.${application.status}`)}. ${expanded ? t('app.applications.hideSteps') : t('app.applications.showSteps')}`}
+            onPress={() => setExpanded(!expanded)}
+            hitSlop={8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: space[1], minHeight: 32 }}
+          >
+            <Badge variant={STAGE_TONE[application.status]} label={t(`applicationStatus.${application.status}`)} />
+            <ChevronDown size={16} color={colors.mutedForeground} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
+          </Pressable>
         )}
       </View>
 
-      {/* Where it stands: sent, seen by the company, shortlisted, the decision. */}
-      <ApplicationTimeline application={application} />
+      {/* Where it stands: sent, seen by the company, shortlisted, the decision — opened from the status. */}
+      {expanded ? <ApplicationTimeline application={application} /> : null}
 
       {/* An interview the company invited them to, and their answer (migration 373). */}
       {invite && application.status !== 'withdrawn' ? <CandidateInterview invite={invite} now={openedAt} /> : null}
