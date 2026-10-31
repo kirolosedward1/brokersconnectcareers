@@ -1,6 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import * as LegacyFileSystem from 'expo-file-system/legacy';
+import * as WebBrowser from 'expo-web-browser';
 import { CV_BUCKET } from '@/lib/buckets';
 import { fileExtension, fileType } from '@/lib/file-type';
 import { supabase } from '~/lib/supabase';
@@ -135,4 +136,15 @@ export async function uploadCv(userId: string, cv: PickedCv): Promise<string> {
 /** Never throws: whoever calls it is already telling the person it did not go through. */
 export async function removeCv(path: string) {
   await withTimeout(Promise.resolve(supabase.storage.from(CV_BUCKET).remove([path])), 10_000, 'removing the file').catch(() => {});
+}
+
+/**
+ * Open one of the person's own CVs to read: a five-minute signed address from
+ * the private bucket, which lets its owner read their own folder (storage
+ * policy, migration 006), shown in the in-app browser.
+ */
+export async function openOwnCv(path: string): Promise<void> {
+  const { data, error } = await supabase.storage.from(CV_BUCKET).createSignedUrl(path, 300);
+  if (error || !data?.signedUrl) throw error ?? new Error('cv: no signed address');
+  await WebBrowser.openBrowserAsync(data.signedUrl);
 }

@@ -36,7 +36,7 @@ import { useSession } from '~/lib/session';
 import { usePullRefresh } from '~/lib/use-pull-refresh';
 import { useTheme } from '~/theme/provider';
 import { corner, gutter, hitTarget, space } from '~/theme/tokens';
-import { dialog } from '~/lib/dialog';
+import { ConfirmDialog } from '~/components/ui/confirm-dialog';
 import { toast } from '~/components/feedback/toast';
 import { useListMotion } from '~/components/motion/list-motion';
 
@@ -97,8 +97,6 @@ export default function ApplicationsScreen() {
           <RefreshControl {...pull} tintColor={colors.primary} />
         }
       >
-        <Text tone="mutedForeground">{t('dashboard.applicationsLede')}</Text>
-
         {/* Written with no connection, waiting to go (features/apply/queue.ts). */}
         <QueuedApplications />
 
@@ -206,6 +204,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   // One read for the whole list (the query is shared): this application's invitation, if any.
   const invite = useMyInterviews().data?.get(application.id) ?? null;
   const [openedAt] = useState(() => Date.now());
+  const [asking, setAsking] = useState(false);
 
   const job = application.job;
   if (!job) return null;
@@ -216,23 +215,28 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
   const quiet = daysWithoutAnswer(application);
   const quietStrip = quiet !== null && quiet >= QUIET_DAYS && canWithdraw(application.status);
 
-  const confirmWithdraw = () => {
-    dialog.alert(t('myApplications.withdrawTitle', { title }), t('myApplications.withdrawBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('dashboard.withdraw'),
-        style: 'destructive',
-        onPress: () => {
-          setFailed(null);
-          withdraw.mutate(application.id, {
-            onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
-            onError: (error) =>
-              setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
-          });
-        },
-      },
-    ]);
+  // Asked in the app's own direction, not iOS's alert, which an English iPhone lays out left to right.
+  const confirmWithdraw = () => setAsking(true);
+  const withdrawNow = () => {
+    setAsking(false);
+    setFailed(null);
+    withdraw.mutate(application.id, {
+      onSuccess: () => toast.show({ message: t('app.toast.withdrawn'), tone: 'success' }),
+      onError: (error) => setFailed(error instanceof Error && error.message === 'unavailable' ? 'unavailable' : 'failed'),
+    });
   };
+  const withdrawQuestion = (
+    <ConfirmDialog
+      visible={asking}
+      title={t('myApplications.withdrawTitle', { title })}
+      message={t('myApplications.withdrawBody')}
+      cancelLabel={t('common.cancel')}
+      confirmLabel={t('dashboard.withdraw')}
+      destructive
+      onCancel={() => setAsking(false)}
+      onConfirm={withdrawNow}
+    />
+  );
 
   return (
     <View
@@ -349,6 +353,7 @@ function ApplicationRow({ application, first }: { application: CandidateApplicat
           {failed === 'unavailable' ? t('myApplications.withdrawUnavailable') : t('common.errorBody')}
         </Text>
       ) : null}
+      {withdrawQuestion}
     </View>
   );
 }

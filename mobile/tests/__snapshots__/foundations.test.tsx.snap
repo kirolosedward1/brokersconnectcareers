@@ -125,7 +125,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                 },
               ]
             }
-            accessibilityLabel="استشاري مبيعات عقارية، نايل بروكرز، القاهرة الجديدة. موثّقة. ⁦10,000 – 15,000⁩ ج.م / شهر. عملاء من الشركة. بيع أوف بلان. 3 وظائف خالية. قدّمت. اليوم"
+            accessibilityLabel="استشاري مبيعات عقارية، نايل بروكرز، القاهرة الجديدة. موثّقة. ⁧⁦10,000⁩ – ⁦15,000⁩⁩ ج.م / شهر. عملاء من الشركة. بيع أوف بلان. 3 وظائف خالية. قدّمت. اليوم"
             accessibilityRole="link"
             accessibilityState={
               {
@@ -565,7 +565,7 @@ exports[`the listing card is drawn right to left in Arabic (snapshot) 1`] = `
                   ]
                 }
               >
-                ⁦10,000 – 15,000⁩
+                ⁧⁦10,000⁩ – ⁦15,000⁩⁩
               </Text>
               <Text
                 style={
@@ -883,7 +883,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                 },
               ]
             }
-            accessibilityLabel="استشاري مبيعات عقارية، نايل بروكرز، القاهرة الجديدة. موثّقة. ⁦10,000 – 15,000⁩ ج.م / شهر. عملاء من الشركة. بيع أوف بلان. 3 وظائف خالية. قدّمت. اليوم"
+            accessibilityLabel="استشاري مبيعات عقارية، نايل بروكرز، القاهرة الجديدة. موثّقة. ⁧⁦10,000⁩ – ⁦15,000⁩⁩ ج.م / شهر. عملاء من الشركة. بيع أوف بلان. 3 وظائف خالية. قدّمت. اليوم"
             accessibilityRole="link"
             accessibilityState={
               {
@@ -1321,7 +1321,7 @@ exports[`the listing card is drawn whole at the largest accessibility text size 
                   ]
                 }
               >
-                ⁦10,000 – 15,000⁩
+                ⁧⁦10,000⁩ – ⁦15,000⁩⁩
               </Text>
               <Text
                 style={

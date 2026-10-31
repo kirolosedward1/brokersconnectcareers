@@ -492,7 +492,15 @@ function BoardHeader({
       ) : null}
 
       {active.length ? (
-        <View accessibilityLabel={t('filters')} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
+        // One row that slides sideways, out to the screen's edges, rather than lines of chips (owner's call, 31 Oct).
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          accessibilityLabel={t('filters')}
+          style={{ marginHorizontal: -gutter, flexGrow: 0 }}
+          contentContainerStyle={{ gap: space[2], paddingHorizontal: gutter, alignItems: 'center' }}
+        >
           {active.map((filter) => {
             const label = labelFor(filter);
             return (
@@ -516,7 +524,7 @@ function BoardHeader({
               onPress={() => apply(company || !first ? { ...EMPTY_FILTERS, companySlug: filters.companySlug } : EMPTY_FILTERS)}
             />
           ) : null}
-        </View>
+        </ScrollView>
       ) : null}
 
       {/* Paid placement pins above every sort (the website's board says the

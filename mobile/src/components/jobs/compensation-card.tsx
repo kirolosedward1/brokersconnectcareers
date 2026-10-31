@@ -69,9 +69,6 @@ export function CompensationCard({ job, reference }: { job: Comp; reference: Sal
         boxShadow: shadow.card,
       }}
     >
-      <Text variant="label" weight="semibold" tone="mutedForeground" accessibilityRole="header" style={{ paddingHorizontal: space[4], paddingTop: space[4] }}>
-        {t('title')}
-      </Text>
       <View style={{ flexDirection: large ? 'column' : 'row' }}>
         <View style={tile} accessible accessibilityLabel={`${t('basicSalary')}: ${salary.unit ? `${salary.figures} ${salary.unit}` : salary.figures}`}>
           <Label icon={<Banknote size={14} color={colors.mutedForeground} />}>{t('basicSalary')}</Label>

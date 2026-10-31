@@ -239,7 +239,7 @@
     "timelineNow": "Now: {step}",
     "segmentsLabel": "Show applications",
     "segmentAll": "All <v>{count}</v>",
-    "segmentNews": "News <v>{count}</v>",
+    "segmentNews": "New <v>{count}</v>",
     "segmentInterviews": "Interviews",
     "segmentEnded": "Ended",
     "segmentEmpty": "No applications here right now.",
@@ -280,7 +280,9 @@
     "queuedFailed": "We could not send your application for “{title}”. Open the listing and try again.",
     "serverFailed": "The application could not be sent. The problem is on our side, not yours, and what you wrote is kept. Try again in a moment.",
     "signInTitle": "Sign in to apply",
-    "signInBody": "Applications are sent from your account, so you can follow yours and get the company's replies."
+    "signInBody": "Applications are sent from your account, so you can follow yours and get the company's replies.",
+    "viewCv": "View",
+    "viewCvLabel": "View the CV"
   },
   "profile": {
     "edit": "Edit",

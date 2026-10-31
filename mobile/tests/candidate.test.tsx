@@ -587,17 +587,19 @@ describe('the applications', () => {
     expect(read.url.searchParams.get('candidate_id')).toBe(`eq.${USER_ID}`);
   });
 
-  it('asks before withdrawing, then withdraws through the website', async () => {
+  it('asks before withdrawing, in the app’s own direction, then withdraws through the website', async () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/applications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
 
-    expect(alert).toHaveBeenCalledWith('تسحب طلبك على «مستشار مبيعات»؟', ar.myApplications.withdrawBody, expect.any(Array));
+    // Drawn by the app, right to left: not iOS's alert, which an English iPhone lays out left to right.
+    expect(await screen.findByText('تسحب طلبك على «مستشار مبيعات»؟')).toBeTruthy();
+    expect(screen.getByText(ar.myApplications.withdrawBody)).toBeTruthy();
+    expect(alert).not.toHaveBeenCalled();
     expect(server.asked('/api/mobile/v1/actions/withdrawApplication')).toHaveLength(0);
 
-    const buttons = alert.mock.calls[0][2] as AlertButton[];
-    act(() => buttons.find((button) => button.style === 'destructive')?.onPress?.());
+    fireEvent.press(screen.getByTestId('confirm-action'));
 
     await waitFor(() => expect(server.asked('/api/mobile/v1/actions/withdrawApplication')).toHaveLength(1));
     expect(bodyOf('/api/mobile/v1/actions/withdrawApplication')).toEqual({
@@ -617,7 +619,7 @@ describe('the applications', () => {
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/applications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
-    act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+    fireEvent.press(await screen.findByTestId('confirm-action'));
 
     expect((await screen.findAllByText(ar.applicationStatus.hired)).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: ar.dashboard.withdraw })).toBeNull();
@@ -633,7 +635,7 @@ describe('the applications', () => {
     await signedIn();
     await renderRouter(app, { initialUrl: '/dashboard/applications' });
     fireEvent.press(await screen.findByRole('button', { name: ar.dashboard.withdraw }));
-    act(() => (alert.mock.calls[0][2] as AlertButton[]).find((button) => button.style === 'destructive')?.onPress?.());
+    fireEvent.press(await screen.findByTestId('confirm-action'));
 
     expect(await screen.findByText(ar.dashboard.emptyApplications)).toBeTruthy();
     alert.mockRestore();

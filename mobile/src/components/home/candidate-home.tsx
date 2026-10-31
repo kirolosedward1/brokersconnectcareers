@@ -448,36 +448,11 @@ function RecentApplication({ application, first }: { application: CandidateAppli
   );
 }
 
-function SuggestedRole({
-  suggestion: { job, score, reasons },
-  districtName,
-}: {
-  suggestion: Suggestion;
-  districtName: (id: number) => string | null;
-}) {
-  const t = useTranslations();
-  const locale = useLocale();
-
-  // Why this one, in the candidate's own words — the track and district they
-  // put on their profile, not a score. A recommendation nobody can check is
-  // one they are entitled to distrust.
-  const why = [
-    reasons.track ? t(`track.${reasons.track}`) : null,
-    reasons.districtId ? districtName(reasons.districtId) : null,
-    reasons.experience ? t('dashboard.matchExperience') : null,
-  ].filter((reason): reason is string => Boolean(reason));
-
+/** A suggested role: its card alone; the "fits you in…" line under it is gone (owner's call, 31 Oct). */
+function SuggestedRole({ suggestion: { job } }: { suggestion: Suggestion; districtName: (id: number) => string | null }) {
   return (
     <View style={{ gap: space[1] }}>
       <JobCard job={job} />
-      {score > 0 && why.length ? (
-        <Text variant="caption" tone="mutedForeground" style={{ paddingHorizontal: space[1] }}>
-          <Text variant="caption" weight="medium">
-            {t('dashboard.matchWhy')}
-          </Text>{' '}
-          {formatList(why, locale)}
-        </Text>
-      ) : null}
     </View>
   );
 }

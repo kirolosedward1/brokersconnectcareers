@@ -15,6 +15,8 @@ import { useMoney } from '~/features/money';
 import { useCompensationText } from '~/features/jobs/compensation';
 import { catalogues, I18nProvider } from '~/i18n/provider';
 import { LRI, PDI } from '~/i18n/rich';
+
+const RLI = '\u2067';
 import { SessionProvider } from '~/lib/session';
 import { ThemeProvider } from '~/theme/provider';
 import { listing } from './fixtures';
@@ -172,19 +174,19 @@ describe('money', () => {
   }
   const shown = (index: number) => (screen.getByTestId(`amount-${index}`).props.children as string).slice(1, -1);
 
-  it('always carries ج.م in Arabic, a range low to high in one run', () => {
+  it('always carries ج.م in Arabic, a range right to left with the smaller number first', () => {
     render(
       <Providers>
         <Amounts />
       </Providers>,
     );
     expect(shown(0)).toBe(`${LRI}12,000${PDI} ج.م`);
-    expect(shown(1)).toBe(`${LRI}12,000 – 18,000${PDI} ج.م`);
+    expect(shown(1)).toBe(`${RLI}${LRI}12,000${PDI} – ${LRI}18,000${PDI} ج.م${PDI}`);
     expect(shown(2)).toBe(`من ${LRI}12,000${PDI} ج.م`);
     expect(shown(3)).toBe(`حتى ${LRI}18,000${PDI} ج.م`);
     expect(shown(4)).toBe('none');
     expect(shown(5)).toBe('ج.م / شهر');
-    expect(shown(6)).toBe(`${LRI}10,000 – 15,000${PDI} ج.م`);
+    expect(shown(6)).toBe(`${RLI}${LRI}10,000${PDI} – ${LRI}15,000${PDI} ج.م${PDI}`);
     expect(shown(7)).toBe(ar.compensation.commissionOnly);
   });
 
@@ -284,7 +286,7 @@ describe('the listing card', () => {
   it('shows the basic salary with ج.م / شهر, the facts as chips, and «قدّمت» — never the commission', async () => {
     await renderRouter(cardApp(true), { initialUrl: '/' });
     expect(await screen.findByText(listing.title_ar)).toBeTruthy();
-    expect(screen.getByText(`${LRI}10,000 – 15,000${PDI}`)).toBeTruthy();
+    expect(screen.getByText(`${RLI}${LRI}10,000${PDI} – ${LRI}15,000${PDI}${PDI}`)).toBeTruthy();
     expect(screen.getByText(` ${ar.app.money.perMonth}`)).toBeTruthy();
     for (const chip of [ar.leadsSource.company_provided_short, ar.track.primary, ar.app.jobs.appliedChip]) {
       expect(screen.getByText(chip)).toBeTruthy();
@@ -307,7 +309,7 @@ describe('the listing card', () => {
     expect(await screen.findByText(ar.app.jobs.appliedChip)).toBeTruthy();
     expect(screen.getByText(ar.jobs.featured)).toBeTruthy();
     // The figures in the pay size and the primary ink.
-    const figures = screen.getByText(`${LRI}10,000 – 15,000${PDI}`);
+    const figures = screen.getByText(`${RLI}${LRI}10,000${PDI} – ${LRI}15,000${PDI}${PDI}`);
     expect(StyleSheet.flatten(figures.props.style)).toEqual(expect.objectContaining({ fontSize: 26, lineHeight: 30 }));
   });
 

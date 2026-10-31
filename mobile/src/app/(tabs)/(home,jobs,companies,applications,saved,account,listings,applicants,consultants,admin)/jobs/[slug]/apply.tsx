@@ -51,7 +51,8 @@ import { ApplyRefused, useApplyContext, useApplyToJob, useNextRoles, type Attach
 import { applyQueue, offlineFailure } from '~/features/apply/queue';
 import { useAuthErrorText } from '~/features/auth/errors';
 import type { ProviderOutcome } from '~/features/auth/providers';
-import { pickCv, type PickedCv } from '~/features/cv/files';
+import { toast } from '~/components/feedback/toast';
+import { openOwnCv, pickCv, type PickedCv } from '~/features/cv/files';
 import { useJob } from '~/features/jobs/queries';
 import { useAgentProfile } from '~/features/profile/queries';
 import { useDistricts } from '~/features/taxonomy';
@@ -676,10 +677,16 @@ function ApplyForm({
                 onPress={() => setChoice({ kind: 'last' })}
                 title={t('app.apply.lastCv', { job: localized(locale, lastCv.jobTitleAr, lastCv.jobTitleEn) || title })}
                 hint={`${t('app.apply.lastUsed')} · ${formatDate(lastCv.sentAt, locale)}`}
+                viewPath={lastCv.path}
               />
             ) : null}
             {profileCv && profileCv !== lastCv?.path ? (
-              <CvOption selected={chosen.kind === 'profile'} onPress={() => setChoice({ kind: 'profile' })} title={t('app.apply.profileCv')} />
+              <CvOption
+                selected={chosen.kind === 'profile'}
+                onPress={() => setChoice({ kind: 'profile' })}
+                title={t('app.apply.profileCv')}
+                viewPath={profileCv}
+              />
             ) : null}
             {chosen.kind === 'file' ? <CvOption selected onPress={() => {}} title={chosen.file.name} file /> : null}
             <Pressable
@@ -837,9 +844,33 @@ function ProfileSummary({ name, band, onEdit }: { name: string; band: Experience
 }
 
 /** One CV to send, as a radio: the one last used, the profile's, or a file just picked. */
-function CvOption({ selected, onPress, title, hint, file = false }: { selected: boolean; onPress: () => void; title: string; hint?: string; file?: boolean }) {
+function CvOption({
+  selected,
+  onPress,
+  title,
+  hint,
+  file = false,
+  viewPath,
+}: {
+  selected: boolean;
+  onPress: () => void;
+  title: string;
+  hint?: string;
+  file?: boolean;
+  /** A CV already in the bucket: «عرض» opens it to read (owner's call, 31 Oct). */
+  viewPath?: string;
+}) {
   const { colors } = useTheme();
   const large = useLargeText();
+  const t = useTranslations();
+  const [opening, setOpening] = useState(false);
+  const view = () => {
+    if (!viewPath || opening) return;
+    setOpening(true);
+    openOwnCv(viewPath)
+      .catch(() => toast.show({ message: t('common.errorBody'), tone: 'destructive' }))
+      .finally(() => setOpening(false));
+  };
   return (
     <Pressable
       accessibilityRole="radio"
@@ -870,6 +901,28 @@ function CvOption({ selected, onPress, title, hint, file = false }: { selected: 
           </Text>
         ) : null}
       </View>
+      {viewPath ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('app.apply.viewCvLabel')}
+          onPress={view}
+          disabled={opening}
+          hitSlop={8}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space[1],
+            minHeight: hitTarget,
+            paddingHorizontal: space[2],
+            opacity: pressed || opening ? 0.6 : 1,
+          })}
+        >
+          <Eye size={16} color={colors.primary} />
+          <Text variant="small" weight="medium" tone="primary">
+            {t('app.apply.viewCv')}
+          </Text>
+        </Pressable>
+      ) : null}
       <View
         style={{
           width: 20,
@@ -958,6 +1011,7 @@ function Queued({ job }: { job: JobDetail }) {
 /** The confirmation: that it went, where to follow it, and what to look at next — and, for an account just made, the rest of onboarding. */
 function Sent({ job, newAccount }: { job: JobDetail; newAccount: boolean }) {
   const toBoard = useToBoard();
+  const large = useLargeText();
   const t = useTranslations();
   const { colors } = useTheme();
   const next = useNextRoles(job.id, true);
@@ -1006,9 +1060,14 @@ function Sent({ job, newAccount }: { job: JobDetail; newAccount: boolean }) {
         </Card>
       ) : null}
 
-      <View style={{ gap: space[2] }}>
-        <Button label={t('apply.viewApplications')} variant={newAccount ? 'outline' : 'primary'} onPress={() => router.navigate('/dashboard/applications')} />
-        <Button label={t('nav.browseJobs')} variant="outline" onPress={toBoard} />
+      {/* Side by side (owner's call, 31 Oct); stacked again at the largest text sizes, where two would not fit a line. */}
+      <View style={{ flexDirection: large ? 'column' : 'row', gap: space[2] }}>
+        <View style={large ? null : { flex: 1 }}>
+          <Button label={t('apply.viewApplications')} variant={newAccount ? 'outline' : 'primary'} onPress={() => router.navigate('/dashboard/applications')} />
+        </View>
+        <View style={large ? null : { flex: 1 }}>
+          <Button label={t('nav.browseJobs')} variant="outline" onPress={toBoard} />
+        </View>
       </View>
 
       {/* The moment the reason to hear back is plain: the phone's question, until answered. */}

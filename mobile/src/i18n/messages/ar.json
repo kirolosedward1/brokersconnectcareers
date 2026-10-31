@@ -239,7 +239,7 @@
     "timelineNow": "الآن: {step}",
     "segmentsLabel": "اعرض الطلبات",
     "segmentAll": "الكل <v>{count}</v>",
-    "segmentNews": "فيها جديد <v>{count}</v>",
+    "segmentNews": "جديد <v>{count}</v>",
     "segmentInterviews": "مقابلات",
     "segmentEnded": "منتهية",
     "segmentEmpty": "لا طلبات هنا الآن.",
@@ -280,7 +280,9 @@
     "queuedFailed": "لم نستطع إرسال طلبك على «{title}». افتح الإعلان وحاول مرة أخرى.",
     "serverFailed": "تعذّر إرسال الطلب. المشكلة من جهتنا لا منك، وما كتبته محفوظ. أعد المحاولة بعد قليل.",
     "signInTitle": "سجّل الدخول للتقديم",
-    "signInBody": "التقديم على الوظائف من حسابك، لتتابع طلبك وتصلك ردود الشركة."
+    "signInBody": "التقديم على الوظائف من حسابك، لتتابع طلبك وتصلك ردود الشركة.",
+    "viewCv": "عرض",
+    "viewCvLabel": "اعرض السيرة الذاتية"
   },
   "profile": {
     "edit": "عدّل",
@@ -656,10 +658,10 @@
     "unit": "ج.م",
     "perMonth": "ج.م / شهر",
     "amount": "<v>{amount}</v> ج.م",
-    "range": "<v>{min} – {max}</v> ج.م",
+    "range": "⁧<v>{min}</v> – <v>{max}</v> ج.م⁩",
     "from": "من <v>{min}</v> ج.م",
     "upTo": "حتى <v>{max}</v> ج.م",
-    "rangeFigures": "<v>{min} – {max}</v>",
+    "rangeFigures": "⁧<v>{min}</v> – <v>{max}</v>⁩",
     "fromFigures": "من <v>{min}</v>",
     "upToFigures": "حتى <v>{max}</v>",
     "reference": "الأساسي في الإعلانات المشابهة بين <v>{low}</v> و<v>{high}</v> ج.م — حسب {count, plural, one {إعلان واحد منشور} two {إعلانين منشورين} few {<v>#</v> إعلانات منشورة} many {<v>#</v> إعلانًا منشورًا} other {<v>#</v> إعلان منشور}} في التخصص والمحافظة نفسيهما."

@@ -74,7 +74,10 @@ export function JobCard({ job, applied = false, swipeable = false }: { job: JobL
   const age = job.published_at ? formatRelativeDay(job.published_at, locale) : null;
   // More than one seat is worth a chip of its own; one seat says nothing, and the experience asked does.
   const seatsOrExperience =
-    job.seats > 1 ? `${formatNumber(job.seats, locale)} ${t('jobs.seatsLabel', { count: job.seats })}` : t(`experienceBand.${job.experience_band}`);
+    job.seats > 1
+      ? `${formatNumber(job.seats, locale)} ${t('jobs.seatsLabel', { count: job.seats })}`
+      : // A span of years reads right to left, the fewer years at the right.
+        `\u2067${t(`experienceBand.${job.experience_band}`)}\u2069`;
   // The company bringing the clients is the fact a broker looks for first: in champagne, the rest muted.
   const chips = [
     { key: 'leads', label: t(`leadsSource.${job.leads_source}_short`), variant: companyLeads ? ('accent' as const) : ('default' as const) },
