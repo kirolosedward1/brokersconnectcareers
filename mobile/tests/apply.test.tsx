@@ -659,90 +659,31 @@ describe('who gets the form', () => {
     expect(screen.queryByRole('button', { name: ar.apply.submit })).toBeNull();
   });
 
-  it('gives somebody signed out the form, with a way to make an account inside it, or to sign in and come back', async () => {
+  it('asks somebody signed out to sign in, and brings them back to the form', async () => {
     const result = await renderRouter(app, { initialUrl: APPLY });
-    expect(await screen.findByText(ar.app.apply.guestTitle)).toBeTruthy();
-    // The CV and the note are there to fill in already.
-    expect(screen.getByLabelText(ar.apply.note)).toBeTruthy();
-    expect(screen.getByRole('button', { name: ar.app.apply.uploadNew })).toBeTruthy();
+    expect(await screen.findByText(ar.app.apply.signInTitle)).toBeTruthy();
+    // No form, and no account made inside it.
+    expect(screen.queryByLabelText(ar.apply.note)).toBeNull();
+    expect(screen.queryByRole('button', { name: ar.apply.submit })).toBeNull();
+    expect(screen.queryByText(ar.app.apply.guestTitle)).toBeNull();
 
-    // Sending before there is an account says what to do first, and sends nothing.
-    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
-    expect(await screen.findByText(ar.app.apply.guestNeedsAccount)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/applyToJob')).toHaveLength(0);
-
-    fireEvent.press(screen.getByRole('link', { name: `${ar.app.apply.guestHasAccount} ${ar.nav.signIn}` }));
+    fireEvent.press(screen.getByRole('button', { name: ar.nav.signIn }));
     await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
     expect(result.getSearchParams()).toEqual({ next: APPLY });
   });
 
-  it('makes the account inside the form with Google, sends the application first, and offers the rest of onboarding after', async () => {
-    server.on('GET /api/mobile/v1/config', mobileConfig({ providers: { google: true, apple: true } }));
-    jest.mocked(AppleAuthentication.isAvailableAsync).mockResolvedValue(true);
-    jest.mocked(GoogleSignin.signIn).mockResolvedValue({
-      type: 'success',
-      data: {
-        idToken: 'google-id-token',
-        serverAuthCode: null,
-        scopes: [],
-        user: { id: 'g', name: 'سارة عادل', email: 'sara@example.com', photo: null, familyName: null, givenName: 'سارة' },
-      },
-    });
-    server.on('GET /auth/v1/user', user);
-    let made = false;
-    server.on('/rest/v1/profiles', () => (made ? [profile] : []));
-    server.on('POST /api/mobile/v1/actions/completeOnboarding', () => {
-      made = true;
-      return { ok: true, data: { role: 'candidate' } };
-    });
+  it('offers a new account too, as a candidate, coming back to the form after', async () => {
     const result = await renderRouter(app, { initialUrl: APPLY });
-
-    // Written before there is an account, and kept through making it.
-    fireEvent.changeText(await screen.findByLabelText(ar.apply.note), 'متاحة من أول الشهر.');
-    fireEvent.press(await screen.findByRole('button', { name: ar.auth.signUpWithGoogle }));
-
-    // The same form, now asking what the account needs.
-    expect(await screen.findByText(ar.app.apply.newAccountTitle)).toBeTruthy();
-    expect(screen.getByDisplayValue('متاحة من أول الشهر.')).toBeTruthy();
-    // The name is the provider's when it gave one (GoTrue keeps it on the account); this test's account has none.
-    fireEvent.changeText(screen.getByLabelText(ar.apply.fullName), 'سارة عادل');
-    fireEvent.changeText(screen.getByLabelText(ar.apply.whatsapp), '01001234567');
-    // Who sees the directory card: asked, nothing chosen for them, and the Terms, before anything is made.
-    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
-    expect(await screen.findByText(ar.onboarding.visibilityRequired)).toBeTruthy();
-    expect(screen.getByText(ar.onboarding.consentRequired)).toBeTruthy();
-    expect(server.asked('/api/mobile/v1/actions/completeOnboarding')).toHaveLength(0);
-    fireEvent.press(screen.getByRole('radio', { name: `${ar.visibility.hidden}. ${ar.visibility.hiddenHint}` }));
-    fireEvent.press(screen.getByRole('checkbox'));
-    fireEvent.press(screen.getByRole('button', { name: ar.apply.submit }));
-
-    expect(await screen.findByText(ar.apply.success)).toBeTruthy();
-    expect(bodyOf('/api/mobile/v1/actions/completeOnboarding')).toEqual({
-      input: {
-        role: 'candidate',
-        fullName: 'سارة عادل',
-        whatsapp: '01001234567',
-        locale: 'ar',
-        agreed: true,
-        attribution: { inApp: true },
-        visibility: 'hidden',
-      },
-    });
-    // Made first, then sent.
-    const order = server.requests.map((request) => request.url.pathname);
-    expect(order.indexOf('/api/mobile/v1/actions/completeOnboarding')).toBeLessThan(order.indexOf('/api/mobile/v1/actions/applyToJob'));
-    expect(bodyOf('/api/mobile/v1/actions/applyToJob')).toMatchObject({ input: { note: 'متاحة من أول الشهر.', whatsapp: '01001234567' } });
-    expect(result.getPathname()).toBe(APPLY);
-    // The rest of onboarding, after.
-    expect(screen.getByRole('button', { name: ar.app.apply.completeProfile })).toBeTruthy();
+    fireEvent.press(await screen.findByRole('button', { name: ar.nav.signUp }));
+    await waitFor(() => expect(result.getPathname()).toBe('/sign-up'));
+    expect(result.getSearchParams()).toEqual({ role: 'candidate', next: APPLY });
   });
 
-  it('takes an email address to sign-up as a consultant, and back to the form after', async () => {
-    const result = await renderRouter(app, { initialUrl: APPLY });
-    fireEvent.changeText(await screen.findByLabelText(ar.app.apply.guestEmail), 'sara@example.com');
-    fireEvent.press(screen.getByRole('button', { name: ar.app.apply.guestEmailContinue }));
-    await waitFor(() => expect(result.getPathname()).toBe('/sign-up'));
-    expect(result.getSearchParams()).toEqual({ role: 'candidate', next: APPLY, email: 'sara@example.com' });
+  it("sends somebody signed out from the listing's Apply to sign in, not to the form", async () => {
+    const result = await renderRouter(app, { initialUrl: `/jobs/${listing.slug}` });
+    fireEvent.press(await screen.findByRole('button', { name: ar.jobs.apply }));
+    await waitFor(() => expect(result.getPathname()).toBe('/sign-in'));
+    expect(result.getSearchParams()).toEqual({ next: APPLY });
   });
 
   it('pins Apply at the foot of the screen once the button has scrolled out of sight, and takes it away coming back', async () => {

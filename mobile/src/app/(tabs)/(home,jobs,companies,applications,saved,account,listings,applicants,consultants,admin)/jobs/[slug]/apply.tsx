@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'use-intl';
 import {
   BadgeCheck,
   CalendarX2,
+  LogIn,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -183,10 +184,31 @@ function Apply({ job }: { job: JobDetail }) {
     );
   }
 
+  // Applying is for an account (owner's call, 31 Oct): signed out, the way to sign in, and back here after.
+  if (!session) {
+    const next = `/jobs/${job.slug}/apply`;
+    return (
+      <EmptyState
+        icon={LogIn}
+        title={t('app.apply.signInTitle')}
+        body={t('app.apply.signInBody')}
+        action={
+          <View style={{ gap: space[2], alignItems: 'center' }}>
+            <Button label={t('nav.signIn')} onPress={() => router.push({ pathname: '/sign-in', params: { next } })} />
+            <Button
+              label={t('nav.signUp')}
+              variant="outline"
+              onPress={() => router.push({ pathname: '/sign-up', params: { role: 'candidate', next } })}
+            />
+          </View>
+        }
+      />
+    );
+  }
+
   let mode: Mode | null = null;
-  if (!session) mode = 'guest';
   // Signed up from inside the form a moment ago: the form stays while the account is read, and asks what it needs.
-  else if (held && (!viewer || (!viewer.profile && !viewer.profileUnreadable))) mode = 'newAccount';
+  if (held && (!viewer || (!viewer.profile && !viewer.profileUnreadable))) mode = 'newAccount';
 
   if (!mode) {
     if (!viewer?.profile) return <ViewerPending />;

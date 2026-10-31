@@ -143,9 +143,13 @@ export function JobDetail({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, job.slug]);
 
-  // Signed out too, the form opens: an account is made inside it (v1.1, guest apply).
+  // Applying is for an account: signed out, Apply is the sign-in sheet, which comes back to the form.
   const apply = () => {
     track('apply_clicked', { role: analyticsRole(actor, Boolean(session)) });
+    if (!session) {
+      router.push({ pathname: '/sign-in', params: { next: `/jobs/${job.slug}/apply` } });
+      return;
+    }
     router.push({ pathname: '/jobs/[slug]/apply', params: { slug: job.slug } });
   };
   const toApplications = () => router.navigate('/dashboard/applications');
