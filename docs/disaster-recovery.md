@@ -205,8 +205,12 @@ transaction with its ledger row. Rehearse it first with
 From GitHub instead of a computer: Actions → Apply migrations → Run workflow
 on `main` (`.github/workflows/db-apply.yml`). Unticked, it prints the plan;
 with `execute` ticked, it applies it and prints the ledger. It reads
-production's connection string from the repository secret
-`PRODUCTION_DATABASE_URL` (or `DR_DATABASE_URL`).
+production's session pooler connection string from the repository secret
+`PRODUCTION_DATABASE_URL` (or `DR_DATABASE_URL`). The direct connection is
+IPv6 only and GitHub's runners cannot reach it. It verifies the server against
+Supabase's CA certificate in `PRODUCTION_DATABASE_CA` (Database → SSL
+Configuration → Download certificate). A computer can do the same by setting
+`DATABASE_CA_CERT` to that certificate's PEM.
 
 ## 7. Access and audit
 

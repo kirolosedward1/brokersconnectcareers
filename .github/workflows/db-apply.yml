@@ -13,12 +13,22 @@
 # it would do before it can do it. Nothing else runs it: a merge applies
 # nothing by itself.
 #
-# It needs production's database connection string in the repository's
-# secrets (Settings → Secrets and variables → Actions) as
-# PRODUCTION_DATABASE_URL — Supabase → Project Settings → Database →
-# Connection string, the direct connection or the session pooler (port 5432),
-# never the transaction pooler (6543), which the tool refuses. DR_DATABASE_URL,
-# the nightly backup's, is used when that is the one set.
+# It needs two repository secrets (Settings → Secrets and variables → Actions):
+#
+#   PRODUCTION_DATABASE_URL   Supabase → Connect → the session pooler's string
+#                             (…pooler.supabase.com:5432). Not the direct
+#                             connection, which is IPv6 only and out of reach of
+#                             GitHub's runners, nor the transaction pooler
+#                             (6543), which the tool refuses. DR_DATABASE_URL,
+#                             the nightly backup's, is used when that is the
+#                             one set.
+#   PRODUCTION_DATABASE_CA    the PEM of Supabase → Database → SSL
+#                             Configuration → Download certificate. The
+#                             connection is verified against it
+#                             (DATABASE_CA_CERT, databaseSsl() in
+#                             scripts/release/migrations.mjs): from a runner's
+#                             network, an unverified connection could hand the
+#                             database password to an impostor.
 #
 # Take a backup first (the DR backup workflow, or Supabase → Database →
 # Backups). Afterwards the ledger is printed, to check against the files.
@@ -49,18 +59,22 @@ jobs:
     timeout-minutes: 20
     env:
       TARGET_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL || secrets.DR_DATABASE_URL }}
+      DATABASE_CA_CERT: ${{ secrets.PRODUCTION_DATABASE_CA }}
       EXECUTE: ${{ github.event_name == 'workflow_dispatch' && inputs.execute }}
     steps:
       - name: Is there a database to reach
         id: gate
         run: |
-          if [ -n "$TARGET_DATABASE_URL" ]; then
+          missing=()
+          [ -n "$TARGET_DATABASE_URL" ] || missing+=(PRODUCTION_DATABASE_URL)
+          [ -n "$DATABASE_CA_CERT" ] || missing+=(PRODUCTION_DATABASE_CA)
+          if [ ${#missing[@]} -eq 0 ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "::error::No PRODUCTION_DATABASE_URL (or DR_DATABASE_URL) in the repository's secrets: nothing was read or applied."
+            echo "::error::Missing from the repository's secrets: ${missing[*]}. Nothing was read or applied."
             exit 1
           else
-            echo "::notice::No PRODUCTION_DATABASE_URL in the repository's secrets yet: the plan is skipped."
+            echo "::notice::Missing from the repository's secrets: ${missing[*]}. The plan is skipped."
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
