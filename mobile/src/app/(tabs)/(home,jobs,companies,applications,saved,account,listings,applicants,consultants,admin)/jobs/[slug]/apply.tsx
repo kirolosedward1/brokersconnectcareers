@@ -675,7 +675,8 @@ function ApplyForm({
               <CvOption
                 selected={chosen.kind === 'last'}
                 onPress={() => setChoice({ kind: 'last' })}
-                title={t('app.apply.lastCv', { job: localized(locale, lastCv.jobTitleAr, lastCv.jobTitleEn) || title })}
+                // «سيرتي الذاتية»: the other listing is not named (owner's call, 31 Oct); the date under it says which.
+                title={t('app.apply.lastCv')}
                 hint={`${t('app.apply.lastUsed')} · ${formatDate(lastCv.sentAt, locale)}`}
                 viewPath={lastCv.path}
               />

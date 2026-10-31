@@ -255,7 +255,7 @@ describe('the form', () => {
     await signedIn();
     await renderRouter(app, { initialUrl: APPLY });
 
-    const last = await screen.findByRole('radio', { name: new RegExp(`^${ar.app.apply.lastCv.replace('{job}', 'مدير مبيعات')}\\. ${ar.app.apply.lastUsed}`) });
+    const last = await screen.findByRole('radio', { name: new RegExp(`^${ar.app.apply.lastCv}\\. ${ar.app.apply.lastUsed}`) });
     expect(last.props.accessibilityState).toMatchObject({ checked: true });
     // The profile's own is there to pick instead.
     expect(screen.getByRole('radio', { name: ar.app.apply.profileCv, checked: false })).toBeTruthy();
