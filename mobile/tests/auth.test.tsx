@@ -53,6 +53,7 @@ import { cairo, company, companyPage, newCairo } from './fixtures';
 import { watchFocus } from './focus';
 import { placeViewsAt } from './measure';
 import { fakeServer } from './server';
+import { signInWithGoogleThroughSupabase } from '~/features/auth/providers';
 
 /*
   Signing in, as a person does it, against stand-ins for Supabase Auth and the
@@ -1106,6 +1107,35 @@ describe('one-tap sign-in', () => {
     expect(bodyOf('/auth/v1/user')).toMatchObject({ data: { full_name: 'Sara Adel' } });
     // The Apple ID it was made with, asked about at each launch (tests/apple-credential.test.tsx).
     expect(JSON.parse((await AsyncStorage.getItem('auth:apple-sign-in')) ?? 'null')).toEqual({ userId: USER_ID, appleUser: 'apple-user' });
+  });
+
+  it('Google without the app’s own client id: Supabase’s Google page, and the code it returns exchanged', async () => {
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({
+      type: 'success',
+      url: 'brokersconnect://auth/callback?code=google-code',
+    });
+    const outcome = await signInWithGoogleThroughSupabase();
+
+    expect(outcome).toEqual({ ok: true });
+    const [authorize, returnTo] = jest.mocked(WebBrowser.openAuthSessionAsync).mock.calls[0];
+    const url = new URL(authorize);
+    expect(url.pathname).toBe('/auth/v1/authorize');
+    expect(url.searchParams.get('provider')).toBe('google');
+    expect(url.searchParams.get('redirect_to')).toBe('brokersconnect://auth/callback');
+    expect(url.searchParams.get('code_challenge')).toBeTruthy();
+    expect(returnTo).toBe('brokersconnect://auth/callback');
+    const exchange = server.asked('/auth/v1/token').find((request) => request.url.searchParams.get('grant_type') === 'pkce');
+    expect(exchange?.body).toMatchObject({ auth_code: 'google-code' });
+    // Called outside a screen: the session and the browser it opened are put away for the tests after it.
+    await act(() => supabase.auth.signOut({ scope: 'local' }));
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockClear();
+  });
+
+  it('Google through Supabase: closing the page is not an error', async () => {
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({ type: 'cancel' } as Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>);
+    await expect(signInWithGoogleThroughSupabase()).resolves.toEqual({ ok: false, cancelled: true });
+    expect(server.asked('/auth/v1/token')).toHaveLength(0);
+    jest.mocked(WebBrowser.openAuthSessionAsync).mockClear();
   });
 
   it('Google: the device’s sheet, and the identity token, with no nonce and no Supabase browser', async () => {

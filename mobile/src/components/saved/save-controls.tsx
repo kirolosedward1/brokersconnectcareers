@@ -292,18 +292,18 @@ export function FollowCompanyButton({ slug, label }: { slug: string; label: stri
   };
 
   return (
-    <View style={{ gap: space[1], alignItems: 'flex-start' }}>
+    <View style={{ gap: space[1], alignItems: 'flex-end', flexShrink: 0, maxWidth: '45%' }}>
       <Button
         label={following ? t('following') : t('follow')}
+        size="sm"
         variant={following ? 'secondary' : 'outline'}
         accessibilityState={{ selected: following, busy: toggle.isPending, disabled: toggle.isPending }}
+        // What following does, for VoiceOver: the words under the button are gone (owner's call, 31 Oct).
+        accessibilityHint={following ? t('followingHint') : t('followHint')}
         disabled={toggle.isPending}
         icon={following ? <BellRing size={16} color={colors.primary} /> : <BellPlus size={16} color={colors.foreground} />}
         onPress={onPress}
       />
-      <Text variant="caption" tone="mutedForeground">
-        {following ? t('followingHint') : t('followHint')}
-      </Text>
       {error ? (
         <Text variant="caption" tone="destructive" accessibilityRole="alert">
           {error}

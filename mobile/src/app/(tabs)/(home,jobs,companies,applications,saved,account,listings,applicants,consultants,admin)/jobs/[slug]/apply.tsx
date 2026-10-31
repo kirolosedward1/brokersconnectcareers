@@ -543,11 +543,6 @@ function ApplyForm({
       onPress={() => void submit()}
     />
   );
-  const fees = (
-    <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
-      {t('app.apply.noFees')}
-    </Text>
-  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -764,12 +759,7 @@ function ApplyForm({
         <WhoSees />
 
         {errors.form ? <Notice tone="destructive" announce={false}>{errors.form}</Notice> : null}
-        {large ? (
-          <View style={{ gap: space[2] }}>
-            {sendButton}
-            {fees}
-          </View>
-        ) : null}
+        {large ? sendButton : null}
       </ScrollView>
       {/* The way to send it, held at the foot of the screen (v1.1); in the flow at the largest text sizes. */}
       {large ? null : (
@@ -785,7 +775,6 @@ function ApplyForm({
           }}
         >
           {sendButton}
-          {fees}
         </View>
       )}
     </View>

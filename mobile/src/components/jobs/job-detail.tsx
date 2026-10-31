@@ -95,7 +95,6 @@ export function JobDetail({
   const tExp = useTranslations('experienceBand');
   const tLanding = useTranslations('landing');
   const tApply = useTranslations('apply');
-  const tApp2 = useTranslations();
   const tComp = useTranslations('compensation');
   const tListing = useTranslations('app.listing');
   const large = useLargeText();
@@ -334,17 +333,12 @@ export function JobDetail({
               </Text>
             </Card>
           ) : (
-            <View style={{ gap: space[1.5] }}>
-              <Button
-                label={t('apply')}
-                size="lg"
-                icon={<SendForward size={18} color={colors.primaryForeground} />}
-                onPress={apply}
-              />
-              <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
-                {tApp2('app.apply.noFees')}
-              </Text>
-            </View>
+            <Button
+              label={t('apply')}
+              size="lg"
+              icon={<SendForward size={18} color={colors.primaryForeground} />}
+              onPress={apply}
+            />
           )}
         </View>
 
@@ -472,9 +466,6 @@ export function JobDetail({
                   <Button label={t('apply')} icon={<SendForward size={18} color={colors.primaryForeground} />} onPress={apply} />
                 </View>
               </View>
-              <Text variant="caption" tone="mutedForeground" style={{ textAlign: 'center' }}>
-                {tApp2('app.apply.noFees')}
-              </Text>
             </View>
           )}
         </Appear>

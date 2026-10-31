@@ -3,8 +3,9 @@ import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Crypto from 'expo-crypto';
 import { supabase } from '~/lib/supabase';
 import { rememberAppleSignIn } from './apple-credential';
-import { signInWithGoogleAccount } from './google';
-import { OAUTH_REDIRECT } from './oauth-return';
+import * as WebBrowser from 'expo-web-browser';
+import { googleClientReady, signInWithGoogleAccount } from './google';
+import { awaitingOAuthReturn, OAUTH_REDIRECT } from './oauth-return';
 
 /**
  * The one-tap sign-ins, as the phone does them.
@@ -17,7 +18,8 @@ import { OAUTH_REDIRECT } from './oauth-return';
  *
  * Google: the device's own Google sheet, and the same exchange (google.ts).
  * Expo Go, which has no native module to show that sheet, asks Google for an
- * identity token directly. Neither opens supabase.co.
+ * identity token directly. Neither opens supabase.co. A build without the
+ * client ids signs in through Supabase's own Google page instead.
  *
  * Neither needs a captcha: Supabase asks for one only with a password.
  */
@@ -119,8 +121,33 @@ export async function appleAuthorizationCode(): Promise<string | null> {
   }
 }
 
+/**
+ * Google, the way this build can. With the app's own client id: Google's
+ * sheet, or Google's page in Expo Go (google.ts). Without it — Expo Go before
+ * the ids are configured — Supabase's own Google sign-in, which the website
+ * already uses: Google's page in the authentication browser, back to
+ * OAUTH_REDIRECT with a code (PKCE) that is exchanged here. iOS names the
+ * Supabase host in its prompt on this path; the ids remove that.
+ */
 export function signInWithGoogle(): Promise<ProviderOutcome> {
+  if (!googleClientReady()) return signInWithGoogleThroughSupabase();
   return signInWithGoogleAccount(inExpoGo());
+}
+
+export async function signInWithGoogleThroughSupabase(): Promise<ProviderOutcome> {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: OAUTH_REDIRECT, skipBrowserRedirect: true },
+  });
+  if (error) return failed(error);
+  if (!data.url) return failed('google: no authorization url');
+
+  const authorize = data.url;
+  return awaitingOAuthReturn(async () => {
+    const result = await WebBrowser.openAuthSessionAsync(authorize, OAUTH_REDIRECT);
+    if (result.type !== 'success') return CANCELLED;
+    return completeOAuth(result.url);
+  });
 }
 
 /**

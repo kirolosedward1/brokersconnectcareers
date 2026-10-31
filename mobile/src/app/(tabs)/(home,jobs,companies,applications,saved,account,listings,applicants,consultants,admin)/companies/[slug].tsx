@@ -99,6 +99,8 @@ export default function CompanyScreen() {
                 </VerifiedMark>
               ) : null}
             </View>
+            {/* Tell me when this brokerage posts: beside the name, at the row's other end. */}
+            <FollowCompanyButton slug={company.slug} label={name} />
           </View>
           {/* Nothing to state, no card: an empty one read as something missing. */}
           {company.district || company.headcount_band || website ? (
@@ -137,9 +139,6 @@ export default function CompanyScreen() {
         </View>
 
         {hiring && !hiring.open ? <PausedNotice hiring={hiring} /> : null}
-
-        {/* Tell me when this brokerage posts — a candidate's, or the way into an account. */}
-        <FollowCompanyButton slug={company.slug} label={name} />
 
         {hiring ? <CompanyContact name={name} hiring={hiring} /> : null}
 
